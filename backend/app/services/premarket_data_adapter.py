@@ -9,6 +9,10 @@ import pandas as pd
 from app.services.premarket_scanner_engine import analyze_premarket
 from app.services.premarket_entry_decision_engine import evaluate_premarket_entry
 from app.services.market_integrity_engine import analyze_market_integrity
+from app.services.premarket_hierarchical_runtime import (
+    MODEL_VERSION as HIERARCHICAL_MODEL_VERSION,
+    predict_gated_hierarchical_outlook,
+)
 
 
 def _finite(value: Any) -> Optional[float]:
@@ -123,6 +127,16 @@ def previous_completed_close(
             completed.append(close)
 
     return completed[-1] if completed else None
+
+
+def _predictive_unavailable(reason: str) -> Dict[str, Any]:
+    return {
+        "available": False,
+        "actionable": False,
+        "model_version": HIERARCHICAL_MODEL_VERSION,
+        "reason": reason,
+        "signals": {},
+    }
 
 
 class PremarketDataAdapter:
@@ -243,6 +257,23 @@ class PremarketDataAdapter:
             )),
             "as_of": provider_payload.get("as_of") or now.isoformat(),
         }
+
+        # Predict against the newest bar actually present in the feature frame.
+        # For delayed SIP this keeps live feature semantics aligned with the
+        # timestamps used by the historical training snapshots.
+        predictive_as_of = minute_frame.index[-1] if not minute_frame.empty else None
+        try:
+            payload["predictive_outlook"] = predict_gated_hierarchical_outlook(
+                minute_frame,
+                previous_close=analysis.get("previous_close"),
+                feed=feed,
+                as_of=predictive_as_of,
+            )
+        except Exception as exc:
+            payload["predictive_outlook"] = _predictive_unavailable(
+                f"hierarchical_runtime_error:{type(exc).__name__}"
+            )
+
         payload["market_integrity"] = analyze_market_integrity(
             symbol,
             minute_frame,
@@ -485,6 +516,9 @@ class PremarketDataAdapter:
                     + list(sip_payload.get("limitations") or [])
                 )),
                 "as_of": fallback.get("as_of") or now.isoformat(),
+                "predictive_outlook": _predictive_unavailable(
+                    "full_sip_minute_history_required"
+                ),
             }
             payload["market_integrity"] = {
                 "ticker": symbol,
@@ -531,6 +565,9 @@ class PremarketDataAdapter:
                 + list(sip_payload.get("limitations") or [])
             )),
             "as_of": now.isoformat(),
+            "predictive_outlook": _predictive_unavailable(
+                "full_sip_minute_history_required"
+            ),
         }
         payload["market_integrity"] = {
             "ticker": symbol,
