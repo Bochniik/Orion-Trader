@@ -36,12 +36,9 @@ export function TodayResults({
   soundAlerts = false,
   onSoundAlertsChange,
 }) {
-  const cards =
-    result?.opportunities || [];
+  const cards = result?.opportunities || [];
 
-  if (!result) {
-    return null;
-  }
+  if (!result) return null;
 
   return (
     <>
@@ -50,119 +47,67 @@ export function TodayResults({
           <div className="core-section-label">
             <span>
               {cards.length}{" "}
-              {cards.length === 1
-                ? "setup"
-                : "setups"}{" "}
+              {cards.length === 1 ? "setup" : "setups"}{" "}
               worth reviewing
             </span>
-
-            <span>
-              High liquidity first
-            </span>
+            <span>High liquidity first</span>
           </div>
 
           <div className="today-opportunities">
-            {cards
-              .slice(0, 5)
-              .map((row) => (
-                <OpportunityCard
-                  key={row.ticker}
-                  decision={row}
-                  onAnalyze={onAnalyze}
-                  onSave={onSave}
-                  saved={saved.includes(
-                    row.ticker
-                  )}
-                />
-              ))}
+            {cards.slice(0, 5).map((row) => (
+              <OpportunityCard
+                key={row.ticker}
+                decision={row}
+                onAnalyze={onAnalyze}
+                onSave={onSave}
+                saved={saved.includes(row.ticker)}
+              />
+            ))}
           </div>
         </>
       ) : (
-        <section
-          className="core-empty"
-          aria-label="Market scan result"
-        >
-          <Compass
-            size={30}
-            strokeWidth={1.3}
-          />
-
+        <section className="core-empty" aria-label="Market scan result">
+          <Compass size={30} strokeWidth={1.3} />
           <h2>
-            {result.status ===
-            "unavailable"
+            {result.status === "unavailable"
               ? "Market scan unavailable"
-              : result.status ===
-                  "market_closed"
+              : result.status === "market_closed"
                 ? "Waiting for the regular session"
-                : result.status ===
-                    "partial"
+                : result.status === "partial"
                   ? "Scan incomplete"
                   : "No high-quality setups detected right now."}
           </h2>
-
           <p>
-            {result.status ===
-            "ready"
+            {result.status === "ready"
               ? "Nothing in the evaluated sample cleared every quality gate. There is no need to force a trade."
               : result.message}
           </p>
-
-          {result.readiness
-            ?.data_connected ===
-          false ? (
-            <button
-              type="button"
-              className="core-button"
-              onClick={onOpenData}
-            >
+          {result.readiness?.data_connected === false ? (
+            <button type="button" className="core-button" onClick={onOpenData}>
               Set up research data
             </button>
           ) : (
-            <button
-              type="button"
-              className="core-button"
-              onClick={() =>
-                onAnalyze()
-              }
-            >
+            <button type="button" className="core-button" onClick={() => onAnalyze()}>
               Analyze a stock
             </button>
           )}
         </section>
       )}
 
-      {result.status ===
-        "partial" && (
-        <p
-          className="core-warning"
-          role="status"
-        >
-          Scan incomplete: some
-          evidence could not be
-          evaluated.
+      {result.status === "partial" && (
+        <p className="core-warning" role="status">
+          Scan incomplete: some evidence could not be evaluated.
         </p>
       )}
 
       {result.coverage && (
         <details className="core-scan-details">
           <summary>
-            Scan coverage Â·{" "}
-            {localTime(
-              result.generated_at
-            )}
+            Scan coverage - {localTime(result.generated_at)}
           </summary>
-
           <p>
-            {
-              result.coverage
-                .liquidity_candidates_ranked
-            }{" "}
-            liquidity candidates
-            ranked;{" "}
-            {
-              result.coverage
-                .unique_tickers
-            }{" "}
+            {result.coverage.liquidity_candidates_ranked}{" "}
+            liquidity candidates ranked; {result.coverage.unique_tickers}{" "}
             tickers evaluated.
           </p>
         </details>
@@ -173,9 +118,7 @@ export function TodayResults({
         prime={result.orion_prime}
         onAnalyze={onAnalyze}
         soundAlerts={soundAlerts}
-        onSoundAlertsChange={
-          onSoundAlertsChange
-        }
+        onSoundAlertsChange={onSoundAlertsChange}
       />
     </>
   );
@@ -183,127 +126,49 @@ export function TodayResults({
 
 function scannerStatusLabel(state) {
   if (!state) return "SCANNING";
-
-  if (state.status === "disabled")
-    return "SCANNER DISABLED";
-
-  if (
-    state.status === "unavailable"
-  )
-    return "MARKET DATA UNAVAILABLE";
-
-  if (
-    state.status === "market_closed"
-  )
-    return "MARKET CLOSED";
-
-  if (state.status === "starting")
-    return "SCANNING";
-
-  if (state.status === "inactive")
-    return "SCANNER INACTIVE";
-
-  if (state.status === "stale")
-    return "STALE";
-
-  if (
-    state.status ===
-    "no_high_quality_candidates"
-  )
-    return "NO HIGH-QUALITY CANDIDATES";
-
-  if (
-    state.status ===
-    "partial_failure"
-  )
-    return "PARTIAL UPDATE";
-
-  if (
-    state.freshness?.state ===
-    "delayed"
-  )
-    return "DELAYED DATA";
-
-  if (
-    state.freshness?.state ===
-    "current"
-  )
-    return "CURRENT";
-
-  return state.scanner_running
-    ? "SCANNING"
-    : "WAITING FOR FIRST SCAN";
+  if (state.status === "disabled") return "SCANNER DISABLED";
+  if (state.status === "unavailable") return "MARKET DATA UNAVAILABLE";
+  if (state.status === "market_closed") return "MARKET CLOSED";
+  if (state.status === "starting") return "SCANNING";
+  if (state.status === "inactive") return "SCANNER INACTIVE";
+  if (state.status === "stale") return "STALE";
+  if (state.status === "no_high_quality_candidates") return "NO HIGH-QUALITY CANDIDATES";
+  if (state.status === "partial_failure") return "PARTIAL UPDATE";
+  if (state.freshness?.state === "delayed") return "DELAYED DATA";
+  if (state.freshness?.state === "current") return "CURRENT";
+  return state.scanner_running ? "SCANNING" : "WAITING FOR FIRST SCAN";
 }
 
 function ageText(value) {
-  if (
-    value == null ||
-    !Number.isFinite(Number(value)) ||
-    Number(value) < 0
-  ) {
+  if (value == null || !Number.isFinite(Number(value)) || Number(value) < 0) {
     return "Age unavailable";
   }
-
-  const seconds = Math.round(
-    Number(value)
-  );
-
+  const seconds = Math.round(Number(value));
   return seconds < 60
     ? `Updated ${seconds}s ago`
-    : `Updated ${Math.round(
-        seconds / 60
-      )}m ago`;
+    : `Updated ${Math.round(seconds / 60)}m ago`;
 }
 
 function scannerProgress(state) {
-  const universe =
-    state?.universe || {};
+  const universe = state?.universe || {};
+  const total = Number(universe.total_symbols);
+  const offset = Number(universe.next_offset);
 
-  const total = Number(
-    universe.total_symbols
-  );
-
-  const offset = Number(
-    universe.next_offset
-  );
-
-  if (
-    !Number.isFinite(total) ||
-    total <= 0 ||
-    !Number.isFinite(offset)
-  ) {
+  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(offset)) {
     return null;
   }
 
-  const scanned =
-    universe.rotation_complete
-      ? total
-      : Math.min(
-          total,
-          Math.max(0, offset)
-        );
-
-  const page = Number(
-    universe.current_page
-  );
-
-  const pages = Number(
-    universe.pages_total
-  );
+  const scanned = universe.rotation_complete
+    ? total
+    : Math.min(total, Math.max(0, offset));
+  const page = Number(universe.current_page);
+  const pages = Number(universe.pages_total);
 
   return {
     scanned,
     total,
-    page:
-      Number.isFinite(page) &&
-      page > 0
-        ? page
-        : null,
-    pages:
-      Number.isFinite(pages) &&
-      pages > 0
-        ? pages
-        : null,
+    page: Number.isFinite(page) && page > 0 ? page : null,
+    pages: Number.isFinite(pages) && pages > 0 ? pages : null,
   };
 }
 
@@ -315,43 +180,21 @@ export function ScannerStateView({
   saved = [],
   onOpenData,
 }) {
-  const label =
-    error && state
-      ? "STALE"
-      : scannerStatusLabel(state);
-
-  const snapshot =
-    state?.top_candidates || [];
-
+  const label = error && state ? "STALE" : scannerStatusLabel(state);
+  const snapshot = state?.top_candidates || [];
   const stale =
     Boolean(error) ||
     state?.status === "stale" ||
-    state?.freshness?.state ===
-      "stale";
-
-  const lastKnown =
-    state?.last_known_candidates ||
-    [];
-
-  const progress =
-    scannerProgress(state);
+    state?.freshness?.state === "stale";
+  const lastKnown = state?.last_known_candidates || [];
+  const progress = scannerProgress(state);
 
   return (
-    <section
-      className="scanner-surface"
-      aria-label="Orion Market Scanner"
-    >
+    <section className="scanner-surface" aria-label="Orion Market Scanner">
       <header className="scanner-surface-heading">
         <div>
-          <p className="core-eyebrow">
-            ORION MARKET SCANNER
-          </p>
-
-          <h2>
-            What is moving into
-            focus?
-          </h2>
-
+          <p className="core-eyebrow">ORION MARKET SCANNER</p>
+          <h2>What is moving into focus?</h2>
           <p>
             {state?.message ||
               "Continuous, liquidity-first research from the backend scanner."}
@@ -359,189 +202,102 @@ export function ScannerStateView({
         </div>
 
         <div
-          className={`scanner-status ${label
-            .toLowerCase()
-            .replaceAll(
-              " ",
-              "-"
-            )}`}
+          className={`scanner-status ${label.toLowerCase().replaceAll(" ", "-")}`}
           role="status"
         >
           <strong>{label}</strong>
-
-          <span>
-            {ageText(
-              state?.freshness
-                ?.snapshot_age_seconds
-            )}
-          </span>
+          <span>{ageText(state?.freshness?.snapshot_age_seconds)}</span>
         </div>
       </header>
 
       {error && (
-        <div
-          className="core-error scanner-inline-error"
-          role="alert"
-        >
-          <h3>
-            Scanner temporarily
-            unavailable
-          </h3>
-
+        <div className="core-error scanner-inline-error" role="alert">
+          <h3>Scanner temporarily unavailable</h3>
           <p>{error}</p>
         </div>
       )}
 
       {!state && !error && (
-        <div
-          className="scanner-empty"
-          role="status"
-        >
+        <div className="scanner-empty" role="status">
           <span className="core-loading-dot" />
-
-          <h3>
-            Orion is scanning the
-            marketâ€¦
-          </h3>
-
-          <p>
-            Results will appear
-            here without a reload.
-          </p>
+          <h3>Orion is scanning the market...</h3>
+          <p>Results will appear here without a reload.</p>
         </div>
       )}
 
       {state && (
-        <div
-          className="scanner-progress"
-          aria-label="Scanner progress"
-        >
+        <div className="scanner-progress" aria-label="Scanner progress">
           <span>
             Universe scanned:{" "}
             {progress
               ? `${progress.scanned.toLocaleString()} / ${progress.total.toLocaleString()}`
               : "Unavailable"}
           </span>
-
           <span>
             Current page:{" "}
-            {progress?.page &&
-            progress?.pages
+            {progress?.page && progress?.pages
               ? `${progress.page} / ${progress.pages}`
               : "Unavailable"}
           </span>
-
           <span>
             Active candidates:{" "}
-            {Number.isFinite(
-              Number(
-                state.active_candidate_count
-              )
-            )
+            {Number.isFinite(Number(state.active_candidate_count))
               ? state.active_candidate_count
               : "Unavailable"}
           </span>
         </div>
       )}
 
-      {state &&
-        snapshot.length > 0 && (
-          <>
-            <div className="scanner-section-label">
-              <h3>
-                Highest-quality
-                opportunities
-              </h3>
-
-              <span>
-                {snapshot.length}{" "}
-                {stale
-                  ? "stale"
-                  : "current"}{" "}
-                results
-              </span>
-            </div>
-
-            <div className="scanner-candidate-grid">
-              {snapshot.map(
-                (row) => (
-                  <ScannerCandidateCard
-                    key={`${row.ticker}-${row.expected_horizon || "horizon"}`}
-                    candidate={row}
-                    stale={stale}
-                    onAnalyze={
-                      onAnalyze
-                    }
-                    onSave={onSave}
-                    saved={saved.includes(
-                      row.ticker
-                    )}
-                  />
-                )
-              )}
-            </div>
-          </>
-        )}
-
-      {state &&
-        !snapshot.length &&
-        !error && (
-          <div className="scanner-empty">
-            <Compass
-              size={30}
-              strokeWidth={1.3}
-            />
-
-            <h3>
-              No high-quality
-              opportunities detected.
-            </h3>
-
-            <p>
-              Orion will continue
-              scanning automatically.
-            </p>
-
-            {label ===
-              "MARKET DATA UNAVAILABLE" &&
-              onOpenData && (
-                <button
-                  type="button"
-                  className="core-button"
-                  onClick={
-                    onOpenData
-                  }
-                >
-                  Set up research
-                  data
-                </button>
-              )}
+      {state && snapshot.length > 0 && (
+        <>
+          <div className="scanner-section-label">
+            <h3>Highest-quality opportunities</h3>
+            <span>
+              {snapshot.length} {stale ? "stale" : "current"} results
+            </span>
           </div>
-        )}
+          <div className="scanner-candidate-grid">
+            {snapshot.map((row) => (
+              <ScannerCandidateCard
+                key={`${row.ticker}-${row.expected_horizon || "horizon"}`}
+                candidate={row}
+                stale={stale}
+                onAnalyze={onAnalyze}
+                onSave={onSave}
+                saved={saved.includes(row.ticker)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {state && !snapshot.length && !error && (
+        <div className="scanner-empty">
+          <Compass size={30} strokeWidth={1.3} />
+          <h3>No high-quality opportunities detected.</h3>
+          <p>Orion will continue scanning automatically.</p>
+          {label === "MARKET DATA UNAVAILABLE" && onOpenData && (
+            <button type="button" className="core-button" onClick={onOpenData}>
+              Set up research data
+            </button>
+          )}
+        </div>
+      )}
 
       {lastKnown.length > 0 && (
         <details className="scanner-last-known">
-          <summary>
-            Last known candidates
-          </summary>
-
+          <summary>Last known candidates</summary>
           <div className="scanner-candidate-grid">
-            {lastKnown
-              .slice(0, 5)
-              .map((row) => (
-                <ScannerCandidateCard
-                  key={`stale-${row.ticker}`}
-                  candidate={row}
-                  stale
-                  onAnalyze={
-                    onAnalyze
-                  }
-                  onSave={onSave}
-                  saved={saved.includes(
-                    row.ticker
-                  )}
-                />
-              ))}
+            {lastKnown.slice(0, 5).map((row) => (
+              <ScannerCandidateCard
+                key={`stale-${row.ticker}`}
+                candidate={row}
+                stale
+                onAnalyze={onAnalyze}
+                onSave={onSave}
+                saved={saved.includes(row.ticker)}
+              />
+            ))}
           </div>
         </details>
       )}
@@ -549,74 +305,33 @@ export function ScannerStateView({
   );
 }
 
-function useMarketState(
-  dataRevision
-) {
-  const [streams, setStreams] =
-    useState({
-      scanner: {},
-      intelligence: {},
-    });
-
-  const [now, setNow] =
-    useState(Date.now);
+function useMarketState(dataRevision) {
+  const [streams, setStreams] = useState({ scanner: {}, intelligence: {} });
+  const [now, setNow] = useState(Date.now);
 
   useEffect(() => {
-    setStreams({
-      scanner: {},
-      intelligence: {},
+    setStreams({ scanner: {}, intelligence: {} });
+    const stop = startMarketStatePolling((key, update) => {
+      setStreams((previous) => ({
+        ...previous,
+        [key]: { ...previous[key], ...update },
+      }));
+      setNow(Date.now());
     });
-
-    const stop =
-      startMarketStatePolling(
-        (key, update) => {
-          setStreams(
-            (previous) => ({
-              ...previous,
-              [key]: {
-                ...previous[key],
-                ...update,
-              },
-            })
-          );
-
-          setNow(Date.now());
-        }
-      );
-
-    const clock =
-      window.setInterval(
-        () =>
-          setNow(Date.now()),
-        1000
-      );
-
+    const clock = window.setInterval(() => setNow(Date.now()), 1000);
     return () => {
       stop();
-      window.clearInterval(
-        clock
-      );
+      window.clearInterval(clock);
     };
   }, [dataRevision]);
 
-  return {
-    ...streams,
-    now,
-  };
+  return { ...streams, now };
 }
 
-// ORION DASHBOARD SCORE ANIMATION
 function normalizeProbabilityUnit(value) {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
+  if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
-
-  if (!Number.isFinite(number)) {
-    return null;
-  }
-
+  if (!Number.isFinite(number)) return null;
   return number > 1 ? number / 100 : number;
 }
 
@@ -625,7 +340,6 @@ function useAnimatedMetric(target, animationKey, duration = 1050) {
 
   useEffect(() => {
     const finalValue = Number(target);
-
     if (!Number.isFinite(finalValue)) {
       setAnimated(null);
       return undefined;
@@ -643,97 +357,107 @@ function useAnimatedMetric(target, animationKey, duration = 1050) {
     let frameId = null;
     let cancelled = false;
     const startedAt = performance.now();
-
     const requestFrame =
       window.requestAnimationFrame?.bind(window) ||
       ((callback) => window.setTimeout(() => callback(performance.now()), 16));
-
     const cancelFrame =
-      window.cancelAnimationFrame?.bind(window) ||
-      window.clearTimeout.bind(window);
+      window.cancelAnimationFrame?.bind(window) || window.clearTimeout.bind(window);
 
     setAnimated(0);
 
     function tick(now) {
-      if (cancelled) {
-        return;
-      }
-
+      if (cancelled) return;
       const progress = Math.min((now - startedAt) / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
       setAnimated(finalValue * eased);
-
-      if (progress < 1) {
-        frameId = requestFrame(tick);
-      } else {
-        setAnimated(finalValue);
-      }
+      if (progress < 1) frameId = requestFrame(tick);
+      else setAnimated(finalValue);
     }
 
     frameId = requestFrame(tick);
-
     return () => {
       cancelled = true;
-
-      if (frameId !== null) {
-        cancelFrame(frameId);
-      }
+      if (frameId !== null) cancelFrame(frameId);
     };
   }, [target, animationKey, duration]);
 
   return animated;
 }
+
+function displayNumber(value) {
+  if (value === null || value === undefined || value === "") return "N/A";
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.round(number) : "N/A";
+}
+
+function displayProbability(value) {
+  if (value === null || value === undefined || value === "") return "N/A";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "N/A";
+  const normalized = number <= 1 ? number * 100 : number;
+  return `${Math.round(normalized)}%`;
+}
+
+function displayRisk(value) {
+  if (value === null || value === undefined || value === "") return "N/A";
+  if (typeof value === "string") return value;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "N/A";
+  if (number <= 1) {
+    if (number < 0.33) return "Low";
+    if (number < 0.66) return "Moderate";
+    return "High";
+  }
+  if (number < 33) return "Low";
+  if (number < 66) return "Moderate";
+  return "High";
+}
+
+function riskWidth(value) {
+  if (value === null || value === undefined || value === "") return 0;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  const normalized = number <= 1 ? number * 100 : number;
+  return Math.max(0, Math.min(100, normalized));
+}
+
+function errorText(error) {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+  return (
+    error.message ||
+    error.detail ||
+    error.error ||
+    "Quick analysis is temporarily unavailable."
+  );
+}
+
 export default function TodayView(props) {
-  const saved = Array.isArray(props.saved)
-    ? props.saved
-    : [];
-
+  const saved = Array.isArray(props.saved) ? props.saved : [];
   const { scanner } = useMarketState(props.dataRevision);
-
   const quickAnalysis = useCoreJob();
   const [quickTicker, setQuickTicker] = useState(null);
 
   useEffect(() => {
-    if (!quickAnalysis.data) {
-      return;
-    }
-
+    if (!quickAnalysis.data) return;
     props.onAnalysisComplete?.(quickAnalysis.data);
   }, [quickAnalysis.data, props.onAnalysisComplete]);
 
   function runQuickAnalysis(rawTicker) {
-    const symbol = String(rawTicker || "")
-      .trim()
-      .toUpperCase();
-
-    if (!/^[A-Z0-9.^=-]{1,15}$/.test(symbol)) {
-      return;
-    }
-
+    const symbol = String(rawTicker || "").trim().toUpperCase();
+    if (!/^[A-Z0-9.^=-]{1,15}$/.test(symbol)) return;
     setQuickTicker(symbol);
-
-    quickAnalysis.run({
-      kind: "analyze",
-      ticker: symbol,
-      prepare: true,
-    });
+    quickAnalysis.run({ kind: "analyze", ticker: symbol, prepare: true });
   }
 
-  const analysis =
-    quickAnalysis.data ||
-    props.lastAnalysis ||
-    null;
-
+  const analysis = quickAnalysis.data || props.lastAnalysis || null;
   const analysisBusy = quickAnalysis.busy;
   const analysisError = quickAnalysis.error;
 
   const marketState = scanner?.value || {};
   const scannerSession = marketState?.market_session || null;
   const resultSession =
-    analysis?.session_mode ||
-    analysis?.market_session ||
-    analysis?.session ||
-    null;
+    analysis?.session_mode || analysis?.market_session || analysis?.session || null;
 
   const statusSession =
     marketState?.status === "market_closed"
@@ -749,46 +473,34 @@ export default function TodayView(props) {
             : null;
 
   const marketSession =
-    resultSession ||
     scannerSession ||
     statusSession ||
+    resultSession ||
     (marketState?.status === "market_closed" ? "closed" : null) ||
-  "closed";
+    "closed";
 
   const isPremarket = marketSession === "premarket";
   const isClosedSession = marketSession === "closed";
   const isAfterHours = marketSession === "after_hours";
   const premarketResearch = marketState?.premarket_research || {};
 
-  const resultTicker =
-    analysis?.ticker ||
-    analysis?.symbol ||
-    null;
-
-  const ticker = analysisBusy
-    ? quickTicker || resultTicker
-    : resultTicker;
-
+  const resultTicker = analysis?.ticker || analysis?.symbol || null;
+  const ticker = analysisBusy ? quickTicker || resultTicker : resultTicker;
   const companyName =
-    analysis?.company_name ||
-    analysis?.name ||
-    analysis?.company ||
-    "";
+    analysis?.company_name || analysis?.name || analysis?.company || "";
+  const bias = analysis?.bias || analysis?.decision || analysis?.direction || null;
 
-  const bias =
-    analysis?.bias ||
-    analysis?.direction ||
-    analysis?.signal ||
-    null;
-
-  const orionScore =
-    isPremarket
-      ? analysis?.premarket_score ?? analysis?.orion_score ?? null
-      : analysis?.orion_score ??
-        analysis?.score ??
-        analysis?.final_score ??
-        analysis?.quality_score ??
-        null;
+  const orionScore = isPremarket
+    ? analysis?.premarket_score ??
+      analysis?.premarket?.analysis?.score ??
+      analysis?.analysis?.score ??
+      analysis?.orion_score ??
+      null
+    : analysis?.orion_score ??
+      analysis?.score ??
+      analysis?.final_score ??
+      analysis?.quality_score ??
+      null;
 
   const adjustedScore =
     analysis?.adjusted_orion_score ??
@@ -825,178 +537,61 @@ export default function TodayView(props) {
     analysis?.reason ||
     null;
 
-  
+  const premarketOutlook =
+    analysis?.opening_outlook ||
+    (analysis?.direction === "bullish"
+      ? "UP BIAS"
+      : analysis?.direction === "bearish"
+        ? "DOWN BIAS"
+        : "WAIT");
+  const premarketConviction = analysis?.directional_conviction ?? null;
+  const premarketForecastHorizon = analysis?.forecast_horizon || "OPEN -> FIRST 30 MIN";
+  const premarketForecastAvailable = analysis?.forecast_available === true;
+
   const analysisAnimationKey =
     analysis?.decision_id ||
     analysis?.evaluated_at ||
     analysis?.generated_at ||
     analysis?.timestamp ||
+    analysis?.as_of ||
     resultTicker ||
     "";
 
-  const animatedOrionScore = useAnimatedMetric(
-    orionScore,
-    analysisAnimationKey,
-    1150
-  );
-
-  const animatedAdjustedScore = useAnimatedMetric(
-    adjustedScore,
-    analysisAnimationKey,
-    1050
-  );
-
+  const animatedOrionScore = useAnimatedMetric(orionScore, analysisAnimationKey, 1150);
+  const animatedAdjustedScore = useAnimatedMetric(adjustedScore, analysisAnimationKey, 1050);
   const animatedUpProbability = useAnimatedMetric(
     normalizeProbabilityUnit(upProbability),
     analysisAnimationKey,
     1200
   );
-
   const animatedDownProbability = useAnimatedMetric(
     normalizeProbabilityUnit(downProbability),
     analysisAnimationKey,
     1200
   );
-function displayNumber(value) {
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
-    ) {
-      return "â€”";
-    }
-
-    const number = Number(value);
-
-    if (!Number.isFinite(number)) {
-      return "â€”";
-    }
-
-    return Math.round(number);
-  }
-
-  function displayProbability(value) {
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
-    ) {
-      return "â€”";
-    }
-
-    const number = Number(value);
-
-    if (!Number.isFinite(number)) {
-      return "â€”";
-    }
-
-    const normalized =
-      number <= 1
-        ? number * 100
-        : number;
-
-    return `${Math.round(normalized)}%`;
-  }
-
-  function displayRisk(value) {
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
-    ) {
-      return "â€”";
-    }
-
-    if (typeof value === "string") {
-      return value;
-    }
-
-    const number = Number(value);
-
-    if (!Number.isFinite(number)) {
-      return "â€”";
-    }
-
-    if (number <= 1) {
-      if (number < 0.33) return "Low";
-      if (number < 0.66) return "Moderate";
-      return "High";
-    }
-
-    if (number < 33) return "Low";
-    if (number < 66) return "Moderate";
-    return "High";
-  }
-
-  function riskWidth(value) {
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
-    ) {
-      return 0;
-    }
-
-    const number = Number(value);
-
-    if (!Number.isFinite(number)) {
-      return 0;
-    }
-
-    const normalized =
-      number <= 1
-        ? number * 100
-        : number;
-
-    return Math.max(
-      0,
-      Math.min(100, normalized)
-    );
-  }
-
-  function errorText(error) {
-    if (!error) {
-      return "";
-    }
-
-    if (typeof error === "string") {
-      return error;
-    }
-
-    return (
-      error.message ||
-      error.detail ||
-      error.error ||
-      "Quick analysis is temporarily unavailable."
-    );
-  }
+  const animatedPremarketConviction = useAnimatedMetric(
+    premarketConviction,
+    analysisAnimationKey,
+    1000
+  );
 
   return (
     <section className="core-view dashboard-view">
-      {/* HERO */}
       <section className="dashboard-hero">
         <div className="dashboard-hero-content">
-          <p className="core-eyebrow">
-            WELCOME TO ORIONTRADER
-          </p>
-
-          <h1>
-            What deserves your attention?
-          </h1>
-
+          <p className="core-eyebrow">WELCOME TO ORIONTRADER</p>
+          <h1>What deserves your attention?</h1>
           <p className="dashboard-hero-description">
             Market discovery, sectors, themes and Orion intelligence.
             Spot opportunity. Research smarter.
           </p>
         </div>
-
         <img
           className="dashboard-hero-planet-art"
           src={heroPlanet}
           alt=""
           aria-hidden="true"
         />
-
         <div className="dashboard-hero-motto">
           <span>MARKETS</span>
           <span>MOVE IDEAS</span>
@@ -1005,9 +600,7 @@ function displayNumber(value) {
         </div>
       </section>
 
-      {/* DASHBOARD GRID */}
       <div className="dashboard-grid">
-        {/* MAIN COLUMN */}
         <div className="dashboard-primary">
           {isPremarket && (
             <PremarketResearchStrip
@@ -1015,43 +608,29 @@ function displayNumber(value) {
               onAnalyze={runQuickAnalysis}
             />
           )}
-
-          <MarketExplorerPanel
-            onAnalyze={runQuickAnalysis}
-          />
+          <MarketExplorerPanel onAnalyze={runQuickAnalysis} />
         </div>
 
-        {/* RIGHT COLUMN */}
         <aside className="dashboard-side">
-          {/* ORION QUICK ANALYSIS */}
           <section className="dashboard-side-card dashboard-orion-card">
             <header className="dashboard-card-heading">
               <div>
                 <span className="dashboard-heading-icon">
                   <Sparkles size={16} />
                 </span>
-
                 <h2>Orion Analysis</h2>
-
                 <MarketSessionBadge
                   session={marketSession}
                   status={marketState?.status}
                 />
               </div>
-
               <button
                 type="button"
                 className="orion-full-analysis-icon"
                 disabled={!ticker || analysisBusy}
                 aria-label={ticker ? `Open ${ticker} full analysis` : "Open full analysis"}
                 title={ticker ? `Open ${ticker} full analysis` : "Select a stock first"}
-                onClick={() => {
-                  if (!ticker) {
-                    return;
-                  }
-
-                  props.onOpenFullAnalysis?.(ticker, analysis);
-                }}
+                onClick={() => ticker && props.onOpenFullAnalysis?.(ticker, analysis)}
               >
                 <ArrowRight size={16} />
               </button>
@@ -1060,16 +639,11 @@ function displayNumber(value) {
             <div className="orion-snapshot-stock">
               <div className="orion-snapshot-logo">
                 {ticker ? (
-                  <StockLogo
-                    ticker={ticker}
-                    name={companyName}
-                    size={42}
-                  />
+                  <StockLogo ticker={ticker} name={companyName} size={42} />
                 ) : (
                   <BarChart3 size={21} />
                 )}
               </div>
-
               <div className="orion-snapshot-stock-copy">
                 <span>
                   {analysisBusy
@@ -1078,13 +652,11 @@ function displayNumber(value) {
                       ? "LAST ANALYSIS"
                       : "ORION ENGINE"}
                 </span>
-
                 <strong>
                   {analysisBusy
                     ? quickTicker || "Analyzing..."
                     : ticker || "Market analysis"}
                 </strong>
-
                 <small>
                   {analysisBusy
                     ? "Running the Orion engine directly in the dashboard..."
@@ -1094,6 +666,7 @@ function displayNumber(value) {
                 </small>
               </div>
             </div>
+
             <div className="orion-score-area">
               <div
                 className="orion-score-ring"
@@ -1107,9 +680,9 @@ function displayNumber(value) {
                 <div>
                   <strong>
                     {analysisBusy
-                      ? "…"
+                      ? "..."
                       : isClosedSession || isAfterHours
-                        ? "—"
+                        ? "N/A"
                         : displayNumber(animatedOrionScore)}
                   </strong>
                   <span>/100</span>
@@ -1120,19 +693,16 @@ function displayNumber(value) {
                 <div>
                   <span>
                     {isPremarket
-                      ? "Premarket Gap"
+                      ? "Opening Outlook"
                       : isClosedSession || isAfterHours
                         ? "Live Scoring"
                         : "Adjusted Score"}
                   </span>
                   <strong>
                     {analysisBusy
-                      ? "…"
+                      ? "..."
                       : isPremarket
-                        ? displayProbability(
-                            analysis?.gap_pct ??
-                              analysis?.analysis?.gap_pct
-                          )
+                        ? premarketOutlook
                         : isClosedSession || isAfterHours
                           ? "PAUSED"
                           : displayNumber(animatedAdjustedScore)}
@@ -1144,27 +714,23 @@ function displayNumber(value) {
                     <span>
                       <TrendingUp size={11} />
                       {isPremarket
-                        ? "Direction"
+                        ? "Directional Conviction"
                         : isClosedSession || isAfterHours
                           ? "Session"
                           : "Up Probability"}
                     </span>
                     <strong className="positive">
                       {analysisBusy
-                        ? "…"
+                        ? "..."
                         : isPremarket
-                          ? String(
-                              analysis?.direction ??
-                                analysis?.analysis?.direction ??
-                                "neutral"
-                            ).toUpperCase()
+                          ? premarketForecastAvailable
+                            ? `${displayNumber(animatedPremarketConviction)}/100`
+                            : "INSUFFICIENT DATA"
                           : isClosedSession
                             ? "CLOSED"
                             : isAfterHours
                               ? "AFTER HOURS"
-                              : displayProbability(
-                                  animatedUpProbability
-                                )}
+                              : displayProbability(animatedUpProbability)}
                     </strong>
                   </div>
 
@@ -1172,21 +738,21 @@ function displayNumber(value) {
                     <span>
                       <TrendingDown size={11} />
                       {isPremarket
-                        ? "Confirmation"
+                        ? "Forecast Window"
                         : isClosedSession || isAfterHours
                           ? "Mode"
                           : "Down Probability"}
                     </span>
                     <strong className="negative">
                       {analysisBusy
-                        ? "…"
+                        ? "..."
                         : isPremarket
-                          ? "WAIT FOR OPEN"
+                          ? premarketForecastAvailable
+                            ? premarketForecastHorizon
+                            : "WAIT FOR DATA"
                           : isClosedSession || isAfterHours
                             ? "RESEARCH ONLY"
-                            : displayProbability(
-                                animatedDownProbability
-                              )}
+                            : displayProbability(animatedDownProbability)}
                     </strong>
                   </div>
                 </div>
@@ -1198,65 +764,56 @@ function displayNumber(value) {
                 <span>
                   <ShieldCheck size={12} />
                   {isPremarket
-                    ? "Premarket Setup"
+                    ? "Open Confirmation"
                     : isClosedSession || isAfterHours
                       ? "Live Analysis"
                       : "Manipulation Risk"}
                 </span>
-
                 <strong>
                   {analysisBusy
-                    ? "…"
+                    ? "..."
                     : isPremarket
-                      ? String(
-                          analysis?.setup_state ??
-                            analysis?.analysis?.setup_state ??
-                            "WAIT_FOR_OPEN_CONFIRMATION"
-                        )
-                          .replaceAll("_", " ")
-                          .toUpperCase()
+                      ? premarketForecastAvailable
+                        ? "REQUIRED"
+                        : "WAIT FOR USABLE PREMARKET DATA"
                       : isClosedSession || isAfterHours
                         ? "PAUSED"
                         : displayRisk(manipulationRisk)}
                 </strong>
               </div>
 
-              {!isPremarket &&
-                !isClosedSession &&
-                !isAfterHours && (
-                  <div className="orion-risk-track">
-                    <i
-                      style={{
-                        width: analysisBusy
-                          ? "0%"
-                          : `${riskWidth(manipulationRisk)}%`,
-                      }}
-                    />
-                  </div>
-                )}
+              {!isPremarket && !isClosedSession && !isAfterHours && (
+                <div className="orion-risk-track">
+                  <i
+                    style={{
+                      width: analysisBusy ? "0%" : `${riskWidth(manipulationRisk)}%`,
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
-<div className="orion-setup-summary">
+            <div className="orion-setup-summary">
               <span className="orion-summary-icon">
                 <Sparkles size={14} />
               </span>
-
               <div>
                 <small>Setup Summary</small>
-
                 <p>
                   {analysisBusy
                     ? "Orion is evaluating the available evidence for this stock."
                     : analysisError
                       ? errorText(analysisError)
                       : setupSummary ||
-                        (bias
-                          ? `Orion currently classifies this setup as ${String(
-                              bias
-                            ).toLowerCase()}.`
-                          : isClosedSession || isAfterHours
-                          ? "Select a stock to view informational company, news, chart and latest completed-session context."
-                          : "Select a stock in Market Explorer or your watchlist to run Orion directly in the dashboard.")}
+                        (isPremarket
+                          ? premarketForecastAvailable
+                            ? `Premarket evidence currently points to ${premarketOutlook.toLowerCase()} into the opening window. Regular-session confirmation is still required.`
+                            : "Orion does not have enough current premarket minute data to issue a directional opening outlook."
+                          : bias
+                            ? `Orion currently classifies this setup as ${String(bias).toLowerCase()}.`
+                            : isClosedSession || isAfterHours
+                              ? "Select a stock to view informational company, news, chart and latest completed-session context."
+                              : "Select a stock in Market Explorer or your watchlist to run Orion directly in the dashboard.")}
                 </p>
               </div>
             </div>
@@ -1264,84 +821,52 @@ function displayNumber(value) {
             <button
               type="button"
               className="dashboard-primary-action"
-              disabled={
-                analysisBusy ||
-                !ticker
-              }
-              onClick={() => {
-                if (!ticker) {
-                  return;
-                }
-
-                props.onOpenFullAnalysis?.(ticker, analysis);
-              }}
+              disabled={analysisBusy || !ticker}
+              onClick={() => ticker && props.onOpenFullAnalysis?.(ticker, analysis)}
             >
-              {ticker
-                ? `Open ${ticker} Full Analysis`
-                : "Select a stock first"}
-
+              {ticker ? `Open ${ticker} Full Analysis` : "Select a stock first"}
               <ArrowRight size={14} />
             </button>
           </section>
 
-          {/* WATCHLIST */}
           <section className="dashboard-side-card dashboard-watchlist-card">
             <header className="dashboard-card-heading">
               <div>
                 <span className="dashboard-heading-icon">
                   <Star size={16} />
                 </span>
-
                 <h2>My Watchlist</h2>
               </div>
-
-              <span className="dashboard-watch-count">
-                {saved.length}
-              </span>
+              <span className="dashboard-watch-count">{saved.length}</span>
             </header>
 
             {saved.length ? (
               <div className="dashboard-watchlist">
-                {saved
-                  .slice(0, 6)
-                  .map((savedTicker) => (
-                    <button
-                      type="button"
-                      key={savedTicker}
-                      onClick={() =>
-                        runQuickAnalysis(savedTicker)
-                      }
-                    >
-                      <span className="dashboard-watch-symbol">
-                        {savedTicker.slice(0, 1)}
-                      </span>
-
-                      <strong>
-                        {savedTicker}
-                      </strong>
-
-                      <span>
-                        Analyze
-                      </span>
-
-                      <ArrowRight size={13} />
-                    </button>
-                  ))}
+                {saved.slice(0, 6).map((savedTicker) => (
+                  <button
+                    type="button"
+                    key={savedTicker}
+                    onClick={() => runQuickAnalysis(savedTicker)}
+                  >
+                    <span className="dashboard-watch-symbol">
+                      {savedTicker.slice(0, 1)}
+                    </span>
+                    <strong>{savedTicker}</strong>
+                    <span>Analyze</span>
+                    <ArrowRight size={13} />
+                  </button>
+                ))}
               </div>
             ) : (
               <div className="dashboard-watchlist-empty">
                 <Star size={21} />
-
-                <p>
-                  Your saved stocks will appear here.
-                </p>
+                <p>Your saved stocks will appear here.</p>
               </div>
             )}
           </section>
         </aside>
       </div>
 
-      {/* LEARNING / MEMORY */}
       <section className="dashboard-learning">
         <LearningAnalyticsPanel />
       </section>
@@ -1354,5 +879,3 @@ export {
   scannerProgress,
   scannerStatusLabel,
 };
-
-
