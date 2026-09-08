@@ -54,13 +54,21 @@ def gate_event_rows(
     work["predicted_norm"] = predicted_norm
     work["predicted_up"] = regression_up
     work["signed_return_pct"] = actual * np.where(regression_up, 1.0, -1.0)
-    work["direction_correct"] = np.where(actual > 0, 1.0, -1.0) == np.where(regression_up, 1.0, -1.0)
+    work["direction_correct"] = (
+        np.where(actual > 0, 1.0, -1.0)
+        == np.where(regression_up, 1.0, -1.0)
+    )
     work = work.loc[actionable].copy()
     if work.empty:
         return work
 
     work = work.sort_values(["session_date", "ticker", "snapshot_at"])
-    return work.groupby(["session_date", "ticker"], sort=False, as_index=False).first()
+    return (
+        work.groupby(["session_date", "ticker"], sort=False, as_index=False)
+        .first()
+        .sort_values(["session_date", "snapshot_at", "ticker"])
+        .reset_index(drop=True)
+    )
 
 
 def summarize_events(events: pd.DataFrame, denominator_ticker_days: int) -> dict:
@@ -110,12 +118,11 @@ def select_gate_on_calibration(calibration: pd.DataFrame, predicted_return, p_up
             direction_confidence_threshold=confidence_threshold,
         )
         summary = summarize_events(events, ticker_days)
-        row = {
+        candidates.append({
             "normalized_move_threshold": move_threshold,
             "direction_confidence_threshold": confidence_threshold,
             **summary,
-        }
-        candidates.append(row)
+        })
 
     eligible = [
         row for row in candidates
@@ -137,7 +144,14 @@ def select_gate_on_calibration(calibration: pd.DataFrame, predicted_return, p_up
     return selected, candidates
 
 
-def validate_target(frame: pd.DataFrame, target: str, *, min_train_days=40, calibration_days=10, test_days=5):
+def validate_target(
+    frame: pd.DataFrame,
+    target: str,
+    *,
+    min_train_days=40,
+    calibration_days=10,
+    test_days=5,
+):
     work = prepare_v5_frame(frame, target)
     dates = sorted(work["session_date"].unique())
     if len(dates) < min_train_days + calibration_days + test_days:
@@ -167,13 +181,15 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days=40, cali
         model = fit_hybrid_model(train, calibration)
         cal_return, cal_p_up = model.predict(calibration)
         selected, calibration_candidates = select_gate_on_calibration(
-            calibration, cal_return, cal_p_up
+            calibration,
+            cal_return,
+            cal_p_up,
         )
 
         test_ticker_days = int(test[["session_date", "ticker"]].drop_duplicates().shape[0])
         if selected is None:
-            test_summary = summarize_events(test.iloc[0:0].copy(), test_ticker_days)
             test_events = test.iloc[0:0].copy()
+            test_summary = summarize_events(test_events, test_ticker_days)
         else:
             test_return, test_p_up = model.predict(test)
             test_events = gate_event_rows(
@@ -193,6 +209,7 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days=40, cali
             "fold": fold_index,
             "test_first": str(test_dates_fold[0]),
             "test_last": str(test_dates_fold[-1]),
+            "test_ticker_days": test_ticker_days,
             "selected_gate": selected,
             "calibration_candidates": calibration_candidates,
             "test": test_summary,
@@ -200,32 +217,20 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days=40, cali
         fold_index += 1
         test_start = test_end
 
+    total_test_ticker_days = int(sum(fold["test_ticker_days"] for fold in folds))
+    total_events = int(sum(fold["test"]["events"] for fold in folds))
+
     if pooled_events:
         pooled = pd.concat(pooled_events, ignore_index=True)
-        total_test_ticker_days = sum(
-            int(work[work["session_date"].isin(
-                pd.date_range(fold["test_first"], fold["test_last"]).date
-            )][["session_date", "ticker"]].drop_duplicates().shape[0])
-            for fold in []
-        )
-        # Coverage is reported from per-fold denominators below; event metrics are pooled directly.
-        pooled_summary = summarize_events(pooled, max(len(pooled), 1))
+        pooled_summary = summarize_events(pooled, total_test_ticker_days)
     else:
-        pooled = pd.DataFrame()
-        pooled_summary = summarize_events(pooled, 1)
+        pooled_summary = summarize_events(pd.DataFrame(), total_test_ticker_days)
 
     evaluable = [fold for fold in folds if fold["test"]["events"] > 0]
     fold_accuracies = [fold["test"]["directional_accuracy"] for fold in evaluable]
     fold_signed = [fold["test"]["mean_signed_return_pct"] for fold in evaluable]
-    total_test_ticker_days = 0
-    total_events = 0
-    for fold in folds:
-        test_dates_fold = pd.date_range(fold["test_first"], fold["test_last"]).date
-        part = work[work["session_date"].isin(test_dates_fold)]
-        total_test_ticker_days += int(part[["session_date", "ticker"]].drop_duplicates().shape[0])
-        total_events += int(fold["test"]["events"])
 
-    result = {
+    return {
         "target": target,
         "fold_count": len(folds),
         "evaluable_folds": len(evaluable),
@@ -239,7 +244,6 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days=40, cali
         "pooled": pooled_summary,
         "folds": folds,
     }
-    return result
 
 
 def main():
@@ -251,7 +255,12 @@ def main():
         )
     )
     parser.add_argument("dataset", type=Path)
-    parser.add_argument("--targets", nargs="*", choices=PREMARKET_TARGETS, default=list(PREMARKET_TARGETS))
+    parser.add_argument(
+        "--targets",
+        nargs="*",
+        choices=PREMARKET_TARGETS,
+        default=list(PREMARKET_TARGETS),
+    )
     parser.add_argument(
         "--output",
         type=Path,
@@ -263,7 +272,10 @@ def main():
     report = {
         "dataset": str(args.dataset),
         "rows": int(len(frame)),
-        "policy": "threshold selected on calibration only; earliest actionable snapshot; max one trade per ticker-day",
+        "policy": (
+            "threshold selected on calibration only; earliest actionable snapshot; "
+            "max one trade per ticker-day"
+        ),
         "targets": {},
     }
 
@@ -292,19 +304,29 @@ def main():
                     f"    {regime}: n={row['events']} acc={row['accuracy']:.1%} "
                     f"signed={row['mean_signed_return_pct']:+.4f}%"
                 )
+
         for fold in result["folds"]:
             gate = fold["selected_gate"]
             test = fold["test"]
             if gate is None:
                 print(f"    fold {fold['fold']}: no calibration-approved gate")
-            else:
-                test_acc = "NA" if test["directional_accuracy"] is None else f"{test['directional_accuracy']:.1%}"
-                print(
-                    f"    fold {fold['fold']}: selected move>={gate['normalized_move_threshold']:.2f}sigma "
-                    f"conf>={gate['direction_confidence_threshold']:.2f}; "
-                    f"test n={test['events']} acc={test_acc} signed="
-                    f"{('NA' if test['mean_signed_return_pct'] is None else f'{test['mean_signed_return_pct']:+.4f}%')}"
-                )
+                continue
+
+            test_acc = (
+                "NA"
+                if test["directional_accuracy"] is None
+                else f"{test['directional_accuracy']:.1%}"
+            )
+            test_signed = (
+                "NA"
+                if test["mean_signed_return_pct"] is None
+                else f"{test['mean_signed_return_pct']:+.4f}%"
+            )
+            print(
+                f"    fold {fold['fold']}: selected move>={gate['normalized_move_threshold']:.2f}sigma "
+                f"conf>={gate['direction_confidence_threshold']:.2f}; "
+                f"test n={test['events']} acc={test_acc} signed={test_signed}"
+            )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
