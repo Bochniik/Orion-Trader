@@ -10,6 +10,26 @@ export function pause(ms, signal) {
   });
 }
 
+export function normalizeCoreResult(result) {
+  if (!result || typeof result !== "object" || Array.isArray(result)) return result;
+
+  const direction = String(result.direction || result.decision || "").trim();
+  const strategyBias = result.strategy_bias ?? result.bias ?? null;
+
+  return {
+    ...result,
+    ticker: String(result.ticker || result.symbol || "").trim().toUpperCase(),
+    strategy_bias: strategyBias,
+    // `bias` used to leak a lower-level strategy vote into Dashboard as though it
+    // were Orion's final direction. Keep that evidence under strategy_bias and
+    // make the legacy top-level field agree with the actual final decision.
+    bias: direction || result.bias || null,
+    direction: direction || null,
+    reasons: Array.isArray(result.reasons) ? result.reasons : [],
+    warnings: Array.isArray(result.warnings) ? result.warnings : [],
+  };
+}
+
 export async function runCoreJob(body, { signal, onProgress = () => {} } = {},
   api = { start: startCoreJob, get: getCoreJob, cancel: cancelCoreJob, wait: pause }) {
   let job;
@@ -29,7 +49,7 @@ export async function runCoreJob(body, { signal, onProgress = () => {} } = {},
     while (true) {
       if (signal?.aborted) throw aborted();
       onProgress(job.stage);
-      if (job.state === "completed") return job.result;
+      if (job.state === "completed") return normalizeCoreResult(job.result);
       if (!["queued", "running"].includes(job.state)) throw new Error(job.stage || "The review stopped.");
       await api.wait(800, signal);
       if (signal?.aborted) throw aborted();
