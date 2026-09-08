@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import AppErrorBoundary from "./components/AppErrorBoundary";
 import AuthPanel from "./components/AuthPanel";
 import CoreApp from "./core/CoreApp";
 import { getAuthSession, logoutAccount } from "./api/api";
@@ -19,5 +20,9 @@ function Root() {
   return <>{error && <p className="core-warning" role="alert">{error}</p>}<CoreApp key={session.user.id} user={session.user} onLogout={logout} /></>;
 }
 
-createRoot(document.getElementById("root")).render(<Root />);
+createRoot(document.getElementById("root")).render(
+  <AppErrorBoundary>
+    <Root />
+  </AppErrorBoundary>
+);
 if ("serviceWorker" in navigator && import.meta.env.PROD) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
