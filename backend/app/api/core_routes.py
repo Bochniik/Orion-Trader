@@ -96,7 +96,9 @@ def _merge_unified_metrics(result, snapshot):
     for key in (
         "manipulation_risk", "manipulation_impact",
         "market_integrity_state", "distortion_direction",
-        "orion_label", "bias",
+        "orion_label", "bias", "company_name", "sector", "industry",
+        "price", "technical_context", "fundamental_context",
+        "risk_environment", "data_completeness_pct",
     ):
         if snapshot.get(key) is not None:
             merged[key] = snapshot.get(key)
@@ -125,6 +127,12 @@ def _merge_unified_metrics(result, snapshot):
         "adjusted_orion_score": snapshot.get("adjusted_orion_score"),
         "manipulation_risk": snapshot.get("manipulation_risk"),
         "probability_horizon": horizon,
+        "company_name": snapshot.get("company_name"),
+        "sector": snapshot.get("sector"),
+        "industry": snapshot.get("industry"),
+        "price": snapshot.get("price"),
+        "technical_context": snapshot.get("technical_context"),
+        "fundamental_context": snapshot.get("fundamental_context"),
     }
     return merged
 
