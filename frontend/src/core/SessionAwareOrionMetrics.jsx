@@ -8,7 +8,7 @@ function finite(value) {
 
 function pct(value) {
   const number = finite(value);
-  if (number === null) return "—";
+  if (number === null) return "N/A";
   const normalized = Math.abs(number) <= 1 ? number * 100 : number;
   const sign = normalized > 0 ? "+" : "";
   return `${sign}${normalized.toFixed(2)}%`;
@@ -16,30 +16,35 @@ function pct(value) {
 
 function score(value) {
   const number = finite(value);
-  return number === null ? "—" : Math.round(number);
+  return number === null ? "N/A" : Math.round(number);
 }
 
 function probability(value) {
   const number = finite(value);
-  if (number === null) return "—";
+  if (number === null) return "N/A";
   const normalized = Math.abs(number) <= 1 ? number * 100 : number;
   return `${Math.round(normalized)}%`;
 }
 
 function riskLabel(value) {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return "N/A";
   if (typeof value === "string") return value;
   const number = finite(value);
-  if (number === null) return "—";
+  if (number === null) return "N/A";
   const normalized = number <= 1 ? number * 100 : number;
   if (normalized < 33) return "Low";
   if (normalized < 66) return "Moderate";
   return "High";
 }
 
+function scoreRingStyle(value) {
+  const number = finite(value);
+  const progress = number === null ? 0 : Math.max(0, Math.min(100, number));
+  return { "--orion-score-progress": `${progress}%` };
+}
+
 export function MarketSessionBadge({ session, status }) {
   const mode = String(session || "").toLowerCase();
-
   let label = "SESSION UNKNOWN";
   let icon = <Clock3 size={12} />;
 
@@ -67,10 +72,7 @@ export function MarketSessionBadge({ session, status }) {
 
 export function PremarketResearchStrip({ research, onAnalyze }) {
   const items = Array.isArray(research?.items) ? research.items : [];
-
-  if (!items.length) {
-    return null;
-  }
+  if (!items.length) return null;
 
   return (
     <section className="premarket-research-strip" aria-label="Premarket Orion research">
@@ -79,22 +81,16 @@ export function PremarketResearchStrip({ research, onAnalyze }) {
           <span className="core-eyebrow">PRE-MARKET ORION</span>
           <strong>Premarket research candidates</strong>
         </div>
-        <small>Open confirmation required</small>
+        <small>Opening confirmation required</small>
       </div>
 
       <div className="premarket-research-strip-items">
         {items.slice(0, 5).map((item) => {
           const ticker = item?.ticker || item?.symbol;
           const pmScore =
-            item?.premarket_score ??
-            item?.analysis?.score ??
-            item?.score ??
-            null;
-          const gap =
-            item?.gap_pct ??
-            item?.analysis?.gap_pct ??
-            null;
+            item?.premarket_score ?? item?.analysis?.score ?? item?.score ?? null;
           const direction =
+            item?.opening_outlook ??
             item?.direction ??
             item?.analysis?.direction ??
             "neutral";
@@ -108,20 +104,17 @@ export function PremarketResearchStrip({ research, onAnalyze }) {
               disabled={!ticker}
             >
               <span>
-                <strong>{ticker || "—"}</strong>
+                <strong>{ticker || "N/A"}</strong>
                 <small>{String(direction || "neutral").toUpperCase()}</small>
               </span>
-
               <span>
                 <b>{score(pmScore)}</b>
                 <small>PM score</small>
               </span>
-
               <span>
-                <b>{pct(gap)}</b>
-                <small>Gap</small>
+                <b>{item?.directional_conviction != null ? `${Math.round(item.directional_conviction)}/100` : "Research"}</b>
+                <small>Conviction</small>
               </span>
-
               <ArrowRight size={13} />
             </button>
           );
@@ -159,11 +152,11 @@ function ClosedMetrics({ analysis, afterHours = false }) {
       <div className="orion-mini-metric-grid">
         <div>
           <small>Latest price</small>
-          <strong>{price === null ? "—" : `$${price.toFixed(2)}`}</strong>
+          <strong>{price === null ? "N/A" : `$${price.toFixed(2)}`}</strong>
         </div>
         <div>
           <small>Last regular score</small>
-          <strong>{lastScore === null ? "—" : `${Math.round(lastScore)} / 100`}</strong>
+          <strong>{lastScore === null ? "N/A" : `${Math.round(lastScore)} / 100`}</strong>
         </div>
       </div>
     </div>
@@ -173,33 +166,31 @@ function ClosedMetrics({ analysis, afterHours = false }) {
 function PremarketMetrics({ analysis }) {
   const pmScore =
     analysis?.premarket_score ??
+    analysis?.premarket?.analysis?.score ??
     analysis?.analysis?.score ??
     analysis?.orion_score ??
     null;
 
-  const gap =
-    analysis?.gap_pct ??
-    analysis?.analysis?.gap_pct ??
-    null;
+  const outlook =
+    analysis?.opening_outlook ||
+    (analysis?.direction === "bullish"
+      ? "UP BIAS"
+      : analysis?.direction === "bearish"
+        ? "DOWN BIAS"
+        : "WAIT");
 
-  const direction =
-    analysis?.direction ??
-    analysis?.analysis?.direction ??
-    "neutral";
-
-  const setupState =
-    analysis?.setup_state ??
-    analysis?.analysis?.setup_state ??
-    "WAIT_FOR_OPEN_CONFIRMATION";
-
+  const conviction = finite(analysis?.directional_conviction);
+  const forecastAvailable = analysis?.forecast_available === true;
+  const horizon = analysis?.forecast_horizon || "OPEN -> FIRST 30 MIN";
   const pmPrice =
     finite(analysis?.premarket_price) ??
+    finite(analysis?.premarket?.premarket_price) ??
     finite(analysis?.analysis?.premarket_price);
 
   return (
     <div className="orion-session-metrics orion-session-metrics-premarket">
       <div className="orion-premarket-score">
-        <div className="orion-score-ring">
+        <div className="orion-score-ring" style={scoreRingStyle(pmScore)}>
           <div>
             <strong>{score(pmScore)}</strong>
             <span>/100</span>
@@ -208,27 +199,27 @@ function PremarketMetrics({ analysis }) {
 
         <div>
           <small>Premarket Orion Score</small>
-          <strong>{String(direction).toUpperCase()}</strong>
-          <p>Research/setup score — not probability of profit.</p>
+          <strong>{forecastAvailable ? outlook : "WAIT"}</strong>
+          <p>Setup quality plus directional opening outlook; not probability of profit.</p>
         </div>
       </div>
 
       <div className="orion-mini-metric-grid">
         <div>
-          <small>Premarket gap</small>
-          <strong>{pct(gap)}</strong>
+          <small>Opening outlook</small>
+          <strong>{forecastAvailable ? outlook : "INSUFFICIENT DATA"}</strong>
+        </div>
+        <div>
+          <small>Directional conviction</small>
+          <strong>{conviction === null ? "N/A" : `${Math.round(conviction)} / 100`}</strong>
+        </div>
+        <div>
+          <small>Forecast window</small>
+          <strong>{forecastAvailable ? horizon : "WAIT FOR DATA"}</strong>
         </div>
         <div>
           <small>Premarket price</small>
-          <strong>{pmPrice === null ? "—" : `$${pmPrice.toFixed(2)}`}</strong>
-        </div>
-        <div>
-          <small>Setup state</small>
-          <strong>{String(setupState).replaceAll("_", " ")}</strong>
-        </div>
-        <div>
-          <small>Confirmation</small>
-          <strong>REQUIRED</strong>
+          <strong>{pmPrice === null ? "N/A" : `$${pmPrice.toFixed(2)}`}</strong>
         </div>
       </div>
     </div>
@@ -237,43 +228,20 @@ function PremarketMetrics({ analysis }) {
 
 function RegularMetrics({ analysis }) {
   const orionScore =
-    analysis?.orion_score ??
-    analysis?.score ??
-    analysis?.final_score ??
-    analysis?.quality_score ??
-    null;
-
+    analysis?.orion_score ?? analysis?.score ?? analysis?.final_score ?? analysis?.quality_score ?? null;
   const adjusted =
-    analysis?.adjusted_orion_score ??
-    analysis?.adjusted_score ??
-    analysis?.confidence_score ??
-    analysis?.confidence ??
-    null;
-
+    analysis?.adjusted_orion_score ?? analysis?.adjusted_score ?? analysis?.confidence_score ?? analysis?.confidence ?? null;
   const up =
-    analysis?.up_probability ??
-    analysis?.probability_up ??
-    analysis?.bullish_probability ??
-    analysis?.long_probability ??
-    null;
-
+    analysis?.up_probability ?? analysis?.probability_up ?? analysis?.bullish_probability ?? analysis?.long_probability ?? null;
   const down =
-    analysis?.down_probability ??
-    analysis?.probability_down ??
-    analysis?.bearish_probability ??
-    analysis?.short_probability ??
-    null;
-
+    analysis?.down_probability ?? analysis?.probability_down ?? analysis?.bearish_probability ?? analysis?.short_probability ?? null;
   const manipulation =
-    analysis?.manipulation_risk ??
-    analysis?.manipulationRisk ??
-    analysis?.risk?.manipulation ??
-    null;
+    analysis?.manipulation_risk ?? analysis?.manipulationRisk ?? analysis?.risk?.manipulation ?? null;
 
   return (
     <div className="orion-session-metrics">
       <div className="orion-premarket-score">
-        <div className="orion-score-ring">
+        <div className="orion-score-ring" style={scoreRingStyle(orionScore)}>
           <div>
             <strong>{score(orionScore)}</strong>
             <span>/100</span>
@@ -309,18 +277,14 @@ function RegularMetrics({ analysis }) {
   );
 }
 
-export default function SessionAwareOrionMetrics({
-  analysis,
-  session,
-  busy = false,
-}) {
+export default function SessionAwareOrionMetrics({ analysis, session, busy = false }) {
   if (busy) {
     return (
       <div className="orion-session-metrics">
         <div className="orion-session-message">
           <span className="core-loading-dot" />
           <div>
-            <strong>Orion is calculating…</strong>
+            <strong>Orion is calculating...</strong>
             <p>Session-aware research is running for the selected stock.</p>
           </div>
         </div>
@@ -336,17 +300,8 @@ export default function SessionAwareOrionMetrics({
       ""
   ).toLowerCase();
 
-  if (mode === "premarket") {
-    return <PremarketMetrics analysis={analysis || {}} />;
-  }
-
-  if (mode === "closed") {
-    return <ClosedMetrics analysis={analysis || {}} />;
-  }
-
-  if (mode === "after_hours") {
-    return <ClosedMetrics analysis={analysis || {}} afterHours />;
-  }
-
+  if (mode === "premarket") return <PremarketMetrics analysis={analysis || {}} />;
+  if (mode === "closed") return <ClosedMetrics analysis={analysis || {}} />;
+  if (mode === "after_hours") return <ClosedMetrics analysis={analysis || {}} afterHours />;
   return <RegularMetrics analysis={analysis || {}} />;
 }
