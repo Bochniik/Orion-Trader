@@ -61,6 +61,111 @@ def threshold_rows(p_edge, p_up_cond, y_true, thresholds):
     return rows
 
 
+def threshold_stability(folds, thresholds, *, min_calls_per_fold=20):
+    summaries = []
+    for edge_threshold, direction_threshold in thresholds:
+        key_rows = []
+        for fold in folds:
+            row = next(
+                (
+                    item
+                    for item in fold["thresholds"]
+                    if item["edge_threshold"] == edge_threshold
+                    and item["direction_threshold"] == direction_threshold
+                ),
+                None,
+            )
+            if row is not None and row["samples"] >= min_calls_per_fold and row["accuracy"] is not None:
+                key_rows.append({"fold": fold["fold"], **row})
+
+        accuracies = np.asarray([row["accuracy"] for row in key_rows], dtype=float)
+        summaries.append({
+            "edge_threshold": edge_threshold,
+            "direction_threshold": direction_threshold,
+            "min_calls_per_fold": min_calls_per_fold,
+            "evaluable_folds": int(len(key_rows)),
+            "positive_folds": int(np.sum(accuracies > 0.5)) if len(accuracies) else 0,
+            "folds_at_or_above_55pct": int(np.sum(accuracies >= 0.55)) if len(accuracies) else 0,
+            "median_accuracy": round(float(np.median(accuracies)), 6) if len(accuracies) else None,
+            "mean_accuracy": round(float(np.mean(accuracies)), 6) if len(accuracies) else None,
+            "min_accuracy": round(float(np.min(accuracies)), 6) if len(accuracies) else None,
+            "max_accuracy": round(float(np.max(accuracies)), 6) if len(accuracies) else None,
+            "fold_details": key_rows,
+        })
+    return summaries
+
+
+def robust_gate(aggregate_rows, stability_rows):
+    candidates = []
+    for aggregate in aggregate_rows:
+        if aggregate["samples"] < 100 or aggregate["accuracy"] is None:
+            continue
+        stability = next(
+            (
+                row
+                for row in stability_rows
+                if row["edge_threshold"] == aggregate["edge_threshold"]
+                and row["direction_threshold"] == aggregate["direction_threshold"]
+            ),
+            None,
+        )
+        if not stability or stability["evaluable_folds"] < 4:
+            continue
+        if stability["median_accuracy"] is None or stability["median_accuracy"] < 0.55:
+            continue
+        if stability["positive_folds"] < max(3, int(np.ceil(stability["evaluable_folds"] * 2 / 3))):
+            continue
+        candidates.append((aggregate, stability))
+
+    if not candidates:
+        return None
+
+    aggregate, stability = max(
+        candidates,
+        key=lambda pair: (
+            pair[0]["accuracy"],
+            pair[1]["median_accuracy"],
+            pair[0]["samples"],
+        ),
+    )
+    return {
+        "aggregate": aggregate,
+        "stability": stability,
+        "rule": "samples>=100, evaluable_folds>=4, median_fold_accuracy>=55%, >50% accuracy in at least two-thirds of evaluable folds",
+    }
+
+
+def per_ticker_for_gate(p_edge, p_up_cond, y, tickers, gate, *, min_calls=20):
+    if not gate:
+        return []
+    confidence = np.maximum(p_up_cond, 1.0 - p_up_cond)
+    pred = np.where(p_up_cond >= 0.5, 2, 0)
+    mask_gate = (
+        (p_edge >= gate["edge_threshold"])
+        & (confidence >= gate["direction_threshold"])
+    )
+    rows = []
+    for ticker in sorted(set(tickers.tolist())):
+        mask = mask_gate & (tickers == ticker)
+        n = int(mask.sum())
+        if n < min_calls:
+            continue
+        pred_t = pred[mask]
+        truth_t = y[mask]
+        up_mask = pred_t == 2
+        down_mask = pred_t == 0
+        rows.append({
+            "ticker": ticker,
+            "samples": n,
+            "accuracy": round(float(np.mean(pred_t == truth_t)), 6),
+            "up_predictions": int(up_mask.sum()),
+            "up_precision": round(float(np.mean(truth_t[up_mask] == 2)), 6) if up_mask.any() else None,
+            "down_predictions": int(down_mask.sum()),
+            "down_precision": round(float(np.mean(truth_t[down_mask] == 0)), 6) if down_mask.any() else None,
+        })
+    return sorted(rows, key=lambda row: (-row["samples"], row["ticker"]))
+
+
 def validate_target(frame, target, *, min_train_days, calibration_days, test_days):
     work = prepare_frame(frame, target)
     dates = sorted(work["session_date"].unique())
@@ -159,22 +264,18 @@ def validate_target(frame, target, *, min_train_days, calibration_days, test_day
     aggregate_thresholds = threshold_rows(p_edge, p_up_cond, y, thresholds)
     chosen = [r for r in aggregate_thresholds if r["samples"] >= 100 and r["accuracy"] is not None]
     best = max(chosen, key=lambda r: (r["accuracy"], r["samples"])) if chosen else None
+    stability = threshold_stability(folds, thresholds)
+    robust = robust_gate(aggregate_thresholds, stability)
+    robust_aggregate = robust["aggregate"] if robust else None
 
-    per_ticker = []
-    if best:
-        confidence = np.maximum(p_up_cond, 1.0 - p_up_cond)
-        pred = np.where(p_up_cond >= 0.5, 2, 0)
-        global_mask = (p_edge >= best["edge_threshold"]) & (confidence >= best["direction_threshold"])
-        for ticker in sorted(set(tickers.tolist())):
-            mask = global_mask & (tickers == ticker)
-            n = int(mask.sum())
-            if n < 20:
-                continue
-            per_ticker.append({
-                "ticker": ticker,
-                "samples": n,
-                "accuracy": round(float(np.mean(pred[mask] == y[mask])), 6),
-            })
+    per_ticker = per_ticker_for_gate(
+        p_edge,
+        p_up_cond,
+        y,
+        tickers,
+        robust_aggregate,
+        min_calls=20,
+    )
 
     return {
         "target": target,
@@ -182,8 +283,10 @@ def validate_target(frame, target, *, min_train_days, calibration_days, test_day
         "fold_count": len(folds),
         "folds": folds,
         "thresholds": aggregate_thresholds,
+        "threshold_stability": stability,
         "best_threshold_with_min_100_samples": best,
-        "per_ticker_at_best_threshold": per_ticker,
+        "robust_gate": robust,
+        "per_ticker_at_robust_gate": per_ticker,
     }
 
 
@@ -230,6 +333,28 @@ def main():
                 f"  BEST(min100): edge>={best['edge_threshold']:.2f} dir>={best['direction_threshold']:.2f} "
                 f"n={best['samples']} coverage={best['coverage']:.1%} acc={best['accuracy']:.1%}"
             )
+
+        robust = result["robust_gate"]
+        if robust:
+            a = robust["aggregate"]
+            s = robust["stability"]
+            print(
+                f"  ROBUST: edge>={a['edge_threshold']:.2f} dir>={a['direction_threshold']:.2f} "
+                f"n={a['samples']} coverage={a['coverage']:.1%} aggregate_acc={a['accuracy']:.1%} "
+                f"median_fold_acc={s['median_accuracy']:.1%} positive_folds={s['positive_folds']}/{s['evaluable_folds']} "
+                f"min_fold_acc={s['min_accuracy']:.1%}"
+            )
+            ticker_rows = result["per_ticker_at_robust_gate"]
+            if ticker_rows:
+                print("    per ticker (>=20 calls):")
+                for row in ticker_rows:
+                    print(
+                        f"      {row['ticker']}: n={row['samples']} acc={row['accuracy']:.1%} "
+                        f"UP={row['up_precision'] if row['up_precision'] is not None else 'NA'} "
+                        f"DOWN={row['down_precision'] if row['down_precision'] is not None else 'NA'}"
+                    )
+        else:
+            print("  ROBUST: none (failed fold-stability requirements)")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
