@@ -1,0 +1,127 @@
+{
+  "generated_at": "2026-09-07T20:29:06.806012+00:00",
+  "holdout_type": "cross_sectional_unseen_ticker",
+  "temporal_holdout": false,
+  "engine_modified": false,
+  "discovery_tickers_reused": false,
+  "frozen_cohorts": {
+    "healthcare_holdout": [
+      "JNJ",
+      "MRK",
+      "ABBV",
+      "PFE",
+      "TMO",
+      "ABT",
+      "AMGN",
+      "GILD",
+      "ISRG",
+      "MDT"
+    ],
+    "large_cap_tech_holdout": [
+      "ORCL",
+      "CRM",
+      "ADBE",
+      "NOW",
+      "PANW",
+      "CRWD",
+      "IBM",
+      "CSCO",
+      "INTU",
+      "TXN"
+    ],
+    "defensive_large_cap_holdout": [
+      "PG",
+      "KO",
+      "PEP",
+      "MCD",
+      "CL",
+      "PM",
+      "MO",
+      "NEE",
+      "DUK",
+      "SO"
+    ]
+  },
+  "frozen_hypotheses": [
+    {
+      "name": "healthcare_3h_all",
+      "cohort": "healthcare_holdout",
+      "horizon": "3h",
+      "band": "all",
+      "discovery_accuracy_pct": 56.83
+    },
+    {
+      "name": "healthcare_3h_conf60",
+      "cohort": "healthcare_holdout",
+      "horizon": "3h",
+      "band": "60",
+      "discovery_accuracy_pct": 57.93
+    },
+    {
+      "name": "large_cap_tech_3h_conf60",
+      "cohort": "large_cap_tech_holdout",
+      "horizon": "3h",
+      "band": "60",
+      "discovery_accuracy_pct": 57.41
+    },
+    {
+      "name": "defensive_large_cap_3h_all",
+      "cohort": "defensive_large_cap_holdout",
+      "horizon": "3h",
+      "band": "all",
+      "discovery_accuracy_pct": 53.83
+    }
+  ],
+  "results": [
+    {
+      "name": "healthcare_3h_all",
+      "cohort": "healthcare_holdout",
+      "horizon": "3h",
+      "band": "all",
+      "discovery_accuracy_pct": 56.83,
+      "n": 1708,
+      "accuracy_pct": 50.06,
+      "wilson_95_low_pct": 47.691,
+      "wilson_95_high_pct": 52.429,
+      "verdict": "FAILED_TO_REPLICATE"
+    },
+    {
+      "name": "healthcare_3h_conf60",
+      "cohort": "healthcare_holdout",
+      "horizon": "3h",
+      "band": "60",
+      "discovery_accuracy_pct": 57.93,
+      "n": 647,
+      "accuracy_pct": 50.541,
+      "wilson_95_low_pct": 46.697,
+      "wilson_95_high_pct": 54.379,
+      "verdict": "FAILED_TO_REPLICATE"
+    },
+    {
+      "name": "large_cap_tech_3h_conf60",
+      "cohort": "large_cap_tech_holdout",
+      "horizon": "3h",
+      "band": "60",
+      "discovery_accuracy_pct": 57.41,
+      "n": 368,
+      "accuracy_pct": 44.293,
+      "wilson_95_low_pct": 39.303,
+      "wilson_95_high_pct": 49.401,
+      "verdict": "FAILED_TO_REPLICATE"
+    },
+    {
+      "name": "defensive_large_cap_3h_all",
+      "cohort": "defensive_large_cap_holdout",
+      "horizon": "3h",
+      "band": "all",
+      "discovery_accuracy_pct": 53.83,
+      "n": 1897,
+      "accuracy_pct": 53.244,
+      "wilson_95_low_pct": 50.995,
+      "wilson_95_high_pct": 55.481,
+      "verdict": "REPLICATED_EDGE"
+    }
+  ],
+  "failures": [],
+  "interpretation": "This tests whether discovery-period cohort effects generalize to different tickers using the same existing chronological walk-forward machinery. It is a legitimate cross-sectional holdout, but not an untouched future-time holdout. Final production approval still requires prospective/future temporal validation."
+}

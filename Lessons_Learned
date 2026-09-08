@@ -1,0 +1,9 @@
+## Lessons Learned
+
+- Work in one Git repository only.
+- Never develop from ZIP copies.
+- Test after every small feature.
+- One feature = one Git commit.
+- Keep React components small.
+- Keep API calls in the frontend API layer.
+- If a component is about to change significantly, don't refactor it twice—build the improved version directly.

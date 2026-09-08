@@ -1,0 +1,29 @@
+{
+  "conclusion": "No measurable predictive value can be established from this repository because zero truly out-of-sample settled predictions are available.",
+  "data_inventory": {
+    "database_exists": true,
+    "live_predictions": 0,
+    "model_runs": 0,
+    "settled_predictions": 0
+  },
+  "metrics": {
+    "baseline_accuracy": null,
+    "brier_score": null,
+    "by_direction": {},
+    "by_horizon": {},
+    "calibration_error": null,
+    "class_distribution": {},
+    "confidence_buckets": [],
+    "directional_accuracy": null,
+    "log_loss": null,
+    "multiclass_accuracy": null,
+    "sample_count": 0
+  },
+  "out_of_sample_definition": "Settled live predictions linked to a saved model; no training or calibration rows are counted.",
+  "report_version": "orion-directional-validation-v1",
+  "status": "not_evaluable",
+  "temperature_calibration": {
+    "reason": "No persisted raw and calibrated probability pairs are available.",
+    "status": "not_evaluable"
+  }
+}

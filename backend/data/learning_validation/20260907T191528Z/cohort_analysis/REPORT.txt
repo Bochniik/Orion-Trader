@@ -1,0 +1,15 @@
+ORIONTRADER COHORT RELIABILITY ANALYSIS
+============================================
+
+PROMISING / WEAK SIGNAL COHORTS
+
+healthcare                3h all_directional N= 359  Acc= 56.83%  95%LB= 51.66%  WEAK_SIGNAL
+mega_cap_tech             3h            >=60 N= 270  Acc= 57.41%  95%LB= 51.45%  WEAK_SIGNAL
+healthcare                3h            >=60 N= 164  Acc= 57.93%  95%LB= 50.27%  WEAK_SIGNAL
+defensive_large_cap       3h all_directional N= 732  Acc= 53.83%  95%LB= 50.20%  WEAK_SIGNAL
+
+Interpretation:
+- A high point estimate alone is not enough.
+- The lower 95% Wilson bound must clear 50% to count as evidence.
+- Any promising cohort still requires a NEW untouched holdout test.
+- This script does not retrain or modify Orion.

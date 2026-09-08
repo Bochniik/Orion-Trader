@@ -1,0 +1,31 @@
+.env
+backend/.env
+frontend/.env
+node_modules/
+frontend/node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+
+# Local backups
+*_backup_*/
+backup-*/
+src_backup_before_single_engine/
+OrionTrader_single_engine_dashboard_analysis/
+
+# Runtime / caches
+*.log
+*.db-journal
+*.sqlite-journal
+.pytest_cache/
+.coverage
+htmlcov/
+frontend/dist/
+
+# Secrets
+.env
+*.env
+!.env.example

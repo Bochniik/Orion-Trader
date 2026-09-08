@@ -1,0 +1,265 @@
+Historical OrionTrader v0.35.0 verification (not the current release gate)
+================================
+
+Backend
+- Python compile check: passed
+- Pytest: 228 passed
+- Offline Orion quality fixtures: 4 passed
+- Real-process /health and /ready startup probe: passed
+- API version contract: 0.35.0
+- Dependency check: no broken requirements
+
+Frontend
+- Vitest: 54 passed across 15 files
+- Trading 212 Demo boundary server-render contract: passed
+- Vite production build: passed
+- Initial JavaScript chunk: 454.31 kB (140.89 kB gzip)
+- PWA manifest/service-worker production bundle: passed
+- npm production dependency audit: 0 vulnerabilities (offline audit cache)
+- Responsive and reduced-motion style rules: present
+
+Orion Predictive Intelligence v1
+- Phase 1 bounded liquidity ranking, 70/30 rotation and Tier A-first policy: passed
+- Average/current dollar volume, relative pace, spread and trade rate: passed
+- Volatility, evidence coverage, provenance and missing-data penalties: passed
+- Extensible one-minute and genuine-stream rolling feature schema: passed
+- Sub-minute fields remain null without sub-minute evidence: passed
+- One-minute bars never generate thirty-second labels: passed
+- Feature rows are invariant to later outcome-row mutation: passed
+- Volatility/spread-aware UP/DOWN/NEUTRAL targets: passed
+- Multinomial logistic and gradient-boosted-stump ensemble: passed
+- Chronological train/calibration/untouched holdout split: passed
+- Three expanding walk-forward folds and no random splitting: passed
+- Held-out temperature calibration and probability sum contract: passed
+- Full-spread/slippage cost estimate and long/short EV: passed
+- Bull, bear, range, high-volatility and low-volatility regime states: passed
+- Composite opportunity score does not rank on raw probability alone: passed
+- Progressively stricter Tier B-D evidence thresholds: passed
+- Exact NO TRADE — NO STATISTICAL EDGE fail-closed result: passed
+- Entry/invalidation/target levels withheld on NO TRADE: passed
+- Ten-section navigation and Live Edge production UI: passed
+- Primary liquid and elevated-risk lower-liquidity sections: passed
+- Per-user model, prediction and outcome persistence: passed
+- Accuracy, precision, recall, Brier and calibration analytics: passed
+- Ticker/horizon/tier/regime/confidence subgroup analytics: passed
+- Predicted/realized return, EV and after-cost simulated P&L: passed
+- Fewer than 500 live outcomes remains provisional: passed
+- Orion explanations have qualitative-only structured fields: passed
+- Immutable deterministic evidence plus SHA-256 digest: passed
+- Numeric-restatement attempts are rejected: passed
+- Prediction services and routes have no order capability: passed
+
+Liquidity-First Live Edge and Orion Learning Brain
+- User-selected ticker is pinned into the fresh tradable-universe sample: passed
+- Automatic scans rank 60-100 candidates before finalist analysis: passed
+- Most-active discovery precedes percentage movers: passed
+- Absolute LiquidityScore is the first sort key inside every section: passed
+- Tier A/B NO TRADE research remains visible before Tier C/D rows: passed
+- Lower-liquidity NO TRADE rows cannot displace the liquid board: passed
+- Fourteen mathematical strategy families with formulas and evidence: passed
+- LONG/SHORT/NEUTRAL/UNAVAILABLE strategy state contract: passed
+- Missing strategy evidence cannot create a false consensus: passed
+- Per-user settled good/bad outcome memory: passed
+- Bayesian-shrunk strategy performance profiles: passed
+- Learned strategy multipliers are bounded to 0.75x-1.25x: passed
+- Trusted adverse memory can veto a future trade: passed
+- Positive memory cannot bypass any existing hard gate: passed
+- Learned memory never modifies P_UP/P_DOWN/P_NEUTRAL: passed
+- Prediction and learned-memory deletion remain independent: passed
+- BUY/SELL/HOLD interpretation remains research-only: passed
+- No strategy or memory path imports an order adapter: passed
+
+Explosive-Move Intelligence foundation
+- Dedicated ninth Move Lab workspace and deep-link contract: passed
+- Independent PreMoveScore / IgnitionScore / DangerScore contracts: passed
+- No combined buy score and explicit No Trade outcome: passed
+- Missing freshness metadata fails closed: passed
+- Category-specific watch, danger and exposure thresholds: passed
+- Low-float/biotech/distressed SEC metadata requirement: passed
+- Deterministic headline IDs and neutral generic-event sentiment: passed
+- Dilution risk remains independent from security category: passed
+- Reverse-split and multi-filing danger suppression: passed
+- Normalized source, timestamp, materiality and reaction-latency fields: passed
+- SEC client disabled without declared operator contact: passed
+- SEC ticker/submissions caching and metadata-only disclosure: passed
+- Alpaca news and corporate-action snapshot contracts: passed
+- Bounded rotating broker-universe and explicit coverage contract: passed
+- Per-user scan persistence and audit-preserving event history: passed
+- Adaptive ATR/category stop and risk-sized position contract: passed
+- Drawdown reduction never increases recovery risk: passed
+- Borrowed exposure and CFD suggestions disabled in every profile: passed
+- Probability fields remain null and labeled not calibrated: passed
+- Persistent WebSocket/feed evidence remains explicit and research-only: passed
+- No order path from Move Lab: passed
+
+Alpaca streaming evidence
+- Explicit start/update/stop/status/event contracts: passed
+- One market and one news connection per active user session: passed
+- IEX/SIP/delayed-SIP allowlist and bounded symbol validation: passed
+- Authentication precedes subscription: passed
+- Market wildcard subscriptions remain absent: passed
+- Trades remain disabled unless explicitly enabled by server policy: passed
+- All-symbol news remains disabled unless explicitly enabled by server policy: passed
+- Reconnect/backoff and fatal entitlement handling: passed
+- Channel state, freshness, error and reconnect observability: passed
+- Incremental sequence cursor and ring-buffer overflow reporting: passed
+- Public quote/bar normalization and fresh scan overlay: passed
+- Public-news deduplication and per-user event persistence: passed
+- Multi-symbol news persists independently without identifier collision: passed
+- Credentials absent from status, errors, events, metrics and SQLite: passed
+- Stream stops on broker disconnect, logout and application shutdown: passed
+- Snapshot path remains available during stopped/degraded streams: passed
+- Stream sessions, channels, reconnects, messages and drops metrics: passed
+
+Extreme-Mover Replay Lab
+- Separate Live Scanner / Replay Lab workspace modes: passed
+- One-, two- and five-year history allowlist: passed
+- Bounded outcome-window, five-to-20-session stride and score controls: passed
+- Five independent point-in-time OHLCV factors totaling 100 rule points: passed
+- Feature scores invariant to later outcome-bar mutation: passed
+- Feature cutoff precedes every forward outcome window: passed
+- 20%, 50% and 100% observed-high labels: passed
+- Threshold time, peak, low, ending return and normalized path: passed
+- Score-band descriptive frequencies and raw counts: passed
+- Fixed chronological 70/30 development/holdout display: passed
+- Non-overlapping extreme examples plus false positives and misses: passed
+- Current profile, news, filings and fundamentals excluded: passed
+- Adjusted-history retrieval is explicit and vendor restatement disclosed: passed
+- Survivorship, delisting, overlap, halt, spread and fill limitations: passed
+- Per-user summary-first replay history and full audit restoration: passed
+- Replay history deletion remains separate from scan/event history: passed
+- Probability fields remain null and no order path exists: passed
+
+Professional Execution Stress Lab
+- Separate Live Scanner / Replay Lab / Execution Lab workspace modes: passed
+- Seven deterministic baseline, spread, gap, liquidity, pause, rejection and combined scenarios: passed
+- Side-aware half-spread plus square-root participation-impact contract: passed
+- Scenario volume capacity and explicit partial/unfilled quantities: passed
+- Market and limit-plan validation plus deterministic limit-capacity solving: passed
+- Protective-stop fill and risk-expansion stress: passed
+- LULD-style interruption blocks immediate execution: passed
+- Rejection and pause costs remain unknown rather than misleading zero: passed
+- Official band, NBBO, depth, queue, pause-tape and reopening limitations: passed
+- Probability fields remain null and every assumption/formula is exposed: passed
+- Per-user summary-first history, full restoration and separate deletion: passed
+- Cutoff-safe replay-close/20-session-volume handoff: passed
+- Service imports no broker adapters and exposes no order route: passed
+
+Catalyst Breakout Radar
+- Third Opportunities scan intent and saved-history restoration: passed
+- Eight-factor 100-point deterministic readiness contract: passed
+- High-potential requires score >=80 and evidence coverage >=80: passed
+- Small-float thresholds and normalized provider profile fields: passed
+- Multi-day volume, consolidation and ATR-contraction rules: passed
+- Stock relative strength versus SPY and mapped sector momentum: passed
+- Timestamped seven-day headline and 45-day earnings evidence: passed
+- Dated 180-day insider-purchase evidence: passed
+- Missing/stale evidence receives zero points and lowers coverage: passed
+- Short interest is disclosed risk context and never positive points: passed
+- Score is labeled observed readiness, never probability or expected return: passed
+- Starter catalyst symbols reserve only bounded scan/finalist capacity: passed
+- Remaining scan capacity continues rotating through the broker universe: passed
+- Per-factor points, evidence, microstructure and limitations UI: passed
+- Absent verified SEC filing contents/press/FDA/options feeds remain explicitly disclosed: passed
+- Orion, entry and risk gates remain independent and authoritative: passed
+
+Research Strategy Lab
+- Trend momentum and relative-strength pullback rule contracts: passed
+- Catalyst headline, gap, relative-volume, VWAP and five-minute ORB: passed
+- Regime-filtered RSI(2) mean reversion: passed
+- Volatility-contraction base and volume-expansion checks: passed
+- Golden Cross recent-event plus price/market/strength/liquidity confirmation: passed
+- Death Cross defensive-only state with no automatic short levels: passed
+- Optional peer correlation/z-score divergence screen: passed
+- Cointegration-not-validated disclosure: passed
+- Long-term diversified investing remains portfolio-required: passed
+- Unavailable required evidence cannot pass the rule score: passed
+- Unaligned and insufficient setups expose no actionable levels: passed
+- Scores are labeled rule completion, never probability or certainty: passed
+- Research route partial-provider metadata and same-ticker pair rejection: passed
+- Direct Orion and historical-backtest handoffs: passed
+
+Trading 212 Demo execution
+- Broker base URL is fixed to https://demo.trading212.com/api/v0
+- Trading 212 Live host and environment selector remain absent
+- Read, order-type and numeric cancellation routes are separately allow-listed
+- Market, limit, stop and stop-limit payload contracts: passed
+- Exact broker-instrument search and metadata selection: passed
+- Submission server flag defaults to disabled: passed
+- Every submit and cancellation requires a separate confirmed request: passed
+- Review expiry and final revalidation: passed
+- Atomic state transition prevents concurrent double confirmation: passed
+- Per-order value, cash, concentration, daily count and daily notional gates: passed
+- Sell quantity cannot exceed the synchronized position: passed
+- Account-currency FX conversion and fail-closed currency handling: passed
+- Recent duplicate-order protection, including atomic persistence check: passed
+- Known 4xx broker rejection is distinct from ambiguous outcome: passed
+- Ambiguous submission is never retried automatically: passed
+- Unique recent unknown-outcome reconciliation: passed
+- Pending/partial/filled/cancelled/rejected state reconciliation: passed
+- Reconciled fill-journal synchronization is idempotent: passed
+- Original thesis and invalidation are retained with reconciled fills: passed
+- Credentials are per-user, backend-memory-only and non-persistent: passed
+- Trading 212 autonomous methods and routes remain absent: passed
+
+Trading 212 opportunity universe
+- Automatic / Trading 212 Demo / Alpaca Paper source selection: passed
+- Instrument metadata cache and exact broker-ticker preservation: passed
+- Explicit supported-exchange research-symbol mapping: passed
+- Unsupported mappings and quote gaps remain visible: passed
+- Bounded 160-instrument rotating market-data screening: passed
+- Maximum 16 deterministic finalists / eight deep Orion classifications: passed
+- Per-user rotation and per-broker cumulative coverage: passed
+- Saved boards retain universe source and exact Trading 212 ticker: passed
+- Explicit instrument-to-account FX sizing and no-FX fail-closed state: passed
+- Opportunity scans remain research-only and create no orders: passed
+
+Hybrid opportunity intelligence
+- Day / Swing / Long-Term horizon candle contracts: passed
+- ATR, support, resistance, trend, momentum and relative-volume math: passed
+- Liquidity, volatility and breakout component scoring: passed
+- Concrete entry zone, breakout, stop, target and reward-to-risk output: passed
+- Confirmed / waiting / extended / below-standard / sizing / data states: passed
+- Deterministic prefiltering before bounded Orion review: passed
+- Hybrid score calibration and unsupported-confidence cap: passed
+- Unknown/duplicate model symbols are rejected: passed
+- Omitted model finalists fail closed and remain auditable: passed
+- Optional feed failures do not invalidate complete critical OHLCV: passed
+- Saved/current board highest-ranked-setup presentation: passed
+- “Plan incomplete” is absent from the recommendation UI: passed
+- Current scanner quote drives Entry-ready zone validation when available: passed
+- Entry-ready trend/liquidity/volatility/reward-risk/volume audit: passed
+- Orion evidence and selected risk-profile gates remain independently required: passed
+- Zero-match scans retain closest watch setups without weakening gates: passed
+- Scan intent persists independently in saved-board history: passed
+
+Portfolio and product boundary
+- Local Simulator / Alpaca Paper / Trading 212 Demo remain separate sources
+- Selected Demo account feeds Orion portfolio context and intelligence
+- Account currency and estimated position-allocation disclosures are retained
+- Reconciled Orion-submitted Demo fills feed the selected user's journal context
+- Alpaca remains hardcoded to https://paper-api.alpaca.markets
+- Alpaca Paper remains the only autonomous broker adapter
+- /broker/alpaca-live and /broker/trading212-live route families remain absent
+- Real-money execution remains external and user controlled
+
+Platform
+- Authenticated runtime/readiness contract: passed
+- Protected route without session: 401
+- Per-user SQLite isolation and WAL-safe migrations: passed
+- Windows launcher and desktop shortcut contracts: passed
+- Same-host development session-cookie contract: passed
+- Autonomous Paper scanner and fail-closed risk guardian: passed
+- Alpaca/Trading 212 rotation and holdings-independent opportunity discovery: passed
+- Visible chart-axis New York/local timezone formatting: passed
+- Per-user opportunity-board persistence and restore: passed
+- Docker/Compose files: covered by static contract tests
+
+Packaging
+- Excludes .env, SQLite runtime data, node_modules, dist, caches and virtualenvs
+- Includes backend/frontend lock files, tests, .env.example and audit documentation
+
+Live OpenAI, market-provider and broker calls are not executed by the automated
+suite. Trading 212 order contracts are verified against offline fakes; operators
+must begin with small Demo orders and reconcile broker state before relying on
+the workflow.

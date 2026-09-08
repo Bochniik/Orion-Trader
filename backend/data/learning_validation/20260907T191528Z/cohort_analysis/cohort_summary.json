@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-09-07T19:58:08.964382+00:00",
+  "source_csv": "C:\\Users\\nikop\\Downloads\\OrionTrader-3.2\\OrionTrader\\backend\\data\\learning_validation\\20260907T191528Z\\validation_metrics.csv",
+  "engine_modified": false,
+  "purpose": "Find cohorts where current Orion intraday probability predictions may have repeatable out-of-sample directional reliability.",
+  "reliability_rule": {
+    "INSUFFICIENT_SAMPLE": "n < 50",
+    "NO_VALIDATED_EDGE": "95% Wilson lower bound does not exceed 50%",
+    "WEAK_SIGNAL": "95% Wilson lower bound > 50%, but conservative PROMISING threshold not met",
+    "PROMISING": "n>=200 and lower bound>=52%, or n>=500 and lower bound>=51%"
+  },
+  "important_warning": "This is exploratory cohort analysis. Cohorts were inspected after model creation, so PROMISING is not production approval. Any promising cohort must be confirmed on a fresh untouched holdout period before Orion may trust it.",
+  "promising_non_ticker_cohorts": [
+    {
+      "cohort": "healthcare",
+      "horizon": "3h",
+      "confidence_band": "all_directional",
+      "n": 359,
+      "accuracy_pct": 56.827,
+      "wilson_95_low_pct": 51.658,
+      "wilson_95_high_pct": 61.852,
+      "brier_score": 0.24736,
+      "ece_pct": 5.438,
+      "reliability": "WEAK_SIGNAL"
+    },
+    {
+      "cohort": "mega_cap_tech",
+      "horizon": "3h",
+      "confidence_band": ">=60",
+      "n": 270,
+      "accuracy_pct": 57.41,
+      "wilson_95_low_pct": 51.449,
+      "wilson_95_high_pct": 63.164,
+      "brier_score": null,
+      "ece_pct": null,
+      "reliability": "WEAK_SIGNAL"
+    },
+    {
+      "cohort": "healthcare",
+      "horizon": "3h",
+      "confidence_band": ">=60",
+      "n": 164,
+      "accuracy_pct": 57.927,
+      "wilson_95_low_pct": 50.274,
+      "wilson_95_high_pct": 65.216,
+      "brier_score": null,
+      "ece_pct": null,
+      "reliability": "WEAK_SIGNAL"
+    },
+    {
+      "cohort": "defensive_large_cap",
+      "horizon": "3h",
+      "confidence_band": "all_directional",
+      "n": 732,
+      "accuracy_pct": 53.826,
+      "wilson_95_low_pct": 50.204,
+      "wilson_95_high_pct": 57.408,
+      "brier_score": 0.25125,
+      "ece_pct": 6.107,
+      "reliability": "WEAK_SIGNAL"
+    }
+  ],
+  "all_result_count": 492
+}

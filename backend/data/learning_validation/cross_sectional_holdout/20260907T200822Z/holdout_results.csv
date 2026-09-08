@@ -1,0 +1,5 @@
+﻿name,cohort,horizon,band,discovery_accuracy_pct,n,accuracy_pct,wilson_95_low_pct,wilson_95_high_pct,verdict
+healthcare_3h_all,healthcare_holdout,3h,all,56.83,1708,50.06,47.691,52.429,FAILED_TO_REPLICATE
+healthcare_3h_conf60,healthcare_holdout,3h,60,57.93,647,50.541,46.697,54.379,FAILED_TO_REPLICATE
+large_cap_tech_3h_conf60,large_cap_tech_holdout,3h,60,57.41,368,44.293,39.303,49.401,FAILED_TO_REPLICATE
+defensive_large_cap_3h_all,defensive_large_cap_holdout,3h,all,53.83,1897,53.244,50.995,55.481,REPLICATED_EDGE

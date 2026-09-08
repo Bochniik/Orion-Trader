@@ -1,0 +1,10 @@
+{
+  "name": "OrionTrader",
+  "short_name": "Orion",
+  "description": "OrionTrader 2.4 — a focused market research assistant",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c1117",
+  "theme_color": "#0c1117",
+  "icons": [{ "src": "/orion-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

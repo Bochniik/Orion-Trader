@@ -1,0 +1,288 @@
+{
+  "symbol": "NVDA",
+  "available": true,
+  "method": "daily_refit_walk_forward_horizon_specific_logistic_v2",
+  "bar_count": 4680,
+  "initial_training_days": 15,
+  "stride_bars": 6,
+  "daily_model_refits": {
+    "30m": 45,
+    "1h": 45,
+    "3h": 45,
+    "5h": 45
+  },
+  "horizons": {
+    "30m": {
+      "available": true,
+      "prediction_count": 540,
+      "actual_up_rate_pct": 50.74,
+      "average_predicted_up_pct": 51.88,
+      "accuracy_at_50_pct": 50.0,
+      "directional_prediction_count": 193,
+      "directional_accuracy_pct": 44.56,
+      "confident_60": {
+        "count": 45,
+        "accuracy_pct": 31.11
+      },
+      "confident_65": {
+        "count": 11,
+        "accuracy_pct": 27.27
+      },
+      "brier_score": 0.2576,
+      "log_loss": 0.70899,
+      "expected_calibration_error_pct": 4.52,
+      "calibration_bins": [
+        {
+          "range": "30-40",
+          "count": 4,
+          "average_predicted_up_pct": 35.88,
+          "actual_up_rate_pct": 50.0,
+          "calibration_gap_pct": 14.12
+        },
+        {
+          "range": "40-50",
+          "count": 202,
+          "average_predicted_up_pct": 46.81,
+          "actual_up_rate_pct": 50.99,
+          "calibration_gap_pct": 4.18
+        },
+        {
+          "range": "50-60",
+          "count": 294,
+          "average_predicted_up_pct": 53.97,
+          "actual_up_rate_pct": 53.4,
+          "calibration_gap_pct": -0.56
+        },
+        {
+          "range": "60-70",
+          "count": 36,
+          "average_predicted_up_pct": 62.09,
+          "actual_up_rate_pct": 30.56,
+          "calibration_gap_pct": -31.53
+        },
+        {
+          "range": "70-80",
+          "count": 3,
+          "average_predicted_up_pct": 76.17,
+          "actual_up_rate_pct": 0.0,
+          "calibration_gap_pct": -76.17
+        },
+        {
+          "range": "80-90",
+          "count": 1,
+          "average_predicted_up_pct": 88.5,
+          "actual_up_rate_pct": 100.0,
+          "calibration_gap_pct": 11.5
+        }
+      ]
+    },
+    "1h": {
+      "available": true,
+      "prediction_count": 495,
+      "actual_up_rate_pct": 50.1,
+      "average_predicted_up_pct": 52.17,
+      "accuracy_at_50_pct": 50.91,
+      "directional_prediction_count": 260,
+      "directional_accuracy_pct": 50.38,
+      "confident_60": {
+        "count": 80,
+        "accuracy_pct": 45.0
+      },
+      "confident_65": {
+        "count": 28,
+        "accuracy_pct": 57.14
+      },
+      "brier_score": 0.25504,
+      "log_loss": 0.70322,
+      "expected_calibration_error_pct": 5.606,
+      "calibration_bins": [
+        {
+          "range": "10-20",
+          "count": 2,
+          "average_predicted_up_pct": 19.4,
+          "actual_up_rate_pct": 0.0,
+          "calibration_gap_pct": -19.4
+        },
+        {
+          "range": "20-30",
+          "count": 3,
+          "average_predicted_up_pct": 24.5,
+          "actual_up_rate_pct": 33.33,
+          "calibration_gap_pct": 8.83
+        },
+        {
+          "range": "30-40",
+          "count": 17,
+          "average_predicted_up_pct": 37.2,
+          "actual_up_rate_pct": 47.06,
+          "calibration_gap_pct": 9.86
+        },
+        {
+          "range": "40-50",
+          "count": 162,
+          "average_predicted_up_pct": 45.9,
+          "actual_up_rate_pct": 50.0,
+          "calibration_gap_pct": 4.1
+        },
+        {
+          "range": "50-60",
+          "count": 254,
+          "average_predicted_up_pct": 54.89,
+          "actual_up_rate_pct": 53.15,
+          "calibration_gap_pct": -1.74
+        },
+        {
+          "range": "60-70",
+          "count": 49,
+          "average_predicted_up_pct": 63.28,
+          "actual_up_rate_pct": 36.73,
+          "calibration_gap_pct": -26.54
+        },
+        {
+          "range": "70-80",
+          "count": 7,
+          "average_predicted_up_pct": 74.06,
+          "actual_up_rate_pct": 57.14,
+          "calibration_gap_pct": -16.91
+        },
+        {
+          "range": "80-90",
+          "count": 1,
+          "average_predicted_up_pct": 83.1,
+          "actual_up_rate_pct": 100.0,
+          "calibration_gap_pct": 16.9
+        }
+      ]
+    },
+    "3h": {
+      "available": true,
+      "prediction_count": 315,
+      "actual_up_rate_pct": 53.02,
+      "average_predicted_up_pct": 53.0,
+      "accuracy_at_50_pct": 46.98,
+      "directional_prediction_count": 199,
+      "directional_accuracy_pct": 49.25,
+      "confident_60": {
+        "count": 108,
+        "accuracy_pct": 46.3
+      },
+      "confident_65": {
+        "count": 55,
+        "accuracy_pct": 50.91
+      },
+      "brier_score": 0.26215,
+      "log_loss": 0.71819,
+      "expected_calibration_error_pct": 11.702,
+      "calibration_bins": [
+        {
+          "range": "30-40",
+          "count": 26,
+          "average_predicted_up_pct": 36.42,
+          "actual_up_rate_pct": 76.92,
+          "calibration_gap_pct": 40.51
+        },
+        {
+          "range": "40-50",
+          "count": 107,
+          "average_predicted_up_pct": 45.27,
+          "actual_up_rate_pct": 52.34,
+          "calibration_gap_pct": 7.07
+        },
+        {
+          "range": "50-60",
+          "count": 101,
+          "average_predicted_up_pct": 54.36,
+          "actual_up_rate_pct": 47.52,
+          "calibration_gap_pct": -6.84
+        },
+        {
+          "range": "60-70",
+          "count": 63,
+          "average_predicted_up_pct": 64.73,
+          "actual_up_rate_pct": 49.21,
+          "calibration_gap_pct": -15.53
+        },
+        {
+          "range": "70-80",
+          "count": 16,
+          "average_predicted_up_pct": 73.24,
+          "actual_up_rate_pct": 62.5,
+          "calibration_gap_pct": -10.74
+        },
+        {
+          "range": "80-90",
+          "count": 2,
+          "average_predicted_up_pct": 82.35,
+          "actual_up_rate_pct": 100.0,
+          "calibration_gap_pct": 17.65
+        }
+      ]
+    },
+    "5h": {
+      "available": true,
+      "prediction_count": 135,
+      "actual_up_rate_pct": 49.63,
+      "average_predicted_up_pct": 50.05,
+      "accuracy_at_50_pct": 42.96,
+      "directional_prediction_count": 73,
+      "directional_accuracy_pct": 47.95,
+      "confident_60": {
+        "count": 41,
+        "accuracy_pct": 48.78
+      },
+      "confident_65": {
+        "count": 14,
+        "accuracy_pct": 57.14
+      },
+      "brier_score": 0.25899,
+      "log_loss": 0.71138,
+      "expected_calibration_error_pct": 14.462,
+      "calibration_bins": [
+        {
+          "range": "20-30",
+          "count": 1,
+          "average_predicted_up_pct": 26.7,
+          "actual_up_rate_pct": 0.0,
+          "calibration_gap_pct": -26.7
+        },
+        {
+          "range": "30-40",
+          "count": 19,
+          "average_predicted_up_pct": 34.95,
+          "actual_up_rate_pct": 47.37,
+          "calibration_gap_pct": 12.42
+        },
+        {
+          "range": "40-50",
+          "count": 41,
+          "average_predicted_up_pct": 46.06,
+          "actual_up_rate_pct": 63.41,
+          "calibration_gap_pct": 17.35
+        },
+        {
+          "range": "50-60",
+          "count": 54,
+          "average_predicted_up_pct": 54.23,
+          "actual_up_rate_pct": 42.59,
+          "calibration_gap_pct": -11.64
+        },
+        {
+          "range": "60-70",
+          "count": 20,
+          "average_predicted_up_pct": 62.49,
+          "actual_up_rate_pct": 45.0,
+          "calibration_gap_pct": -17.49
+        }
+      ]
+    }
+  },
+  "skipped_predictions": {
+    "30m": 45,
+    "1h": 90,
+    "3h": 270,
+    "5h": 450
+  },
+  "semantics": "Fast chronological walk-forward validation. Models are retrained once per trading day per horizon using only outcomes fully resolved before that day's first tested timestamp. This is leakage-safe but much faster than refitting for every individual prediction.",
+  "period": "60d",
+  "interval": "5m"
+}

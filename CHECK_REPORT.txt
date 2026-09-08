@@ -1,0 +1,67 @@
+OrionTrader 2.0 — Milestone 2: One-action Decision Orchestration
+Version: 2.4.0 | Verification: 2026-09-02
+
+COMPLETED
+- Backend regression: 292 tests passed.
+- Frontend regression: 75 tests passed across 18 files.
+- Four offline Orion answer-quality fixtures passed (no paid model calls).
+- Python compilation: application and evaluation scripts passed.
+- Python dependency integrity: no broken requirements.
+- Vite production build passed; PWA assets included.
+- Charts and account details remain separately lazy-loaded.
+- Production dependency tree valid; dependency versions unchanged.
+- npm audit --omit=dev --offline: zero cached production advisories.
+  Not a fresh online advisory lookup or complete security audit.
+- Real-process startup: /health and /ready passed at version 2.4.0.
+- OpenAPI: 116 paths, including jobs, decisions and saved plans.
+- Cookie authentication, CSRF, background-job polling, logout and per-user
+  job/watchlist isolation passed against disposable databases.
+- Updated production browser smoke script passed its JavaScript syntax check.
+
+NEW CONTRACTS TESTED
+- Explicit job start, completion, cancellation, capacity, deduplication,
+  timeout, secret-safe failure and interrupted-restart receipts.
+- Cancelled tasks retain their slot until the in-flight stage exits and cannot
+  publish a later final decision.
+- Per-user immutable final-decision snapshots, digests, WAIT history and
+  separate observation records. Today card IDs match ledger records.
+- Only A/B training candidates; no low-liquidity fallback; six-hour retry guard.
+- Candidate save leaves active model unchanged; only validated/current
+  candidates can be promoted by the core workflow.
+- Purged cross-symbol train/calibration/holdout boundaries and walk-forward
+  folds kept outside the final holdout. Long overlapping labels fail closed.
+- Missing minutes and overnight gaps do not become falsely named horizons.
+- Provider minute-start labels move to completion times; current bars excluded.
+- Per-feature source age, stale benchmark/quote masking, undated stream-event
+  rejection and no trade/bar volume double counting.
+- Browser presentation expires required benchmark inputs independently of
+  the stock price and quote.
+- Plan target/invalidation observations, same-bar ambiguity, stale quote
+  rejection and no next-session substitute for missing horizon outcomes.
+- Frontend job polling, bounded busy retries, cancellation before a late start
+  response, failure cleanup, terminal states and authenticated job/plan writes.
+- All retained Milestone 1 and legacy regression contracts remain tested.
+
+NOT VERIFIED / LIMITS
+- No installed Chromium/browser executable: browser interaction, rendered
+  desktop/mobile visuals and screenshot review remain UNVERIFIED. No browser
+  download or network-approval circumvention attempted this milestone.
+- No real market/broker integration, paid OpenAI, live trade, Windows desktop,
+  Docker engine or installed-PWA device was exercised in this Linux sandbox.
+- New automatic preparation was exercised with deterministic test providers.
+  This does not demonstrate predictive performance on live markets.
+- Single backend process only. Not a distributed job queue or SaaS deployment.
+- Cancellation/deadline prevents publication; it does not forcibly terminate
+  a Python thread or the in-flight provider/CPU operation.
+- Monitoring requires explicit opt-in and an open visible My Stocks screen;
+  no push messages, unattended scheduler, executed fills or P&L claims.
+- Historical spread is a disclosed stress assumption, not historical NBBO.
+- Model gates do not establish independent sample size, robust profitability,
+  delisted-universe coverage or future reliability.
+
+RELEASE
+- Source-only ZIP generated with scripts/package_release.py.
+- Credentials, user databases, dependencies, virtual environments, compiled
+  output, caches and logs excluded. Existing user data is not deleted.
+- No Git metadata was supplied; no replacement repository or commit fabricated.
+- docs/MILESTONE_2.md contains current architecture, policy and next milestone.
