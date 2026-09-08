@@ -20,9 +20,54 @@ from app.services.premarket_predictive_engine import FEATURE_NAMES, extract_pred
 PREMARKET_START = time(4, 0)
 REGULAR_OPEN = time(9, 30)
 REGULAR_CLOSE = time(16, 0)
-SNAPSHOT_TIMES = (time(8, 30), time(9, 0), time(9, 15), time(9, 25))
 PREMARKET_HORIZONS = (5, 15, 30)
 OPEN_HORIZONS = (5, 15, 30, 60)
+
+
+def _clock(hour: int, minute: int = 0) -> time:
+    return time(hour, minute)
+
+
+def snapshot_times() -> tuple[time, ...]:
+    """Training snapshots spanning the full 04:00-09:30 ET premarket.
+
+    Very early premarket is sampled more sparsely because liquidity is usually
+    thinner. Sampling becomes progressively denser into the open, where the
+    feature state changes faster and is more relevant to opening-session
+    forecasts.
+
+    04:15-06:45: every 30 minutes
+    07:00-08:45: every 15 minutes
+    09:00-09:25: every 5 minutes
+
+    We start at 04:15 rather than 04:00 so a snapshot can contain at least some
+    observed history. Sparse symbols may still be skipped by the feature-quality
+    gate below; that is intentional and never filled with invented bars.
+    """
+    values: list[time] = []
+
+    minute_of_day = 4 * 60 + 15
+    while minute_of_day <= 6 * 60 + 45:
+        hour, minute = divmod(minute_of_day, 60)
+        values.append(_clock(hour, minute))
+        minute_of_day += 30
+
+    minute_of_day = 7 * 60
+    while minute_of_day <= 8 * 60 + 45:
+        hour, minute = divmod(minute_of_day, 60)
+        values.append(_clock(hour, minute))
+        minute_of_day += 15
+
+    minute_of_day = 9 * 60
+    while minute_of_day <= 9 * 60 + 25:
+        hour, minute = divmod(minute_of_day, 60)
+        values.append(_clock(hour, minute))
+        minute_of_day += 5
+
+    return tuple(values)
+
+
+SNAPSHOT_TIMES = snapshot_times()
 
 
 def normalize_columns(frame: pd.DataFrame) -> pd.DataFrame:
@@ -159,6 +204,8 @@ def build_day_rows(ticker: str, history_through_day: pd.DataFrame):
             "ticker": ticker,
             "session_date": str(day),
             "snapshot_at": snapshot_at.tz_convert("UTC").isoformat(),
+            "snapshot_time_et": snapshot_time.strftime("%H:%M"),
+            "minutes_to_open": (9 * 60 + 30) - (snapshot_time.hour * 60 + snapshot_time.minute),
             "edge_threshold_pct": threshold,
             "feature_count_present": present,
             **features,
@@ -232,9 +279,13 @@ def main():
             f"{float(dataset['feature_count_present'].median()):.1f}/"
             f"{int(dataset['feature_count_present'].max())} of {len(FEATURE_NAMES)}"
         )
+        print("Snapshots by ET time:")
+        snapshot_counts = dataset["snapshot_time_et"].value_counts().sort_index()
+        print("  " + ", ".join(f"{stamp}={int(count)}" for stamp, count in snapshot_counts.items()))
         for column in [column for column in dataset.columns if column.startswith("label_")]:
             counts = dataset[column].value_counts(dropna=False).to_dict()
-            print(column, counts)
+            usable = int(dataset[column].notna().sum())
+            print(f"{column} usable={usable}/{len(dataset)} {counts}")
 
 
 if __name__ == "__main__":
