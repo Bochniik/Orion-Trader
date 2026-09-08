@@ -13,18 +13,20 @@ export function pause(ms, signal) {
 export function normalizeCoreResult(result) {
   if (!result || typeof result !== "object" || Array.isArray(result)) return result;
 
-  const direction = String(result.direction || result.decision || "").trim();
+  const modelDirection = String(result.direction || "").trim();
+  const finalDecision = String(result.decision || modelDirection || "").trim();
   const strategyBias = result.strategy_bias ?? result.bias ?? null;
 
   return {
     ...result,
     ticker: String(result.ticker || result.symbol || "").trim().toUpperCase(),
     strategy_bias: strategyBias,
-    // `bias` used to leak a lower-level strategy vote into Dashboard as though it
-    // were Orion's final direction. Keep that evidence under strategy_bias and
-    // make the legacy top-level field agree with the actual final decision.
-    bias: direction || result.bias || null,
-    direction: direction || null,
+    model_direction: result.model_direction ?? modelDirection || null,
+    // The Dashboard historically read `bias` as the main conclusion. Do not let
+    // a lower-level strategy/model vote masquerade as Orion's final decision.
+    bias: finalDecision || result.bias || null,
+    direction: modelDirection || finalDecision || null,
+    decision: finalDecision || null,
     reasons: Array.isArray(result.reasons) ? result.reasons : [],
     warnings: Array.isArray(result.warnings) ? result.warnings : [],
   };
