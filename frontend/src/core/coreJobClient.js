@@ -10,6 +10,78 @@ export function pause(ms, signal) {
   });
 }
 
+function finite(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function clamp(value, low = 0, high = 100) {
+  return Math.max(low, Math.min(high, value));
+}
+
+function premarketDirectionalLayer(result) {
+  const mode = String(
+    result?.session_mode || result?.market_session || result?.session || ""
+  ).toLowerCase();
+
+  if (mode !== "premarket") return {};
+
+  const source = result?.premarket?.analysis || result?.premarket || result?.analysis || {};
+  const status = String(result?.status || source?.analysis_status || "").toLowerCase();
+  const hasFullHistory =
+    result?.premarket?.full_intraday_history === true ||
+    source?.full_intraday_history === true ||
+    status === "full_premarket_analysis";
+
+  const direction = String(
+    result?.direction || source?.direction || "neutral"
+  ).toLowerCase();
+
+  const score = finite(result?.premarket_score ?? result?.orion_score ?? source?.score);
+  const technical = finite(source?.technical_component);
+  const quality = finite(source?.data_quality_component);
+  const volume = finite(source?.volume_component);
+
+  if (!hasFullHistory || score === null || score <= 0) {
+    return {
+      opening_outlook: "WAIT",
+      directional_conviction: null,
+      forecast_horizon: "OPEN -> FIRST 30 MIN",
+      forecast_available: false,
+      forecast_semantics:
+        "A directional premarket outlook requires usable current premarket minute OHLCV. A point snapshot is not treated as a forecast.",
+    };
+  }
+
+  const evidence = [
+    [technical, 0.50],
+    [quality, 0.20],
+    [volume, 0.15],
+    [score, 0.15],
+  ].filter(([value]) => value !== null);
+
+  const weight = evidence.reduce((sum, [, w]) => sum + w, 0);
+  let conviction = weight
+    ? evidence.reduce((sum, [value, w]) => sum + value * w, 0) / weight
+    : score;
+
+  if (direction === "neutral") conviction = Math.min(conviction, 49);
+  conviction = Math.round(clamp(conviction, 0, 95));
+
+  return {
+    opening_outlook:
+      direction === "bullish" ? "UP BIAS" :
+      direction === "bearish" ? "DOWN BIAS" :
+      "NEUTRAL",
+    directional_conviction: conviction,
+    forecast_horizon: "OPEN -> FIRST 30 MIN",
+    forecast_available: direction !== "neutral",
+    forecast_semantics:
+      "Directional conviction is a 0-100 evidence-strength score from premarket structure, data quality, activity and setup quality. It is not a calibrated probability of profit.",
+  };
+}
+
 export function normalizeCoreResult(result) {
   if (!result || typeof result !== "object" || Array.isArray(result)) return result;
 
@@ -20,6 +92,7 @@ export function normalizeCoreResult(result) {
 
   return {
     ...result,
+    ...premarketDirectionalLayer(result),
     ticker: String(result.ticker || result.symbol || "").trim().toUpperCase(),
     strategy_bias: strategyBias,
     model_direction: preservedModelDirection,
@@ -43,7 +116,7 @@ export async function runCoreJob(body, { signal, onProgress = () => {} } = {},
       try { job = await api.start(body); break; }
       catch (error) {
         if (error.status !== 409 || attempt === 29) throw error;
-        onProgress("Waiting for the previous review to finish stopping…");
+        onProgress("Waiting for the previous review to finish stopping...");
         await api.wait(1000, signal);
       }
     }
