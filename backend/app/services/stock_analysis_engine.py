@@ -1805,7 +1805,10 @@ def analyze_stock_compact(
 
         include_articles=False,
         include_market_components=False,
-        include_fundamentals=False,
+        # Fundamentals are already loaded by analyze_stock for company/profile
+        # context. Keep them in the transient result so this compact facade can
+        # select a few display fields without triggering a second provider call.
+        include_fundamentals=True,
     )
 
     analysis = _safe_dict(
@@ -1823,6 +1826,18 @@ def analyze_stock_compact(
     company = _safe_dict(
         result.get(
             "company"
+        )
+    )
+
+    technical = _safe_dict(
+        result.get(
+            "technical"
+        )
+    )
+
+    fundamentals = _safe_dict(
+        result.get(
+            "fundamentals"
         )
     )
 
@@ -1894,6 +1909,35 @@ def analyze_stock_compact(
                 "industry"
             )
         ),
+
+        "price": (
+            technical.get(
+                "price"
+            )
+        ),
+
+        # Curated display contexts for the Analysis workspace. Keeping these
+        # small avoids exposing raw history arrays or relabelling rule scores.
+        "technical_context": {
+            key: technical.get(key)
+            for key in (
+                "price", "vwap", "ema_9", "ema_20", "ema_50",
+                "ema_200", "sma_50", "sma_200", "rsi", "atr",
+                "atr_pct", "relative_volume", "support", "resistance",
+                "momentum_5m_pct", "momentum_15m_pct",
+                "momentum_5d_pct", "momentum_20d_pct",
+            )
+        },
+
+        "fundamental_context": {
+            key: fundamentals.get(key)
+            for key in (
+                "available", "market_cap", "fundamental_profile",
+                "fundamental_profile_label", "growth_score",
+                "business_quality_score", "balance_sheet_score",
+                "valuation_score", "earnings_revision_score",
+            )
+        },
 
         "horizon": (
             normalized_horizon

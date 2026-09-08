@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { getNews, searchStocks } from "../api/api";
 import StockNewsPanel from "../components/StockNewsPanel";
-import OpportunityCard from "./OpportunityCard";
+import AnalysisOverview from "./AnalysisOverview";
 import useCoreJob from "./useCoreJob";
 
 const CandleChart = lazy(() => import("../components/CandleChart"));
@@ -185,7 +185,7 @@ export default function AnalyzeView({
       <div className="core-page-heading analyze-page-heading">
         <div>
           <p className="core-eyebrow">DEEP STOCK ANALYSIS</p>
-          <h1>Understand the setup. See the evidence.</h1>
+          <h1>Deep Stock Analysis</h1>
           <p>
             Orion combines price action, market context, news, risk and model evidence
             into one focused research view.
@@ -305,55 +305,50 @@ export default function AnalyzeView({
             )}
           </div>
 
-          <OpportunityCard
-            key={`${ticker}-${selection?.request}`}
-            decision={result.data}
-            analysis
-            onSave={onSave}
-            saved={saved.includes(result.data.ticker)}
-          />
+          <AnalysisOverview analysis={result.data} />
 
-          <section
-            className="core-chart analyze-chart-panel"
-            aria-label={`Price chart for ${result.data.ticker}`}
-          >
-            <div className="analyze-section-heading">
-              <div>
-                <p className="core-eyebrow">PRICE ACTION</p>
-                <h2>{result.data.ticker} chart</h2>
+          <div className="analysis-market-grid">
+            <section
+              className="core-chart analyze-chart-panel"
+              aria-label={`Price chart for ${result.data.ticker}`}
+            >
+              <div className="analyze-section-heading">
+                <div>
+                  <p className="core-eyebrow">PRICE ACTION</p>
+                  <h2>{result.data.ticker} chart</h2>
+                </div>
+                <span>Live quote and selected range</span>
               </div>
-              <span>Updates automatically with the selected ticker</span>
-            </div>
 
-            <Suspense fallback={<p>Loading chart…</p>}>
-              <CandleChart
-                key={result.data.ticker}
+              <Suspense fallback={<p>Loading chart…</p>}>
+                <CandleChart
+                  key={result.data.ticker}
+                  ticker={result.data.ticker}
+                  refreshKey={selection?.request}
+                />
+              </Suspense>
+            </section>
+
+            <section
+              className="analyze-news-panel"
+              aria-label={`Latest news for ${result.data.ticker}`}
+            >
+              <div className="analyze-section-heading">
+                <div>
+                  <p className="core-eyebrow">LATEST NEWS & CATALYSTS</p>
+                  <h2>What is moving {result.data.ticker}?</h2>
+                </div>
+              </div>
+
+              <StockNewsPanel
                 ticker={result.data.ticker}
-                refreshKey={selection?.request}
+                news={news}
+                loading={newsLoading}
+                error={newsError}
+                onRefresh={refreshNews}
               />
-            </Suspense>
-          </section>
-
-          <section
-            className="analyze-news-panel"
-            aria-label={`Latest news for ${result.data.ticker}`}
-          >
-            <div className="analyze-section-heading">
-              <div>
-                <p className="core-eyebrow">LATEST NEWS & CATALYSTS</p>
-                <h2>What is moving {result.data.ticker}?</h2>
-              </div>
-              <span>Most recent available company-specific coverage</span>
-            </div>
-
-            <StockNewsPanel
-              ticker={result.data.ticker}
-              news={news}
-              loading={newsLoading}
-              error={newsError}
-              onRefresh={refreshNews}
-            />
-          </section>
+            </section>
+          </div>
         </>
       )}
 
