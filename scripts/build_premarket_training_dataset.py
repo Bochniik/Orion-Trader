@@ -79,23 +79,24 @@ def close_at_or_before(frame: pd.DataFrame, target: pd.Timestamp):
     return float(eligible["Close"].iloc[-1])
 
 
-def build_day_rows(ticker: str, day_frame: pd.DataFrame):
-    local = day_frame.copy()
+def build_day_rows(ticker: str, history_through_day: pd.DataFrame):
+    local = history_through_day.copy()
     local.index = local.index.tz_convert("America/New_York")
-    day = local.index[0].date()
+    day = max(local.index.date)
+    current = local.loc[local.index.date == day]
 
-    premarket = local[
-        (local.index.time >= PREMARKET_START)
-        & (local.index.time < REGULAR_OPEN)
+    premarket = current[
+        (current.index.time >= PREMARKET_START)
+        & (current.index.time < REGULAR_OPEN)
     ]
-    regular = local[
-        (local.index.time >= REGULAR_OPEN)
-        & (local.index.time < REGULAR_CLOSE)
+    regular = current[
+        (current.index.time >= REGULAR_OPEN)
+        & (current.index.time < REGULAR_CLOSE)
     ]
     if premarket.empty or regular.empty:
         return []
 
-    previous_rows = local[local.index.date < day]
+    previous_rows = local.loc[local.index.date < day]
     previous_close = float(previous_rows["Close"].iloc[-1]) if not previous_rows.empty else None
     if previous_close is None or previous_close <= 0:
         return []
@@ -113,7 +114,7 @@ def build_day_rows(ticker: str, day_frame: pd.DataFrame):
         if any(features.get(name) is None for name in FEATURE_NAMES):
             continue
 
-        current = float(observed["Close"].iloc[-1])
+        current_price = float(observed["Close"].iloc[-1])
         threshold = edge_threshold_pct(features)
         row = {
             "ticker": ticker,
@@ -129,7 +130,7 @@ def build_day_rows(ticker: str, day_frame: pd.DataFrame):
                 row[f"label_premarket_{minutes}m"] = None
                 continue
             future = close_at_or_before(premarket, target_at)
-            ret = ((future / current) - 1.0) * 100.0 if future and current > 0 else None
+            ret = ((future / current_price) - 1.0) * 100.0 if future and current_price > 0 else None
             row[f"label_premarket_{minutes}m"] = label_return(ret, threshold)
 
         open_timestamp = regular.index[0]
@@ -154,7 +155,6 @@ def main():
     raw["ny_date"] = raw["timestamp"].dt.tz_convert("America/New_York").dt.date
     rows = []
 
-    # Keep the prior completed-session bars available while each day is processed.
     for ticker, ticker_frame in raw.groupby("ticker", sort=False):
         ticker_frame = ticker_frame.sort_values("timestamp").set_index("timestamp")
         for day in sorted(ticker_frame["ny_date"].unique()):
@@ -166,13 +166,10 @@ def main():
             ]
             if current_day.empty:
                 continue
-            # prepend historical rows solely so build_day_rows can resolve previous close
-            combined = pd.concat([
-                history_through_day.loc[
-                    history_through_day.index.tz_convert("America/New_York").date < day
-                ].tail(390),
-                current_day,
-            ])
+            previous = history_through_day.loc[
+                history_through_day.index.tz_convert("America/New_York").date < day
+            ].tail(390)
+            combined = pd.concat([previous, current_day])
             rows.extend(build_day_rows(ticker, combined))
 
     dataset = pd.DataFrame(rows)
