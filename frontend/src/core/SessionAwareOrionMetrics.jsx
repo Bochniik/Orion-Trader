@@ -187,6 +187,24 @@ function PremarketMetrics({ analysis }) {
     finite(analysis?.premarket?.premarket_price) ??
     finite(analysis?.analysis?.premarket_price);
 
+  const predictive = analysis?.predictive_outlook || {};
+  const open5m = predictive?.signals?.open_5m || null;
+  const predictiveAvailable = predictive?.available === true && Boolean(open5m);
+  const predictiveActionable = open5m?.actionable === true;
+  const predictiveDirection = predictiveActionable
+    ? String(open5m?.direction || "NO_EDGE").toUpperCase()
+    : "NO EDGE";
+  const predictiveReason =
+    predictive?.reason === "training_feed_mismatch_requires_sip"
+      ? "SIP DATA REQUIRED"
+      : predictive?.reason === "trained_hierarchical_model_artifact_missing"
+        ? "MODEL NOT LOADED"
+        : !predictiveAvailable
+          ? "UNAVAILABLE"
+          : predictiveActionable
+            ? "VALIDATED SIGNAL"
+            : "BELOW VALIDATED GATE";
+
   return (
     <div className="orion-session-metrics orion-session-metrics-premarket">
       <div className="orion-premarket-score">
@@ -220,6 +238,41 @@ function PremarketMetrics({ analysis }) {
         <div>
           <small>Premarket price</small>
           <strong>{pmPrice === null ? "N/A" : `$${pmPrice.toFixed(2)}`}</strong>
+        </div>
+      </div>
+
+      <div className="orion-session-message">
+        <ShieldCheck size={18} />
+        <div>
+          <strong>Validated predictive model · Open → 5 min</strong>
+          <p>
+            {predictiveActionable
+              ? `${predictiveDirection} signal passed the validated EDGE + DIRECTION gate.`
+              : `No actionable model signal. ${predictiveReason}.`}
+          </p>
+        </div>
+      </div>
+
+      <div className="orion-mini-metric-grid">
+        <div>
+          <small>Model direction</small>
+          <strong>{predictiveAvailable ? predictiveDirection : predictiveReason}</strong>
+        </div>
+        <div>
+          <small>Edge probability</small>
+          <strong>{open5m ? probability(open5m.edge_probability) : "N/A"}</strong>
+        </div>
+        <div>
+          <small>Direction confidence</small>
+          <strong>{open5m ? probability(open5m.direction_confidence) : "N/A"}</strong>
+        </div>
+        <div>
+          <small>UP / DOWN given edge</small>
+          <strong>
+            {open5m
+              ? `${probability(open5m.up_given_edge)} / ${probability(open5m.down_given_edge)}`
+              : "N/A"}
+          </strong>
         </div>
       </div>
     </div>
