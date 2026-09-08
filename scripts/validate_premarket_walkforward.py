@@ -19,6 +19,11 @@ from train_premarket_predictive import (
 )
 
 
+NO_EDGE_INDEX = CLASSES.index("NO_EDGE")
+UP_INDEX = CLASSES.index("UP")
+DOWN_INDEX = CLASSES.index("DOWN")
+
+
 def prepare(frame: pd.DataFrame, target: str) -> pd.DataFrame:
     label = f"label_{target}"
     required = ["ticker", "session_date", "snapshot_at", *FEATURE_NAMES, label]
@@ -67,14 +72,109 @@ def confidence_buckets(confidence: np.ndarray, correct: np.ndarray) -> list[dict
     return rows
 
 
-def per_ticker_metrics(tickers: np.ndarray, correct: np.ndarray, min_samples: int = 50) -> list[dict]:
+def directional_confidence_buckets(
+    confidence: np.ndarray,
+    pred: np.ndarray,
+    y: np.ndarray,
+) -> list[dict]:
+    directional = pred != NO_EDGE_INDEX
+    total = len(pred)
+    edges = [(0.0, 0.50), (0.50, 0.55), (0.55, 0.60), (0.60, 0.65), (0.65, 0.70), (0.70, 0.80), (0.80, 0.90), (0.90, 1.000001)]
+    rows = []
+    for low, high in edges:
+        mask = directional & (confidence >= low) & (confidence < high)
+        n = int(mask.sum())
+        if not n:
+            continue
+        exact = pred[mask] == y[mask]
+        truth_directional = y[mask] != NO_EDGE_INDEX
+        sign_correct = exact
+        rows.append({
+            "bucket": f"{low:.2f}-{min(high, 1.0):.2f}",
+            "samples": n,
+            "coverage_all": round(n / total, 6),
+            "exact_accuracy": round(float(exact.mean()), 6),
+            "actual_directional_rate": round(float(truth_directional.mean()), 6),
+            "mean_confidence": round(float(confidence[mask].mean()), 6),
+            "up_predictions": int(np.sum(pred[mask] == UP_INDEX)),
+            "down_predictions": int(np.sum(pred[mask] == DOWN_INDEX)),
+        })
+    return rows
+
+
+def directional_metrics(pred: np.ndarray, y: np.ndarray, confidence: np.ndarray) -> dict:
+    mask = pred != NO_EDGE_INDEX
+    n = int(mask.sum())
+    total = int(len(pred))
+    if not n:
+        return {
+            "samples": 0,
+            "coverage": 0.0,
+            "exact_accuracy": None,
+            "mean_confidence": None,
+            "actual_directional_rate": None,
+            "up": {},
+            "down": {},
+        }
+
+    pred_d = pred[mask]
+    y_d = y[mask]
+    conf_d = confidence[mask]
+
+    def class_metrics(class_index: int) -> dict:
+        class_mask = pred_d == class_index
+        count = int(class_mask.sum())
+        if not count:
+            return {"predictions": 0, "precision": None, "mean_confidence": None}
+        return {
+            "predictions": count,
+            "precision": round(float(np.mean(y_d[class_mask] == class_index)), 6),
+            "mean_confidence": round(float(np.mean(conf_d[class_mask])), 6),
+        }
+
+    return {
+        "samples": n,
+        "coverage": round(n / total, 6),
+        "exact_accuracy": round(float(np.mean(pred_d == y_d)), 6),
+        "mean_confidence": round(float(np.mean(conf_d)), 6),
+        "actual_directional_rate": round(float(np.mean(y_d != NO_EDGE_INDEX)), 6),
+        "up": class_metrics(UP_INDEX),
+        "down": class_metrics(DOWN_INDEX),
+    }
+
+
+def confusion_matrix(pred: np.ndarray, y: np.ndarray) -> dict:
+    result = {}
+    for actual_index, actual_label in enumerate(CLASSES):
+        row = {}
+        actual_mask = y == actual_index
+        for predicted_index, predicted_label in enumerate(CLASSES):
+            row[predicted_label] = int(np.sum(actual_mask & (pred == predicted_index)))
+        result[actual_label] = row
+    return result
+
+
+def per_ticker_metrics(tickers: np.ndarray, correct: np.ndarray, pred: np.ndarray, y: np.ndarray, min_samples: int = 50) -> list[dict]:
     rows = []
     for ticker in sorted(set(tickers.tolist())):
         mask = tickers == ticker
         n = int(mask.sum())
         if n < min_samples:
             continue
-        rows.append({"ticker": ticker, "samples": n, "accuracy": round(float(correct[mask].mean()), 6)})
+        directional = mask & (pred != NO_EDGE_INDEX)
+        directional_n = int(directional.sum())
+        rows.append({
+            "ticker": ticker,
+            "samples": n,
+            "accuracy": round(float(correct[mask].mean()), 6),
+            "directional_predictions": directional_n,
+            "directional_coverage": round(directional_n / n, 6),
+            "directional_accuracy": (
+                round(float(np.mean(pred[directional] == y[directional])), 6)
+                if directional_n
+                else None
+            ),
+        })
     return sorted(rows, key=lambda row: (-row["samples"], row["ticker"]))
 
 
@@ -88,7 +188,6 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days: int, ca
     all_probabilities = []
     all_y = []
     all_tickers = []
-    all_dates = []
 
     test_start = min_train_days + calibration_days
     fold_index = 0
@@ -120,8 +219,10 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days: int, ca
         p = probabilities(x_test, weights, bias, temperature)
         pred = np.argmax(p, axis=1)
         correct = pred == y_test
+        confidence = np.max(p, axis=1)
         baseline_class = int(np.bincount(y_train, minlength=3).argmax())
         baseline_accuracy = float(np.mean(y_test == baseline_class))
+        directional = directional_metrics(pred, y_test, confidence)
 
         fold_rows.append({
             "fold": fold_index,
@@ -138,12 +239,12 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days: int, ca
             "log_loss": round(multiclass_log_loss(p, y_test), 6),
             "brier": round(brier(p, y_test), 6),
             "temperature": round(float(temperature), 6),
+            "directional": directional,
         })
 
         all_probabilities.append(p)
         all_y.append(y_test)
         all_tickers.append(test["ticker"].to_numpy(dtype=str))
-        all_dates.append(test["session_date"].astype(str).to_numpy())
         fold_index += 1
         test_start = test_end
 
@@ -157,6 +258,7 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days: int, ca
     correct = pred == y
     confidence = np.max(p, axis=1)
     fold_lifts = np.asarray([row["lift"] for row in fold_rows], dtype=float)
+    directional = directional_metrics(pred, y, confidence)
 
     return {
         "target": target,
@@ -171,8 +273,11 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days: int, ca
             "median_fold_lift": round(float(np.median(fold_lifts)), 6),
             "mean_fold_lift": round(float(np.mean(fold_lifts)), 6),
         },
+        "directional": directional,
+        "confusion_matrix": confusion_matrix(pred, y),
         "confidence_buckets": confidence_buckets(confidence, correct),
-        "per_ticker": per_ticker_metrics(tickers, correct),
+        "directional_confidence_buckets": directional_confidence_buckets(confidence, pred, y),
+        "per_ticker": per_ticker_metrics(tickers, correct, pred, y),
     }
 
 
@@ -210,6 +315,7 @@ def main() -> None:
         )
         report["targets"][target] = result
         agg = result["aggregate"]
+        directional = result["directional"]
         print(
             f"  samples={result['samples']} folds={agg['total_folds']} "
             f"accuracy={agg['accuracy']:.4f} mean_lift={agg['mean_fold_lift']:+.4f} "
@@ -217,12 +323,27 @@ def main() -> None:
             f"positive_folds={agg['positive_lift_folds']}/{agg['total_folds']} "
             f"logloss={agg['log_loss']:.4f} brier={agg['brier']:.4f}"
         )
+        if directional["samples"]:
+            print(
+                f"  DIRECTIONAL: n={directional['samples']} coverage={directional['coverage']:.1%} "
+                f"accuracy={directional['exact_accuracy']:.1%} mean_conf={directional['mean_confidence']:.1%} "
+                f"UP precision={directional['up']['precision']:.1%} ({directional['up']['predictions']}) "
+                f"DOWN precision={directional['down']['precision']:.1%} ({directional['down']['predictions']})"
+            )
         for bucket in result["confidence_buckets"]:
             if bucket["samples"] >= 100:
                 print(
-                    f"    conf {bucket['bucket']}: n={bucket['samples']} "
+                    f"    all conf {bucket['bucket']}: n={bucket['samples']} "
                     f"coverage={bucket['coverage']:.1%} accuracy={bucket['accuracy']:.1%} "
                     f"mean_conf={bucket['mean_confidence']:.1%}"
+                )
+        for bucket in result["directional_confidence_buckets"]:
+            if bucket["samples"] >= 50:
+                print(
+                    f"    DIR conf {bucket['bucket']}: n={bucket['samples']} "
+                    f"coverage={bucket['coverage_all']:.1%} exact_acc={bucket['exact_accuracy']:.1%} "
+                    f"mean_conf={bucket['mean_confidence']:.1%} "
+                    f"UP={bucket['up_predictions']} DOWN={bucket['down_predictions']}"
                 )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
