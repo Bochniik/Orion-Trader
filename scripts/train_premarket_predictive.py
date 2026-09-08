@@ -3,39 +3,23 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 
 import numpy as np
 import pandas as pd
 
 
-CLASSES = ("DOWN", "NO_EDGE", "UP")
-FEATURE_NAMES = (
-    "gap_pct",
-    "return_5m_pct",
-    "return_15m_pct",
-    "return_30m_pct",
-    "session_return_pct",
-    "vwap_distance_pct",
-    "range_location",
-    "range_width_pct",
-    "trend_slope_pct_per_bar",
-    "realized_volatility_15m",
-    "realized_volatility_30m",
-    "volume_acceleration",
-    "log_dollar_volume",
-    "elapsed_premarket_fraction",
-    "bar_coverage",
+ROOT = Path(__file__).resolve().parents[1]
+BACKEND = ROOT / "backend"
+if str(BACKEND) not in sys.path:
+    sys.path.insert(0, str(BACKEND))
+
+from app.services.premarket_predictive_engine import (
+    CLASSES,
+    FEATURE_NAMES,
+    MODEL_VERSION,
+    TARGETS,
 )
-TARGETS = (
-    "premarket_5m",
-    "premarket_15m",
-    "premarket_30m",
-    "open_5m",
-    "open_15m",
-    "open_30m",
-    "open_60m",
-)
-MODEL_VERSION = "premarket_predictive_v2"
 
 
 def softmax(logits):
@@ -101,43 +85,80 @@ def class_index(series):
 
 def prepare_frame(frame, target):
     label_column = f"label_{target}"
-    required = ["snapshot_at", *FEATURE_NAMES, label_column]
+    required = ["session_date", "snapshot_at", *FEATURE_NAMES, label_column]
     missing = [column for column in required if column not in frame.columns]
     if missing:
         raise ValueError(f"Missing columns for {target}: {', '.join(missing)}")
 
     work = frame[required].copy()
     work["snapshot_at"] = pd.to_datetime(work["snapshot_at"], utc=True, errors="coerce")
+    work["session_date"] = pd.to_datetime(work["session_date"], errors="coerce").dt.date
     for feature in FEATURE_NAMES:
         work[feature] = pd.to_numeric(work[feature], errors="coerce")
     work["y"] = class_index(work[label_column])
-    work = work.dropna().sort_values("snapshot_at").reset_index(drop=True)
+    # Labels/timestamps must exist. Feature NaNs are allowed and are imputed
+    # strictly from the training split later.
+    work = work.dropna(subset=["session_date", "snapshot_at", "y"])
+    work["y"] = work["y"].astype(int)
+    work = work.sort_values(["session_date", "snapshot_at"]).reset_index(drop=True)
     return work
 
 
 def chronological_splits(work):
-    n = len(work)
-    if n < 500:
-        raise ValueError(f"Need at least 500 clean observations, found {n}")
-    train_end = int(n * 0.60)
-    validation_end = int(n * 0.75)
-    calibration_end = int(n * 0.875)
-    return (
-        work.iloc[:train_end],
-        work.iloc[train_end:validation_end],
-        work.iloc[validation_end:calibration_end],
-        work.iloc[calibration_end:],
+    if len(work) < 500:
+        raise ValueError(f"Need at least 500 labelled observations, found {len(work)}")
+
+    dates = sorted(work["session_date"].unique())
+    if len(dates) < 40:
+        raise ValueError(
+            f"Need at least 40 distinct session dates for date-safe train/validation/calibration/test splits, found {len(dates)}"
+        )
+
+    n_dates = len(dates)
+    train_end = max(1, int(n_dates * 0.60))
+    validation_end = max(train_end + 1, int(n_dates * 0.75))
+    calibration_end = max(validation_end + 1, int(n_dates * 0.875))
+    calibration_end = min(calibration_end, n_dates - 1)
+
+    train_dates = set(dates[:train_end])
+    validation_dates = set(dates[train_end:validation_end])
+    calibration_dates = set(dates[validation_end:calibration_end])
+    test_dates = set(dates[calibration_end:])
+
+    splits = (
+        work.loc[work["session_date"].isin(train_dates)].copy(),
+        work.loc[work["session_date"].isin(validation_dates)].copy(),
+        work.loc[work["session_date"].isin(calibration_dates)].copy(),
+        work.loc[work["session_date"].isin(test_dates)].copy(),
     )
 
+    if any(split.empty for split in splits):
+        raise ValueError("Chronological date split produced an empty partition")
 
-def matrix(frame, mean=None, scale=None):
+    return splits
+
+
+def matrix(frame, *, impute=None, mean=None, scale=None):
     x = frame[list(FEATURE_NAMES)].to_numpy(dtype=float)
+
+    if impute is None:
+        impute = np.nanmedian(x, axis=0)
+        # A feature missing from the entire training partition is not usable.
+        if np.isnan(impute).any():
+            bad = [name for name, value in zip(FEATURE_NAMES, impute) if np.isnan(value)]
+            raise ValueError(
+                "Training partition has no finite observations for: " + ", ".join(bad)
+            )
+
+    x = np.where(np.isnan(x), impute, x)
+
     if mean is None:
         mean = np.mean(x, axis=0)
     if scale is None:
         scale = np.std(x, axis=0)
         scale = np.where(scale < 1e-9, 1.0, scale)
-    return (x - mean) / scale, mean, scale
+
+    return (x - mean) / scale, impute, mean, scale
 
 
 def evaluate(x, y, weights, bias, temperature):
@@ -156,10 +177,10 @@ def train_target(frame, target):
     work = prepare_frame(frame, target)
     train, validation, calibration, test = chronological_splits(work)
 
-    x_train, mean, scale = matrix(train)
-    x_validation, _, _ = matrix(validation, mean, scale)
-    x_calibration, _, _ = matrix(calibration, mean, scale)
-    x_test, _, _ = matrix(test, mean, scale)
+    x_train, impute, mean, scale = matrix(train)
+    x_validation, _, _, _ = matrix(validation, impute=impute, mean=mean, scale=scale)
+    x_calibration, _, _, _ = matrix(calibration, impute=impute, mean=mean, scale=scale)
+    x_test, _, _, _ = matrix(test, impute=impute, mean=mean, scale=scale)
 
     y_train = train["y"].to_numpy(dtype=int)
     y_validation = validation["y"].to_numpy(dtype=int)
@@ -172,6 +193,11 @@ def train_target(frame, target):
     baseline_class = int(np.bincount(y_train, minlength=3).argmax())
     baseline_accuracy = float(np.mean(y_test == baseline_class))
 
+    missing_rates = {
+        name: round(float(train[name].isna().mean()), 6)
+        for name in FEATURE_NAMES
+    }
+
     metrics = {
         "train": evaluate(x_train, y_train, weights, bias, 1.0),
         "validation": evaluate(x_validation, y_validation, weights, bias, 1.0),
@@ -182,10 +208,13 @@ def train_target(frame, target):
         "temperature": round(temperature, 8),
         "first_snapshot": str(work["snapshot_at"].iloc[0]),
         "last_snapshot": str(work["snapshot_at"].iloc[-1]),
+        "distinct_session_dates": int(work["session_date"].nunique()),
+        "train_feature_missing_rates": missing_rates,
     }
 
     return {
         "feature_names": list(FEATURE_NAMES),
+        "impute": impute.tolist(),
         "mean": mean.tolist(),
         "scale": scale.tolist(),
         "weights": weights.tolist(),
@@ -208,8 +237,9 @@ def main():
         "classes": list(CLASSES),
         "metadata": {
             "training_rows_raw": int(len(frame)),
-            "split_policy": "chronological_60_train_15_validation_12.5_calibration_12.5_test",
+            "split_policy": "date_safe_chronological_60_train_15_validation_12.5_calibration_12.5_test",
             "calibration": "held_out_temperature_scaling",
+            "missing_features": "train_only_median_imputation",
             "probability_semantics": "Empirical three-class directional probabilities; never use a rule score as probability.",
         },
         "targets": {},
