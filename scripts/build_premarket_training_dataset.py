@@ -79,6 +79,34 @@ def close_at_or_before(frame: pd.DataFrame, target: pd.Timestamp):
     return float(eligible["Close"].iloc[-1])
 
 
+def previous_regular_close(local: pd.DataFrame, day) -> float | None:
+    """Resolve the last completed 09:30-16:00 ET close before `day`.
+
+    Extended-hours collectors can contain after-hours/overnight rows. Using the
+    last arbitrary row from the previous calendar day would leak the after-hours
+    price into the premarket gap feature. The reference must be the completed
+    regular-session close instead.
+    """
+    earlier = local.loc[local.index.date < day]
+    if earlier.empty:
+        return None
+
+    regular = earlier[
+        (earlier.index.time >= REGULAR_OPEN)
+        & (earlier.index.time < REGULAR_CLOSE)
+    ]
+    if regular.empty:
+        return None
+
+    latest_day = max(regular.index.date)
+    previous_session = regular.loc[regular.index.date == latest_day]
+    if previous_session.empty:
+        return None
+
+    value = float(previous_session["Close"].iloc[-1])
+    return value if np.isfinite(value) and value > 0 else None
+
+
 def build_day_rows(ticker: str, history_through_day: pd.DataFrame):
     local = history_through_day.copy()
     local.index = local.index.tz_convert("America/New_York")
@@ -96,9 +124,8 @@ def build_day_rows(ticker: str, history_through_day: pd.DataFrame):
     if premarket.empty or regular.empty:
         return []
 
-    previous_rows = local.loc[local.index.date < day]
-    previous_close = float(previous_rows["Close"].iloc[-1]) if not previous_rows.empty else None
-    if previous_close is None or previous_close <= 0:
+    previous_close = previous_regular_close(local, day)
+    if previous_close is None:
         return []
 
     open_price = float(regular["Open"].iloc[0])
@@ -168,7 +195,7 @@ def main():
                 continue
             previous = history_through_day.loc[
                 history_through_day.index.tz_convert("America/New_York").date < day
-            ].tail(390)
+            ].tail(1200)
             combined = pd.concat([previous, current_day])
             rows.extend(build_day_rows(ticker, combined))
 
