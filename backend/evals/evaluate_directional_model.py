@@ -1,7 +1,9 @@
 """Measure the deployed directional model without treating in-sample data as evidence.
 
 This evaluator intentionally uses only settled live predictions linked to a saved
-model.  It never turns training/holdout summary fields into new observations.
+model. It never turns training/holdout summary fields into new observations.
+Benchmarks that influence the headline comparison are computable at prediction
+time; evaluation-set label statistics are retained only as diagnostics.
 """
 from __future__ import annotations
 
@@ -24,11 +26,11 @@ def _finite(value):
     return value if math.isfinite(value) else None
 
 
-def _baseline(rows, mode):
+def _accuracy_baseline(rows, mode):
     actual = [row["actual_direction"] for row in rows]
     if not actual:
         return None
-    if mode == "majority":
+    if mode == "evaluation_set_oracle_majority":
         return max(Counter(actual).values()) / len(actual)
     if mode == "always_up":
         return sum(value == "UP" for value in actual) / len(actual)
@@ -45,14 +47,91 @@ def _baseline(rows, mode):
     return (correct / usable if usable else None)
 
 
-def _metrics(rows, include_groups=True):
+def _chronological_prior_baseline(rows, alpha=1.0):
+    """Expanding class-prior benchmark using only outcomes known before each row.
+
+    Laplace smoothing gives the first prediction a uniform prior and avoids
+    peeking at the eventual evaluation-set class balance. Rows are expected in
+    persistence order, which is the chronological settlement order used by the
+    prediction store evaluator.
+    """
     if not rows:
-        return {"sample_count": 0, "directional_accuracy": None,
-                "multiclass_accuracy": None, "baseline_accuracy": None,
-                "brier_score": None, "log_loss": None,
+        return {
+            "sample_count": 0,
+            "multiclass_accuracy": None,
+            "brier_score": None,
+            "log_loss": None,
+            "alpha": float(alpha),
+        }
+
+    counts = Counter()
+    correct = 0
+    brier_total = 0.0
+    log_loss_total = 0.0
+    used = 0
+
+    for row in rows:
+        actual = str(row.get("actual_direction") or "").upper()
+        if actual not in CLASSES:
+            continue
+        denominator = sum(counts.values()) + float(alpha) * len(CLASSES)
+        probs = {
+            name: (counts[name] + float(alpha)) / denominator
+            for name in CLASSES
+        }
+        predicted = max(CLASSES, key=lambda name: (probs[name], -CLASSES.index(name)))
+        correct += predicted == actual
+        brier_total += sum((probs[name] - (actual == name)) ** 2 for name in CLASSES)
+        log_loss_total += -math.log(max(1e-12, probs[actual]))
+        used += 1
+        counts[actual] += 1
+
+    if not used:
+        return {
+            "sample_count": 0,
+            "multiclass_accuracy": None,
+            "brier_score": None,
+            "log_loss": None,
+            "alpha": float(alpha),
+        }
+    return {
+        "sample_count": used,
+        "multiclass_accuracy": round(correct / used, 8),
+        "brier_score": round(brier_total / used, 8),
+        "log_loss": round(log_loss_total / used, 8),
+        "alpha": float(alpha),
+    }
+
+
+def _valid_rows(rows):
+    valid = []
+    rejected = 0
+    for row in rows:
+        actual = str(row.get("actual_direction") or "").upper()
+        probs = [_finite(row.get(f"p_{name.lower()}")) for name in CLASSES]
+        if actual not in CLASSES or any(value is None or value < 0 for value in probs):
+            rejected += 1
+            continue
+        total = sum(probs)
+        if total <= 0 or abs(total - 1.0) > 1e-6:
+            rejected += 1
+            continue
+        item = dict(row)
+        item["actual_direction"] = actual
+        valid.append(item)
+    return valid, rejected
+
+
+def _metrics(rows, include_groups=True):
+    rows, rejected = _valid_rows(rows)
+    if not rows:
+        return {"sample_count": 0, "rejected_malformed_rows": rejected,
+                "directional_accuracy": None, "multiclass_accuracy": None,
+                "baseline_accuracy": None, "brier_score": None, "log_loss": None,
                 "calibration_error": None, "class_distribution": {},
-                "confidence_buckets": [], "by_direction": {}, "by_horizon": {}}
-    actual = [str(row.get("actual_direction") or "").upper() for row in rows]
+                "confidence_buckets": [], "by_direction": {}, "by_horizon": {},
+                "baselines": {"chronological_prior": _chronological_prior_baseline([])}}
+    actual = [row["actual_direction"] for row in rows]
     probs = [[float(row[f"p_{name.lower()}"]) for name in CLASSES] for row in rows]
     predicted = [CLASSES[max(range(3), key=lambda i: values[i])] for values in probs]
     multiclass = sum(p == a for p, a in zip(predicted, actual)) / len(rows)
@@ -63,7 +142,7 @@ def _metrics(rows, include_groups=True):
     brier = sum(sum((v[i] - (a == CLASSES[i])) ** 2 for i in range(3))
                 for v, a in zip(probs, actual)) / len(rows)
     log_loss = sum(-math.log(max(1e-12, v[CLASSES.index(a)]))
-                   for v, a in zip(probs, actual) if a in CLASSES) / len(rows)
+                   for v, a in zip(probs, actual)) / len(rows)
     confidence = [max(v) for v in probs]
     calibration_error = 0.0
     buckets = []
@@ -78,20 +157,32 @@ def _metrics(rows, include_groups=True):
         buckets.append({"lower": lower, "upper": min(1.0, upper),
                         "count": len(selected), "mean_predicted_probability": round(mean_conf, 8),
                         "observed_success_rate": round(success, 8)})
+
+    chronological = _chronological_prior_baseline(rows)
+
     def grouped(key):
         groups = defaultdict(list)
         for row in rows:
             groups[str(key(row) or "unknown")].append(row)
         return {name: _metrics(group, include_groups=False) for name, group in sorted(groups.items())}
+
     return {
         "sample_count": len(rows),
+        "rejected_malformed_rows": rejected,
         "directional_accuracy": round(directional_accuracy, 8) if directional_accuracy is not None else None,
         "multiclass_accuracy": round(multiclass, 8),
-        "baseline_accuracy": round(_baseline(rows, "majority"), 8),
-        "baselines": {"majority": round(_baseline(rows, "majority"), 8),
-                      "always_up": round(_baseline(rows, "always_up"), 8),
-                      "previous_return": _baseline(rows, "previous_return")},
-        "brier_score": round(brier, 8), "log_loss": round(log_loss, 8),
+        "baseline_accuracy": chronological["multiclass_accuracy"],
+        "baselines": {
+            "chronological_prior": chronological,
+            "always_up_accuracy": round(_accuracy_baseline(rows, "always_up"), 8),
+            "previous_return_accuracy": _accuracy_baseline(rows, "previous_return"),
+            "evaluation_set_oracle_majority_accuracy": round(_accuracy_baseline(rows, "evaluation_set_oracle_majority"), 8),
+            "evaluation_set_oracle_majority_use": "diagnostic_only_not_a_deployable_baseline",
+        },
+        "brier_score": round(brier, 8),
+        "brier_improvement_vs_chronological_prior": round(chronological["brier_score"] - brier, 8),
+        "log_loss": round(log_loss, 8),
+        "log_loss_improvement_vs_chronological_prior": round(chronological["log_loss"] - log_loss, 8),
         "calibration_error": round(calibration_error, 8),
         "class_distribution": dict(Counter(actual)),
         "confidence_buckets": buckets,
@@ -132,13 +223,18 @@ def evaluate(database_path):
     if rows:
         calibration = {"status": "not_evaluable", "reason": "The prediction store persists calibrated probabilities but not raw pre-temperature probabilities."}
     return {
-        "report_version": "orion-directional-validation-v1",
-        "status": "evaluable" if rows else "not_evaluable",
+        "report_version": "orion-directional-validation-v2",
+        "status": "evaluable" if metrics["sample_count"] else "not_evaluable",
         "data_inventory": inventory,
         "out_of_sample_definition": "Settled live predictions linked to a saved model; no training or calibration rows are counted.",
+        "benchmark_semantics": (
+            "Headline baseline metrics use an expanding Laplace-smoothed class prior computed only from outcomes "
+            "available before each evaluated prediction. Evaluation-set majority accuracy is diagnostic only because "
+            "using the final holdout class balance as a deployable benchmark would leak future labels into the baseline."
+        ),
         "metrics": metrics,
         "temperature_calibration": calibration,
-        "conclusion": "No measurable predictive value can be established from this repository because zero truly out-of-sample settled predictions are available." if not rows else "Evaluate only with the metrics above; reliability requires a materially sized chronological holdout.",
+        "conclusion": "No measurable predictive value can be established from this repository because zero truly out-of-sample settled predictions are available." if not metrics["sample_count"] else "Evaluate only with the leakage-safe metrics above; reliability requires a materially sized chronological holdout.",
     }
 
 
