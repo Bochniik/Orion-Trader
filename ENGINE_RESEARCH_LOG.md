@@ -39,9 +39,9 @@ Evaluation policy:
 
 Focused regression tests cover horizon parsing, probability normalization, suppression exclusion, lineage preservation, fully elapsed-horizon gating, stale/missing price rejection, and deterministic metric calculations.
 
-## 2026-09-10 — Append-only shadow evidence ledger candidate
+## 2026-09-10 — Append-only shadow evidence ledger
 
-Branch `autonomous/2026-09-10-shadow-evidence-ledger` adds an idempotent accumulator for settled cloud-shadow evidence.
+Merged commit `aa09f0b4a78d07ee82242d09afe904a18943e62d` adds an idempotent accumulator for settled cloud-shadow evidence.
 
 Evidence integrity policy:
 - Every settled observation receives a deterministic SHA-256 identity based on engine, symbol, horizon, prediction timestamp, target timestamp and prediction-time lineage.
@@ -54,6 +54,23 @@ Evidence integrity policy:
 
 Focused tests cover path-independent record identity, repeated-run idempotence, conflict detection, lineage separation, cumulative metrics, leakage-safe input enforcement and preservation of prior evidence.
 
+## 2026-09-10 — Bounded cloud shadow settlement cycle candidate
+
+Branch `autonomous/2026-09-10-bounded-shadow-evidence-cycle` wires the prediction artifacts, Alpaca outcome collection, leakage-safe evaluator and append-only ledger into one scheduled research pipeline.
+
+Safety and data-quality constraints:
+- Only non-expired immutable Premarket v5 and Regular-hours V3.1 prediction artifacts from the recent three-day evidence window are recovered from GitHub Actions.
+- The latest cumulative ledger artifact is recovered independently, so observations older than the prediction-recovery window remain preserved.
+- Outcome requests are planned only for forecasts whose complete horizon has elapsed at the evaluation cutoff.
+- Each prediction timestamp gets an independent bounded request window from five minutes before prediction through five minutes after the latest mature target; prediction timestamps are never merged into one broad historical request.
+- Forecasts older than the configured maximum age are rejected before any market-data request is made.
+- Alpaca IEX one-minute bars are used only as later-observed outcome evidence. They do not alter the prediction artifact or model inputs after prediction time.
+- The existing settlement rules still reject stale base/outcome bars, suppressed regular-hours probabilities and incomplete horizons.
+- Repeated workflow runs are idempotent at the ledger layer; conflicting evidence for an existing record identity fails closed.
+- The workflow has `actions: read` and `contents: read` only, contains no order endpoint, and does not change model weights, thresholds, calibration, risk policy or promotion state.
+
+Focused tests verify mature-horizon gating, maximum-age gating, independent bounded windows, exact end-boundary semantics, bar deduplication and rejection of rows outside the planned request interval.
+
 ### Next logical engine step
 
-After the evidence ledger passes CI and merges, wire a scheduled research workflow that downloads prior immutable shadow artifacts, fetches only the bounded one-minute Alpaca outcome windows needed for fully elapsed forecasts, runs settlement, then accumulates the results into a versioned ledger artifact. Do not introduce promotion logic until enough distinct sessions exist to evaluate sample-size and fold stability. Issue #3 remains open until genuine point-in-time Premarket v5 observations satisfy the existing 40d train + 10d calibration + 5d test evidence requirement.
+After this evidence cycle is green and merged, observe real forward runs and measure settlement coverage. Do not tune Premarket v5 or Regular-hours V3.1 from the first handful of observations. Once enough distinct sessions exist, add sample-size-aware research gates that compare Brier/log loss/calibration and directional accuracy against leakage-safe baselines by engine, horizon and regime. Issue #3 remains open until genuine point-in-time Premarket v5 observations satisfy the existing 40d train + 10d calibration + 5d test evidence requirement.
