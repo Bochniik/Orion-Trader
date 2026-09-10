@@ -1,0 +1,157 @@
+/* =========================================================
+   ORIONTRADER
+   Motion language: quiet, fast, data-first.
+   Keep movement on composited properties so live market UI
+   stays responsive even while data is refreshing.
+   ========================================================= */
+
+:root {
+  --orion-motion-fast: 140ms;
+  --orion-motion-base: 210ms;
+  --orion-motion-panel: 280ms;
+  --orion-ease-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --orion-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Navigation and controls: immediate feedback without visual noise. */
+.core-nav button,
+.core-brand,
+.core-sidebar-settings,
+.core-command-search,
+.core-topbar-icon,
+.core-shell button,
+.core-shell a {
+  transition:
+    color var(--orion-motion-fast) var(--orion-ease-standard),
+    background-color var(--orion-motion-fast) var(--orion-ease-standard),
+    border-color var(--orion-motion-fast) var(--orion-ease-standard),
+    box-shadow var(--orion-motion-base) var(--orion-ease-standard),
+    opacity var(--orion-motion-fast) var(--orion-ease-standard),
+    transform var(--orion-motion-fast) var(--orion-ease-standard);
+}
+
+.core-nav button:hover:not(:disabled),
+.core-sidebar-settings:hover:not(:disabled),
+.core-topbar-icon:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.core-nav button:active:not(:disabled),
+.core-sidebar-settings:active:not(:disabled),
+.core-topbar-icon:active:not(:disabled),
+.core-shell button:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+
+.core-brand:hover .core-brand-mark {
+  transform: scale(1.035);
+  filter: drop-shadow(0 0 18px rgba(255, 122, 26, 0.3));
+}
+
+.core-brand-mark {
+  transition:
+    transform var(--orion-motion-base) var(--orion-ease-enter),
+    filter var(--orion-motion-base) var(--orion-ease-standard);
+}
+
+/* Workspace changes get one restrained entrance motion. Component
+   remounts caused by navigation naturally replay this animation. */
+.core-main > * {
+  animation: orion-content-enter var(--orion-motion-panel) var(--orion-ease-enter) both;
+}
+
+@keyframes orion-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Notices should feel responsive rather than suddenly appearing. */
+.core-notice,
+.core-warning {
+  animation: orion-notice-enter 220ms var(--orion-ease-enter) both;
+}
+
+@keyframes orion-notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Generic premium surface feedback. Selectors intentionally target
+   existing Orion card vocabulary without coupling to engine data. */
+.core-shell :is(
+  [class*="card"],
+  [class*="panel"]
+) {
+  transition:
+    border-color var(--orion-motion-base) var(--orion-ease-standard),
+    box-shadow var(--orion-motion-base) var(--orion-ease-standard),
+    background-color var(--orion-motion-base) var(--orion-ease-standard),
+    transform var(--orion-motion-base) var(--orion-ease-enter);
+}
+
+/* Limit elevation to interactive surfaces only; static dense data
+   panels remain stable for scanning. */
+.core-shell :is(
+  button[class*="card"],
+  a[class*="card"],
+  [role="button"][class*="card"]
+):hover {
+  transform: translateY(-2px);
+}
+
+/* Skeleton utility for current and future data-loading surfaces. */
+.orion-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.orion-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.055),
+    transparent
+  );
+  animation: orion-shimmer 1.15s ease-in-out infinite;
+}
+
+@keyframes orion-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Accessibility: Orion must remain calm and fully usable for people
+   who request reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .core-shell *,
+  .core-shell *::before,
+  .core-shell *::after,
+  .auth-screen *,
+  .auth-screen *::before,
+  .auth-screen *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
