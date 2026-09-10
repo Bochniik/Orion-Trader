@@ -6,7 +6,9 @@ on:
       - "backend/app/services/intraday_probability_backtest_v3.py"
       - "backend/app/services/intraday_probability_calibration_v3_1.py"
       - "backend/evals/audit_intraday_calibration_v3_1.py"
+      - "backend/evals/benchmark_intraday_calibration_v3_1.py"
       - "backend/tests/test_intraday_calibration_audit_v3_1.py"
+      - "backend/tests/test_intraday_calibration_benchmark_v3_1.py"
       - ".github/workflows/intraday-calibration-audit.yml"
   push:
     branches: [main]
@@ -14,7 +16,9 @@ on:
       - "backend/app/services/intraday_probability_backtest_v3.py"
       - "backend/app/services/intraday_probability_calibration_v3_1.py"
       - "backend/evals/audit_intraday_calibration_v3_1.py"
+      - "backend/evals/benchmark_intraday_calibration_v3_1.py"
       - "backend/tests/test_intraday_calibration_audit_v3_1.py"
+      - "backend/tests/test_intraday_calibration_benchmark_v3_1.py"
       - ".github/workflows/intraday-calibration-audit.yml"
 
 permissions:
@@ -36,5 +40,10 @@ jobs:
           backend/app/services/intraday_probability_backtest_v3.py
           backend/app/services/intraday_probability_calibration_v3_1.py
           backend/evals/audit_intraday_calibration_v3_1.py
+          backend/evals/benchmark_intraday_calibration_v3_1.py
       - name: Run calibration audit regression tests
-        run: python -m pytest backend/tests/test_intraday_calibration_audit_v3_1.py -q
+        run: >-
+          python -m pytest
+          backend/tests/test_intraday_calibration_audit_v3_1.py
+          backend/tests/test_intraday_calibration_benchmark_v3_1.py
+          -q
