@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import "./motion.css";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import AuthPanel from "./components/AuthPanel";
 import CoreApp from "./core/CoreApp";
