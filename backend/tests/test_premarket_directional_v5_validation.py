@@ -39,7 +39,9 @@ def test_probability_quality_rewards_informative_probabilities():
     assert result["log_loss"] < result["baseline_log_loss"]
     assert result["brier_improvement"] > 0
     assert result["log_loss_improvement"] > 0
-    assert result["confidence_buckets"]["80-90"]["samples"] == 1
+    # Confidence is max(p_up, 1-p_up): both 0.80/0.20 rows are 80%,
+    # and both 0.90/0.10 rows are 90%.
+    assert result["confidence_buckets"]["80-90"]["samples"] == 2
     assert result["confidence_buckets"]["90-100"]["samples"] == 2
 
 
