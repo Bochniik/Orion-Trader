@@ -14,12 +14,12 @@ def _records(count: int = 240, *, evaluation_flip: bool = False):
     rows = []
     split = int(count * 0.60)
     for i in range(count):
-        # Deliberately overconfident probabilities. Outcomes are directionally
-        # useful but noisy, so shrinkage toward 50 should improve proper scores.
+        # Deliberately overconfident probabilities. Direction is right about
+        # 60% of the time, so 80/20 probabilities are materially overconfident.
         bullish = (i % 10) < 6
         probability = 80.0 if bullish else 20.0
         actual = 1 if bullish else 0
-        if i % 5 == 0:
+        if i % 5 in (0, 1):
             actual = 1 - actual
         if evaluation_flip and i >= split:
             actual = 1 - actual
