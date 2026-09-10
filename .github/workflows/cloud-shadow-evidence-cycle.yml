@@ -1,0 +1,153 @@
+name: Cloud shadow evidence cycle
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Covers mature premarket and regular-hours forecasts across EDT/EST.
+    # Prediction workflows run at :15/:35; :50 leaves room for horizons to mature.
+    - cron: "50 13-22 * * 1-5"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: cloud-shadow-evidence-cycle
+  cancel-in-progress: false
+
+jobs:
+  settle-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+      ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Verify market-data credentials
+        shell: bash
+        run: |
+          if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
+            echo "Missing repository secrets ALPACA_API_KEY_ID / ALPACA_API_SECRET_KEY." >&2
+            exit 2
+          fi
+
+      - name: Recover recent immutable predictions and latest evidence ledger
+        id: recover
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .shadow-inputs/predictions .shadow-inputs/prior-ledger
+          CUTOFF_EPOCH=$(date -u -d '3 days ago' +%s)
+          PREDICTION_COUNT=0
+          LEDGER_FOUND=0
+
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at] | @tsv' > /tmp/orion-artifacts.tsv
+
+          while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT; do
+            if [ "$LEDGER_FOUND" -eq 0 ] && [[ "$ARTIFACT_NAME" == cloud-shadow-evidence-ledger-* ]]; then
+              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/ledger.zip
+              unzip -q -o /tmp/ledger.zip -d .shadow-inputs/prior-ledger
+              LEDGER_FOUND=1
+              continue
+            fi
+
+            if [[ "$ARTIFACT_NAME" == premarket-v5-shadow-* || "$ARTIFACT_NAME" == regular-hours-v3-1-shadow-* ]]; then
+              CREATED_EPOCH=$(date -u -d "$CREATED_AT" +%s)
+              if [ "$CREATED_EPOCH" -lt "$CUTOFF_EPOCH" ]; then
+                continue
+              fi
+              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/prediction-${ARTIFACT_ID}.zip"
+              unzip -q -o "/tmp/prediction-${ARTIFACT_ID}.zip" -d .shadow-inputs/predictions
+              PREDICTION_COUNT=$((PREDICTION_COUNT + 1))
+            fi
+          done < /tmp/orion-artifacts.tsv
+
+          echo "prediction_artifacts=$PREDICTION_COUNT" >> "$GITHUB_OUTPUT"
+          echo "ledger_found=$LEDGER_FOUND" >> "$GITHUB_OUTPUT"
+          echo "Recovered $PREDICTION_COUNT recent prediction artifacts; prior ledger found=$LEDGER_FOUND"
+
+      - name: Build bounded outcome request set
+        id: predictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backend/data/cloud_shadow/evaluation backend/data/cloud_shadow/evidence
+          mapfile -t PREDICTIONS < <(find .shadow-inputs/predictions -type f -name 'prediction-*.json' | sort)
+          echo "count=${#PREDICTIONS[@]}" >> "$GITHUB_OUTPUT"
+          if [ "${#PREDICTIONS[@]}" -eq 0 ]; then
+            echo "No recent prediction JSON files found; nothing to settle."
+            exit 0
+          fi
+          python scripts/collect_cloud_shadow_outcome_bars.py \
+            "${PREDICTIONS[@]}" \
+            --feed iex \
+            --max-age-days 35 \
+            --output backend/data/cloud_shadow/evaluation/outcome-bars.csv \
+            --report backend/data/cloud_shadow/evaluation/outcome-fetch-report.json
+
+      - name: Settle mature predictions
+        if: steps.predictions.outputs.count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t PREDICTIONS < <(find .shadow-inputs/predictions -type f -name 'prediction-*.json' | sort)
+          python scripts/evaluate_cloud_shadow_predictions.py \
+            "${PREDICTIONS[@]}" \
+            --bars backend/data/cloud_shadow/evaluation/outcome-bars.csv \
+            --output backend/data/cloud_shadow/evaluation/evaluation-${{ github.run_id }}.json
+
+      - name: Accumulate append-only evidence ledger
+        if: steps.predictions.outputs.count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          EVALUATION="backend/data/cloud_shadow/evaluation/evaluation-${{ github.run_id }}.json"
+          PRIOR=$(find .shadow-inputs/prior-ledger -type f -name 'ledger.json' | head -n 1 || true)
+          if [ -n "$PRIOR" ]; then
+            python scripts/accumulate_cloud_shadow_evidence.py "$EVALUATION" \
+              --existing "$PRIOR" \
+              --output backend/data/cloud_shadow/evidence/ledger.json
+          else
+            python scripts/accumulate_cloud_shadow_evidence.py "$EVALUATION" \
+              --output backend/data/cloud_shadow/evidence/ledger.json
+          fi
+
+      - name: Preserve prior ledger on no-op cycle
+        if: steps.predictions.outputs.count == '0' && steps.recover.outputs.ledger_found == '1'
+        shell: bash
+        run: |
+          mkdir -p backend/data/cloud_shadow/evidence
+          PRIOR=$(find .shadow-inputs/prior-ledger -type f -name 'ledger.json' | head -n 1)
+          cp "$PRIOR" backend/data/cloud_shadow/evidence/ledger.json
+
+      - name: Upload settlement diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-shadow-evaluation-${{ github.run_id }}
+          path: backend/data/cloud_shadow/evaluation/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload cumulative evidence ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-shadow-evidence-ledger-${{ github.run_id }}
+          path: backend/data/cloud_shadow/evidence/ledger.json
+          if-no-files-found: warn
+          retention-days: 90
