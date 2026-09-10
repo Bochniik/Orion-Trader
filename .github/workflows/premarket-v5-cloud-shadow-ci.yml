@@ -27,11 +27,13 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
-        run: python -m pip install -r backend/requirements.txt
+        run: |
+          python -m pip install -r backend/requirements.txt
+          python -m pip install pytest
       - name: Compile cloud shadow path
         run: |
           python -m py_compile scripts/run_premarket_v5_cloud_shadow.py
           python -m py_compile scripts/premarket_directional_v5_common.py
           python -m py_compile scripts/build_premarket_training_dataset_v2.py
       - name: Run cloud shadow regression tests
-        run: pytest -q backend/tests/test_premarket_v5_cloud_shadow.py
+        run: python -m pytest -q backend/tests/test_premarket_v5_cloud_shadow.py
