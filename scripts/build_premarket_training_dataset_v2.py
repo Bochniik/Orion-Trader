@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 from math import sqrt
 from pathlib import Path
 
@@ -29,6 +31,7 @@ if str(BACKEND) not in sys.path:
 from app.services.premarket_predictive_engine import FEATURE_NAMES, extract_predictive_features
 
 
+DATASET_BUILDER_VERSION = "premarket-training-dataset-v2-lineage-1"
 # Dataset v2 deliberately stores continuous future returns. Labels are retained
 # only as a convenient diagnostic/default view; model selection is expected to
 # tune the actionable threshold on validation data instead of treating these
@@ -40,6 +43,97 @@ ABSOLUTE_MOVE_FLOOR_PCT = {
     30: 0.16,
     60: 0.22,
 }
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def source_manifest_path(input_path: Path) -> Path:
+    return input_path.with_suffix(input_path.suffix + ".manifest.json")
+
+
+def verify_source_lineage(input_path: Path) -> dict:
+    """Return source identity and fail closed when an existing manifest disagrees.
+
+    Collector manifests are optional for backwards compatibility, but when one
+    is present its content-addressed CSV identity must match the exact input
+    bytes used by this builder.  This prevents a resumed/replaced raw CSV from
+    silently inheriting stale provenance.
+    """
+    if not input_path.exists():
+        raise FileNotFoundError(input_path)
+
+    raw_sha256 = file_sha256(input_path)
+    manifest_path = source_manifest_path(input_path)
+    if not manifest_path.exists():
+        return {
+            "status": "unverified_no_source_manifest",
+            "source_csv_sha256": raw_sha256,
+            "source_manifest_path": None,
+            "source_manifest_sha256": None,
+            "source_manifest": None,
+        }
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Invalid source manifest: {manifest_path}") from exc
+    if not isinstance(manifest, dict):
+        raise ValueError(f"Source manifest must contain a JSON object: {manifest_path}")
+
+    declared_sha256 = str(manifest.get("csv_sha256") or "").strip().lower()
+    if not declared_sha256:
+        raise ValueError(f"Source manifest is missing csv_sha256: {manifest_path}")
+    if declared_sha256 != raw_sha256:
+        raise ValueError(
+            "Source CSV SHA-256 does not match its collection manifest: "
+            f"declared={declared_sha256} actual={raw_sha256}"
+        )
+
+    return {
+        "status": "verified_source_manifest",
+        "source_csv_sha256": raw_sha256,
+        "source_manifest_path": str(manifest_path),
+        "source_manifest_sha256": file_sha256(manifest_path),
+        "source_manifest": manifest,
+    }
+
+
+def write_dataset_manifest(
+    output: Path,
+    *,
+    input_path: Path,
+    lineage: dict,
+    dataset: pd.DataFrame,
+) -> Path:
+    if not output.exists():
+        raise FileNotFoundError(output)
+
+    manifest_path = output.with_suffix(output.suffix + ".manifest.json")
+    payload = {
+        "builder_version": DATASET_BUILDER_VERSION,
+        "target_schema_version": "horizon_aware_continuous_v2",
+        "source_path": str(input_path),
+        "source_lineage_status": lineage["status"],
+        "source_csv_sha256": lineage["source_csv_sha256"],
+        "source_manifest_path": lineage["source_manifest_path"],
+        "source_manifest_sha256": lineage["source_manifest_sha256"],
+        "dataset_csv_sha256": file_sha256(output),
+        "row_count": int(len(dataset)),
+        "ticker_count": int(dataset["ticker"].nunique()) if "ticker" in dataset.columns else 0,
+        "session_count": int(dataset["session_date"].nunique()) if "session_date" in dataset.columns else 0,
+        "schema": [str(column) for column in dataset.columns],
+        "feature_names": list(FEATURE_NAMES),
+        "premarket_horizons_minutes": list(PREMARKET_HORIZONS),
+        "open_horizons_minutes": list(OPEN_HORIZONS),
+    }
+    manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return manifest_path
 
 
 def horizon_sigma_pct(features: dict, horizon_minutes: int) -> float | None:
@@ -209,6 +303,7 @@ def main():
     )
     args = parser.parse_args()
 
+    lineage = verify_source_lineage(args.input)
     raw = normalize_columns(pd.read_csv(args.input))
     raw["ny_date"] = raw["timestamp"].dt.tz_convert("America/New_York").dt.date
     rows = []
@@ -233,8 +328,15 @@ def main():
     dataset = pd.DataFrame(rows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     dataset.to_csv(args.output, index=False)
+    manifest_path = write_dataset_manifest(
+        args.output,
+        input_path=args.input,
+        lineage=lineage,
+        dataset=dataset,
+    )
 
     print(f"Wrote {len(dataset):,} v2 snapshots to {args.output}")
+    print(f"Dataset lineage manifest: {manifest_path} ({lineage['status']})")
     if dataset.empty:
         return
 
