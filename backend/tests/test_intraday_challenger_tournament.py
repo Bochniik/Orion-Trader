@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ MODULE_PATH = Path(__file__).resolve().parents[1] / "evals" / "intraday_challeng
 SPEC = importlib.util.spec_from_file_location("intraday_challenger_tournament", MODULE_PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
+sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
@@ -70,7 +72,7 @@ def test_strong_challenger_is_research_eligible_with_session_block_bootstrap():
     assert result["verdict"] == "research_eligible"
 
 
-def test_better_accuracy_alone_cannot_promote_when_proper_scores_do_not_improve():
+def test_high_confidence_bad_tail_cannot_pass_on_directional_story_alone():
     incumbent = []
     challenger = []
     for day in range(1, 11):
@@ -78,7 +80,11 @@ def test_better_accuracy_alone_cannot_promote_when_proper_scores_do_not_improve(
             actual = (day + index) % 2
             timestamp = f"2026-08-{day:02d}T14:{index * 5:02d}:00+00:00"
             incumbent.append({"timestamp": timestamp, "actual_up": actual, "p_up": 51 if actual else 49})
-            challenger.append({"timestamp": timestamp, "actual_up": actual, "p_up": 99 if index < 8 and actual else (1 if index < 8 else (99 if not actual else 1))})
+            if index < 8:
+                challenger_p = 99 if actual else 1
+            else:
+                challenger_p = 1 if actual else 99
+            challenger.append({"timestamp": timestamp, "actual_up": actual, "p_up": challenger_p})
     result = MODULE.evaluate_paired_horizon(
         incumbent,
         challenger,
@@ -87,6 +93,7 @@ def test_better_accuracy_alone_cannot_promote_when_proper_scores_do_not_improve(
         bootstrap_samples=200,
         seed=9,
     )
+    assert result["challenger"]["directional_accuracy"] > 0.5
     assert result["verdict"] == "not_demonstrated"
 
 
