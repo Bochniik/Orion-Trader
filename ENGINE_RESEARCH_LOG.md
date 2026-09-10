@@ -23,9 +23,9 @@ Design constraints:
 - `order_submission_enabled` is hard-coded false and the runner has no broker/order imports.
 - The cloud schedule is hourly and intentionally spans a wider UTC range; the Python New York-time gate skips runs outside the valid window across EDT/EST.
 
-## 2026-09-10 — Leakage-safe shadow settlement evaluator candidate
+## 2026-09-10 — Leakage-safe shadow settlement evaluator
 
-Branch `autonomous/2026-09-10-shadow-settlement-evaluator` adds a shared evaluator for Premarket v5 and Regular-hours V3.1 immutable shadow prediction artifacts.
+Merged commit `9ba8317289b86b72fa2800c60348d0a6bcc7a489` adds a shared evaluator for Premarket v5 and Regular-hours V3.1 immutable shadow prediction artifacts.
 
 Evaluation policy:
 - A forecast is eligible only after its full horizon has elapsed at the evaluation cutoff.
@@ -39,6 +39,21 @@ Evaluation policy:
 
 Focused regression tests cover horizon parsing, probability normalization, suppression exclusion, lineage preservation, fully elapsed-horizon gating, stale/missing price rejection, and deterministic metric calculations.
 
+## 2026-09-10 — Append-only shadow evidence ledger candidate
+
+Branch `autonomous/2026-09-10-shadow-evidence-ledger` adds an idempotent accumulator for settled cloud-shadow evidence.
+
+Evidence integrity policy:
+- Every settled observation receives a deterministic SHA-256 identity based on engine, symbol, horizon, prediction timestamp, target timestamp and prediction-time lineage.
+- Reprocessing the same evaluation or downloading the same artifact under a different local path does not duplicate an observation.
+- If the same identity appears later with different material prediction or outcome fields, accumulation fails closed instead of silently replacing historical evidence.
+- Prediction-time model/data/code lineage remains part of the identity, so otherwise identical forecasts from different model artifacts remain distinct research observations.
+- Only evaluation payloads explicitly marked `leakage_safe=true` under the `orion-cloud-shadow-evaluation-v1` contract are accepted.
+- Cumulative summaries report observation count, distinct prediction-session count, Brier score, log loss, directional accuracy and 10-bin ECE globally and by engine/horizon.
+- The ledger does not decide model promotion and does not alter runtime thresholds, reliability tables or trading behavior.
+
+Focused tests cover path-independent record identity, repeated-run idempotence, conflict detection, lineage separation, cumulative metrics, leakage-safe input enforcement and preservation of prior evidence.
+
 ### Next logical engine step
 
-After the evaluator is merged, connect it to downloaded immutable GitHub Actions shadow artifacts plus a bounded Alpaca 1-minute outcome collection window. Accumulate results across sessions without overwriting prior evidence, then add sample-size and stability gates before any model/reliability profile can be promoted. Issue #3 remains open until enough genuine point-in-time Premarket v5 observations exist to evaluate the existing 40d train + 10d calibration + 5d test policy with meaningful OOS diagnostics.
+After the evidence ledger passes CI and merges, wire a scheduled research workflow that downloads prior immutable shadow artifacts, fetches only the bounded one-minute Alpaca outcome windows needed for fully elapsed forecasts, runs settlement, then accumulates the results into a versioned ledger artifact. Do not introduce promotion logic until enough distinct sessions exist to evaluate sample-size and fold stability. Issue #3 remains open until genuine point-in-time Premarket v5 observations satisfy the existing 40d train + 10d calibration + 5d test evidence requirement.
