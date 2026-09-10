@@ -1,0 +1,64 @@
+name: Frozen intraday V4 benchmark evidence
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/frozen-intraday-v4-benchmark.yml"
+      - "scripts/run_intraday_v4_benchmark_evidence.py"
+      - "backend/evals/benchmark_intraday_challenger_v4.py"
+      - "backend/evals/intraday_challenger_tournament.py"
+      - "backend/evals/audit_intraday_calibration_v3_1.py"
+      - "backend/app/services/intraday_probability_backtest_v3.py"
+      - "backend/app/services/intraday_probability_challenger_v4.py"
+      - "backend/app/services/intraday_probability_calibration_v3_1.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frozen-intraday-v4-benchmark-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install benchmark dependencies
+        run: python -m pip install --disable-pip-version-check numpy==2.5.1 pandas==3.0.3 yfinance==1.5.1
+      - name: Compile benchmark path
+        run: |
+          python -m py_compile scripts/run_intraday_v4_benchmark_evidence.py
+          python -m py_compile backend/evals/benchmark_intraday_challenger_v4.py
+          python -m py_compile backend/evals/intraday_challenger_tournament.py
+          python -m py_compile backend/app/services/intraday_probability_backtest_v3.py
+          python -m py_compile backend/app/services/intraday_probability_challenger_v4.py
+      - name: Run frozen real-data benchmark
+        env:
+          PYTHONPATH: backend
+        run: |
+          python scripts/run_intraday_v4_benchmark_evidence.py \
+            AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ \
+            --period 60d \
+            --interval 5m \
+            --calibration-fraction 0.60 \
+            --min-symbols-per-horizon 3 \
+            --min-observations 80 \
+            --min-sessions 8 \
+            --bootstrap-samples 2000 \
+            --output artifacts/intraday-v4-benchmark-evidence.json
+      - name: Upload immutable benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intraday-v4-benchmark-evidence-${{ github.run_id }}
+          path: artifacts/intraday-v4-benchmark-evidence.json
+          if-no-files-found: error
+          retention-days: 30
