@@ -7,6 +7,7 @@ import "./data-panels.css";
 import "./news-polish.css";
 import "./chart-polish.css";
 import "./analysis-polish.css";
+import "./analysis-commandbar.css";
 import "./watchlist-polish.css";
 import "./quote-polish.css";
 import "./stock-workspace.css";
