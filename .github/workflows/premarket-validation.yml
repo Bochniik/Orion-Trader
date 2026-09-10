@@ -7,6 +7,7 @@ on:
       - "scripts/collect_alpaca_extended_history.py"
       - "scripts/build_premarket_training_dataset_v2.py"
       - "scripts/run_premarket_v5_validation.py"
+      - "scripts/evaluate_premarket_v5_research_gate.py"
       - "scripts/premarket_directional_v4_common.py"
       - "scripts/premarket_directional_v5_common.py"
       - "scripts/train_premarket_hierarchical.py"
@@ -45,6 +46,7 @@ jobs:
             scripts/collect_alpaca_extended_history.py \
             scripts/build_premarket_training_dataset_v2.py \
             scripts/run_premarket_v5_validation.py \
+            scripts/evaluate_premarket_v5_research_gate.py \
             scripts/premarket_directional_v4_common.py \
             scripts/premarket_directional_v5_common.py \
             scripts/train_premarket_hierarchical.py \
@@ -58,5 +60,6 @@ jobs:
             backend/tests/test_premarket_dataset_readiness.py \
             backend/tests/test_premarket_training_dataset_lineage.py \
             backend/tests/test_premarket_validation_report_lineage.py \
+            backend/tests/test_premarket_v5_research_gate.py \
             backend/tests/test_premarket_directional_v4_features.py \
             backend/tests/test_premarket_directional_v5_validation.py

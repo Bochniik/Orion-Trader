@@ -7,8 +7,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from evaluate_premarket_v5_research_gate import evaluate_report
 
-RUNNER_VERSION = "premarket-v5-validation-lineage-1"
+
+RUNNER_VERSION = "premarket-v5-validation-lineage-2"
 
 
 def file_sha256(path: Path) -> str:
@@ -70,9 +72,31 @@ def verify_dataset_lineage(dataset: Path) -> dict:
     }
 
 
-def write_report_manifest(report_path: Path, *, dataset: Path, lineage: dict, targets: list[str]) -> Path:
+def write_research_gate_decision(report_path: Path) -> Path:
     if not report_path.exists():
         raise FileNotFoundError(report_path)
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Invalid validation report: {report_path}") from exc
+    decision = evaluate_report(report)
+    gate_path = report_path.with_suffix(report_path.suffix + ".gate.json")
+    gate_path.write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return gate_path
+
+
+def write_report_manifest(
+    report_path: Path,
+    *,
+    dataset: Path,
+    lineage: dict,
+    targets: list[str],
+    gate_path: Path | None = None,
+) -> Path:
+    if not report_path.exists():
+        raise FileNotFoundError(report_path)
+    if gate_path is not None and not gate_path.exists():
+        raise FileNotFoundError(gate_path)
 
     manifest_path = report_path.with_suffix(report_path.suffix + ".manifest.json")
     payload = {
@@ -83,6 +107,16 @@ def write_report_manifest(report_path: Path, *, dataset: Path, lineage: dict, ta
         "targets": list(targets),
         "validation_report_sha256": file_sha256(report_path),
     }
+    if gate_path is not None:
+        gate_payload = json.loads(gate_path.read_text(encoding="utf-8"))
+        payload.update(
+            {
+                "research_gate_path": str(gate_path),
+                "research_gate_sha256": file_sha256(gate_path),
+                "research_gate_decision": gate_payload.get("decision"),
+                "research_gate_eligible": bool(gate_payload.get("eligible")),
+            }
+        )
     manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return manifest_path
 
@@ -94,14 +128,21 @@ def run_validation(dataset: Path, output: Path, targets: list[str]) -> Path:
     if targets:
         command.extend(["--targets", *targets])
     subprocess.run(command, check=True)
-    return write_report_manifest(output, dataset=dataset, lineage=lineage, targets=targets)
+    gate_path = write_research_gate_decision(output)
+    return write_report_manifest(
+        output,
+        dataset=dataset,
+        lineage=lineage,
+        targets=targets,
+        gate_path=gate_path,
+    )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Run Orion Premarket Directional Engine v5 validation with strict, "
-            "content-addressed dataset lineage and emit a report manifest."
+            "content-addressed dataset lineage, a fail-closed research gate, and an audited manifest."
         )
     )
     parser.add_argument("dataset", type=Path)
