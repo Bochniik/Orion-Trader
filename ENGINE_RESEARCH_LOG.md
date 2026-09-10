@@ -11,9 +11,9 @@ Merged PR #15 (`092fb1c06bb9b7b85b07b9b3feb03f94dd75a221`). The runner can colle
 
 The scheduled workflow is the first path to genuine timestamped out-of-sample Premarket v5 evidence. The next evaluation milestone remains Issue #3: settle enough predictions against later observed prices and score Brier/log loss/calibration/accuracy without using future information during prediction.
 
-### Regular-hours V3.1 cloud shadow candidate
+### Regular-hours V3.1 cloud shadow
 
-Branch `autonomous/2026-09-10-regular-hours-cloud-shadow` adds an analogous research-only runner around the existing V3.1 runtime.
+Merged commit `4d9d57ec74f4373e424ed6d215a1d1b1e0e6253f` adds an analogous research-only runner around the existing V3.1 runtime.
 
 Design constraints:
 - New York regular-session gate is DST-safe and permits predictions only from 09:30 through 15:30 ET.
@@ -23,11 +23,22 @@ Design constraints:
 - `order_submission_enabled` is hard-coded false and the runner has no broker/order imports.
 - The cloud schedule is hourly and intentionally spans a wider UTC range; the Python New York-time gate skips runs outside the valid window across EDT/EST.
 
-Validation target before merge:
-- compile the new runner and V3.1 inference path;
-- pass focused tests for symbol normalization, EDT/EST gating, session-boundary rejection, suppression provenance and partial provider failures;
-- do not change runtime reliability tables, model thresholds or execution behavior.
+## 2026-09-10 — Leakage-safe shadow settlement evaluator candidate
+
+Branch `autonomous/2026-09-10-shadow-settlement-evaluator` adds a shared evaluator for Premarket v5 and Regular-hours V3.1 immutable shadow prediction artifacts.
+
+Evaluation policy:
+- A forecast is eligible only after its full horizon has elapsed at the evaluation cutoff.
+- Base price is the latest one-minute bar at or before the prediction timestamp and is rejected if more than five minutes stale.
+- Outcome price is the first one-minute bar at or after the target timestamp and is rejected if more than five minutes late.
+- Suppressed Regular-hours V3.1 probabilities are excluded rather than reconstructed.
+- Premarket `NO_TRADE` presentation does not erase the underlying probability forecast; research scoring retains the recorded raw direction and probability so model calibration can be audited independently from the decision layer.
+- Prediction-time model/data/code lineage is copied into every settled record.
+- Metrics include Brier score, binary log loss, directional accuracy, 10-bin expected calibration error, settlement coverage, and per-engine/per-horizon breakdowns.
+- Missing/stale bars reduce coverage rather than being silently imputed.
+
+Focused regression tests cover horizon parsing, probability normalization, suppression exclusion, lineage preservation, fully elapsed-horizon gating, stale/missing price rejection, and deterministic metric calculations.
 
 ### Next logical engine step
 
-After both cloud shadow paths produce artifacts reliably, add a settlement/aggregation layer that scores only forecasts whose horizons have fully elapsed. The evaluator should retain prediction-time lineage and report per-symbol/per-horizon Brier score, log loss, calibration error, accuracy, coverage and reliability-profile source. No calibration or model candidate should be promoted from these shadow results until sample-size and stability gates are met.
+After the evaluator is merged, connect it to downloaded immutable GitHub Actions shadow artifacts plus a bounded Alpaca 1-minute outcome collection window. Accumulate results across sessions without overwriting prior evidence, then add sample-size and stability gates before any model/reliability profile can be promoted. Issue #3 remains open until enough genuine point-in-time Premarket v5 observations exist to evaluate the existing 40d train + 10d calibration + 5d test policy with meaningful OOS diagnostics.
