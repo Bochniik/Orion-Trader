@@ -90,3 +90,25 @@ Focused regression tests cover exact pairing, outcome mismatch rejection, confli
 ### Next logical engine step
 
 After this tournament gate is green and merged, implement the first deliberately different regular-hours challenger (preferably regime-aware rather than another threshold tweak) and emit the same chronological OOS prediction-record contract as V3. Run the paired tournament against V3 and V3.1 on identical symbols/timestamps. Reject the challenger if proper-score improvement or session-level stability is not demonstrated. In parallel, continue accumulating genuine cloud-shadow evidence; Issue #3 remains open until Premarket v5 has sufficient point-in-time evidence.
+
+## 2026-09-11 — Pre-registered long-horizon challenger gate
+
+The frozen V4 benchmark rejected V4 unchanged. The 30m regime hypothesis regressed proper scores against both incumbents, while 3h/5h showed only unstable aggregate improvement. Reusing that same frozen benchmark to tune and approve another model would create data-snooping risk.
+
+Branch `autonomous/2026-09-11-long-horizon-tournament-protocol` therefore adds a separate pre-registered gate before implementing another challenger.
+
+Protocol:
+- The next hypothesis is fixed to regular-hours 3h and 5h horizons only.
+- `2026-09-11T00:00:00Z` is the forward-evidence cutoff recorded before new observations are evaluated.
+- Historical walk-forward results are screening-only and can never confer forward research eligibility, even when every proper-score gate passes.
+- Forward eligibility requires every paired observation in both required horizons to be at or after the pre-registration cutoff.
+- The existing paired tournament remains authoritative for coverage, Brier score, log loss and paired session-block-bootstrap stability.
+- Missing, malformed or pre-cutoff forward evidence fails closed.
+- Even a successful forward result keeps `promotion_allowed=false`; runtime promotion remains a separate decision.
+- No runtime model, thresholds, reliability profile, risk policy, broker path or order behavior is changed.
+
+Focused regression tests cover the historical-screening lock, rejection of pre-registration observations, successful forward-only 3h/5h evaluation, missing-horizon failure and invalid evidence modes.
+
+### Next logical engine step
+
+After this gate passes CI, design one new long-horizon challenger without inspecting post-cutoff outcomes. Historical data may be used to screen out an obviously weak design, but decisive evidence must come from untouched post-cutoff paired shadow observations. A failed candidate is rejected unchanged and any redesign must receive a new identity and later untouched holdout.
