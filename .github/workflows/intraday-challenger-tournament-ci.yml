@@ -6,9 +6,11 @@ on:
       - "backend/evals/intraday_challenger_tournament.py"
       - "backend/evals/benchmark_intraday_challenger_v4.py"
       - "backend/app/services/intraday_probability_challenger_v4.py"
+      - "scripts/run_intraday_v4_benchmark_evidence.py"
       - "backend/tests/test_intraday_challenger_tournament.py"
       - "backend/tests/test_intraday_probability_challenger_v4.py"
       - "backend/tests/test_benchmark_intraday_challenger_v4.py"
+      - "backend/tests/test_run_intraday_v4_benchmark_evidence.py"
       - ".github/workflows/intraday-challenger-tournament-ci.yml"
       - "ENGINE_RESEARCH_LOG.md"
   workflow_dispatch:
@@ -32,7 +34,8 @@ jobs:
           python -m py_compile backend/evals/intraday_challenger_tournament.py
           python -m py_compile backend/evals/benchmark_intraday_challenger_v4.py
           python -m py_compile backend/app/services/intraday_probability_challenger_v4.py
+          python -m py_compile scripts/run_intraday_v4_benchmark_evidence.py
       - name: Run focused regression tests
         run: |
           cd backend
-          python -m pytest -q tests/test_intraday_challenger_tournament.py tests/test_intraday_probability_challenger_v4.py tests/test_benchmark_intraday_challenger_v4.py
+          python -m pytest -q tests/test_intraday_challenger_tournament.py tests/test_intraday_probability_challenger_v4.py tests/test_benchmark_intraday_challenger_v4.py tests/test_run_intraday_v4_benchmark_evidence.py
