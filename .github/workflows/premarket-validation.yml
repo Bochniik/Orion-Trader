@@ -1,0 +1,49 @@
+name: Premarket validation
+
+on:
+  pull_request:
+    paths:
+      - "scripts/premarket_directional_v4_common.py"
+      - "scripts/premarket_directional_v5_common.py"
+      - "scripts/train_premarket_hierarchical.py"
+      - "scripts/validate_premarket_directional_v5_*.py"
+      - "backend/tests/test_premarket_*.py"
+      - ".github/workflows/premarket-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  focused-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install focused test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==2.5.1 pandas==3.0.3 pytest
+
+      - name: Compile premarket validation modules
+        run: |
+          python -m py_compile \
+            scripts/premarket_directional_v4_common.py \
+            scripts/premarket_directional_v5_common.py \
+            scripts/train_premarket_hierarchical.py \
+            scripts/validate_premarket_directional_v5_walkforward.py \
+            scripts/validate_premarket_directional_v5_event_nested.py
+
+      - name: Run focused regression tests
+        run: |
+          python -m pytest -q \
+            backend/tests/test_premarket_directional_v4_features.py \
+            backend/tests/test_premarket_directional_v5_validation.py
