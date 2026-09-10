@@ -12,6 +12,8 @@ if str(SCRIPTS) not in sys.path:
 from run_premarket_v5_evidence_pipeline import (
     DEFAULT_TARGETS,
     build_commands,
+    execution_identity,
+    package_versions,
     parse_symbols,
     validate_request,
     write_pipeline_manifest,
@@ -77,6 +79,46 @@ def test_validate_request_rejects_reverse_dates():
         validate_request("2026-04-30", "2026-01-01", "iex", list(DEFAULT_TARGETS))
 
 
+def test_package_versions_marks_missing_packages_without_failing():
+    versions = package_versions(["pytest", "orion-package-that-does-not-exist"])
+    assert versions["pytest"]
+    assert versions["orion-package-that-does-not-exist"] is None
+
+
+def test_execution_identity_hashes_reproducibility_files(tmp_path):
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "backend").mkdir()
+    for relative_path in [
+        "scripts/collect_alpaca_extended_history.py",
+        "scripts/build_premarket_training_dataset_v2.py",
+        "scripts/audit_premarket_dataset_readiness.py",
+        "scripts/run_premarket_v5_validation.py",
+        "scripts/evaluate_premarket_v5_research_gate.py",
+        "scripts/validate_premarket_directional_v5_event_nested.py",
+        "scripts/premarket_directional_v5_common.py",
+        "backend/requirements.txt",
+    ]:
+        path = tmp_path / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative_path + "\n", encoding="utf-8")
+
+    identity = execution_identity(tmp_path)
+    assert identity["python"]["version"]
+    assert identity["platform"]
+    assert set(identity["code_artifacts"]) == {
+        "scripts/collect_alpaca_extended_history.py",
+        "scripts/build_premarket_training_dataset_v2.py",
+        "scripts/audit_premarket_dataset_readiness.py",
+        "scripts/run_premarket_v5_validation.py",
+        "scripts/evaluate_premarket_v5_research_gate.py",
+        "scripts/validate_premarket_directional_v5_event_nested.py",
+        "scripts/premarket_directional_v5_common.py",
+        "backend/requirements.txt",
+    }
+    assert all(item["exists"] for item in identity["code_artifacts"].values())
+    assert all(len(item["sha256"]) == 64 for item in identity["code_artifacts"].values())
+
+
 def test_pipeline_manifest_hashes_existing_artifacts_without_secrets(tmp_path):
     raw = tmp_path / "raw.csv"
     dataset = tmp_path / "dataset.csv"
@@ -100,12 +142,18 @@ def test_pipeline_manifest_hashes_existing_artifacts_without_secrets(tmp_path):
         validation=validation,
         targets=list(DEFAULT_TARGETS),
         status="COMPLETED",
+        repo_root=ROOT,
     )
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["status"] == "COMPLETED"
+    assert payload["pipeline_version"] == "premarket-v5-evidence-pipeline-v2"
     assert payload["artifacts"]["raw_csv"]["exists"] is True
     assert len(payload["artifacts"]["raw_csv"]["sha256"]) == 64
+    assert payload["execution"]["python"]["version"]
+    assert payload["execution"]["packages"]["pandas"]
+    assert payload["execution"]["code_artifacts"]["backend/requirements.txt"]["exists"] is True
+    assert len(payload["execution"]["code_artifacts"]["backend/requirements.txt"]["sha256"]) == 64
     serialized = output.read_text(encoding="utf-8").lower()
     assert "api_key" not in serialized
     assert "secret" not in serialized
