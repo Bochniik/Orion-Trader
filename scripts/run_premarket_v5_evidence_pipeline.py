@@ -3,14 +3,27 @@ from __future__ import annotations
 import argparse
 from datetime import date
 import hashlib
+from importlib import metadata
 import json
 from pathlib import Path
+import platform
 import subprocess
 import sys
 
 
-PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v1"
+PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v2"
 DEFAULT_TARGETS = ["premarket_5m", "premarket_15m", "premarket_30m", "premarket_60m"]
+REPRODUCIBILITY_FILES = [
+    "scripts/collect_alpaca_extended_history.py",
+    "scripts/build_premarket_training_dataset_v2.py",
+    "scripts/audit_premarket_dataset_readiness.py",
+    "scripts/run_premarket_v5_validation.py",
+    "scripts/evaluate_premarket_v5_research_gate.py",
+    "scripts/validate_premarket_directional_v5_event_nested.py",
+    "scripts/premarket_directional_v5_common.py",
+    "backend/requirements.txt",
+]
+REPRODUCIBILITY_PACKAGES = ["numpy", "pandas", "pytest", "httpx", "python-dotenv"]
 
 
 def file_sha256(path: Path) -> str:
@@ -97,6 +110,49 @@ def artifact_identity(path: Path) -> dict:
     return {"path": str(path), "exists": True, "sha256": file_sha256(path)}
 
 
+def package_versions(package_names: list[str] | None = None) -> dict[str, str | None]:
+    versions: dict[str, str | None] = {}
+    for package_name in package_names or REPRODUCIBILITY_PACKAGES:
+        try:
+            versions[package_name] = metadata.version(package_name)
+        except metadata.PackageNotFoundError:
+            versions[package_name] = None
+    return versions
+
+
+def git_head(repo_root: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+    value = result.stdout.strip()
+    return value or None
+
+
+def execution_identity(repo_root: Path | None = None) -> dict:
+    root = repo_root or Path(__file__).resolve().parents[1]
+    return {
+        "git_head": git_head(root),
+        "python": {
+            "version": platform.python_version(),
+            "implementation": platform.python_implementation(),
+            "executable": str(Path(sys.executable).resolve()),
+        },
+        "platform": platform.platform(),
+        "packages": package_versions(),
+        "code_artifacts": {
+            relative_path: artifact_identity(root / relative_path)
+            for relative_path in REPRODUCIBILITY_FILES
+        },
+    }
+
+
 def write_pipeline_manifest(
     output: Path,
     *,
@@ -110,6 +166,7 @@ def write_pipeline_manifest(
     validation: Path,
     targets: list[str],
     status: str,
+    repo_root: Path | None = None,
 ) -> Path:
     artifacts = {
         "raw_csv": artifact_identity(raw),
@@ -131,6 +188,7 @@ def write_pipeline_manifest(
             "feed": feed,
             "targets": targets,
         },
+        "execution": execution_identity(repo_root),
         "artifacts": artifacts,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
