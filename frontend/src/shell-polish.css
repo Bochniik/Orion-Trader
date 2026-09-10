@@ -1,0 +1,242 @@
+/* OrionTrader shell polish
+   Presentation-only overrides for the application chrome. */
+
+.core-shell {
+  --shell-glass: rgba(7, 9, 13, 0.82);
+  --shell-highlight: rgba(255, 148, 71, 0.72);
+  --shell-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
+  isolation: isolate;
+}
+
+.core-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 22% 0%, rgba(255, 122, 26, 0.07), transparent 25rem),
+    radial-gradient(circle at 82% 18%, rgba(255, 148, 71, 0.035), transparent 32rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent 34%);
+}
+
+.core-sidebar {
+  border-right-color: rgba(255, 255, 255, 0.085);
+  background:
+    linear-gradient(180deg, rgba(255, 122, 26, 0.024), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.016), transparent 52%),
+    rgba(6, 8, 11, 0.965);
+  box-shadow: 18px 0 50px rgba(0, 0, 0, 0.16);
+}
+
+.core-brand {
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.core-brand::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 10px;
+  height: 1px;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.55), transparent 62%);
+  transition: opacity var(--orion-motion-fast, 160ms) ease;
+}
+
+.core-brand:hover::after {
+  opacity: 1;
+}
+
+.core-brand-mark {
+  transition:
+    filter var(--orion-motion-medium, 220ms) ease,
+    transform var(--orion-motion-medium, 220ms) ease;
+}
+
+.core-brand:hover .core-brand-mark {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 18px rgba(255, 122, 26, 0.38));
+}
+
+.core-nav {
+  gap: 5px;
+}
+
+.core-nav button {
+  min-height: 42px;
+  overflow: hidden;
+}
+
+.core-nav button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0.035), transparent 45%);
+  transition: opacity var(--orion-motion-fast, 160ms) ease;
+}
+
+.core-nav button:hover::after,
+.core-nav button.active::after {
+  opacity: 1;
+}
+
+.core-nav button.active {
+  border-color: rgba(255, 122, 26, 0.24);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.145), rgba(255, 122, 26, 0.035) 70%, transparent),
+    rgba(255, 255, 255, 0.012);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.025),
+    0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+.core-nav button.active::before {
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  box-shadow:
+    0 0 8px rgba(255, 122, 26, 0.8),
+    0 0 18px rgba(255, 122, 26, 0.35);
+}
+
+.core-sidebar-status {
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.core-status-indicator {
+  position: relative;
+}
+
+.core-status-indicator::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  right: -2px;
+  top: -2px;
+  border: 2px solid #07090d;
+  border-radius: 999px;
+  background: var(--core-green);
+  box-shadow: 0 0 9px rgba(97, 216, 155, 0.62);
+}
+
+.core-sidebar-settings {
+  border: 1px solid transparent;
+}
+
+.core-sidebar-settings:hover {
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.core-topbar {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent),
+    var(--shell-glass);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(22px) saturate(118%);
+  -webkit-backdrop-filter: blur(22px) saturate(118%);
+}
+
+.core-topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 122, 26, 0.2) 18%, transparent 54%);
+}
+
+.core-command-search {
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.018);
+}
+
+.core-command-search:hover {
+  border-color: rgba(255, 122, 26, 0.3);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.025),
+    0 0 0 3px rgba(255, 122, 26, 0.025),
+    0 10px 28px rgba(0, 0, 0, 0.13);
+}
+
+.core-market-status {
+  padding: 7px 10px;
+  margin-right: 4px;
+  border: 1px solid rgba(97, 216, 155, 0.09);
+  border-radius: 999px;
+  background: rgba(97, 216, 155, 0.025);
+}
+
+.core-market-status > span {
+  animation: orion-status-breathe 2.8s ease-in-out infinite;
+}
+
+.core-topbar-icon {
+  border-color: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.014);
+}
+
+.core-topbar-icon:hover {
+  color: #f0f2f4;
+  border-color: rgba(255, 122, 26, 0.18);
+  background: rgba(255, 122, 26, 0.045);
+  box-shadow: 0 0 18px rgba(255, 122, 26, 0.06);
+}
+
+.core-main {
+  position: relative;
+}
+
+.core-main::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: clamp(24px, 3vw, 46px);
+  right: clamp(24px, 3vw, 46px);
+  height: 1px;
+  pointer-events: none;
+  opacity: 0.7;
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.22), transparent 24%);
+}
+
+@keyframes orion-status-breathe {
+  0%, 100% {
+    opacity: 0.72;
+    box-shadow: 0 0 7px rgba(97, 216, 155, 0.38);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 11px rgba(97, 216, 155, 0.7);
+  }
+}
+
+@media (max-width: 900px) {
+  .core-shell::before {
+    background: radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.055), transparent 22rem);
+  }
+
+  .core-market-status {
+    padding: 6px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-market-status > span {
+    animation: none;
+  }
+
+  .core-brand-mark,
+  .core-brand::after,
+  .core-nav button::after {
+    transition: none;
+  }
+}
