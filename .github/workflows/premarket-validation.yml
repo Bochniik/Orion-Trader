@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "scripts/audit_premarket_dataset_readiness.py"
+      - "scripts/collect_alpaca_extended_history.py"
       - "scripts/build_premarket_training_dataset_v2.py"
       - "scripts/premarket_directional_v4_common.py"
       - "scripts/premarket_directional_v5_common.py"
       - "scripts/train_premarket_hierarchical.py"
       - "scripts/validate_premarket_directional_v5_*.py"
       - "backend/tests/test_premarket_*.py"
+      - "backend/tests/test_collect_alpaca_extended_history.py"
       - ".github/workflows/premarket-validation.yml"
 
 permissions:
@@ -33,12 +35,13 @@ jobs:
       - name: Install focused test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install numpy==2.5.1 pandas==3.0.3 pytest
+          python -m pip install numpy==2.5.1 pandas==3.0.3 pytest httpx python-dotenv
 
       - name: Compile premarket validation modules
         run: |
           python -m py_compile \
             scripts/audit_premarket_dataset_readiness.py \
+            scripts/collect_alpaca_extended_history.py \
             scripts/premarket_directional_v4_common.py \
             scripts/premarket_directional_v5_common.py \
             scripts/train_premarket_hierarchical.py \
@@ -48,6 +51,7 @@ jobs:
       - name: Run focused regression tests
         run: |
           python -m pytest -q \
+            backend/tests/test_collect_alpaca_extended_history.py \
             backend/tests/test_premarket_dataset_readiness.py \
             backend/tests/test_premarket_directional_v4_features.py \
             backend/tests/test_premarket_directional_v5_validation.py
