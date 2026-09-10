@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import importlib.util
 from pathlib import Path
+import sys
 
 import pandas as pd
 
@@ -12,6 +13,7 @@ SCRIPT = ROOT / "scripts" / "evaluate_cloud_shadow_predictions.py"
 SPEC = importlib.util.spec_from_file_location("shadow_evaluator", SCRIPT)
 module = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
+sys.modules[SPEC.name] = module
 SPEC.loader.exec_module(module)
 
 
