@@ -1,0 +1,32 @@
+name: Directional validation
+
+on:
+  pull_request:
+    paths:
+      - "backend/evals/evaluate_directional_model.py"
+      - "backend/tests/test_directional_model_evaluation.py"
+      - ".github/workflows/directional-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/evals/evaluate_directional_model.py"
+      - "backend/tests/test_directional_model_evaluation.py"
+      - ".github/workflows/directional-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  evaluator-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused test dependency
+        run: python -m pip install pytest
+      - name: Compile evaluator
+        run: python -m py_compile backend/evals/evaluate_directional_model.py
+      - name: Run directional evaluation regression tests
+        run: python -m pytest backend/tests/test_directional_model_evaluation.py -q
