@@ -1,0 +1,52 @@
+name: Regular-hours V3.1 cloud shadow
+
+on:
+  workflow_dispatch:
+    inputs:
+      symbols:
+        description: "Space-separated symbols"
+        required: false
+        default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
+  schedule:
+    # Single UTC schedule covers both EDT and EST. The Python gate enforces
+    # America/New_York 09:30-15:30 and skips harmlessly outside that window.
+    - cron: "35 13-21 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regular-hours-v3-1-cloud-shadow
+  cancel-in-progress: false
+
+jobs:
+  shadow-prediction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Run regular-hours V3.1 shadow prediction
+        shell: bash
+        run: |
+          SYMBOLS="${{ github.event.inputs.symbols }}"
+          if [ -z "$SYMBOLS" ]; then
+            SYMBOLS="AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
+          fi
+          python scripts/run_regular_hours_v3_1_cloud_shadow.py \
+            --symbols $SYMBOLS \
+            --output backend/data/cloud_shadow/regular_hours_v3_1/prediction-${{ github.run_id }}.json
+      - name: Upload immutable shadow evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regular-hours-v3-1-shadow-${{ github.run_id }}
+          path: backend/data/cloud_shadow/regular_hours_v3_1/*.json
+          if-no-files-found: warn
+          retention-days: 30
