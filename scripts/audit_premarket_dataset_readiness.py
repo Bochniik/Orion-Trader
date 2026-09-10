@@ -106,7 +106,7 @@ def audit_dataset(frame: pd.DataFrame) -> dict:
     if not bool(np.all(minutes_match)):
         report["blockers"].append("Some minutes_to_open values disagree with snapshot_at")
 
-    feature_values = valid[V4_FEATURE_NAMES].apply(pd.to_numeric, errors="coerce")
+    feature_values = valid[list(V4_FEATURE_NAMES)].apply(pd.to_numeric, errors="coerce")
     feature_fraction = feature_values.notna().mean(axis=1)
     report["checks"]["feature_completeness_median"] = round(float(feature_fraction.median()), 6)
     report["checks"]["feature_completeness_p10"] = round(float(feature_fraction.quantile(0.10)), 6)
