@@ -3,6 +3,8 @@ name: Premarket validation
 on:
   pull_request:
     paths:
+      - "scripts/audit_premarket_dataset_readiness.py"
+      - "scripts/build_premarket_training_dataset_v2.py"
       - "scripts/premarket_directional_v4_common.py"
       - "scripts/premarket_directional_v5_common.py"
       - "scripts/train_premarket_hierarchical.py"
@@ -36,6 +38,7 @@ jobs:
       - name: Compile premarket validation modules
         run: |
           python -m py_compile \
+            scripts/audit_premarket_dataset_readiness.py \
             scripts/premarket_directional_v4_common.py \
             scripts/premarket_directional_v5_common.py \
             scripts/train_premarket_hierarchical.py \
@@ -45,5 +48,6 @@ jobs:
       - name: Run focused regression tests
         run: |
           python -m pytest -q \
+            backend/tests/test_premarket_dataset_readiness.py \
             backend/tests/test_premarket_directional_v4_features.py \
             backend/tests/test_premarket_directional_v5_validation.py
