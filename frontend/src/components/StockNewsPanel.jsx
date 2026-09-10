@@ -1,4 +1,4 @@
-import { Newspaper, ExternalLink } from "lucide-react";
+import { ExternalLink, Newspaper, RefreshCw } from "lucide-react";
 
 function formatNewsDate(timestamp) {
   if (!timestamp) return "Recently";
@@ -12,47 +12,112 @@ function formatNewsDate(timestamp) {
   });
 }
 
+function newsImage(item) {
+  return item?.thumbnail || item?.image_url || item?.image || item?.media?.thumbnail || "";
+}
+
+function newsLabel(item) {
+  return item?.category || item?.type || "Market news";
+}
+
 export default function StockNewsPanel({ ticker, news, loading, error, onRefresh }) {
+  const items = Array.isArray(news) ? news : [];
+
   return (
-    <section className="card news-card">
-      <div className="news-header">
-        <div className="card-title">
-          <Newspaper size={20} />
-          Latest news
+    <section className="card news-card news-card--terminal">
+      <div className="news-header news-header--terminal">
+        <div>
+          <div className="card-title news-title">
+            <span className="news-title-icon" aria-hidden="true">
+              <Newspaper size={18} />
+            </span>
+            Latest news
+          </div>
+          <p className="news-subtitle">Recent headlines and catalysts for {ticker}</p>
         </div>
 
-        <button type="button" className="ghost-btn" onClick={onRefresh} disabled={loading}>
-          {loading ? "Loading..." : "Refresh"}
+        <button
+          type="button"
+          className="ghost-btn news-refresh-btn"
+          onClick={onRefresh}
+          disabled={loading}
+          aria-label={`Refresh news for ${ticker}`}
+        >
+          <RefreshCw size={15} className={loading ? "news-refresh-icon is-spinning" : "news-refresh-icon"} />
+          <span>{loading ? "Refreshing" : "Refresh"}</span>
         </button>
       </div>
 
-      <p className="news-subtitle">Recent headlines for {ticker}</p>
+      {error && <p className="error-text news-state">{error}</p>}
 
-      {error && <p className="error-text">{error}</p>}
-      {!error && loading && <p className="muted-text">Loading news...</p>}
-      {!error && !loading && news.length === 0 && (
-        <p className="muted-text">No recent news found.</p>
+      {!error && loading && items.length === 0 && (
+        <div className="news-skeleton-list" aria-label="Loading news">
+          {[0, 1, 2].map((item) => (
+            <div className="news-skeleton-item" key={item} aria-hidden="true">
+              <div className="news-skeleton-media" />
+              <div className="news-skeleton-copy">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
-      {!error && news.length > 0 && (
-        <div className="news-list">
-          {news.map((item) => (
-            <a
-              className="news-item"
-              key={`${item.title}-${item.link}`}
-              href={item.link}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <div>
-                <h3>{item.title}</h3>
-                <p>
-                  {item.publisher || "Unknown source"} · {formatNewsDate(item.published_at)}
-                </p>
-              </div>
-              <ExternalLink size={18} />
-            </a>
-          ))}
+      {!error && !loading && items.length === 0 && (
+        <div className="news-empty-state">
+          <span className="news-empty-mark" aria-hidden="true">{String(ticker || "OR").slice(0, 2)}</span>
+          <div>
+            <strong>No recent headlines</strong>
+            <p className="muted-text">Orion will surface fresh market coverage here when it becomes available.</p>
+          </div>
+        </div>
+      )}
+
+      {!error && items.length > 0 && (
+        <div className="news-list news-list--terminal">
+          {items.map((item) => {
+            const image = newsImage(item);
+            return (
+              <a
+                className="news-item news-item--terminal"
+                key={`${item.title}-${item.link}`}
+                href={item.link}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <div className="news-media" aria-hidden="true">
+                  <div className="news-media-fallback">
+                    <span>{String(ticker || "OR").slice(0, 2)}</span>
+                  </div>
+                  {image && (
+                    <img
+                      src={image}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      onError={(event) => { event.currentTarget.style.display = "none"; }}
+                    />
+                  )}
+                </div>
+
+                <div className="news-copy">
+                  <div className="news-meta-row">
+                    <span className="news-kind">{newsLabel(item)}</span>
+                    <span>{item.publisher || "Unknown source"}</span>
+                    <span aria-hidden="true">•</span>
+                    <time>{formatNewsDate(item.published_at)}</time>
+                  </div>
+                  <h3>{item.title}</h3>
+                </div>
+
+                <span className="news-link-icon" aria-hidden="true">
+                  <ExternalLink size={16} />
+                </span>
+              </a>
+            );
+          })}
         </div>
       )}
     </section>
