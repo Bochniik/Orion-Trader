@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import "./motion.css";
 import "./shell-polish.css";
+import "./data-panels.css";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import AuthPanel from "./components/AuthPanel";
 import CoreApp from "./core/CoreApp";
