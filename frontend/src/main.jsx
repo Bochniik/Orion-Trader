@@ -9,6 +9,7 @@ import "./chart-polish.css";
 import "./analysis-polish.css";
 import "./watchlist-polish.css";
 import "./quote-polish.css";
+import "./stock-workspace.css";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import AuthPanel from "./components/AuthPanel";
 import CoreApp from "./core/CoreApp";
