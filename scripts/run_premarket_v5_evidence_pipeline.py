@@ -1,0 +1,221 @@
+from __future__ import annotations
+
+import argparse
+from datetime import date
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+
+PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v1"
+DEFAULT_TARGETS = ["premarket_5m", "premarket_15m", "premarket_30m", "premarket_60m"]
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def parse_symbols(values: list[str]) -> list[str]:
+    symbols: list[str] = []
+    for value in values:
+        for item in str(value).split(","):
+            symbol = item.strip().upper()
+            if symbol and symbol not in symbols:
+                symbols.append(symbol)
+    if not symbols:
+        raise ValueError("At least one ticker is required")
+    return symbols
+
+
+def build_commands(
+    *,
+    symbols: list[str],
+    start: str,
+    end: str,
+    feed: str,
+    raw: Path,
+    dataset: Path,
+    readiness: Path,
+    validation: Path,
+    skip_collect: bool,
+    targets: list[str],
+) -> list[list[str]]:
+    scripts = Path(__file__).resolve().parent
+    commands: list[list[str]] = []
+    if not skip_collect:
+        commands.append([
+            sys.executable,
+            str(scripts / "collect_alpaca_extended_history.py"),
+            "--symbols",
+            *symbols,
+            "--start",
+            start,
+            "--end",
+            end,
+            "--feed",
+            feed,
+            "--output",
+            str(raw),
+        ])
+    commands.extend([
+        [
+            sys.executable,
+            str(scripts / "build_premarket_training_dataset_v2.py"),
+            str(raw),
+            "--output",
+            str(dataset),
+        ],
+        [
+            sys.executable,
+            str(scripts / "audit_premarket_dataset_readiness.py"),
+            str(dataset),
+            "--output",
+            str(readiness),
+        ],
+        [
+            sys.executable,
+            str(scripts / "run_premarket_v5_validation.py"),
+            str(dataset),
+            "--output",
+            str(validation),
+            "--targets",
+            *targets,
+        ],
+    ])
+    return commands
+
+
+def artifact_identity(path: Path) -> dict:
+    if not path.exists():
+        return {"path": str(path), "exists": False, "sha256": None}
+    return {"path": str(path), "exists": True, "sha256": file_sha256(path)}
+
+
+def write_pipeline_manifest(
+    output: Path,
+    *,
+    symbols: list[str],
+    start: str,
+    end: str,
+    feed: str,
+    raw: Path,
+    dataset: Path,
+    readiness: Path,
+    validation: Path,
+    targets: list[str],
+    status: str,
+) -> Path:
+    artifacts = {
+        "raw_csv": artifact_identity(raw),
+        "raw_manifest": artifact_identity(raw.with_suffix(raw.suffix + ".manifest.json")),
+        "dataset_csv": artifact_identity(dataset),
+        "dataset_manifest": artifact_identity(dataset.with_suffix(dataset.suffix + ".manifest.json")),
+        "readiness_report": artifact_identity(readiness),
+        "validation_report": artifact_identity(validation),
+        "validation_manifest": artifact_identity(validation.with_suffix(validation.suffix + ".manifest.json")),
+        "research_gate": artifact_identity(validation.with_suffix(validation.suffix + ".gate.json")),
+    }
+    payload = {
+        "pipeline_version": PIPELINE_VERSION,
+        "status": status,
+        "request": {
+            "symbols": symbols,
+            "start": start,
+            "end": end,
+            "feed": feed,
+            "targets": targets,
+        },
+        "artifacts": artifacts,
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return output
+
+
+def validate_request(start: str, end: str, feed: str, targets: list[str]) -> None:
+    start_day = date.fromisoformat(start)
+    end_day = date.fromisoformat(end)
+    if end_day < start_day:
+        raise ValueError("--end must be on or after --start")
+    if feed not in {"iex", "sip"}:
+        raise ValueError("--feed must be iex or sip")
+    unsupported = sorted(set(targets) - set(DEFAULT_TARGETS))
+    if unsupported:
+        raise ValueError("Unsupported premarket targets: " + ", ".join(unsupported))
+    if set(targets) != set(DEFAULT_TARGETS):
+        raise ValueError("Audited evidence runs must include all four required premarket targets")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run Orion's reproducible Premarket v5 evidence chain: collect -> build -> "
+            "readiness gate -> audited validation -> research gate. The readiness stage "
+            "fails closed before validation when the dataset is insufficient or unsafe."
+        )
+    )
+    parser.add_argument("--symbols", nargs="+", required=True)
+    parser.add_argument("--start", required=True, help="YYYY-MM-DD")
+    parser.add_argument("--end", required=True, help="YYYY-MM-DD")
+    parser.add_argument("--feed", choices=("iex", "sip"), default="iex")
+    parser.add_argument("--raw", type=Path, default=Path("backend/data/raw/alpaca_extended_minutes.csv"))
+    parser.add_argument("--dataset", type=Path, default=Path("backend/data/premarket_training_dataset_v2.csv"))
+    parser.add_argument("--readiness", type=Path, default=Path("backend/data/models/premarket_dataset_readiness.json"))
+    parser.add_argument("--validation", type=Path, default=Path("backend/data/models/premarket_directional_v5_event_nested.json"))
+    parser.add_argument("--manifest", type=Path, default=Path("backend/data/models/premarket_v5_evidence_pipeline.json"))
+    parser.add_argument("--skip-collect", action="store_true", help="Reuse an existing raw CSV plus its provenance manifest")
+    parser.add_argument("--plan", action="store_true", help="Print the deterministic command plan without executing it")
+    parser.add_argument("--targets", nargs="+", default=list(DEFAULT_TARGETS))
+    args = parser.parse_args()
+
+    symbols = parse_symbols(args.symbols)
+    targets = list(args.targets)
+    validate_request(args.start, args.end, args.feed, targets)
+    commands = build_commands(
+        symbols=symbols,
+        start=args.start,
+        end=args.end,
+        feed=args.feed,
+        raw=args.raw,
+        dataset=args.dataset,
+        readiness=args.readiness,
+        validation=args.validation,
+        skip_collect=args.skip_collect,
+        targets=targets,
+    )
+
+    if args.plan:
+        print(json.dumps({"pipeline_version": PIPELINE_VERSION, "commands": commands}, indent=2))
+        return
+
+    status = "FAILED"
+    try:
+        for command in commands:
+            print("RUN:", " ".join(command), flush=True)
+            subprocess.run(command, check=True)
+        status = "COMPLETED"
+    finally:
+        manifest_path = write_pipeline_manifest(
+            args.manifest,
+            symbols=symbols,
+            start=args.start,
+            end=args.end,
+            feed=args.feed,
+            raw=args.raw,
+            dataset=args.dataset,
+            readiness=args.readiness,
+            validation=args.validation,
+            targets=targets,
+            status=status,
+        )
+        print(f"Evidence pipeline manifest: {manifest_path}", flush=True)
+
+
+if __name__ == "__main__":
+    main()
