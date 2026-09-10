@@ -175,7 +175,15 @@ def _predict_with_model(model, row):
     return round(float(np.clip(p, .03, .97))*100, 1)
 
 
-def walk_forward_v3_frame(stock, spy, *, symbol="TEST", initial_training_days=15, stride_bars=6):
+def walk_forward_v3_frame(
+    stock,
+    spy,
+    *,
+    symbol="TEST",
+    initial_training_days=15,
+    stride_bars=6,
+    include_records=False,
+):
     stock = _normalize_ohlcv(stock)
     spy = _normalize_ohlcv(spy)
     dataset = attach_targets(build_statistical_features(stock, spy))
@@ -223,7 +231,7 @@ def walk_forward_v3_frame(stock, spy, *, symbol="TEST", initial_training_days=15
                     "actual_up": int(actual),
                 })
 
-    return {
+    result = {
         "symbol": symbol.upper(),
         "available": any(records[h] for h in HORIZONS),
         "method": "daily_refit_walk_forward_conservative_regularized_logistic_v3",
@@ -235,14 +243,21 @@ def walk_forward_v3_frame(stock, spy, *, symbol="TEST", initial_training_days=15
         "skipped_predictions": skipped,
         "semantics": SEMANTICS,
     }
+    if include_records:
+        result["prediction_records"] = records
+        result["prediction_records_semantics"] = (
+            "Chronological out-of-sample V3 predictions emitted only for offline "
+            "calibration/reliability audits; disabled by default to keep normal reports compact."
+        )
+    return result
 
 
-def walk_forward_v3(symbol, period="60d", interval="5m"):
+def walk_forward_v3(symbol, period="60d", interval="5m", *, include_records=False):
     import yfinance as yf
     ticker = symbol.strip().upper()
     stock = yf.download(ticker, period=period, interval=interval, auto_adjust=False, prepost=False, progress=False, threads=False)
     spy = yf.download("SPY", period=period, interval=interval, auto_adjust=False, prepost=False, progress=False, threads=False)
-    result = walk_forward_v3_frame(stock, spy, symbol=ticker)
+    result = walk_forward_v3_frame(stock, spy, symbol=ticker, include_records=include_records)
     result["period"] = period
     result["interval"] = interval
     return result
