@@ -1,0 +1,72 @@
+name: Premarket v5 cloud shadow
+
+on:
+  workflow_dispatch:
+    inputs:
+      symbols:
+        description: "Space-separated symbols"
+        required: false
+        default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
+  schedule:
+    # Cover 09:15 ET across US daylight/standard time. The runner itself uses
+    # America/New_York and fails closed outside the premarket window.
+    - cron: "15 13,14 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: premarket-v5-cloud-shadow
+  cancel-in-progress: false
+
+jobs:
+  shadow-prediction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+      ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Verify cloud credentials are configured
+        shell: bash
+        run: |
+          if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
+            echo "Missing repository secrets ALPACA_API_KEY_ID / ALPACA_API_SECRET_KEY." >&2
+            exit 2
+          fi
+
+      - name: Run premarket v5 shadow prediction
+        shell: bash
+        run: |
+          SYMBOLS="${{ github.event.inputs.symbols }}"
+          if [ -z "$SYMBOLS" ]; then
+            SYMBOLS="AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
+          fi
+          python scripts/run_premarket_v5_cloud_shadow.py \
+            --symbols $SYMBOLS \
+            --lookback-days 120 \
+            --feed iex \
+            --output backend/data/cloud_shadow/premarket_v5/prediction-${{ github.run_id }}.json
+
+      - name: Upload immutable shadow evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: premarket-v5-shadow-${{ github.run_id }}
+          path: |
+            backend/data/cloud_shadow/premarket_v5/*.json
+            backend/data/cloud_shadow/premarket_v5/*.manifest.json
+          if-no-files-found: warn
+          retention-days: 30
