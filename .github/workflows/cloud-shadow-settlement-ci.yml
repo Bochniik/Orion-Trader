@@ -5,9 +5,12 @@ on:
     paths:
       - "scripts/evaluate_cloud_shadow_predictions.py"
       - "scripts/accumulate_cloud_shadow_evidence.py"
+      - "scripts/collect_cloud_shadow_outcome_bars.py"
       - "backend/tests/test_cloud_shadow_settlement_evaluator.py"
       - "backend/tests/test_cloud_shadow_evidence_ledger.py"
+      - "backend/tests/test_cloud_shadow_outcome_collector.py"
       - ".github/workflows/cloud-shadow-settlement-ci.yml"
+      - ".github/workflows/cloud-shadow-evidence-cycle.yml"
       - "ENGINE_RESEARCH_LOG.md"
       - "backend/requirements.txt"
 
@@ -29,11 +32,13 @@ jobs:
         run: |
           python -m pip install -r backend/requirements.txt
           python -m pip install pytest
-      - name: Compile evaluator and evidence ledger
+      - name: Compile settlement pipeline
         run: |
           python -m py_compile scripts/evaluate_cloud_shadow_predictions.py
           python -m py_compile scripts/accumulate_cloud_shadow_evidence.py
+          python -m py_compile scripts/collect_cloud_shadow_outcome_bars.py
       - name: Run focused settlement and evidence tests
         run: |
           python -m pytest -q backend/tests/test_cloud_shadow_settlement_evaluator.py
           python -m pytest -q backend/tests/test_cloud_shadow_evidence_ledger.py
+          python -m pytest -q backend/tests/test_cloud_shadow_outcome_collector.py
