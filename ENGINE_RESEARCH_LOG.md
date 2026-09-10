@@ -54,9 +54,9 @@ Evidence integrity policy:
 
 Focused tests cover path-independent record identity, repeated-run idempotence, conflict detection, lineage separation, cumulative metrics, leakage-safe input enforcement and preservation of prior evidence.
 
-## 2026-09-10 — Bounded cloud shadow settlement cycle candidate
+## 2026-09-10 — Bounded cloud shadow settlement cycle
 
-Branch `autonomous/2026-09-10-bounded-shadow-evidence-cycle` wires the prediction artifacts, Alpaca outcome collection, leakage-safe evaluator and append-only ledger into one scheduled research pipeline.
+Merged PR #19 (`dee3d35b31c6f70337c2a52a0385553755147fd6`) wires prediction artifacts, bounded Alpaca outcome collection, the leakage-safe evaluator and append-only ledger into one scheduled research pipeline.
 
 Safety and data-quality constraints:
 - Only non-expired immutable Premarket v5 and Regular-hours V3.1 prediction artifacts from the recent three-day evidence window are recovered from GitHub Actions.
@@ -71,6 +71,22 @@ Safety and data-quality constraints:
 
 Focused tests verify mature-horizon gating, maximum-age gating, independent bounded windows, exact end-boundary semantics, bar deduplication and rejection of rows outside the planned request interval.
 
+## 2026-09-10 — Paired regular-hours challenger tournament candidate
+
+Branch `autonomous/2026-09-10-intraday-challenger-tournament` adds a generic offline tournament gate for future regular-hours challenger engines.
+
+Tournament policy:
+- Incumbent and challenger are compared only on the exact intersection of timestamped OOS predictions; unmatched observations cannot improve either engine's score.
+- Outcomes must match for each paired timestamp and conflicting duplicate records fail closed.
+- Proper scores are primary: Brier score and log loss must both improve. Directional accuracy and 10-bin ECE are retained as supporting diagnostics rather than promotion substitutes.
+- Stability is measured with a deterministic paired session-block bootstrap that resamples entire trading days instead of individual bars, preserving within-session dependence.
+- Default research eligibility requires at least 80 paired observations across at least 8 distinct sessions for every required regular-hours horizon.
+- Both lower bounds of the 95% bootstrap confidence intervals for Brier and log-loss improvement must be positive before a horizon is marked `research_eligible`.
+- All required horizons must pass before the overall challenger can be marked research-eligible.
+- This gate never modifies runtime models, thresholds, reliability profiles, broker behavior or promotion state.
+
+Focused regression tests cover exact pairing, outcome mismatch rejection, conflicting duplicate rejection, strong-challenger acceptance, rejection of unstable/high-confidence bad-tail behavior, insufficient-session rejection and all-horizon gating.
+
 ### Next logical engine step
 
-After this evidence cycle is green and merged, observe real forward runs and measure settlement coverage. Do not tune Premarket v5 or Regular-hours V3.1 from the first handful of observations. Once enough distinct sessions exist, add sample-size-aware research gates that compare Brier/log loss/calibration and directional accuracy against leakage-safe baselines by engine, horizon and regime. Issue #3 remains open until genuine point-in-time Premarket v5 observations satisfy the existing 40d train + 10d calibration + 5d test evidence requirement.
+After this tournament gate is green and merged, implement the first deliberately different regular-hours challenger (preferably regime-aware rather than another threshold tweak) and emit the same chronological OOS prediction-record contract as V3. Run the paired tournament against V3 and V3.1 on identical symbols/timestamps. Reject the challenger if proper-score improvement or session-level stability is not demonstrated. In parallel, continue accumulating genuine cloud-shadow evidence; Issue #3 remains open until Premarket v5 has sufficient point-in-time evidence.
