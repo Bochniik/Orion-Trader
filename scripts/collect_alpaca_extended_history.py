@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import csv
 from datetime import date, datetime, timedelta, time, timezone
+import hashlib
+import json
 import os
 from pathlib import Path
 import sys
@@ -17,6 +19,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 NY = ZoneInfo("America/New_York")
 DATA_URL = "https://data.alpaca.markets"
+COLLECTOR_VERSION = "alpaca-extended-history-v2"
 
 
 def load_local_env() -> None:
@@ -223,6 +226,49 @@ def append_rows(path: Path, grouped: dict[str, list[dict]], existing: set[tuple[
     return written
 
 
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def write_collection_manifest(
+    output: Path,
+    *,
+    symbols: list[str],
+    start_day: date,
+    end_day: date,
+    feed: str,
+    row_count: int,
+    rows_added: int,
+) -> Path:
+    """Write a credential-free provenance sidecar for the collected raw CSV."""
+    if not output.exists():
+        raise FileNotFoundError(output)
+    manifest_path = output.with_suffix(output.suffix + ".manifest.json")
+    payload = {
+        "collector_version": COLLECTOR_VERSION,
+        "source": "alpaca_stock_bars_v2",
+        "feed": feed,
+        "adjustment": "raw",
+        "timeframe": "1Min",
+        "timezone": "America/New_York",
+        "included_local_hours": "04:00-15:59",
+        "requested_start": start_day.isoformat(),
+        "requested_end": end_day.isoformat(),
+        "symbols": symbols,
+        "symbol_count": len(symbols),
+        "row_count": int(row_count),
+        "rows_added_last_run": int(rows_added),
+        "schema": ["ticker", "timestamp", "open", "high", "low", "close", "volume"],
+        "csv_sha256": file_sha256(output),
+    }
+    manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return manifest_path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
@@ -295,10 +341,20 @@ def main() -> None:
                 if args.pause > 0:
                     time_module.sleep(args.pause)
 
+    manifest_path = write_collection_manifest(
+        args.output,
+        symbols=symbols,
+        start_day=start_day,
+        end_day=end_day,
+        feed=args.feed,
+        row_count=len(existing),
+        rows_added=total_written,
+    )
     print(
         f"Done. Added {total_written:,} rows; CSV now contains {len(existing):,} unique ticker-minute rows.",
         flush=True,
     )
+    print(f"Provenance manifest: {manifest_path}", flush=True)
     print(
         "Next: python scripts/build_premarket_training_dataset.py "
         f"{args.output} --output backend/data/premarket_training_dataset.csv",
