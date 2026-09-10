@@ -6,7 +6,7 @@ This document records the reproducibility policy for the offline V4 challenger t
 
 `backend/evals/benchmark_intraday_challenger_v4.py` compares the regime-aware V4 challenger against raw V3 and leakage-safe held-out V3.1 on exact paired out-of-sample timestamps. The benchmark is research-only and does not deploy or promote V4.
 
-`script/run_intraday_v4_benchmark_evidence.py` is intentionally not used. The canonical runner is `scripts/run_intraday_v4_benchmark_evidence.py`.
+The canonical evidence runner is `scripts/run_intraday_v4_benchmark_evidence.py`.
 
 ## Evidence contract
 
