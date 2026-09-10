@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts" / "collect_cloud_shadow_outcome_bars.py"
+SCRIPTS = ROOT / "scripts"
+SCRIPT = SCRIPTS / "collect_cloud_shadow_outcome_bars.py"
+sys.path.insert(0, str(SCRIPTS))
 spec = importlib.util.spec_from_file_location("collect_cloud_shadow_outcome_bars", SCRIPT)
 module = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
+sys.modules[spec.name] = module
 spec.loader.exec_module(module)
 
 
