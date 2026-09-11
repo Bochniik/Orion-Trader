@@ -24,13 +24,25 @@ runner = _load("long_horizon_shadow_runner", "scripts/run_long_horizon_v5_paired
 settler = _load("long_horizon_shadow_settler", "scripts/settle_long_horizon_v5_shadow.py")
 
 
-def test_session_gate_is_score_blind_and_bounded_to_settleable_window():
-    allowed = runner.session_gate(datetime(2026, 9, 11, 15, 5, tzinfo=timezone.utc))
-    assert allowed["allowed"] is True
-    assert allowed["window_et"] == "10:00-13:30"
+def test_session_gate_is_score_blind_and_horizon_aware():
+    both = runner.session_gate(datetime(2026, 9, 11, 14, 5, tzinfo=timezone.utc))
+    assert both["allowed"] is True
+    assert both["window_et"] == "10:00-13:30"
+    assert both["regular_close_et"] == "16:00"
+    assert both["eligible_horizons"] == ["3h", "5h"]
 
-    late = runner.session_gate(datetime(2026, 9, 11, 18, 0, tzinfo=timezone.utc))
-    assert late["allowed"] is False
+    three_hour_only = runner.session_gate(datetime(2026, 9, 11, 15, 5, tzinfo=timezone.utc))
+    assert three_hour_only["allowed"] is True
+    assert three_hour_only["eligible_horizons"] == ["3h"]
+
+    no_settleable_horizon = runner.session_gate(datetime(2026, 9, 11, 17, 5, tzinfo=timezone.utc))
+    assert no_settleable_horizon["allowed"] is False
+    assert no_settleable_horizon["eligible_horizons"] == []
+    assert no_settleable_horizon["reason"] == "no_settleable_horizon_before_regular_close"
+
+    outside_window = runner.session_gate(datetime(2026, 9, 11, 18, 0, tzinfo=timezone.utc))
+    assert outside_window["allowed"] is False
+    assert outside_window["reason"] == "outside_long_horizon_shadow_window"
 
 
 def _challenger_fixture():
@@ -98,6 +110,14 @@ def test_atomic_runner_pairs_incumbent_and_challenger_on_exact_timestamp(monkeyp
     assert five_hour["incumbent"]["was_runtime_suppressed"] is True
 
 
+def test_atomic_runner_only_emits_horizons_expected_for_slot(monkeypatch):
+    monkeypatch.setattr(runner, "estimate_long_horizon_v5", lambda symbol: _challenger_fixture())
+    monkeypatch.setattr(runner, "estimate_intraday_probabilities_v3_1", lambda symbol: _incumbent_fixture())
+    rows, error = runner.run_symbol("AAPL", ["3h"])
+    assert error is None
+    assert [row["horizon"] for row in rows] == ["3h"]
+
+
 def test_atomic_runner_fails_closed_on_timestamp_mismatch(monkeypatch):
     monkeypatch.setattr(runner, "estimate_long_horizon_v5", lambda symbol: _challenger_fixture())
     monkeypatch.setattr(
@@ -118,6 +138,41 @@ def test_atomic_runner_fails_closed_when_incumbent_alignment_is_unknown(monkeypa
     rows, error = runner.run_symbol("AAPL")
     assert rows == []
     assert error == "incumbent_source_timestamp_unaligned_or_missing"
+
+
+def test_payload_skips_scheduled_slot_when_no_horizon_can_settle(monkeypatch):
+    monkeypatch.setattr(runner, "lineage", lambda: {"git_commit": "abc", "design_id": runner.DESIGN_ID, "files_sha256": {}})
+    payload = runner.build_payload(["AAPL", "MSFT"], datetime(2026, 9, 11, 17, 5, tzinfo=timezone.utc))
+    assert payload["status"] == "skipped"
+    assert payload["session_gate"]["reason"] == "no_settleable_horizon_before_regular_close"
+    assert payload["coverage"] == {
+        "score_blind": True,
+        "expected_pair_count": 0,
+        "observed_pair_count": 0,
+        "complete": True,
+        "missing_pairs": [],
+    }
+
+
+def test_payload_marks_missing_expected_symbol_horizon_coverage_degraded(monkeypatch):
+    monkeypatch.setattr(runner, "lineage", lambda: {"git_commit": "abc", "design_id": runner.DESIGN_ID, "files_sha256": {}})
+
+    def fake_run(symbol, expected_horizons):
+        rows = [
+            {"symbol": symbol, "horizon": horizon}
+            for horizon in expected_horizons
+            if not (symbol == "MSFT" and horizon == "5h")
+        ]
+        return rows, None
+
+    monkeypatch.setattr(runner, "run_symbol", fake_run)
+    payload = runner.build_payload(["AAPL", "MSFT"], datetime(2026, 9, 11, 14, 5, tzinfo=timezone.utc))
+    assert payload["status"] == "degraded"
+    assert payload["coverage"]["score_blind"] is True
+    assert payload["coverage"]["expected_pair_count"] == 4
+    assert payload["coverage"]["observed_pair_count"] == 3
+    assert payload["coverage"]["missing_pairs"] == [{"symbol": "MSFT", "horizon": "5h"}]
+    assert payload["failures"]["MSFT"] == "missing_expected_horizons:5h"
 
 
 def test_settlement_expansion_preserves_pair_identity_and_model_names():
