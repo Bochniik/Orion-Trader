@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import "./motion.css";
 import "./shell-polish.css";
+import "./navigation-polish.css";
 import "./data-panels.css";
 import "./news-polish.css";
 import "./chart-polish.css";
