@@ -27,8 +27,9 @@ from premarket_directional_v5_common import HybridModel, V5_FEATURE_NAMES
 from app.services.premarket_predictive_engine import extract_predictive_features
 
 NY = ZoneInfo("America/New_York")
-RUNNER_VERSION = "premarket-v5-cloud-shadow-v1"
+RUNNER_VERSION = "premarket-v5-cloud-shadow-v2"
 DEFAULT_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
+MAX_FUTURE_TARGET_SKEW = timedelta(minutes=2)
 
 
 def parse_symbols(values: list[str]) -> list[str]:
@@ -64,6 +65,19 @@ def premarket_window_status(as_of: datetime) -> tuple[bool, str, datetime]:
     return True, "premarket", local
 
 
+def scheduled_target_status(
+    as_of: datetime,
+    *,
+    now: datetime | None = None,
+    max_future_skew: timedelta = MAX_FUTURE_TARGET_SKEW,
+) -> tuple[bool, str]:
+    wall_clock = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    target = as_of.astimezone(timezone.utc)
+    if target > wall_clock + max_future_skew:
+        return False, "scheduled_target_not_reached"
+    return True, "target_reached"
+
+
 def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -83,6 +97,16 @@ def require_credentials() -> None:
         raise RuntimeError("Alpaca credentials are required for cloud shadow collection")
 
 
+def clip_raw_history_as_of(raw_path: Path, *, as_of: datetime) -> int:
+    raw = normalize_columns(pd.read_csv(raw_path))
+    cutoff = pd.Timestamp(as_of).tz_convert("UTC")
+    causal = raw.loc[raw["timestamp"] <= cutoff].copy()
+    if causal.empty:
+        raise ValueError("No causal market data remains at or before --as-of")
+    causal.to_csv(raw_path, index=False)
+    return int(len(causal))
+
+
 def collect_and_train(*, symbols: list[str], as_of: datetime, raw_path: Path, dataset_path: Path, model_path: Path, lookback_days: int, feed: str) -> None:
     require_credentials()
     local_day = as_of.astimezone(NY).date()
@@ -96,6 +120,10 @@ def collect_and_train(*, symbols: list[str], as_of: datetime, raw_path: Path, da
         "--feed", feed,
         "--output", str(raw_path),
     ])
+    # GitHub scheduled jobs can start late. Always clip the downloaded history to
+    # the frozen prediction timestamp before dataset construction so a delayed
+    # recovery cannot train on bars that were unavailable at prediction time.
+    clip_raw_history_as_of(raw_path, as_of=as_of)
     run_checked([
         sys.executable,
         str(SCRIPTS / "build_premarket_training_dataset_v2.py"),
@@ -213,6 +241,10 @@ def main() -> int:
         raise ValueError("--lookback-days must be at least 80 calendar days")
     symbols = parse_symbols(args.symbols)
     as_of = parse_as_of(args.as_of)
+    target_ready, target_reason = scheduled_target_status(as_of)
+    if not target_ready and not args.allow_outside_window:
+        print(json.dumps({"status": "skipped", "reason": target_reason, "as_of_utc": as_of.isoformat()}))
+        return 0
     active, reason, local = premarket_window_status(as_of)
     if not active and not args.allow_outside_window:
         print(json.dumps({"status": "skipped", "reason": reason, "as_of_et": local.isoformat()}))
@@ -244,6 +276,7 @@ def main() -> int:
         "order_submission_enabled": False,
         "as_of_utc": as_of.isoformat(),
         "as_of_et": local.isoformat(),
+        "causal_cutoff_enforced": True,
         "feed": args.feed,
         "symbols": symbols,
         "git_sha": os.getenv("GITHUB_SHA"),
@@ -253,7 +286,7 @@ def main() -> int:
         "predictions": predictions,
     }
     args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"status": "completed", "output": str(args.output), "available": sum(bool(item.get("available")) for item in predictions), "symbols": len(symbols)}))
+    print(json.dumps({"status": "completed", "output": str(args.output), "available": sum(bool(item.get("available")) for item in predictions), "symbols": len(symbols), "as_of_utc": as_of.isoformat(), "causal_cutoff_enforced": True}))
     return 0
 
 
