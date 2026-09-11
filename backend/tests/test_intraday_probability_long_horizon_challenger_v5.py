@@ -4,6 +4,7 @@ import pandas as pd
 from app.services.intraday_probability_engine import NEW_YORK
 from app.services.intraday_probability_long_horizon_challenger_v5 import (
     DESIGN_ID,
+    HORIZON_EXTRA_FEATURES,
     LONG_HORIZONS,
     LONG_MEMORY_FEATURES,
     _build_long_horizon_features,
@@ -11,7 +12,7 @@ from app.services.intraday_probability_long_horizon_challenger_v5 import (
 )
 
 
-def _synthetic_market(days=18, seed=73):
+def _synthetic_market(days=26, seed=73):
     rng = np.random.default_rng(seed)
     stock_parts = []
     spy_parts = []
@@ -57,12 +58,16 @@ def _synthetic_market(days=18, seed=73):
 def test_long_memory_features_are_prefix_invariant():
     stock, spy = _synthetic_market(days=3)
     cutoff = stock.index[150]
-    prefix_stock = stock.loc[:cutoff]
-    prefix_spy = spy.loc[:cutoff]
-    prefix = _build_long_horizon_features(prefix_stock, prefix_spy)
+    prefix = _build_long_horizon_features(stock.loc[:cutoff], spy.loc[:cutoff])
     full = _build_long_horizon_features(stock, spy).loc[:cutoff]
     for feature in LONG_MEMORY_FEATURES:
         pd.testing.assert_series_equal(prefix[feature], full[feature], check_names=True)
+
+
+def test_five_hour_design_does_not_require_ninety_minute_features():
+    assert "ret_90m" not in HORIZON_EXTRA_FEATURES["5h"]
+    assert "volatility_90m" not in HORIZON_EXTRA_FEATURES["5h"]
+    assert "relative_strength_90m" not in HORIZON_EXTRA_FEATURES["5h"]
 
 
 def test_v5_emits_only_preregistered_long_horizons_and_is_research_only():
@@ -89,14 +94,13 @@ def test_v5_emits_only_preregistered_long_horizons_and_is_research_only():
 
 
 def test_future_session_mutation_cannot_change_first_test_session_predictions():
-    stock, spy = _synthetic_market(days=18)
+    stock, spy = _synthetic_market(days=26)
     kwargs = dict(symbol="TST", initial_training_days=15, stride_bars=13, include_records=True)
     baseline = walk_forward_long_horizon_challenger_v5_frame(stock, spy, **kwargs)
 
     local_dates = stock.index.tz_convert(NEW_YORK).date
-    final_date = local_dates[-1]
     changed_stock = stock.copy()
-    mask = local_dates == final_date
+    mask = local_dates == local_dates[-1]
     changed_stock.loc[mask, "Close"] *= np.linspace(1.0, 1.30, int(mask.sum()))
     changed_stock.loc[mask, "High"] = np.maximum(changed_stock.loc[mask, "High"], changed_stock.loc[mask, "Close"])
     changed_stock.loc[mask, "Low"] = np.minimum(changed_stock.loc[mask, "Low"], changed_stock.loc[mask, "Close"])
@@ -105,6 +109,7 @@ def test_future_session_mutation_cannot_change_first_test_session_predictions():
     for horizon in LONG_HORIZONS:
         before = baseline["prediction_records"][horizon]
         after = changed["prediction_records"][horizon]
+        assert before and after
         first_session = pd.Timestamp(before[0]["timestamp"]).tz_convert(NEW_YORK).date()
         before_first = [r for r in before if pd.Timestamp(r["timestamp"]).tz_convert(NEW_YORK).date() == first_session]
         after_first = [r for r in after if pd.Timestamp(r["timestamp"]).tz_convert(NEW_YORK).date() == first_session]
@@ -112,7 +117,7 @@ def test_future_session_mutation_cannot_change_first_test_session_predictions():
 
 
 def test_v5_is_deterministic_for_identical_inputs():
-    stock, spy = _synthetic_market(days=17)
+    stock, spy = _synthetic_market(days=24)
     kwargs = dict(symbol="TST", initial_training_days=15, stride_bars=17, include_records=True)
     first = walk_forward_long_horizon_challenger_v5_frame(stock, spy, **kwargs)
     second = walk_forward_long_horizon_challenger_v5_frame(stock, spy, **kwargs)
