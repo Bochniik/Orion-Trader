@@ -1,4 +1,4 @@
-import { ExternalLink, Newspaper, RefreshCw } from "lucide-react";
+import { AlertTriangle, ExternalLink, Newspaper, RefreshCw } from "lucide-react";
 
 function formatNewsDate(timestamp) {
   if (!timestamp) return "Recently";
@@ -48,7 +48,19 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
         </button>
       </div>
 
-      {error && <p className="error-text news-state">{error}</p>}
+      {error && (
+        <div className="news-error-state" role="alert" aria-live="assertive">
+          <span className="news-error-icon" aria-hidden="true"><AlertTriangle size={18} /></span>
+          <div className="news-error-copy">
+            <strong>News feed temporarily unavailable</strong>
+            <p>{error}</p>
+          </div>
+          <button type="button" className="ghost-btn news-error-retry" onClick={onRefresh} disabled={loading}>
+            <RefreshCw size={14} className={loading ? "news-refresh-icon is-spinning" : "news-refresh-icon"} />
+            <span>{loading ? "Retrying" : "Retry"}</span>
+          </button>
+        </div>
+      )}
 
       {!error && loading && items.length === 0 && (
         <div className="news-skeleton-list" aria-label="Loading news">
