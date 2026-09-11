@@ -26,6 +26,14 @@ The report contains only operational geometry: artifact/session counts, expected
 
 Probability, confidence, predicted return, direction, actionable state, realized outcome, Brier score, log loss, accuracy and ECE are intentionally excluded. Regression tests mutate those fields aggressively and require the health report to remain byte-equivalent at the data-structure level.
 
+## Evidence durability
+
+Issue #3 requires at least 55 distinct sessions for the existing 40-session train + 10-session calibration + 5-session test walk-forward geometry. Eleven complete weeks contain exactly 55 weekdays, so a 30-day artifact window can never preserve the minimum forward sample long enough for that evaluation.
+
+Premarket V5 cloud-shadow evidence therefore uses a 90-day artifact retention window. This covers the minimum 77-calendar-day weekday geometry and leaves limited slack for US market holidays, unavailable data, or missed/failed scheduled runs. `backend/tests/test_premarket_v5_evidence_retention.py` fails if the workflow silently regresses to a retention period shorter than this registered window.
+
+Retention is an operational safeguard only. Extending evidence lifetime does not change the model, cadence, targets, thresholds, broker/feed configuration, or promotion policy, and it does not expose predictive scores while sample readiness is being assessed.
+
 ## Failure policy
 
 The audit fails closed on off-cadence timestamps, weekend artifacts, non-causal artifacts, duplicate session/snapshot artifacts, duplicate or unexpected symbols, missing prediction rows, or malformed available forecasts. Missing market data for an explicitly unavailable symbol is not fabricated; it reduces coverage and its reason is counted.
