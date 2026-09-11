@@ -205,6 +205,66 @@
   opacity: 0.86;
 }
 
+/* Keep non-happy-path states visually intentional without changing the data flow. */
+.market-explorer-panel > .market-explorer-empty,
+.market-v3-content > .market-explorer-empty {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 168px;
+  padding: 28px 22px;
+  border: 1px dashed rgba(255, 255, 255, 0.085);
+  border-radius: 10px;
+  color: #7f8892;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255, 122, 26, 0.07), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.014), rgba(255, 255, 255, 0.004));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.015);
+}
+
+.market-explorer-panel > .market-explorer-empty::before,
+.market-v3-content > .market-explorer-empty::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  width: 30px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #ff7a1a, transparent);
+  box-shadow: 0 0 12px rgba(255, 122, 26, 0.44);
+  opacity: 0.82;
+}
+
+.market-explorer-panel .core-error {
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 112, 112, 0.14);
+  border-left-color: rgba(255, 122, 26, 0.62);
+  border-radius: 8px;
+  color: #d8a4a4;
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.045), transparent 24%),
+    rgba(255, 92, 92, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.014);
+}
+
+.market-explorer-refresh svg {
+  transform-origin: center;
+}
+
+.market-explorer-refresh:disabled svg {
+  animation: market-explorer-spin 0.9s linear infinite;
+}
+
+@keyframes market-explorer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .market-v3-footer {
   display: flex;
   justify-content: space-between;
@@ -275,6 +335,12 @@
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .market-explorer-panel > .market-explorer-empty,
+  .market-v3-content > .market-explorer-empty {
+    min-height: 132px;
+    padding: 24px 16px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -284,5 +350,9 @@
   .market-explorer-tabs button,
   .market-explorer-list-picker button {
     transition: none !important;
+  }
+
+  .market-explorer-refresh:disabled svg {
+    animation: none;
   }
 }
