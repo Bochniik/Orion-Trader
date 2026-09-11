@@ -1,0 +1,131 @@
+.chart-status,
+.chart-live-message {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .12);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(15, 23, 42, .72), rgba(7, 12, 20, .88));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .025);
+}
+
+.chart-status::after,
+.chart-live-message::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: rgba(148, 163, 184, .34);
+}
+
+.chart-status > div,
+.chart-live-message > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chart-status strong,
+.chart-live-message strong {
+  color: #dce5ef;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .025em;
+}
+
+.chart-status > div > span,
+.chart-live-message > div > span {
+  overflow: hidden;
+  color: #748398;
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-status-indicator,
+.chart-live-indicator {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 999px;
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, .06);
+}
+
+.chart-status-loading {
+  border-color: rgba(249, 115, 22, .18);
+  background: linear-gradient(90deg, rgba(249, 115, 22, .06), rgba(7, 12, 20, .9) 42%);
+}
+
+.chart-status-loading::after { background: linear-gradient(180deg, #fb923c, rgba(249, 115, 22, .18)); }
+.chart-status-loading .chart-status-indicator {
+  background: transparent;
+  border: 2px solid rgba(251, 146, 60, .28);
+  border-top-color: #fb923c;
+  box-shadow: 0 0 12px rgba(249, 115, 22, .12);
+  animation: chart-state-spin .9s linear infinite;
+}
+
+.chart-status-error {
+  border-color: rgba(248, 113, 113, .18);
+  background: linear-gradient(90deg, rgba(127, 29, 29, .085), rgba(7, 12, 20, .9) 44%);
+}
+
+.chart-status-error::after { background: linear-gradient(180deg, #fb7185, rgba(251, 113, 133, .12)); }
+.chart-status-error .chart-status-indicator {
+  background: #fb7185;
+  box-shadow: 0 0 10px rgba(251, 113, 133, .34), 0 0 0 3px rgba(251, 113, 133, .07);
+}
+.chart-status-error strong { color: #ffd3da; }
+
+.chart-live-message {
+  border-color: rgba(52, 211, 153, .14);
+  background: linear-gradient(90deg, rgba(52, 211, 153, .05), rgba(7, 12, 20, .88) 42%);
+}
+.chart-live-message::before { content: none; }
+.chart-live-message::after { background: linear-gradient(180deg, #34d399, rgba(52, 211, 153, .12)); }
+.chart-live-indicator {
+  background: #34d399;
+  box-shadow: 0 0 11px rgba(52, 211, 153, .42), 0 0 0 3px rgba(52, 211, 153, .06);
+}
+.chart-live-message strong { color: #bcebd6; }
+
+.chart-live-stale {
+  border-color: rgba(251, 191, 36, .16);
+  background: linear-gradient(90deg, rgba(120, 53, 15, .075), rgba(7, 12, 20, .88) 44%);
+}
+.chart-live-stale::after { background: linear-gradient(180deg, #fbbf24, rgba(251, 191, 36, .12)); }
+.chart-live-stale .chart-live-indicator {
+  background: #fbbf24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, .3), 0 0 0 3px rgba(251, 191, 36, .06);
+}
+.chart-live-stale strong { color: #f5dfa4; }
+
+.chart-live-paused {
+  border-color: rgba(148, 163, 184, .13);
+  background: linear-gradient(90deg, rgba(71, 85, 105, .08), rgba(7, 12, 20, .88) 44%);
+}
+.chart-live-paused::after { background: linear-gradient(180deg, #94a3b8, rgba(148, 163, 184, .1)); }
+.chart-live-paused .chart-live-indicator {
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, .07);
+}
+.chart-live-paused strong { color: #cbd5e1; }
+
+@keyframes chart-state-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 720px) {
+  .chart-status,
+  .chart-live-message { align-items: flex-start; }
+  .chart-status > div > span,
+  .chart-live-message > div > span { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-status-loading .chart-status-indicator { animation: none; }
+}
