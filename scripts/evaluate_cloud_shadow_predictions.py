@@ -8,6 +8,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -16,6 +17,7 @@ HORIZON_RE = re.compile(r"^(?:premarket_)?(?P<value>\d+)(?P<unit>m|h)$")
 EPS = 1e-12
 MAX_BAR_STALENESS = timedelta(minutes=5)
 TARGET_TOLERANCE = timedelta(minutes=5)
+NY = ZoneInfo("America/New_York")
 
 
 @dataclass
@@ -70,6 +72,22 @@ def normalize_probability(value: Any) -> float | None:
     if not 0.0 <= p <= 1.0:
         return None
     return p
+
+
+def premarket_regime(prediction_time_utc: str) -> str:
+    """Map a timestamp to the pre-registered premarket sampling regimes.
+
+    The boundaries mirror the dataset builder cadence: sparse early sampling
+    before 07:00 ET, medium cadence from 07:00 through 08:59 ET, and dense late
+    sampling from 09:00 until the 09:30 regular-session open.
+    """
+    local = parse_iso(prediction_time_utc).astimezone(NY)
+    minute_of_day = local.hour * 60 + local.minute
+    if minute_of_day < 7 * 60:
+        return "early"
+    if minute_of_day < 9 * 60:
+        return "mid"
+    return "late"
 
 
 def load_bars(path: Path) -> pd.DataFrame:
@@ -272,6 +290,18 @@ def grouped_summaries(records: list[ForecastRecord]) -> dict[str, Any]:
     return {key: summarize(rows, len(rows)) for key, rows in sorted(groups.items())}
 
 
+def premarket_regime_summaries(records: list[ForecastRecord]) -> dict[str, Any]:
+    """Return target-aware early/mid/late diagnostics for Premarket V5 only."""
+    groups: dict[str, list[ForecastRecord]] = {}
+    for record in records:
+        if record.engine != "premarket_v5":
+            continue
+        regime = premarket_regime(record.prediction_time_utc)
+        key = f"{regime}:{record.horizon}"
+        groups.setdefault(key, []).append(record)
+    return {key: summarize(rows, len(rows)) for key, rows in sorted(groups.items())}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Settle immutable Orion cloud-shadow predictions against later observed bars.")
     parser.add_argument("predictions", nargs="+", type=Path, help="One or more cloud-shadow prediction JSON files")
@@ -308,9 +338,11 @@ def main() -> int:
             "outcome_price": "first bar at-or-after fully elapsed horizon, maximum 5 minutes late",
             "suppressed_regular_hours_probabilities": "excluded",
             "future_prediction_rows": "excluded until horizon fully elapses",
+            "premarket_regimes_et": "early <07:00; mid 07:00-08:59; late 09:00-09:29",
         },
         "summary": summarize(settled, len(mature)),
         "by_engine_horizon": grouped_summaries(settled),
+        "by_premarket_regime_horizon": premarket_regime_summaries(settled),
         "records": [asdict(row) for row in settled],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
