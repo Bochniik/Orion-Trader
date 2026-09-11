@@ -112,3 +112,22 @@ Focused regression tests cover the historical-screening lock, rejection of pre-r
 ### Next logical engine step
 
 After this gate passes CI, design one new long-horizon challenger without inspecting post-cutoff outcomes. Historical data may be used to screen out an obviously weak design, but decisive evidence must come from untouched post-cutoff paired shadow observations. A failed candidate is rejected unchanged and any redesign must receive a new identity and later untouched holdout.
+
+## 2026-09-11 — Forward evidence maturity guard
+
+The first frozen V5 historical screen exposed a protocol-geometry failure: against leakage-safe V3.1, the frozen 60d/5m holdout produced only 72 paired 3h and 36 paired 5h observations per symbol, making the 80-observation tournament gate impossible to satisfy. That historical run is therefore inconclusive rather than model-rejecting.
+
+The same class of error could recur during forward collection if the gate interpreted an uncontaminated but still-small post-registration sample as `long_horizon_challenger_not_demonstrated`. Branch `autonomous/2026-09-11-forward-evidence-readiness` adds a score-blind maturity guard before model-quality interpretation.
+
+Forward protocol semantics:
+- The pre-registered cutoff, required horizons, 80-observation minimum and 8-session minimum are unchanged.
+- Every paired timestamp must still be post-cutoff; contamination or a missing required horizon continues to fail closed.
+- For each horizon the gate now reports paired observations, observations remaining, distinct sessions and sessions remaining.
+- If the sample is uncontaminated but either required horizon is below the frozen coverage thresholds, the conclusion is `forward_holdout_collecting_evidence`.
+- Only a coverage-mature forward sample can produce either `long_horizon_challenger_research_eligible` or `long_horizon_challenger_not_demonstrated`.
+- Readiness is score-blind: Brier, log loss, accuracy, ECE and bootstrap outcomes do not decide whether collection stops.
+- V5, runtime thresholds, risk policy, reliability policy, broker behavior and order paths are unchanged.
+
+### Next logical engine step
+
+Keep collecting untouched paired 3h/5h forward evidence until the fixed coverage gate is mature. Do not perform outcome-driven early stopping. Once mature, evaluate the frozen candidate against both incumbent paths using the existing proper-score and paired session-block-bootstrap rules; only then can the forward result be interpreted as decision-grade research evidence.
