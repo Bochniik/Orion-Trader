@@ -6,7 +6,9 @@ on:
       - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
       - "scripts/run_long_horizon_v5_paired_cloud_shadow.py"
       - "scripts/settle_long_horizon_v5_shadow.py"
+      - "scripts/audit_long_horizon_v5_collection_capacity.py"
       - "backend/tests/test_long_horizon_v5_forward_shadow.py"
+      - "backend/tests/test_long_horizon_v5_collection_capacity.py"
       - ".github/workflows/long-horizon-v5-cloud-shadow.yml"
       - ".github/workflows/long-horizon-v5-evidence-cycle.yml"
       - ".github/workflows/long-horizon-v5-forward-shadow-ci.yml"
@@ -35,6 +37,7 @@ jobs:
           python -m py_compile backend/app/services/intraday_probability_long_horizon_v5_forward.py
           python -m py_compile scripts/run_long_horizon_v5_paired_cloud_shadow.py
           python -m py_compile scripts/settle_long_horizon_v5_shadow.py
+          python -m py_compile scripts/audit_long_horizon_v5_collection_capacity.py
       - name: Run focused regression tests
         run: |
           cd backend
@@ -42,4 +45,5 @@ jobs:
             tests/test_intraday_probability_long_horizon_challenger_v5.py \
             tests/test_long_horizon_challenger_gate.py \
             tests/test_cloud_shadow_evidence_ledger.py \
-            tests/test_long_horizon_v5_forward_shadow.py
+            tests/test_long_horizon_v5_forward_shadow.py \
+            tests/test_long_horizon_v5_collection_capacity.py

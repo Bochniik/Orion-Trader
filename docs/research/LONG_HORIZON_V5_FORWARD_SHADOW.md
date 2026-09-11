@@ -49,10 +49,18 @@ Only after both horizons are mature does the builder transform the append-only l
 
 A mature forward failure rejects this frozen V5 unchanged. A mature pass grants research eligibility only; it does not authorize runtime promotion or live trading.
 
+## Score-blind collection-capacity audit
+
+`scripts/audit_long_horizon_v5_collection_capacity.py` audits the scheduled forward collection geometry without reading predictions, outcomes, Brier scores or log loss. For a representative session date it converts the UTC cron window to America/New_York, applies the 10:00-13:30 collection gate and the 16:00 settlement boundary, then reports the maximum paired-observation capacity implied by the frozen schedule and symbol count.
+
+For the 10-symbol frozen universe on 2026-09-11, the current schedule has three settleable `3h` snapshots per session (30 possible pairs/session) but only one settleable `5h` snapshot per session (10 possible pairs/session). Therefore the `5h` horizon reaches exactly 80 possible pairs after the minimum 8 sessions only under complete symbol coverage. Any missed symbol/run means the 5h sample legitimately remains immature beyond session 8; this must be treated as collection readiness, not model failure. The audit also has a regression check across the EDT/EST transition so UTC scheduling drift cannot silently change the evidence geometry.
+
+This audit does not change the pre-registered 80-observation or 8-session thresholds. It exists to diagnose collection reliability before any outcome-dependent interpretation.
+
 ## Reproducibility
 
 Every readiness/decision artifact records the SHA-256 of the exact cumulative ledger it evaluated. Re-running the builder against the same ledger therefore ties the conclusion to a concrete immutable evidence state. Pairing and ordering are deterministic.
 
 ## Next logical step
 
-Let the append-only forward ledger accumulate untouched observations until both pre-registered horizon gates are mature. Do not tune V5 or change the thresholds based on interim results. Once a mature decision artifact exists, review the paired session-block tournament; a failure should reject this frozen V5, while a pass should move only to an explicit research-review step before any runtime consideration.
+Let the append-only forward ledger accumulate untouched observations until both pre-registered horizon gates are mature. Use the score-blind capacity audit to distinguish expected collection geometry from missing coverage, but do not tune V5 or change thresholds based on interim outcomes. Once a mature decision artifact exists, review the paired session-block tournament; a failure should reject this frozen V5, while a pass should move only to an explicit research-review step before any runtime consideration.
