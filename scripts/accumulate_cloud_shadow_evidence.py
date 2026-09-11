@@ -71,9 +71,54 @@ def validate_record(record: dict[str, Any]) -> None:
 def normalize_record(record: dict[str, Any]) -> dict[str, Any]:
     validate_record(record)
     normalized = dict(record)
-    normalized["record_id"] = record_id(record)
-    normalized["material_sha256"] = material_fingerprint(record)
+    computed_record_id = record_id(record)
+    computed_material_sha256 = material_fingerprint(record)
+    stored_record_id = record.get("record_id")
+    stored_material_sha256 = record.get("material_sha256")
+    if stored_record_id is not None and stored_record_id != computed_record_id:
+        raise ValueError(
+            f"Stored record_id integrity mismatch: {stored_record_id} != {computed_record_id}"
+        )
+    if stored_material_sha256 is not None and stored_material_sha256 != computed_material_sha256:
+        raise ValueError(
+            "Stored material_sha256 integrity mismatch for record_id "
+            f"{computed_record_id}: {stored_material_sha256} != {computed_material_sha256}"
+        )
+    normalized["record_id"] = computed_record_id
+    normalized["material_sha256"] = computed_material_sha256
     return normalized
+
+
+def records_fingerprint(records: Iterable[dict[str, Any]]) -> str:
+    normalized = [normalize_record(row) for row in records]
+    ordered = sorted(
+        ({"record_id": row["record_id"], "material_sha256": row["material_sha256"]} for row in normalized),
+        key=lambda row: row["record_id"],
+    )
+    return _sha256(ordered)
+
+
+def validate_ledger_integrity(payload: dict[str, Any]) -> None:
+    records = payload.get("records") or []
+    for row in records:
+        normalize_record(row)
+
+    integrity = payload.get("integrity")
+    if integrity is None:
+        return
+    if not isinstance(integrity, dict):
+        raise ValueError("Ledger integrity metadata must be an object")
+    if integrity.get("algorithm") != "sha256":
+        raise ValueError(f"Unsupported ledger integrity algorithm: {integrity.get('algorithm')}")
+
+    expected_count = integrity.get("record_count")
+    if expected_count != len(records):
+        raise ValueError(f"Ledger record_count integrity mismatch: {expected_count} != {len(records)}")
+
+    expected_sha256 = integrity.get("records_sha256")
+    actual_sha256 = records_fingerprint(records)
+    if expected_sha256 != actual_sha256:
+        raise ValueError(f"Ledger records_sha256 integrity mismatch: {expected_sha256} != {actual_sha256}")
 
 
 def load_evaluation(path: Path) -> dict[str, Any]:
@@ -91,6 +136,7 @@ def load_existing(path: Path | None) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("contract") != CONTRACT:
         raise ValueError(f"Unsupported ledger contract: {payload.get('contract')}")
+    validate_ledger_integrity(payload)
     return payload
 
 
@@ -198,6 +244,7 @@ def build_ledger(
     *,
     score_blind_summary: bool = False,
 ) -> dict[str, Any]:
+    validate_ledger_integrity(existing)
     incoming = [record for _, payload in evaluations for record in (payload.get("records") or [])]
     records = merge_records(existing.get("records") or [], incoming)
 
@@ -216,6 +263,11 @@ def build_ledger(
         "append_only_semantics": True,
         "deduplication_key": "sha256(engine,symbol,horizon,prediction_time,target_time,lineage)",
         "conflict_policy": "fail_closed_if_same_record_id_has_different_material_outcome_or_prediction_fields",
+        "integrity": {
+            "algorithm": "sha256",
+            "record_count": len(records),
+            "records_sha256": records_fingerprint(records),
+        },
         "score_blind_summary": bool(score_blind_summary),
         "summary": summarize(records, score_blind=score_blind_summary),
         "by_engine_horizon": grouped_summaries(records, score_blind=score_blind_summary),
@@ -241,7 +293,7 @@ def main() -> int:
     ledger = build_ledger(existing, evaluations, score_blind_summary=args.score_blind_summary)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps(ledger["summary"], sort_keys=True))
+    print(json.dumps({"summary": ledger["summary"], "integrity": ledger["integrity"]}, sort_keys=True))
     return 0
 
 
