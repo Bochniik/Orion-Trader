@@ -91,9 +91,11 @@ jobs:
           if [ -n "$PRIOR" ]; then
             python scripts/accumulate_cloud_shadow_evidence.py "$EVAL" \
               --existing "$PRIOR" \
+              --score-blind-summary \
               --output backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
           else
             python scripts/accumulate_cloud_shadow_evidence.py "$EVAL" \
+              --score-blind-summary \
               --output backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
           fi
       - name: Preserve prior ledger on no-op cycle

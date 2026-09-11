@@ -96,6 +96,24 @@ def test_summary_reports_cumulative_metrics_and_distinct_sessions():
     assert summary["brier_score"] == 0.04
 
 
+def test_score_blind_summary_exposes_coverage_only_and_is_outcome_invariant():
+    favorable = [record(symbol="AAPL", probability=0.95, actual=1, outcome=105.0)]
+    unfavorable = [record(symbol="AAPL", probability=0.95, actual=0, outcome=95.0)]
+
+    favorable_summary = module.summarize(favorable, score_blind=True)
+    unfavorable_summary = module.summarize(unfavorable, score_blind=True)
+
+    assert favorable_summary == unfavorable_summary
+    assert favorable_summary == {
+        "observations": 1,
+        "distinct_sessions": 1,
+        "score_blind": True,
+        "metrics_exposed": False,
+    }
+    for forbidden in ("brier_score", "log_loss", "directional_accuracy", "ece_10_bin"):
+        assert forbidden not in favorable_summary
+
+
 def test_load_evaluation_rejects_non_leakage_safe_payload(tmp_path):
     path = tmp_path / "evaluation.json"
     path.write_text(json.dumps({"contract": module.EVALUATION_CONTRACT, "leakage_safe": False, "records": []}), encoding="utf-8")
@@ -119,3 +137,23 @@ def test_build_ledger_preserves_prior_records_and_deduplicates_new_inputs(tmp_pa
     assert ledger["summary"]["observations"] == 2
     assert len(ledger["records"]) == 2
     assert len(ledger["source_evaluations"]) == 1
+
+
+def test_build_ledger_score_blind_mode_hides_interim_performance_metrics(tmp_path):
+    row = record(symbol="AAPL", probability=0.9, actual=1)
+    evaluation_path = tmp_path / "evaluation.json"
+    payload = evaluation([row])
+    evaluation_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    ledger = module.build_ledger(
+        {"contract": module.CONTRACT, "records": [], "source_evaluations": []},
+        [(evaluation_path, payload)],
+        score_blind_summary=True,
+    )
+
+    assert ledger["score_blind_summary"] is True
+    assert ledger["summary"]["metrics_exposed"] is False
+    assert ledger["by_engine_horizon"]["regular_hours_v3_1:30m"]["metrics_exposed"] is False
+    serialized_summary = json.dumps({"summary": ledger["summary"], "by_engine_horizon": ledger["by_engine_horizon"]})
+    for forbidden in ("brier_score", "log_loss", "directional_accuracy", "ece_10_bin"):
+        assert forbidden not in serialized_summary

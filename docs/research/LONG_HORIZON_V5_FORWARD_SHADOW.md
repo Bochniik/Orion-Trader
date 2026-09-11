@@ -32,6 +32,10 @@ Prediction artifacts include Git/file lineage and are immutable GitHub Actions a
 
 Settled records are accumulated through the existing append-only evidence ledger implementation. A dedicated long-horizon ledger is used to avoid races with the existing premarket/regular-hours evidence cycle. Duplicate records are idempotent; conflicting material values for the same identity fail closed.
 
+The dedicated V5 evidence cycle invokes the accumulator with `--score-blind-summary`. Raw settled records retain the probabilities and outcomes required for the eventual frozen tournament, but pre-maturity ledger summaries and CI stdout expose only observation/session coverage plus `score_blind=true` and `metrics_exposed=false`. Brier score, log loss, directional accuracy and ECE are deliberately omitted from those operational summaries. The generic accumulator remains backward-compatible for other research workflows that explicitly require metric summaries.
+
+The raw ledger is research evidence, not a progress dashboard. It should not be inspected to make an outcome-driven stop/tune decision before both pre-registered maturity gates are satisfied. The score-blind operational summary exists so collection health can be monitored without revealing model performance.
+
 The decision builder validates frozen model identities, paired-role lineage, supported horizons, timezone-aware timestamps, the pre-registration cutoff, pair completeness and exact realized settlement equality. Pair identity is `(symbol, horizon, prediction_time, target_time)`. The shared challenger tournament is symbol-aware, so simultaneous observations for AAPL, MSFT, NVDA or other universe members remain separate observations rather than conflicting timestamp duplicates.
 
 Workflows have read-only repository permissions. The prediction payload explicitly carries `research_only=true`, `order_submission_enabled=false`, `runtime_modified=false`, and `promotion_allowed=false`.
@@ -65,4 +69,4 @@ Every readiness/decision artifact records the SHA-256 of the exact cumulative le
 
 ## Next logical step
 
-Let the append-only forward ledger accumulate untouched observations until both pre-registered horizon gates are mature. Track `coverage.complete` and `missing_pairs` from each eligible collection artifact alongside the score-blind capacity audit so operational data loss is separated from model performance. Do not tune V5 or change thresholds based on interim outcomes. Once a mature decision artifact exists, review the paired session-block tournament; a failure should reject this frozen V5, while a pass should move only to an explicit research-review step before any runtime consideration.
+Let the append-only forward ledger accumulate untouched observations until both pre-registered horizon gates are mature. Track `coverage.complete` and `missing_pairs` from each eligible collection artifact alongside the score-blind ledger/session counts and capacity audit so operational data loss is separated from model performance. Do not tune V5 or change thresholds based on interim outcomes. Once a mature decision artifact exists, review the paired session-block tournament; a failure should reject this frozen V5, while a pass should move only to an explicit research-review step before any runtime consideration.
