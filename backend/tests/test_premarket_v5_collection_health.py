@@ -39,7 +39,7 @@ def _forecast(probability_up: float = 0.5):
 
 def _payload(*, as_of_et: str, unavailable: dict[str, str] | None = None):
     unavailable = unavailable or {}
-    symbols = ["AAPL", "MSFT"]
+    symbols = list(audit.PREREGISTERED_SYMBOLS)
     predictions = []
     for symbol in symbols:
         if symbol in unavailable:
@@ -79,16 +79,16 @@ def test_collection_health_aggregates_preregistered_regime_coverage():
     assert report["complete_artifact_count"] == 2
     assert report["degraded_artifact_count"] == 1
     assert report["distinct_session_count"] == 1
-    assert report["coverage"]["expected_pair_count"] == 18
-    assert report["coverage"]["observed_pair_count"] == 15
+    assert report["coverage"]["expected_pair_count"] == 90
+    assert report["coverage"]["observed_pair_count"] == 87
     assert report["coverage"]["missing_pair_count"] == 3
-    assert report["coverage"]["coverage_fraction"] == pytest.approx(5 / 6, abs=1e-6)
+    assert report["coverage"]["coverage_fraction"] == pytest.approx(29 / 30, abs=1e-6)
     assert report["coverage"]["by_snapshot"]["early"]["coverage_fraction"] == 1.0
-    assert report["coverage"]["by_snapshot"]["mid"]["coverage_fraction"] == 0.5
+    assert report["coverage"]["by_snapshot"]["mid"]["coverage_fraction"] == 0.9
     assert report["coverage"]["by_snapshot"]["late"]["coverage_fraction"] == 1.0
     for horizon in audit.SUPPORTED_HORIZONS:
-        assert report["coverage"]["by_horizon"][horizon]["expected_pair_count"] == 6
-        assert report["coverage"]["by_horizon"][horizon]["observed_pair_count"] == 5
+        assert report["coverage"]["by_horizon"][horizon]["expected_pair_count"] == 30
+        assert report["coverage"]["by_horizon"][horizon]["observed_pair_count"] == 29
     assert report["coverage"]["missing_by_symbol"] == {"MSFT": 3}
     assert report["coverage"]["unavailable_reasons"] == {
         "insufficient_causal_bars_or_previous_close": 1
@@ -149,13 +149,34 @@ def test_collection_health_fails_closed_on_noncausal_or_inconsistent_artifact():
         audit.build_health_report([missing_symbol])
 
 
+def test_collection_health_rejects_symbol_universe_drift_even_at_same_size():
+    payload = _payload(as_of_et="2026-09-11T06:45:00-04:00")
+    payload["symbols"][-1] = "NFLX"
+    payload["predictions"][-1]["ticker"] = "NFLX"
+
+    with pytest.raises(audit.CollectionHealthError, match="preregistered Premarket V5 research universe"):
+        audit.build_health_report([payload])
+
+
+def test_collection_health_accepts_preregistered_universe_in_different_order():
+    payload = _payload(as_of_et="2026-09-11T08:00:00-04:00")
+    payload["symbols"] = list(reversed(payload["symbols"]))
+    payload["predictions"] = list(reversed(payload["predictions"]))
+
+    report = audit.build_health_report([payload])
+
+    assert report["artifact_count"] == 1
+    assert report["coverage"]["expected_pair_count"] == 30
+    assert report["coverage"]["coverage_fraction"] == 1.0
+
+
 def test_collection_health_counts_missing_horizon_without_reading_scores():
     payload = _payload(as_of_et="2026-09-11T08:00:00-04:00")
     del payload["predictions"][0]["forecasts"]["premarket_30m"]
 
     report = audit.build_health_report([payload])
 
-    assert report["coverage"]["expected_pair_count"] == 6
-    assert report["coverage"]["observed_pair_count"] == 5
+    assert report["coverage"]["expected_pair_count"] == 30
+    assert report["coverage"]["observed_pair_count"] == 29
     assert report["coverage"]["by_horizon"]["premarket_30m"]["missing_pair_count"] == 1
     assert report["coverage"]["by_horizon"]["premarket_5m"]["missing_pair_count"] == 0

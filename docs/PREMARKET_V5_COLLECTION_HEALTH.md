@@ -11,9 +11,12 @@ The audit consumes immutable `premarket-v5-cloud-shadow-v2` prediction artifacts
 - is `shadow_research_only` with order submission disabled;
 - declares `causal_cutoff_enforced=true`;
 - belongs exactly to one pre-registered New York snapshot: 06:45 ET (`early`), 08:00 ET (`mid`), or 09:15 ET (`late`);
+- uses exactly the frozen research universe `AAPL, MSFT, NVDA, AMZN, META, GOOGL, TSLA, AMD, SPY, QQQ` (ordering is irrelevant, membership is not);
 - contains exactly one prediction row for every requested symbol;
 - records the expected 5m, 15m, and 30m forecast objects for available symbols;
 - does not duplicate the same session/snapshot pair inside one health report.
+
+The fixed-universe check is intentionally independent of the artifact's own declaration. An artifact cannot make a substituted ticker appear protocol-valid merely by changing both its `symbols` list and its matching prediction row. This protects forward validation from silent universe drift while keeping the audit score-blind.
 
 ## Score-blind contract
 
@@ -36,10 +39,12 @@ Retention is an operational safeguard only. Extending evidence lifetime does not
 
 ## Failure policy
 
-The audit fails closed on off-cadence timestamps, weekend artifacts, non-causal artifacts, duplicate session/snapshot artifacts, duplicate or unexpected symbols, missing prediction rows, or malformed available forecasts. Missing market data for an explicitly unavailable symbol is not fabricated; it reduces coverage and its reason is counted.
+The audit fails closed on off-cadence timestamps, weekend artifacts, non-causal artifacts, duplicate session/snapshot artifacts, duplicate symbols, any missing/extra/substituted member of the frozen research universe, unexpected prediction tickers, missing prediction rows, or malformed available forecasts. Missing market data for an explicitly unavailable preregistered symbol is not fabricated; it reduces coverage and its reason is counted.
+
+The frozen-universe regression test includes the particularly dangerous case where the artifact keeps the same symbol count but substitutes one ticker and supplies a matching prediction for that substitute. That artifact must fail rather than contributing apparently complete coverage.
 
 ## Interpretation
 
-Collection health is not model evidence. A coverage fraction of 1.0 means only that the intended forward observations were captured. It does not imply predictive skill and cannot promote Premarket V5.
+Collection health is not model evidence. A coverage fraction of 1.0 means only that the intended forward observations were captured for the preregistered cadence and universe. It does not imply predictive skill and cannot promote Premarket V5.
 
-The next logical step is to accumulate untouched early/mid/late artifacts and run this audit before opening any proper-score dashboard or settlement summary. Only after regime/horizon cells have adequate forward coverage should Issue #3 inspect Brier score, log loss, calibration, directional accuracy and fold/session stability. No outcome-driven cadence change is permitted under the existing pre-registration.
+The next logical step is to accumulate untouched early/mid/late artifacts and run this audit before opening any proper-score dashboard or settlement summary. Only after regime/horizon cells have adequate forward coverage should Issue #3 inspect Brier score, log loss, calibration, directional accuracy and fold/session stability. No outcome-driven cadence or universe change is permitted under the existing pre-registration.

@@ -13,6 +13,7 @@ NY = ZoneInfo("America/New_York")
 RUNNER_VERSION = "premarket-v5-cloud-shadow-v2"
 REPORT_CONTRACT = "orion-premarket-v5-collection-health-v1"
 SUPPORTED_HORIZONS = ("premarket_5m", "premarket_15m", "premarket_30m")
+PREREGISTERED_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
 SNAPSHOT_CLOCKS = {
     "early": (6, 45),
     "mid": (8, 0),
@@ -78,6 +79,8 @@ def _validate_projection(payload: dict[str, Any]) -> dict[str, Any]:
         raise CollectionHealthError("symbols must not be empty")
     if len(normalized_symbols) != len(set(normalized_symbols)):
         raise CollectionHealthError("symbols contains duplicates")
+    if set(normalized_symbols) != set(PREREGISTERED_SYMBOLS):
+        raise CollectionHealthError("symbols must match the preregistered Premarket V5 research universe")
 
     prediction_by_symbol: dict[str, dict[str, Any]] = {}
     for row in predictions:
