@@ -31,37 +31,61 @@ def test_session_gate_is_score_blind_and_bounded_to_settleable_window():
     assert late["allowed"] is False
 
 
+def _challenger_fixture():
+    return {
+        "available": True,
+        "as_of": "2026-09-11T14:05:00+00:00",
+        "horizons": {
+            "3h": {"available": True, "probability_up": 0.61, "direction": "bullish", "target_time_utc": "2026-09-11T17:05:00+00:00", "training_samples": 900, "training_cutoff": "2026-09-11T11:05:00+00:00", "max_training_timestamp": "2026-09-11T11:05:00+00:00"},
+            "5h": {"available": True, "probability_up": 0.57, "direction": "bullish", "target_time_utc": "2026-09-11T19:05:00+00:00", "training_samples": 800, "training_cutoff": "2026-09-11T09:05:00+00:00", "max_training_timestamp": "2026-09-11T09:05:00+00:00"},
+        },
+    }
+
+
+def _incumbent_fixture(as_of="2026-09-11T10:05:00-04:00"):
+    return {
+        "as_of": as_of,
+        "horizons": {
+            "3h": {"probability_up": 58.0, "direction": "bullish", "suppressed": False},
+            "5h": {"probability_up": None, "suppressed_probability_up": 54.0, "direction": "neutral", "suppressed": True},
+        },
+    }
+
+
 def test_atomic_runner_pairs_incumbent_and_challenger_on_exact_timestamp(monkeypatch):
-    monkeypatch.setattr(
-        runner,
-        "estimate_long_horizon_v5",
-        lambda symbol: {
-            "available": True,
-            "as_of": "2026-09-11T14:05:00+00:00",
-            "horizons": {
-                "3h": {"available": True, "probability_up": 0.61, "direction": "bullish", "target_time_utc": "2026-09-11T17:05:00+00:00", "training_samples": 900, "training_cutoff": "2026-09-11T11:05:00+00:00", "max_training_timestamp": "2026-09-11T11:05:00+00:00"},
-                "5h": {"available": True, "probability_up": 0.57, "direction": "bullish", "target_time_utc": "2026-09-11T19:05:00+00:00", "training_samples": 800, "training_cutoff": "2026-09-11T09:05:00+00:00", "max_training_timestamp": "2026-09-11T09:05:00+00:00"},
-            },
-        },
-    )
-    monkeypatch.setattr(
-        runner,
-        "estimate_intraday_probabilities_v3_1",
-        lambda symbol: {
-            "horizons": {
-                "3h": {"probability_up": 58.0, "direction": "bullish", "suppressed": False},
-                "5h": {"probability_up": None, "suppressed_probability_up": 54.0, "direction": "neutral", "suppressed": True},
-            }
-        },
-    )
+    monkeypatch.setattr(runner, "estimate_long_horizon_v5", lambda symbol: _challenger_fixture())
+    monkeypatch.setattr(runner, "estimate_intraday_probabilities_v3_1", lambda symbol: _incumbent_fixture())
     rows, error = runner.run_symbol("AAPL")
     assert error is None
     assert len(rows) == 2
     assert {row["horizon"] for row in rows} == {"3h", "5h"}
     assert {row["prediction_time_utc"] for row in rows} == {"2026-09-11T14:05:00+00:00"}
+    assert all(row["timestamp_pair_verified"] is True for row in rows)
     five_hour = next(row for row in rows if row["horizon"] == "5h")
     assert five_hour["incumbent"]["probability_up"] == 0.54
     assert five_hour["incumbent"]["was_runtime_suppressed"] is True
+
+
+def test_atomic_runner_fails_closed_on_timestamp_mismatch(monkeypatch):
+    monkeypatch.setattr(runner, "estimate_long_horizon_v5", lambda symbol: _challenger_fixture())
+    monkeypatch.setattr(
+        runner,
+        "estimate_intraday_probabilities_v3_1",
+        lambda symbol: _incumbent_fixture("2026-09-11T10:00:00-04:00"),
+    )
+    rows, error = runner.run_symbol("AAPL")
+    assert rows == []
+    assert error and error.startswith("paired_timestamp_mismatch:")
+
+
+def test_atomic_runner_fails_closed_when_incumbent_alignment_is_unknown(monkeypatch):
+    monkeypatch.setattr(runner, "estimate_long_horizon_v5", lambda symbol: _challenger_fixture())
+    incumbent = _incumbent_fixture()
+    incumbent["as_of"] = None
+    monkeypatch.setattr(runner, "estimate_intraday_probabilities_v3_1", lambda symbol: incumbent)
+    rows, error = runner.run_symbol("AAPL")
+    assert rows == []
+    assert error == "incumbent_source_timestamp_unaligned_or_missing"
 
 
 def test_settlement_expansion_preserves_pair_identity_and_model_names():
