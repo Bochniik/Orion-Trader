@@ -16,6 +16,7 @@ import "./dashboard-polish.css";
 import "./market-explorer-polish.css";
 import "./my-stocks-polish.css";
 import "./data-connections-polish.css";
+import "./auth-polish.css";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import AuthPanel from "./components/AuthPanel";
 import CoreApp from "./core/CoreApp";
