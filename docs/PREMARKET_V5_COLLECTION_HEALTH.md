@@ -23,27 +23,32 @@ The trading-session check uses `scripts/nyse_session_calendar.py`, a determinist
 
 ## Score-blind contract
 
-The generated report uses contract `orion-premarket-v5-collection-health-v1` and always declares:
+The generated report uses contract `orion-premarket-v5-collection-health-v2` and always declares:
 
 - `score_blind: true`
 - `metrics_exposed: false`
 
-The report contains only operational geometry: artifact/session counts, expected/observed/missing symbol-horizon pairs, coverage by early/mid/late snapshot, coverage by horizon, missing symbols, unavailable-data reasons, a deterministic readiness gate, and a deterministic SHA-256 digest of the operational projection.
+The report contains only operational geometry: artifact/session counts, expected/observed/missing symbol-horizon pairs, coverage by early/mid/late snapshot, coverage by horizon, missing symbols, unavailable-data reasons, complete-artifact/session counts, a deterministic readiness gate, and a deterministic SHA-256 digest of the operational projection.
 
-Probability, confidence, predicted return, direction, actionable state, realized outcome, Brier score, log loss, accuracy and ECE are intentionally excluded. Regression tests mutate those fields aggressively and require the health report to remain byte-equivalent at the data-structure level.
+Probability, confidence, predicted return, direction, actionable state, realized outcome, Brier score, log loss, accuracy and ECE are intentionally excluded. Regression tests mutate those fields aggressively and require the health report to remain invariant at the readiness level.
 
 ## Validation readiness gate
 
-Issue #3 uses a 40-session train + 10-session calibration + 5-session test walk-forward geometry. The health report therefore requires **55 distinct NYSE sessions independently for each preregistered snapshot** (`early`, `mid`, and `late`) before `ready_for_issue_3_score_inspection` may become true.
+Issue #3 uses a 40-session train + 10-session calibration + 5-session test walk-forward geometry. The health report therefore requires **55 complete distinct NYSE sessions independently for each preregistered snapshot** (`early`, `mid`, and `late`) before `ready_for_issue_3_score_inspection` may become true.
 
-This is intentionally stricter than the top-level `distinct_session_count`. For example, 55 calendar-valid sessions with 55 early artifacts, 54 mid artifacts and 55 late artifacts are **not ready**, even though the union of session dates contains 55 days. The report exposes, per snapshot:
+A session/snapshot observation is complete only when all expected pairs for the frozen protocol are present: 10 preregistered symbols × 3 supported horizons = 30 symbol-horizon forecast objects. A protocol-valid artifact with unavailable symbols or missing horizon forecasts remains visible in collection coverage and diagnostics, but it does **not** reduce the remaining complete-session count.
+
+This prevents a subtle false-readiness case. For example, 55 raw `mid` session artifacts with one degraded session are reported as `distinct_session_count=55` but `complete_distinct_session_count=54`, so the `mid` regime remains not ready. A missing observation cannot be converted into validation maturity merely because a timestamped artifact exists.
+
+The report exposes, per snapshot:
 
 - observed distinct session count;
-- required distinct session count (55);
-- remaining distinct sessions;
+- complete distinct session count;
+- required complete distinct session count (55);
+- remaining complete distinct sessions;
 - a boolean readiness state.
 
-The overall readiness flag becomes true only when all three snapshot regimes satisfy the same frozen geometry. The gate is score-blind: predictive probabilities, realized outcomes and proper scores cannot influence it. Reaching readiness authorizes metric inspection for Issue #3; it does not imply model skill, acceptable calibration, or promotion eligibility.
+The overall readiness flag becomes true only when all three snapshot regimes satisfy the same frozen complete-session geometry. The gate remains score-blind: completeness depends only on the presence of the preregistered symbol-horizon observations, not on probabilities, realized outcomes, proper scores, accuracy, calibration or whether a forecast was favorable. Reaching readiness authorizes metric inspection for Issue #3; it does not imply model skill, acceptable calibration, or promotion eligibility.
 
 ## Evidence durability
 
@@ -55,7 +60,7 @@ Retention is an operational safeguard only. Extending evidence lifetime does not
 
 ## Failure policy
 
-The audit fails closed on off-cadence timestamps, weekends, recurring NYSE full-day market holidays, non-causal artifacts, duplicate session/snapshot artifacts, duplicate symbols, any missing/extra/substituted member of the frozen research universe, unexpected prediction tickers, missing prediction rows, or malformed available forecasts. Missing market data for an explicitly unavailable preregistered symbol is not fabricated; it reduces coverage and its reason is counted.
+The audit fails closed on off-cadence timestamps, weekends, recurring NYSE full-day market holidays, non-causal artifacts, duplicate session/snapshot artifacts, duplicate symbols, any missing/extra/substituted member of the frozen research universe, unexpected prediction tickers, missing prediction rows, or malformed available forecasts. Missing market data for an explicitly unavailable preregistered symbol is not fabricated; it reduces coverage, its reason is counted, and that session/snapshot is ineligible for the 55-complete-session readiness minimum.
 
 The frozen-universe regression test includes the particularly dangerous case where the artifact keeps the same symbol count but substitutes one ticker and supplies a matching prediction for that substitute. That artifact must fail rather than contributing apparently complete coverage.
 
@@ -65,6 +70,6 @@ The snapshot resolver applies the same NYSE-session gate before dependency insta
 
 Collection health is not model evidence. A coverage fraction of 1.0 means only that the intended forward observations were captured for the preregistered cadence and universe. It does not imply predictive skill and cannot promote Premarket V5.
 
-Likewise, `ready_for_issue_3_score_inspection=true` means only that each preregistered snapshot has reached the frozen 55-session walk-forward geometry. It is a permission to open the score-bearing evaluation, not a favorable model verdict.
+Likewise, `ready_for_issue_3_score_inspection=true` means only that each preregistered snapshot has reached 55 complete NYSE sessions under the frozen walk-forward geometry. It is a permission to open the score-bearing evaluation, not a favorable model verdict.
 
-The next logical step is to accumulate untouched early/mid/late artifacts and run this audit before opening any proper-score dashboard or settlement summary. Only after all three snapshot regimes pass the readiness gate should Issue #3 inspect Brier score, log loss, calibration, directional accuracy and fold/session stability. No outcome-driven cadence or universe change is permitted under the existing pre-registration.
+The next logical step is to accumulate untouched early/mid/late artifacts and run this audit before opening any proper-score dashboard or settlement summary. Operational gaps may be investigated through score-blind coverage and unavailable-data reasons, but model outputs must remain hidden while deciding whether the sample is mature. Only after all three snapshot regimes reach 55 complete sessions should Issue #3 inspect Brier score, log loss, calibration, directional accuracy and fold/session stability. No outcome-driven cadence, universe or completeness-rule change is permitted under the existing pre-registration.
