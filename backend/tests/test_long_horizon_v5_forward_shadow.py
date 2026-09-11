@@ -5,6 +5,8 @@ import importlib.util
 from pathlib import Path
 import sys
 
+from app.services import intraday_probability_ensemble_engine as ensemble
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -50,6 +52,36 @@ def _incumbent_fixture(as_of="2026-09-11T10:05:00-04:00"):
             "5h": {"probability_up": None, "suppressed_probability_up": 54.0, "direction": "neutral", "suppressed": True},
         },
     }
+
+
+def _source_model(as_of: str):
+    return {
+        "available": True,
+        "as_of": as_of,
+        "horizons": {
+            horizon: {
+                "available": True,
+                "probability_up": 56.0,
+                "evidence_quality": 70.0,
+                "training_samples": 1200,
+            }
+            for horizon in ("30m", "1h", "3h", "5h")
+        },
+    }
+
+
+def test_v3_exposes_as_of_only_when_source_timestamps_match(monkeypatch):
+    monkeypatch.setattr(ensemble, "estimate_intraday_probabilities", lambda symbol: _source_model("2026-09-11T10:05:00-04:00"))
+    monkeypatch.setattr(ensemble, "estimate_intraday_probabilities_v2", lambda symbol: _source_model("2026-09-11T14:05:00+00:00"))
+    aligned = ensemble.estimate_intraday_probabilities_v3("AAPL")
+    assert aligned["source_timestamp_aligned"] is True
+    assert aligned["as_of"] == "2026-09-11T14:05:00+00:00"
+
+    monkeypatch.setattr(ensemble, "estimate_intraday_probabilities_v2", lambda symbol: _source_model("2026-09-11T14:10:00+00:00"))
+    mismatched = ensemble.estimate_intraday_probabilities_v3("AAPL")
+    assert mismatched["source_timestamp_aligned"] is False
+    assert mismatched["as_of"] is None
+    assert any("timestamps" in warning.lower() for warning in mismatched["warnings"])
 
 
 def test_atomic_runner_pairs_incumbent_and_challenger_on_exact_timestamp(monkeypatch):
