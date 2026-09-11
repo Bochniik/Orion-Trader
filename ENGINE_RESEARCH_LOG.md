@@ -131,3 +131,21 @@ Forward protocol semantics:
 ### Next logical engine step
 
 Keep collecting untouched paired 3h/5h forward evidence until the fixed coverage gate is mature. Do not perform outcome-driven early stopping. Once mature, evaluate the frozen candidate against both incumbent paths using the existing proper-score and paired session-block-bootstrap rules; only then can the forward result be interpreted as decision-grade research evidence.
+
+## 2026-09-11 — Premarket V5 regime-aware settlement diagnostics
+
+Branch `autonomous/2026-09-11-premarket-regime-settlement` extends the existing leakage-safe cloud-shadow evaluator with target-aware early/mid/late Premarket V5 diagnostics required by Issue #3.
+
+Evaluation-only change:
+- Premarket observations are classified in New York local time using the same cadence boundaries as the training dataset: `early` before 07:00 ET, `mid` from 07:00 through 08:59 ET, and `late` from 09:00 through 09:29 ET.
+- Regime assignment uses `America/New_York`, so the boundaries remain correct across EDT/EST rather than relying on fixed UTC offsets.
+- Output adds `by_premarket_regime_horizon`, keeping every 5m/15m/30m target separate instead of mixing different forecast horizons inside one regime score.
+- Regular-hours V3.1 observations are excluded from the premarket-regime diagnostic.
+- Existing settlement eligibility, stale-bar rejection, Brier score, log loss, directional accuracy, ECE, lineage, ledger identity and runtime behavior are unchanged.
+- No model weights, thresholds, decision rules, risk policy, broker behavior or order paths are modified.
+
+Focused regression tests cover EDT and EST regime boundaries, horizon-specific regime grouping, metric preservation and exclusion of regular-hours observations.
+
+### Next logical engine step
+
+Continue accumulating genuine point-in-time Premarket V5 observations and use these regime/horizon cells only once sample size is sufficient. The current scheduled 09:15 ET cloud-shadow anchor naturally populates the `late` regime; do not infer early/mid performance from it. If broader regime coverage is desired, first pre-register a collection cadence and API-budget/data-quality policy, then collect new forward observations without reusing their outcomes to tune the cadence.
