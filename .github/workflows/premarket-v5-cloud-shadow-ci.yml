@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - "scripts/run_premarket_v5_cloud_shadow.py"
+      - "scripts/resolve_premarket_v5_snapshot.py"
       - "backend/tests/test_premarket_v5_cloud_shadow.py"
+      - "backend/tests/test_premarket_v5_snapshot_schedule.py"
       - ".github/workflows/premarket-v5-cloud-shadow*.yml"
       - "scripts/premarket_directional_v5_common.py"
       - "scripts/premarket_directional_v4_common.py"
@@ -33,7 +35,11 @@ jobs:
       - name: Compile cloud shadow path
         run: |
           python -m py_compile scripts/run_premarket_v5_cloud_shadow.py
+          python -m py_compile scripts/resolve_premarket_v5_snapshot.py
           python -m py_compile scripts/premarket_directional_v5_common.py
           python -m py_compile scripts/build_premarket_training_dataset_v2.py
       - name: Run cloud shadow regression tests
-        run: python -m pytest -q backend/tests/test_premarket_v5_cloud_shadow.py
+        run: |
+          python -m pytest -q \
+            backend/tests/test_premarket_v5_cloud_shadow.py \
+            backend/tests/test_premarket_v5_snapshot_schedule.py
