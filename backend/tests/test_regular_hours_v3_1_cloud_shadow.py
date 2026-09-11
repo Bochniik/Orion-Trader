@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 import importlib.util
 from pathlib import Path
 
+from app.services import intraday_probability_runtime_v3_1 as runtime_v3_1
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "run_regular_hours_v3_1_cloud_shadow.py"
@@ -70,6 +72,56 @@ def test_summarize_symbol_keeps_suppression_and_validation_provenance():
     assert result["horizons"]["30m"]["probability_up"] == 61.2
     assert result["horizons"]["3h"]["suppressed"] is True
     assert result["horizons"]["3h"]["probability_up"] is None
+
+
+def test_v3_1_preserves_v3_timestamp_provenance(monkeypatch):
+    raw_v3 = {
+        "symbol": "AAPL",
+        "available": True,
+        "as_of": "2026-09-11T14:05:00+00:00",
+        "source_timestamp_aligned": True,
+        "source_as_of": {
+            "v1": "2026-09-11T14:05:00+00:00",
+            "v2": "2026-09-11T14:05:00+00:00",
+        },
+        "warnings": [],
+        "horizons": {
+            horizon: {
+                "available": True,
+                "probability_up": 56.0,
+                "direction": "bullish",
+                "agreement": "directional_agreement",
+                "v1_probability_up": 55.0,
+                "v2_probability_up": 57.0,
+            }
+            for horizon in ("30m", "1h", "3h", "5h")
+        },
+    }
+    monkeypatch.setattr(runtime_v3_1, "estimate_intraday_probabilities_v3", lambda symbol: raw_v3)
+    result = runtime_v3_1.estimate_intraday_probabilities_v3_1("AAPL")
+    assert result["as_of"] == raw_v3["as_of"]
+    assert result["source_timestamp_aligned"] is True
+    assert result["source_as_of"] == raw_v3["source_as_of"]
+
+
+def test_v3_1_preserves_fail_closed_unaligned_timestamp(monkeypatch):
+    raw_v3 = {
+        "symbol": "AAPL",
+        "available": False,
+        "as_of": None,
+        "source_timestamp_aligned": False,
+        "source_as_of": {
+            "v1": "2026-09-11T14:05:00+00:00",
+            "v2": "2026-09-11T14:10:00+00:00",
+        },
+        "warnings": ["source timestamp mismatch"],
+        "horizons": {},
+    }
+    monkeypatch.setattr(runtime_v3_1, "estimate_intraday_probabilities_v3", lambda symbol: raw_v3)
+    result = runtime_v3_1.estimate_intraday_probabilities_v3_1("AAPL")
+    assert result["as_of"] is None
+    assert result["source_timestamp_aligned"] is False
+    assert result["source_as_of"] == raw_v3["source_as_of"]
 
 
 def test_build_payload_skips_without_running_model_outside_session(monkeypatch):

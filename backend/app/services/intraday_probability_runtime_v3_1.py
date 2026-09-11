@@ -168,6 +168,13 @@ def estimate_intraday_probabilities_v3_1(symbol: str) -> Dict[str, Any]:
         profile,
     )
 
+    # Preserve source-timestamp provenance from V3 through the calibration
+    # wrapper. These are metadata only; probabilities and display policy are
+    # unchanged. Forward research must fail closed when V1/V2 were not aligned.
+    filtered["as_of"] = raw_v3.get("as_of")
+    filtered["source_timestamp_aligned"] = bool(raw_v3.get("source_timestamp_aligned", False))
+    filtered["source_as_of"] = deepcopy(raw_v3.get("source_as_of") or {})
+
     warnings = list(raw_v3.get("warnings") or [])
 
     profile_warning = profile.get("warning")
