@@ -12,6 +12,7 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CORE_FILES = (
     "backend/evals/benchmark_intraday_long_horizon_v5.py",
+    "backend/evals/audit_long_horizon_screening_protocol.py",
     "backend/evals/long_horizon_challenger_gate.py",
     "backend/evals/intraday_challenger_tournament.py",
     "backend/evals/benchmark_intraday_challenger_v4.py",
@@ -136,6 +137,30 @@ def run_evidence(
     if missing:
         raise RuntimeError(f"Benchmark data provenance incomplete; missing captured downloads for: {', '.join(missing)}")
 
+    backend = repo_root / "backend"
+    if str(backend) not in sys.path:
+        sys.path.insert(0, str(backend))
+    from evals.audit_long_horizon_screening_protocol import audit_screening_protocol
+
+    try:
+        protocol_audit = audit_screening_protocol(
+            result,
+            min_observations=min_observations,
+            min_symbols_per_horizon=min_symbols_per_horizon,
+        )
+    except ValueError:
+        protocol_audit = {
+            "contract": "orion-long-horizon-screening-protocol-audit-v1",
+            "research_only": True,
+            "runtime_modified": False,
+            "score_blind_audit": True,
+            "assessable": False,
+            "protocol_feasible": False,
+            "decision_grade": False,
+            "decision": "protocol_not_assessable",
+            "model_disposition": "do_not_draw_model_conclusion",
+        }
+
     evidence = {
         "contract": CONTRACT,
         "research_only": True,
@@ -159,6 +184,8 @@ def run_evidence(
         "source_sha256": _source_fingerprints(repo_root, source_paths),
         "benchmark_result_sha256": _canonical_json_sha256(result),
         "benchmark_research_conclusion": result.get("research_conclusion"),
+        "screening_protocol_audit": protocol_audit,
+        "decision_grade": bool(protocol_audit.get("decision_grade")),
         "candidate_design_id": result.get("candidate_design_id"),
     }
     payload = {"evidence": evidence, "benchmark": result}
@@ -196,6 +223,8 @@ def main() -> int:
         "output": str(output),
         "benchmark_result_sha256": payload["evidence"]["benchmark_result_sha256"],
         "research_conclusion": payload["evidence"]["benchmark_research_conclusion"],
+        "decision_grade": payload["evidence"]["decision_grade"],
+        "protocol_decision": payload["evidence"]["screening_protocol_audit"].get("decision"),
     }, indent=2))
     return 0
 
