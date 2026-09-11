@@ -28,9 +28,22 @@ The generated report uses contract `orion-premarket-v5-collection-health-v1` and
 - `score_blind: true`
 - `metrics_exposed: false`
 
-The report contains only operational geometry: artifact/session counts, expected/observed/missing symbol-horizon pairs, coverage by early/mid/late snapshot, coverage by horizon, missing symbols, unavailable-data reasons, and a deterministic SHA-256 digest of the operational projection.
+The report contains only operational geometry: artifact/session counts, expected/observed/missing symbol-horizon pairs, coverage by early/mid/late snapshot, coverage by horizon, missing symbols, unavailable-data reasons, a deterministic readiness gate, and a deterministic SHA-256 digest of the operational projection.
 
 Probability, confidence, predicted return, direction, actionable state, realized outcome, Brier score, log loss, accuracy and ECE are intentionally excluded. Regression tests mutate those fields aggressively and require the health report to remain byte-equivalent at the data-structure level.
+
+## Validation readiness gate
+
+Issue #3 uses a 40-session train + 10-session calibration + 5-session test walk-forward geometry. The health report therefore requires **55 distinct NYSE sessions independently for each preregistered snapshot** (`early`, `mid`, and `late`) before `ready_for_issue_3_score_inspection` may become true.
+
+This is intentionally stricter than the top-level `distinct_session_count`. For example, 55 calendar-valid sessions with 55 early artifacts, 54 mid artifacts and 55 late artifacts are **not ready**, even though the union of session dates contains 55 days. The report exposes, per snapshot:
+
+- observed distinct session count;
+- required distinct session count (55);
+- remaining distinct sessions;
+- a boolean readiness state.
+
+The overall readiness flag becomes true only when all three snapshot regimes satisfy the same frozen geometry. The gate is score-blind: predictive probabilities, realized outcomes and proper scores cannot influence it. Reaching readiness authorizes metric inspection for Issue #3; it does not imply model skill, acceptable calibration, or promotion eligibility.
 
 ## Evidence durability
 
@@ -52,4 +65,6 @@ The snapshot resolver applies the same NYSE-session gate before dependency insta
 
 Collection health is not model evidence. A coverage fraction of 1.0 means only that the intended forward observations were captured for the preregistered cadence and universe. It does not imply predictive skill and cannot promote Premarket V5.
 
-The next logical step is to accumulate untouched early/mid/late artifacts and run this audit before opening any proper-score dashboard or settlement summary. Only after regime/horizon cells have adequate forward coverage should Issue #3 inspect Brier score, log loss, calibration, directional accuracy and fold/session stability. No outcome-driven cadence or universe change is permitted under the existing pre-registration.
+Likewise, `ready_for_issue_3_score_inspection=true` means only that each preregistered snapshot has reached the frozen 55-session walk-forward geometry. It is a permission to open the score-bearing evaluation, not a favorable model verdict.
+
+The next logical step is to accumulate untouched early/mid/late artifacts and run this audit before opening any proper-score dashboard or settlement summary. Only after all three snapshot regimes pass the readiness gate should Issue #3 inspect Brier score, log loss, calibration, directional accuracy and fold/session stability. No outcome-driven cadence or universe change is permitted under the existing pre-registration.
