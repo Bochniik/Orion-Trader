@@ -1,0 +1,214 @@
+/* =========================================================
+   ORIONTRADER — navigation polish
+   Presentation-only shell refinements. No routing/data logic.
+   ========================================================= */
+
+.core-sidebar {
+  box-shadow:
+    18px 0 45px rgba(0, 0, 0, 0.16),
+    inset -1px 0 rgba(255, 255, 255, 0.012);
+}
+
+.core-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 4%, rgba(255, 122, 26, 0.07), transparent 12rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.014), transparent 28%);
+  opacity: 0.86;
+}
+
+.core-sidebar-top,
+.core-sidebar-bottom {
+  position: relative;
+  z-index: 1;
+}
+
+.core-brand {
+  position: relative;
+  border-radius: 10px;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.core-brand:hover {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.core-brand:active {
+  transform: translateY(1px);
+}
+
+.core-brand-mark {
+  transition:
+    filter 180ms ease,
+    transform 180ms ease;
+}
+
+.core-brand:hover .core-brand-mark {
+  transform: translateY(-1px);
+  filter:
+    drop-shadow(0 0 16px rgba(255, 122, 26, 0.34))
+    drop-shadow(0 0 4px rgba(255, 148, 71, 0.18));
+}
+
+.core-nav {
+  gap: 3px;
+}
+
+.core-nav button {
+  min-height: 40px;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 170ms ease,
+    transform 150ms ease;
+}
+
+.core-nav button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.028) 48%,
+    transparent 100%
+  );
+  opacity: 0;
+  transform: translateX(-28%);
+  transition:
+    opacity 170ms ease,
+    transform 230ms ease;
+}
+
+.core-nav button:hover {
+  border-color: rgba(255, 255, 255, 0.055);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.037), rgba(255, 255, 255, 0.012));
+  transform: translateX(1px);
+}
+
+.core-nav button:hover::after {
+  opacity: 1;
+  transform: translateX(26%);
+}
+
+.core-nav button:active {
+  transform: translateX(1px) scale(0.992);
+}
+
+.core-nav button svg {
+  transition:
+    color 150ms ease,
+    opacity 150ms ease,
+    filter 170ms ease,
+    transform 170ms ease;
+}
+
+.core-nav button:hover svg {
+  opacity: 1;
+  transform: translateX(1px);
+}
+
+.core-nav button.active {
+  border-color: rgba(255, 122, 26, 0.22);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.135), rgba(255, 122, 26, 0.028) 72%, transparent),
+    rgba(255, 255, 255, 0.008);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.025),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.core-nav button.active::before {
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  box-shadow:
+    0 0 8px rgba(255, 122, 26, 0.72),
+    0 0 18px rgba(255, 122, 26, 0.22);
+}
+
+.core-nav button.active svg {
+  filter: drop-shadow(0 0 5px rgba(255, 122, 26, 0.26));
+}
+
+.core-nav button:focus-visible,
+.core-brand:focus-visible,
+.core-sidebar-bottom button:focus-visible {
+  outline: 1px solid rgba(255, 148, 71, 0.9);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.11);
+}
+
+.core-sidebar-status {
+  border: 1px solid transparent;
+  border-radius: 9px;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.core-sidebar-status:hover {
+  border-color: rgba(97, 216, 155, 0.09);
+  background: rgba(97, 216, 155, 0.025);
+}
+
+.core-status-indicator {
+  position: relative;
+  box-shadow: inset 0 0 16px rgba(97, 216, 155, 0.025);
+}
+
+.core-status-indicator::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--core-green);
+  box-shadow: 0 0 8px rgba(97, 216, 155, 0.45);
+  opacity: 0.78;
+}
+
+@media (max-width: 900px) {
+  .core-sidebar {
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
+  }
+
+  .core-nav button:hover,
+  .core-nav button:active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-brand,
+  .core-brand-mark,
+  .core-nav button,
+  .core-nav button::after,
+  .core-nav button svg,
+  .core-sidebar-status {
+    transition: none !important;
+  }
+
+  .core-brand:hover .core-brand-mark,
+  .core-nav button:hover,
+  .core-nav button:active,
+  .core-nav button:hover svg,
+  .core-nav button::after,
+  .core-nav button:hover::after {
+    transform: none !important;
+  }
+}
