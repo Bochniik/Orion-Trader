@@ -8,6 +8,7 @@ on:
       - "scripts/settle_long_horizon_v5_shadow.py"
       - "scripts/audit_long_horizon_v5_collection_capacity.py"
       - "backend/tests/test_long_horizon_v5_forward_shadow.py"
+      - "backend/tests/test_long_horizon_v5_settlement_score_blind.py"
       - "backend/tests/test_long_horizon_v5_collection_capacity.py"
       - ".github/workflows/long-horizon-v5-cloud-shadow.yml"
       - ".github/workflows/long-horizon-v5-evidence-cycle.yml"
@@ -46,4 +47,5 @@ jobs:
             tests/test_long_horizon_challenger_gate.py \
             tests/test_cloud_shadow_evidence_ledger.py \
             tests/test_long_horizon_v5_forward_shadow.py \
+            tests/test_long_horizon_v5_settlement_score_blind.py \
             tests/test_long_horizon_v5_collection_capacity.py
