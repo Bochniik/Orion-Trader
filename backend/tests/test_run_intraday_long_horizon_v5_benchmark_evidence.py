@@ -71,6 +71,8 @@ def test_run_evidence_captures_downloads_and_keeps_v5_research_only(tmp_path):
     assert evidence["promotion_allowed"] is False
     assert evidence["parameters"]["symbols"] == ["AAPL", "MSFT"]
     assert evidence["market_data"]["captured_download_count"] == 3
+    assert evidence["decision_grade"] is False
+    assert evidence["screening_protocol_audit"]["decision"] == "protocol_not_assessable"
     assert len(evidence["benchmark_result_sha256"]) == 64
     assert len(evidence["evidence_payload_sha256"]) == 64
 
