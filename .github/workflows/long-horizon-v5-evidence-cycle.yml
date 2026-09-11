@@ -1,0 +1,121 @@
+name: Long-horizon V5 paired evidence cycle
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run after prediction windows and after long horizons have had time to mature.
+    - cron: "40 15-22 * * 1-5"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: long-horizon-v5-paired-evidence-cycle
+  cancel-in-progress: false
+
+jobs:
+  settle-paired-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+      ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Verify market-data credentials
+        shell: bash
+        run: |
+          if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
+            echo "Missing existing repository market-data credentials." >&2
+            exit 2
+          fi
+      - name: Recover paired predictions and prior dedicated ledger
+        id: recover
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .long-shadow/predictions .long-shadow/prior
+          CUTOFF_EPOCH=$(date -u -d '35 days ago' +%s)
+          COUNT=0
+          LEDGER_FOUND=0
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at] | @tsv' > /tmp/long-shadow-artifacts.tsv
+          while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT; do
+            if [ "$LEDGER_FOUND" -eq 0 ] && [[ "$ARTIFACT_NAME" == long-horizon-v5-evidence-ledger-* ]]; then
+              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/long-ledger.zip
+              unzip -q -o /tmp/long-ledger.zip -d .long-shadow/prior
+              LEDGER_FOUND=1
+              continue
+            fi
+            if [[ "$ARTIFACT_NAME" == long-horizon-v5-paired-shadow-* ]]; then
+              CREATED_EPOCH=$(date -u -d "$CREATED_AT" +%s)
+              if [ "$CREATED_EPOCH" -lt "$CUTOFF_EPOCH" ]; then
+                continue
+              fi
+              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/long-prediction-${ARTIFACT_ID}.zip"
+              unzip -q -o "/tmp/long-prediction-${ARTIFACT_ID}.zip" -d .long-shadow/predictions
+              COUNT=$((COUNT + 1))
+            fi
+          done < /tmp/long-shadow-artifacts.tsv
+          echo "prediction_artifacts=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "ledger_found=$LEDGER_FOUND" >> "$GITHUB_OUTPUT"
+      - name: Settle mature paired predictions
+        id: settle
+        if: steps.recover.outputs.prediction_artifacts != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backend/data/cloud_shadow/long_horizon_v5 backend/data/cloud_shadow/long_horizon_v5/evidence
+          mapfile -t PREDICTIONS < <(find .long-shadow/predictions -type f -name 'prediction-*.json' | sort)
+          python scripts/settle_long_horizon_v5_shadow.py \
+            "${PREDICTIONS[@]}" \
+            --feed iex \
+            --output backend/data/cloud_shadow/long_horizon_v5/evaluation-${{ github.run_id }}.json
+      - name: Accumulate dedicated append-only ledger
+        if: steps.recover.outputs.prediction_artifacts != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          EVAL="backend/data/cloud_shadow/long_horizon_v5/evaluation-${{ github.run_id }}.json"
+          PRIOR=$(find .long-shadow/prior -type f -name 'ledger.json' | head -n 1 || true)
+          if [ -n "$PRIOR" ]; then
+            python scripts/accumulate_cloud_shadow_evidence.py "$EVAL" \
+              --existing "$PRIOR" \
+              --output backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
+          else
+            python scripts/accumulate_cloud_shadow_evidence.py "$EVAL" \
+              --output backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
+          fi
+      - name: Preserve prior ledger on no-op cycle
+        if: steps.recover.outputs.prediction_artifacts == '0' && steps.recover.outputs.ledger_found == '1'
+        shell: bash
+        run: |
+          mkdir -p backend/data/cloud_shadow/long_horizon_v5/evidence
+          PRIOR=$(find .long-shadow/prior -type f -name 'ledger.json' | head -n 1)
+          cp "$PRIOR" backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
+      - name: Upload settlement diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-horizon-v5-evaluation-${{ github.run_id }}
+          path: backend/data/cloud_shadow/long_horizon_v5/
+          if-no-files-found: warn
+          retention-days: 45
+      - name: Upload cumulative paired evidence ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-horizon-v5-evidence-ledger-${{ github.run_id }}
+          path: backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
+          if-no-files-found: warn
+          retention-days: 90
