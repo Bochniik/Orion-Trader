@@ -80,6 +80,7 @@ jobs:
           python scripts/settle_long_horizon_v5_shadow.py \
             "${PREDICTIONS[@]}" \
             --feed iex \
+            --score-blind-summary \
             --output backend/data/cloud_shadow/long_horizon_v5/evaluation-${{ github.run_id }}.json
       - name: Accumulate dedicated append-only ledger
         if: steps.recover.outputs.prediction_artifacts != '0'
