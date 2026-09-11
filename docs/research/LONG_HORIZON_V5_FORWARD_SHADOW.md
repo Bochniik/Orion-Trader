@@ -22,6 +22,8 @@ A valid forward comparison also needs truly paired observations. Running incumbe
 
 The scheduled runner is gated to 10:00-13:30 America/New_York. Each individual horizon is additionally suppressed when its target timestamp would extend beyond the 16:00 regular-session close. This prevents forecasts that could never be settled on the regular-hours evidence feed from depressing coverage.
 
+The runner now applies the same settlement geometry before inference. A scheduled slot with no settleable horizon is a score-blind `skipped` run rather than a failed collection run. For an eligible slot, the runner records the exact expected `(symbol, horizon)` coverage and marks the run `degraded` if any expected pair is missing. This prevents harmless late cron slots from producing false failures while making real evidence loss visible immediately.
+
 The incumbent's underlying calibrated V3.1 probability is retained for research comparison even when the product UI would suppress display of that horizon. The evidence record marks that fact with `was_runtime_suppressed`; no suppressed probability is surfaced to runtime UI by this milestone.
 
 ## Evidence integrity
@@ -63,4 +65,4 @@ Every readiness/decision artifact records the SHA-256 of the exact cumulative le
 
 ## Next logical step
 
-Let the append-only forward ledger accumulate untouched observations until both pre-registered horizon gates are mature. Use the score-blind capacity audit to distinguish expected collection geometry from missing coverage, but do not tune V5 or change thresholds based on interim outcomes. Once a mature decision artifact exists, review the paired session-block tournament; a failure should reject this frozen V5, while a pass should move only to an explicit research-review step before any runtime consideration.
+Let the append-only forward ledger accumulate untouched observations until both pre-registered horizon gates are mature. Track `coverage.complete` and `missing_pairs` from each eligible collection artifact alongside the score-blind capacity audit so operational data loss is separated from model performance. Do not tune V5 or change thresholds based on interim outcomes. Once a mature decision artifact exists, review the paired session-block tournament; a failure should reject this frozen V5, while a pass should move only to an explicit research-review step before any runtime consideration.
