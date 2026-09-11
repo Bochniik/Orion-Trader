@@ -103,6 +103,14 @@ jobs:
           mkdir -p backend/data/cloud_shadow/long_horizon_v5/evidence
           PRIOR=$(find .long-shadow/prior -type f -name 'ledger.json' | head -n 1)
           cp "$PRIOR" backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
+      - name: Build score-blind readiness or mature tournament decision
+        if: steps.recover.outputs.prediction_artifacts != '0' || steps.recover.outputs.ledger_found == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/evaluate_long_horizon_v5_forward_ledger.py \
+            backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json \
+            --output backend/data/cloud_shadow/long_horizon_v5/evidence/decision.json
       - name: Upload settlement diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -117,5 +125,13 @@ jobs:
         with:
           name: long-horizon-v5-evidence-ledger-${{ github.run_id }}
           path: backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Upload score-blind readiness or mature decision
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-horizon-v5-forward-decision-${{ github.run_id }}
+          path: backend/data/cloud_shadow/long_horizon_v5/evidence/decision.json
           if-no-files-found: warn
           retention-days: 90

@@ -34,6 +34,13 @@ def _parse_timestamp(value: Any) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def _record_key(row: Mapping[str, Any]) -> tuple[str, str] | None:
+    timestamp = str(row.get("timestamp") or "").strip()
+    if not timestamp:
+        return None
+    return str(row.get("symbol") or "").upper().strip(), timestamp
+
+
 def _paired_forward_coverage(
     incumbent: Mapping[str, Any],
     challenger: Mapping[str, Any],
@@ -53,24 +60,24 @@ def _paired_forward_coverage(
     details: Dict[str, Any] = {}
     all_forward = True
     for horizon in horizons:
-        incumbent_by_ts = {
-            str(row.get("timestamp")): row
+        incumbent_by_key = {
+            key: row
             for row in (incumbent_records.get(horizon) or [])
-            if isinstance(row, Mapping) and row.get("timestamp")
+            if isinstance(row, Mapping) and (key := _record_key(row)) is not None
         }
-        challenger_by_ts = {
-            str(row.get("timestamp")): row
+        challenger_by_key = {
+            key: row
             for row in (challenger_records.get(horizon) or [])
-            if isinstance(row, Mapping) and row.get("timestamp")
+            if isinstance(row, Mapping) and (key := _record_key(row)) is not None
         }
-        paired_timestamps = sorted(set(incumbent_by_ts) & set(challenger_by_ts))
-        parsed = [_parse_timestamp(ts) for ts in paired_timestamps]
+        paired_keys = sorted(set(incumbent_by_key) & set(challenger_by_key), key=lambda key: (key[1], key[0]))
+        parsed = [_parse_timestamp(timestamp) for _, timestamp in paired_keys]
         invalid = sum(ts is None for ts in parsed)
         before_cutoff = sum(ts is not None and ts < cutoff for ts in parsed)
-        horizon_forward = bool(paired_timestamps) and invalid == 0 and before_cutoff == 0
+        horizon_forward = bool(paired_keys) and invalid == 0 and before_cutoff == 0
         all_forward = all_forward and horizon_forward
         details[horizon] = {
-            "paired_timestamp_count": len(paired_timestamps),
+            "paired_observation_count": len(paired_keys),
             "invalid_timestamp_count": invalid,
             "before_cutoff_count": before_cutoff,
             "all_paired_observations_after_cutoff": horizon_forward,
