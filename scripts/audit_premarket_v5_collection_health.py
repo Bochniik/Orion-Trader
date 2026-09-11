@@ -18,7 +18,7 @@ from scripts.nyse_session_calendar import is_nyse_trading_day
 
 NY = ZoneInfo("America/New_York")
 RUNNER_VERSION = "premarket-v5-cloud-shadow-v2"
-REPORT_CONTRACT = "orion-premarket-v5-collection-health-v1"
+REPORT_CONTRACT = "orion-premarket-v5-collection-health-v2"
 SUPPORTED_HORIZONS = ("premarket_5m", "premarket_15m", "premarket_30m")
 PREREGISTERED_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
 SNAPSHOT_CLOCKS = {
@@ -139,6 +139,7 @@ def _validate_projection(payload: dict[str, Any]) -> dict[str, Any]:
         "unavailable_reasons": dict(sorted(unavailable_reasons.items())),
         "expected_pair_count": expected_pair_count,
         "observed_pair_count": observed_pair_count,
+        "complete": observed_pair_count == expected_pair_count,
         "missing_pairs": sorted(missing_pairs, key=lambda row: (row["horizon"], row["symbol"])),
     }
 
@@ -152,19 +153,21 @@ def _build_readiness(by_snapshot: dict[str, dict[str, Any]]) -> dict[str, Any]:
     per_snapshot: dict[str, dict[str, Any]] = {}
     for snapshot in SNAPSHOT_CLOCKS:
         observed = int(by_snapshot[snapshot]["distinct_session_count"])
-        remaining = max(0, REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT - observed)
+        complete = int(by_snapshot[snapshot]["complete_distinct_session_count"])
+        remaining = max(0, REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT - complete)
         per_snapshot[snapshot] = {
             "distinct_session_count": observed,
-            "required_distinct_session_count": REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
-            "remaining_distinct_session_count": remaining,
+            "complete_distinct_session_count": complete,
+            "required_complete_distinct_session_count": REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
+            "remaining_complete_distinct_session_count": remaining,
             "ready": remaining == 0,
         }
 
     ready = all(row["ready"] for row in per_snapshot.values())
     return {
-        "policy": "40_train_10_calibration_5_test_per_snapshot",
+        "policy": "40_train_10_calibration_5_test_complete_per_snapshot",
         "score_blind": True,
-        "required_distinct_sessions_per_snapshot": REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
+        "required_complete_distinct_sessions_per_snapshot": REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
         "ready_for_issue_3_score_inspection": ready,
         "per_snapshot": per_snapshot,
     }
@@ -195,9 +198,12 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
         rows = [row for row in projections if row["snapshot"] == snapshot]
         expected = sum(row["expected_pair_count"] for row in rows)
         observed = sum(row["observed_pair_count"] for row in rows)
+        complete_rows = [row for row in rows if row["complete"]]
         by_snapshot[snapshot] = {
             "artifact_count": len(rows),
             "distinct_session_count": len({row["session"] for row in rows}),
+            "complete_artifact_count": len(complete_rows),
+            "complete_distinct_session_count": len({row["session"] for row in complete_rows}),
             "expected_pair_count": expected,
             "observed_pair_count": observed,
             "missing_pair_count": expected - observed,
@@ -219,7 +225,7 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
             "coverage_fraction": _fraction(observed, expected),
         }
 
-    complete_artifacts = sum(1 for row in projections if row["expected_pair_count"] == row["observed_pair_count"])
+    complete_artifacts = sum(1 for row in projections if row["complete"])
     return {
         "contract": REPORT_CONTRACT,
         "score_blind": True,
