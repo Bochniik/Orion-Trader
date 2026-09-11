@@ -114,6 +114,34 @@
   background: rgba(11, 14, 19, 0.94);
 }
 
+/* Market Explorer's ranked-list payload does not expose exchange/venue metadata.
+   Keep list mode dense and truthful by omitting that unavailable field rather than
+   rendering a column of placeholders. Catalogue/group tables still show exchange
+   when catalogue metadata provides it. */
+.market-v3-table-head.market-list > span:last-child,
+.market-v3-table-wrap:has(> .market-v3-table-head.market-list)
+  .market-v3-row > span:last-child {
+  display: none;
+}
+
+.market-v3-table-head.market-list,
+.market-v3-table-wrap:has(> .market-v3-table-head.market-list)
+  .market-v3-row {
+  grid-template-columns:
+    minmax(210px, 1.7fr)
+    minmax(72px, 0.55fr)
+    minmax(106px, 0.75fr)
+    minmax(94px, 0.65fr)
+    minmax(118px, 0.8fr);
+}
+
+.market-v3-table-wrap:has(> .market-v3-table-head.market-list)
+  .market-v3-row > span:nth-child(5) {
+  justify-self: end;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
 .market-v3-row {
   min-height: 48px;
   font-variant-numeric: tabular-nums;
@@ -198,9 +226,14 @@
   }
 
   .market-v3-table-head,
-  .market-v3-row,
-  .market-v3-table-head.market-list {
+  .market-v3-row {
     min-width: 690px;
+  }
+
+  .market-v3-table-head.market-list,
+  .market-v3-table-wrap:has(> .market-v3-table-head.market-list)
+    .market-v3-row {
+    min-width: 610px;
   }
 }
 
