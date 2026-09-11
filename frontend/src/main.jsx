@@ -6,6 +6,7 @@ import "./shell-polish.css";
 import "./navigation-polish.css";
 import "./data-panels.css";
 import "./news-polish.css";
+import "./news-state-polish.css";
 import "./chart-polish.css";
 import "./analysis-polish.css";
 import "./analysis-commandbar.css";
