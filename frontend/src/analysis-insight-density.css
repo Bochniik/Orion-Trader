@@ -1,0 +1,122 @@
+/* Analysis insight density
+   Presentation only: improve scanability of existing analysis payloads. */
+
+.analysis-insight-grid {
+  align-items: stretch;
+}
+
+.analysis-insight {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 42%),
+    rgba(255, 255, 255, 0.006);
+}
+
+.analysis-insight::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(255, 122, 26, 0.28), rgba(255, 122, 26, 0.03) 42%, transparent 78%);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.analysis-insight h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.analysis-insight h3 svg {
+  color: var(--core-orange, #ff7a1a);
+  filter: drop-shadow(0 0 8px rgba(255, 122, 26, 0.18));
+}
+
+.analysis-insight dl {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.analysis-insight dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, auto);
+  align-items: center;
+  gap: 16px;
+  min-height: 38px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.052);
+}
+
+.analysis-insight dl > div:last-child {
+  border-bottom: 0;
+}
+
+.analysis-insight dt {
+  color: #737d88;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.analysis-insight dd {
+  min-width: 0;
+  margin: 0;
+  color: #e5e9ed;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.analysis-insight dd svg {
+  margin-right: 4px;
+  vertical-align: -2px;
+  color: var(--core-green, #61d89b);
+}
+
+.analysis-insight:nth-child(2) dl > div:nth-child(4) dd,
+.analysis-insight:nth-child(2) dl > div:nth-child(5) dd {
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-reasons ol,
+.analysis-risks ul {
+  margin-top: 2px;
+}
+
+.analysis-reasons li,
+.analysis-risks li {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.analysis-reasons li:last-child,
+.analysis-risks li:last-child {
+  border-bottom: 0;
+}
+
+.analysis-risks li svg {
+  flex: 0 0 auto;
+  color: #ff9b68;
+}
+
+.analysis-insight > p {
+  margin: 6px 0 0;
+  color: #747e89;
+  line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .analysis-insight dl > div {
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 44%);
+    gap: 10px;
+  }
+
+  .analysis-insight dd {
+    font-size: 11px;
+  }
+}
