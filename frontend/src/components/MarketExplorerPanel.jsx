@@ -499,6 +499,12 @@ function MarketListTable({
                  </span>
                 </span>
 
+                <span className="market-v3-symbol">
+                  {String(
+                    row.ticker || ""
+                  ).toUpperCase()}
+                </span>
+
                 <span className="market-v3-price">
                   {money(
                     row.price
