@@ -32,6 +32,8 @@ Prediction artifacts include Git/file lineage and are immutable GitHub Actions a
 
 Settled records are accumulated through the existing append-only evidence ledger implementation. A dedicated long-horizon ledger is used to avoid races with the existing premarket/regular-hours evidence cycle. Duplicate records are idempotent; conflicting material values for the same identity fail closed.
 
+Every newly written ledger is now integrity-sealed. Each record carries deterministic `record_id` and `material_sha256` values, while the ledger carries a SHA-256 fingerprint over the sorted `(record_id, material_sha256)` set plus the expected record count. Recovery validates stored record fingerprints, the cumulative record count, and the ledger-level digest before any prior ledger is accepted as the base for a new cycle. A modified or truncated sealed ledger therefore fails closed instead of silently becoming a shorter "append-only" history. Legacy unsealed ledgers remain readable only for migration; the next successful build seals them automatically.
+
 The dedicated V5 evidence cycle invokes both the settlement layer and the accumulator with `--score-blind-summary`. Raw settled records retain the probabilities and outcomes required for the eventual frozen tournament, but pre-maturity settlement summaries, ledger summaries and CI stdout expose only collection/settlement coverage plus `score_blind=true` and `metrics_exposed=false`. Brier score, log loss, directional accuracy, ECE, probabilities and realized labels are deliberately omitted from operational summaries. The generic settlement/accumulator behavior remains backward-compatible when score-blind mode is not requested.
 
 The raw settlement records and raw ledger are research evidence, not progress dashboards. They should not be inspected to make an outcome-driven stop/tune decision before both pre-registered maturity gates are satisfied. The score-blind operational summaries exist so collection health can be monitored without revealing model performance.
@@ -65,7 +67,7 @@ This audit does not change the pre-registered 80-observation or 8-session thresh
 
 ## Reproducibility
 
-Every readiness/decision artifact records the SHA-256 of the exact cumulative ledger it evaluated. Re-running the builder against the same ledger therefore ties the conclusion to a concrete immutable evidence state. Pairing and ordering are deterministic.
+Every readiness/decision artifact records the SHA-256 of the exact cumulative ledger it evaluated. Re-running the builder against the same ledger therefore ties the conclusion to a concrete immutable evidence state. Pairing and ordering are deterministic. The cumulative ledger itself also carries an independent deterministic records digest, so corruption or truncation is detected before the next accumulation cycle.
 
 ## Next logical step
 

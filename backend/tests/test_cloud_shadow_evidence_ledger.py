@@ -137,6 +137,9 @@ def test_build_ledger_preserves_prior_records_and_deduplicates_new_inputs(tmp_pa
     assert ledger["summary"]["observations"] == 2
     assert len(ledger["records"]) == 2
     assert len(ledger["source_evaluations"]) == 1
+    assert ledger["integrity"]["algorithm"] == "sha256"
+    assert ledger["integrity"]["record_count"] == 2
+    assert ledger["integrity"]["records_sha256"] == module.records_fingerprint(ledger["records"])
 
 
 def test_build_ledger_score_blind_mode_hides_interim_performance_metrics(tmp_path):
@@ -157,3 +160,55 @@ def test_build_ledger_score_blind_mode_hides_interim_performance_metrics(tmp_pat
     serialized_summary = json.dumps({"summary": ledger["summary"], "by_engine_horizon": ledger["by_engine_horizon"]})
     for forbidden in ("brier_score", "log_loss", "directional_accuracy", "ece_10_bin"):
         assert forbidden not in serialized_summary
+
+
+def test_load_existing_fails_closed_when_sealed_record_is_modified(tmp_path):
+    evaluation_path = tmp_path / "evaluation.json"
+    payload = evaluation([record()])
+    evaluation_path.write_text(json.dumps(payload), encoding="utf-8")
+    ledger = module.build_ledger(
+        {"contract": module.CONTRACT, "records": [], "source_evaluations": []},
+        [(evaluation_path, payload)],
+        score_blind_summary=True,
+    )
+    ledger["records"][0]["outcome_price"] = 999.0
+    path = tmp_path / "ledger.json"
+    path.write_text(json.dumps(ledger), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="material_sha256 integrity mismatch"):
+        module.load_existing(path)
+
+
+def test_load_existing_fails_closed_when_sealed_ledger_is_truncated(tmp_path):
+    first = record(symbol="AAPL")
+    second = record(symbol="MSFT", probability=0.3, actual=0, outcome=99.0)
+    second["prediction_time_utc"] = "2026-09-11T14:00:00+00:00"
+    second["target_time_utc"] = "2026-09-11T14:30:00+00:00"
+    evaluation_path = tmp_path / "evaluation.json"
+    payload = evaluation([first, second])
+    evaluation_path.write_text(json.dumps(payload), encoding="utf-8")
+    ledger = module.build_ledger(
+        {"contract": module.CONTRACT, "records": [], "source_evaluations": []},
+        [(evaluation_path, payload)],
+        score_blind_summary=True,
+    )
+    ledger["records"] = ledger["records"][:1]
+    path = tmp_path / "ledger.json"
+    path.write_text(json.dumps(ledger), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="record_count integrity mismatch"):
+        module.load_existing(path)
+
+
+def test_legacy_unsealed_ledger_is_accepted_and_next_build_is_sealed(tmp_path):
+    prior = record(symbol="AAPL")
+    legacy_path = tmp_path / "legacy-ledger.json"
+    legacy_path.write_text(
+        json.dumps({"contract": module.CONTRACT, "records": [prior], "source_evaluations": []}),
+        encoding="utf-8",
+    )
+    existing = module.load_existing(legacy_path)
+    rebuilt = module.build_ledger(existing, [], score_blind_summary=True)
+
+    assert rebuilt["integrity"]["record_count"] == 1
+    assert rebuilt["integrity"]["records_sha256"] == module.records_fingerprint(rebuilt["records"])
