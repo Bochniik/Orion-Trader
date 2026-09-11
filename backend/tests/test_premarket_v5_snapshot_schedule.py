@@ -53,6 +53,25 @@ def test_winter_est_activates_only_matching_utc_slots():
     assert duplicate_mid.reason == "inactive_dst_slot"
 
 
+def test_market_holiday_is_not_counted_as_registered_forward_session():
+    # Labor Day 2026 is Monday 2026-09-07. The UTC cron still fires, but the
+    # resolver must fail closed before setup/data collection.
+    now = datetime(2026, 9, 7, 12, 30, tzinfo=timezone.utc)
+    result = module.resolve_snapshot(schedule_cron="0 12 * * 1-5", now=now)
+
+    assert result.active is False
+    assert result.reason == "market_holiday"
+    assert result.snapshot == "mid"
+
+
+def test_good_friday_is_rejected_even_though_it_is_a_weekday():
+    now = datetime(2026, 4, 3, 12, 30, tzinfo=timezone.utc)
+    result = module.resolve_snapshot(schedule_cron="0 12 * * 1-5", now=now)
+
+    assert result.active is False
+    assert result.reason == "market_holiday"
+
+
 def test_manual_dispatch_preserves_late_snapshot_default():
     result = module.resolve_snapshot(
         schedule_cron=None,
