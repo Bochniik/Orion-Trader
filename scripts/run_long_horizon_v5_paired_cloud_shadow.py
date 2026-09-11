@@ -30,6 +30,7 @@ LINEAGE_FILES = (
     "backend/app/services/intraday_probability_long_horizon_v5_forward.py",
     "backend/app/services/intraday_probability_long_horizon_challenger_v5.py",
     "backend/app/services/intraday_probability_runtime_v3_1.py",
+    "backend/app/services/intraday_probability_ensemble_engine.py",
 )
 
 
@@ -58,6 +59,18 @@ def session_gate(now: datetime | None = None) -> dict[str, Any]:
         "window_et": "10:00-13:30",
         "reason": None if allowed else "outside_long_horizon_shadow_window",
     }
+
+
+def _canonical_timestamp(value: Any) -> str | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc).isoformat()
 
 
 def _sha256(path: Path) -> str | None:
@@ -99,9 +112,14 @@ def run_symbol(symbol: str) -> tuple[list[dict[str, Any]], str | None]:
     except Exception as exc:
         return [], f"{type(exc).__name__}: {exc}"
 
-    prediction_time = challenger.get("as_of")
-    if not prediction_time:
+    challenger_time = _canonical_timestamp(challenger.get("as_of"))
+    incumbent_time = _canonical_timestamp(incumbent.get("as_of"))
+    if not challenger_time:
         return [], "challenger_missing_prediction_time"
+    if not incumbent_time:
+        return [], "incumbent_source_timestamp_unaligned_or_missing"
+    if challenger_time != incumbent_time:
+        return [], f"paired_timestamp_mismatch:{incumbent_time}!={challenger_time}"
 
     rows: list[dict[str, Any]] = []
     challenger_horizons = challenger.get("horizons") or {}
@@ -118,8 +136,9 @@ def run_symbol(symbol: str) -> tuple[list[dict[str, Any]], str | None]:
         rows.append({
             "symbol": symbol,
             "horizon": horizon,
-            "prediction_time_utc": prediction_time,
+            "prediction_time_utc": challenger_time,
             "target_time_utc": c_row.get("target_time_utc"),
+            "timestamp_pair_verified": True,
             "incumbent": {
                 "engine": "regular_hours_v3_1",
                 "probability_up": round(float(i_probability), 6),
