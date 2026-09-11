@@ -42,6 +42,10 @@ export default function AnalyzeView({
   const [suggestions, setSuggestions] = useState([]);
   const [inputError, setInputError] = useState("");
   const [searching, setSearching] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsResolved, setSuggestionsResolved] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState("");
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [horizon, setHorizon] = useState("day");
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
@@ -49,24 +53,45 @@ export default function AnalyzeView({
   const result = useCoreJob();
   const lookup = useRef(0);
   const ticker = String(selection?.ticker || "").trim().toUpperCase();
+  const suggestionsOpen =
+    searching &&
+    Boolean(input.trim()) &&
+    (suggestionsLoading || suggestionsResolved || Boolean(suggestionsError));
 
   useEffect(() => {
     if (!searching || !input.trim()) {
       setSuggestions([]);
+      setSuggestionsLoading(false);
+      setSuggestionsResolved(false);
+      setSuggestionsError("");
+      setActiveSuggestion(-1);
       return;
     }
 
     const request = ++lookup.current;
+    setSuggestionsLoading(true);
+    setSuggestionsResolved(false);
+    setSuggestionsError("");
+    setActiveSuggestion(-1);
+
     const timer = setTimeout(() => {
       searchStocks(input)
         .then((data) => {
           if (request === lookup.current) {
             setSuggestions(data.results || []);
+            setSuggestionsResolved(true);
           }
         })
         .catch(() => {
           if (request === lookup.current) {
             setSuggestions([]);
+            setSuggestionsResolved(false);
+            setSuggestionsError("Search is temporarily unavailable.");
+          }
+        })
+        .finally(() => {
+          if (request === lookup.current) {
+            setSuggestionsLoading(false);
           }
         });
     }, 250);
@@ -86,6 +111,10 @@ export default function AnalyzeView({
     setInput(ticker);
     setSearching(false);
     setSuggestions([]);
+    setSuggestionsLoading(false);
+    setSuggestionsResolved(false);
+    setSuggestionsError("");
+    setActiveSuggestion(-1);
 
     const snapshot = selection?.snapshot || initialAnalysis;
     const snapshotHorizon =
@@ -176,8 +205,45 @@ export default function AnalyzeView({
     setInputError("");
     setSearching(false);
     setSuggestions([]);
+    setSuggestionsLoading(false);
+    setSuggestionsResolved(false);
+    setSuggestionsError("");
+    setActiveSuggestion(-1);
     result.reset();
     onSelect(symbol);
+  }
+
+  function handleSearchKeyDown(event) {
+    if (event.key === "Escape") {
+      setSearching(false);
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      setSuggestionsResolved(false);
+      setSuggestionsError("");
+      setActiveSuggestion(-1);
+      return;
+    }
+
+    if (!suggestions.length) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveSuggestion((current) => (current + 1) % suggestions.length);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveSuggestion((current) =>
+        current <= 0 ? suggestions.length - 1 : current - 1,
+      );
+      return;
+    }
+
+    if (event.key === "Enter" && activeSuggestion >= 0) {
+      event.preventDefault();
+      select(suggestions[activeSuggestion].ticker);
+    }
   }
 
   return (
@@ -209,34 +275,77 @@ export default function AnalyzeView({
             autoComplete="off"
             placeholder="Search a stock, e.g. AAPL"
             maxLength={80}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={suggestionsOpen}
+            aria-controls="analyze-stock-suggestions"
+            aria-activedescendant={
+              activeSuggestion >= 0 ? `analyze-suggestion-${activeSuggestion}` : undefined
+            }
+            onFocus={() => {
+              if (input.trim() && !ticker) setSearching(true);
+            }}
             onChange={(event) => {
               setInput(event.target.value.toUpperCase());
               setSearching(true);
               setInputError("");
             }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setSearching(false);
-                setSuggestions([]);
-              }
-            }}
+            onKeyDown={handleSearchKeyDown}
           />
           <button className="core-button" type="submit" disabled={!input.trim()}>
             Analyze
           </button>
         </form>
 
-        {suggestions.length > 0 && (
-          <ul className="core-suggestions" aria-label="Matching stocks">
-            {suggestions.map((item) => (
-              <li key={item.ticker}>
-                <button type="button" onClick={() => select(item.ticker)}>
-                  <strong>{item.ticker}</strong>
-                  <span>{item.name}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+        {suggestionsOpen && (
+          <div
+            id="analyze-stock-suggestions"
+            className="core-suggestions analyze-search-results"
+            role="listbox"
+            aria-label="Matching stocks"
+          >
+            {suggestionsLoading && (
+              <div className="analyze-search-status" role="status">
+                <span className="analyze-search-spinner" aria-hidden="true" />
+                <span>Searching market symbols…</span>
+              </div>
+            )}
+
+            {!suggestionsLoading && suggestionsError && (
+              <div className="analyze-search-status error" role="status">
+                <span>{suggestionsError}</span>
+                <small>You can still enter a ticker directly and press Analyze.</small>
+              </div>
+            )}
+
+            {!suggestionsLoading && !suggestionsError && suggestionsResolved && suggestions.length === 0 && (
+              <div className="analyze-search-status" role="status">
+                <span>No matching stocks found.</span>
+                <small>Try a ticker symbol or a shorter company name.</small>
+              </div>
+            )}
+
+            {!suggestionsLoading && suggestions.length > 0 && (
+              <ul>
+                {suggestions.map((item, index) => (
+                  <li key={item.ticker} role="presentation">
+                    <button
+                      id={`analyze-suggestion-${index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={activeSuggestion === index}
+                      className={activeSuggestion === index ? "active" : ""}
+                      onMouseEnter={() => setActiveSuggestion(index)}
+                      onClick={() => select(item.ticker)}
+                    >
+                      <strong>{item.ticker}</strong>
+                      <span>{item.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
 
