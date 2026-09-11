@@ -102,17 +102,62 @@
 .indicator-toggle.active i { opacity: 1; box-shadow: 0 0 9px color-mix(in srgb, var(--indicator-color, #64748b) 58%, transparent); }
 .chart-inspector {
   display: grid;
-  grid-template-columns: repeat(8, minmax(88px, 1fr));
+  grid-template-columns: minmax(156px, 1.35fr) repeat(7, minmax(88px, 1fr));
   gap: 1px;
   margin: 0 0 10px;
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, .11);
-  border-radius: 10px;
-  background: rgba(148, 163, 184, .08);
+  border: 1px solid rgba(148, 163, 184, .12);
+  border-radius: 11px;
+  background: rgba(148, 163, 184, .09);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .02);
 }
-.chart-inspector > div { display: grid; gap: 4px; min-width: 0; padding: 8px 10px; background: rgba(5, 10, 17, .94); }
-.chart-inspector span { color: #65758b; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.chart-inspector strong { color: #dce5ef; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chart-inspector > div {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 9px 10px;
+  background: linear-gradient(180deg, rgba(7, 12, 20, .98), rgba(4, 9, 16, .98));
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+.chart-inspector > div:hover {
+  background: rgba(17, 24, 39, .96);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .025);
+}
+.chart-inspector > div:first-child {
+  padding-left: 12px;
+  background: linear-gradient(90deg, rgba(249, 115, 22, .075), rgba(7, 12, 20, .98) 46%);
+}
+.chart-inspector > div:first-child::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(249, 115, 22, .78), rgba(249, 115, 22, .14));
+}
+.chart-inspector > div:nth-child(6) {
+  background: linear-gradient(180deg, rgba(249, 115, 22, .035), rgba(4, 9, 16, .98));
+}
+.chart-inspector span {
+  color: #64748b;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .095em;
+  text-transform: uppercase;
+}
+.chart-inspector strong {
+  overflow: hidden;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chart-inspector > div:first-child strong { color: #f4f7fb; font-size: 10px; }
+.chart-inspector > div:nth-child(3) strong { color: #b9f4da; }
+.chart-inspector > div:nth-child(4) strong { color: #ffc2ca; }
+.chart-inspector > div:nth-child(6) strong { font-size: 11.5px; }
 .chart-period-summary {
   display: flex;
   align-items: center;
@@ -255,6 +300,8 @@
 @media (max-width: 720px) {
   .advanced-chart { padding: 12px; border-radius: 14px; }
   .chart-inspector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chart-inspector > div { padding: 8px 9px; }
+  .chart-inspector > div:first-child { grid-column: 1 / -1; }
   .chart-time-controls { width: 100%; }
   .range-buttons { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 3px; scrollbar-width: thin; }
   .range-btn { flex: 0 0 auto; }
@@ -266,5 +313,5 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .range-btn, .chart-time-controls button, .indicator-toggle { transition: none; }
+  .range-btn, .chart-time-controls button, .indicator-toggle, .chart-inspector > div { transition: none; }
 }
