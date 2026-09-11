@@ -1,4 +1,4 @@
-﻿import {
+import {
   useEffect,
   useRef,
   useState,
@@ -30,6 +30,7 @@ import {
 import TodayView from "./TodayView";
 import AnalyzeView from "./AnalyzeView";
 import MyStocksView from "./MyStocksView";
+import OrionLabView from "./OrionLabView";
 import DataConnections from "./DataConnections";
 
 import "./core.css";
@@ -630,6 +631,10 @@ export default function CoreApp({
               }
             />
           )}
+          {view === "orion-lab" && (
+            <OrionLabView />
+          )}
+
         </main>
 
         <footer className="core-bottom">

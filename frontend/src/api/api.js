@@ -593,3 +593,19 @@ export function getMarketCatalogueQuotes(symbols, options = {}) {
 
   return request(`/market-catalogue/quotes?${params.toString()}`, options);
 }
+
+
+export function getResearchRegistry(options = {}) {
+  return request("/research/registry", options);
+}
+export function getResearchModels(options = {}) {
+  return request("/research/models", options);
+}
+export function getResearchExperiments(limit = 100, experimentType = "", options = {}) {
+  const params = new URLSearchParams({ limit: String(Number(limit) || 100) });
+  if (experimentType) params.set("experiment_type", experimentType);
+  return request(`/research/experiments?${params.toString()}`, options);
+}
+export function getResearchProspectiveStatus(options = {}) {
+  return request("/research/prospective/status", options);
+}

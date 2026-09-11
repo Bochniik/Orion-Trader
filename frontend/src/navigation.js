@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Search,
   Star,
+  FlaskConical,
 } from "lucide-react";
 
 export const WORKSPACE_VIEWS = [
@@ -25,6 +26,13 @@ export const WORKSPACE_VIEWS = [
     description:
       "Saved stocks, positions and monitoring",
     icon: Star,
+  },
+  {
+    id: "orion-lab",
+    label: "Orion Lab",
+    description:
+      "Model validation, experiments and prospective research",
+    icon: FlaskConical,
   },
 ];
 

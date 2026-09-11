@@ -30,6 +30,7 @@ from app.api.learning_routes import router as learning_router
 
 from app.api.market_explorer_routes import router as market_explorer_router
 from app.api.market_catalogue_routes import router as market_catalogue_router
+from app.api.research_routes import router as research_router
 
 APP_VERSION = "3.2.0"
 SESSION_COOKIE = "orion_session"
@@ -185,6 +186,7 @@ app.include_router(scanner_router)
 app.include_router(learning_router)
 app.include_router(market_explorer_router)
 app.include_router(market_catalogue_router)
+app.include_router(research_router)
 
 @app.get("/")
 def root():
