@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+import sys
 from typing import Any, Iterable
 
 import httpx
+
+SCRIPTS = Path(__file__).resolve().parent
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 
 from collect_cloud_shadow_outcome_bars import (
     build_request_windows,
@@ -17,11 +22,12 @@ from collect_cloud_shadow_outcome_bars import (
 )
 from evaluate_cloud_shadow_predictions import (
     ForecastRecord,
+    grouped_summaries,
+    horizon_minutes,
     load_bars,
     parse_iso,
     settle_forecast,
     summarize,
-    grouped_summaries,
 )
 
 CONTRACT = "orion-long-horizon-v5-paired-shadow-v1"
@@ -96,8 +102,6 @@ def settle(forecasts: list[dict[str, Any]], bars_path: Path, cutoff: datetime) -
     bars = load_bars(bars_path)
     mature = []
     settled: list[ForecastRecord] = []
-    from evaluate_cloud_shadow_predictions import horizon_minutes
-    from datetime import timedelta
 
     for forecast in forecasts:
         prediction_time = parse_iso(str(forecast["prediction_time"]))
