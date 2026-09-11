@@ -37,18 +37,31 @@ Directional accuracy and ECE remain supporting diagnostics and cannot substitute
 
 Candidate identity: `long-horizon-v5-20260911-a`.
 
-The first candidate after pre-registration is deliberately different from V4. It does not add regime-classification thresholds. Instead it extends the incumbent statistical feature set with causal longer-memory signals that can plausibly matter at 3h/5h horizons:
+The first candidate after pre-registration is deliberately different from V4. It does not add regime-classification thresholds. Instead it extends the incumbent statistical feature set with causal horizon-specific memory signals that can plausibly matter at 3h/5h horizons:
 
-- 90-minute and 120-minute session-bounded returns;
-- 90-minute realized volatility;
-- 90-minute stock-vs-SPY relative strength;
-- 60-minute directional persistence;
-- 60-minute range expansion;
-- an interaction between session progress and 90-minute relative strength.
+- 90-minute return and realized volatility for the 3h branch;
+- 90-minute stock-vs-SPY relative strength for the 3h branch;
+- 60-minute directional persistence and range expansion for the 3h branch;
+- 60-minute realized volatility for the 5h branch;
+- 30-minute directional persistence and range expansion for the 5h branch;
+- session-progress interactions with horizon-appropriate relative strength.
 
-All rolling and return features are session-bounded. The model is refit once per test day and its training cutoff is shifted backward by the full target horizon so unresolved outcomes cannot enter training. Fixed L2 and probability-shrinkage constants are part of the candidate identity and must not be retuned after forward labels are observed.
+The earlier 120-minute feature concept was removed before forward evaluation because it consumed too much of the usable 5h prediction window. All retained rolling and return features are session-bounded. The model is refit once per test day and its training cutoff is shifted backward by the full target horizon so unresolved outcomes cannot enter training. Fixed L2 and probability-shrinkage constants are part of the candidate identity and must not be retuned after forward labels are observed.
 
 Historical results for this candidate remain screening-only. They may reject the design before shadow collection, but they cannot make it research-eligible.
+
+## Historical screening contract
+
+`backend/evals/benchmark_intraday_long_horizon_v5.py` performs the pre-forward screen of the frozen V5 identity against both raw V3 and leakage-safe held-out V3.1. It uses only the pre-registered 3h/5h horizons and the generic paired tournament, so incumbent and challenger are scored only on identical OOS timestamps.
+
+The multi-symbol screen requires, for each required horizon and against both baselines:
+
+- enough evaluable symbols;
+- a majority of per-symbol paired tournaments to satisfy the session-block stability gate;
+- positive observation-weighted Brier improvement;
+- positive observation-weighted log-loss improvement.
+
+Any symbol/data failure makes the batch fail closed. Candidate identity drift is rejected before scoring. Even a complete historical pass returns `forward_research_eligible=false`, `promotion_allowed=false`, and can only conclude `v5_survives_historical_screen`. A failed screen concludes `v5_reject_unchanged`; the frozen candidate must not then be retuned and rescored as if the same evidence were untouched.
 
 ## Anti-overfitting rules
 
@@ -72,4 +85,4 @@ Even a successful forward research result sets `promotion_allowed=false`. Runtim
 
 ## Next logical step
 
-Run leakage-safe historical paired screening of the frozen v5 candidate against V3/V3.1 to reject it if it is obviously weak. If it survives screening, add a research-only cloud shadow runner that records v5 predictions alongside the incumbent without changing runtime behavior. After enough post-cutoff sessions accumulate, evaluate the untouched paired forward holdout with this gate. Do not tune the same candidate on that holdout.
+Run the frozen leakage-safe historical screen on the established multi-symbol universe. If V5 fails either required horizon or either baseline, record `v5_reject_unchanged` and do not retune it on the same evidence. If it survives, add a research-only cloud-shadow collector that records V5 predictions alongside the incumbent without changing runtime behavior, then wait for sufficient post-cutoff sessions before evaluating the untouched forward holdout.
