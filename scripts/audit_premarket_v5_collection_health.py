@@ -6,8 +6,15 @@ from datetime import datetime
 import hashlib
 import json
 from pathlib import Path
+import sys
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.nyse_session_calendar import is_nyse_trading_day
 
 NY = ZoneInfo("America/New_York")
 RUNNER_VERSION = "premarket-v5-cloud-shadow-v2"
@@ -43,6 +50,8 @@ def _parse_as_of_et(value: Any) -> datetime:
     local = parsed.astimezone(NY)
     if local.weekday() >= 5:
         raise CollectionHealthError("premarket collection artifact cannot belong to a weekend")
+    if not is_nyse_trading_day(local.date()):
+        raise CollectionHealthError("premarket collection artifact cannot belong to a NYSE full-day market holiday")
     return local
 
 

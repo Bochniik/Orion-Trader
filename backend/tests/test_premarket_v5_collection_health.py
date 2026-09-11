@@ -180,3 +180,17 @@ def test_collection_health_counts_missing_horizon_without_reading_scores():
     assert report["coverage"]["observed_pair_count"] == 29
     assert report["coverage"]["by_horizon"]["premarket_30m"]["missing_pair_count"] == 1
     assert report["coverage"]["by_horizon"]["premarket_5m"]["missing_pair_count"] == 0
+
+
+def test_collection_health_rejects_weekday_exchange_holiday_as_validation_session():
+    labor_day = _payload(as_of_et="2026-09-07T08:00:00-04:00")
+
+    with pytest.raises(audit.CollectionHealthError, match="NYSE full-day market holiday"):
+        audit.build_health_report([labor_day])
+
+
+def test_collection_health_rejects_good_friday_as_validation_session():
+    good_friday = _payload(as_of_et="2026-04-03T09:15:00-04:00")
+
+    with pytest.raises(audit.CollectionHealthError, match="NYSE full-day market holiday"):
+        audit.build_health_report([good_friday])
