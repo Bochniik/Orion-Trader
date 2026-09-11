@@ -83,58 +83,69 @@ export default function Watchlist({
           Watchlist
         </div>
 
-        <div className="watchlist-refresh">
+        <div className="watchlist-refresh" aria-live="polite">
           <RefreshCw size={15} className={loading ? "spin" : ""} />
           <span>{loading ? "Refreshing" : "30s refresh"}</span>
         </div>
       </div>
 
-      {error && <p className="watchlist-error">{error}</p>}
+      {error && <p className="watchlist-error" role="alert">{error}</p>}
 
-      <div className="watchlist-table">
-        <div className="watchlist-row watchlist-row-head">
-          <span>Ticker</span>
-          <span>Price</span>
-          <span>Change</span>
-          <span>Volume</span>
-          <span></span>
+      {!watchlist.length ? (
+        <div className="watchlist-empty" role="status">
+          <span className="watchlist-empty-icon" aria-hidden="true"><Search size={18} /></span>
+          <div>
+            <strong>No stocks on your watchlist</strong>
+            <p>Search for a ticker and save it to keep live price, change and volume in view.</p>
+          </div>
         </div>
+      ) : (
+        <div className="watchlist-table">
+          <div className="watchlist-row watchlist-row-head">
+            <span>Ticker</span>
+            <span>Price</span>
+            <span>Change</span>
+            <span>Volume</span>
+            <span></span>
+          </div>
 
-        {watchlist.map((symbol) => {
-          const quote = quotes[symbol];
-          const changePercent = quote?.change_percent;
-          const isUp = Number(changePercent) >= 0;
-          const TrendIcon = isUp ? TrendingUp : TrendingDown;
+          {watchlist.map((symbol) => {
+            const quote = quotes[symbol];
+            const unavailable = Boolean(quote?.error);
+            const changePercent = quote?.change_percent;
+            const isUp = Number(changePercent) >= 0;
+            const TrendIcon = isUp ? TrendingUp : TrendingDown;
 
-          return (
-            <div className="watchlist-row" key={symbol}>
-              <button className="watch-symbol" onClick={() => onSelectStock(symbol)}>
-                {symbol}
-              </button>
+            return (
+              <div className={`watchlist-row${unavailable ? " is-unavailable" : ""}`} key={symbol}>
+                <button className="watch-symbol" onClick={() => onSelectStock(symbol)}>
+                  {symbol}
+                </button>
 
-              <button className="watch-price" onClick={() => onSelectStock(symbol)}>
-                {quote?.error ? "Error" : formatPrice(quote?.price)}
-              </button>
+                <button className="watch-price" onClick={() => onSelectStock(symbol)}>
+                  {unavailable ? <span className="watch-unavailable">Unavailable</span> : formatPrice(quote?.price)}
+                </button>
 
-              <button
-                className={isUp ? "watch-change positive" : "watch-change negative"}
-                onClick={() => onSelectStock(symbol)}
-              >
-                {quote && !quote.error && <TrendIcon size={15} />}
-                {quote?.error ? "..." : formatPercent(changePercent)}
-              </button>
+                <button
+                  className={isUp ? "watch-change positive" : "watch-change negative"}
+                  onClick={() => onSelectStock(symbol)}
+                >
+                  {quote && !unavailable && <TrendIcon size={15} />}
+                  {unavailable ? "—" : formatPercent(changePercent)}
+                </button>
 
-              <button className="watch-volume" onClick={() => onSelectStock(symbol)}>
-                {quote?.error ? "..." : formatVolume(quote?.volume)}
-              </button>
+                <button className="watch-volume" onClick={() => onSelectStock(symbol)}>
+                  {unavailable ? "—" : formatVolume(quote?.volume)}
+                </button>
 
-              <button className="remove-btn" onClick={() => onRemoveStock(symbol)}>
-                Remove
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                <button className="remove-btn" onClick={() => onRemoveStock(symbol)} aria-label={`Remove ${symbol} from watchlist`}>
+                  Remove
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
