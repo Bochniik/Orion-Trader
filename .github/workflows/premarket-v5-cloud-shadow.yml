@@ -8,9 +8,15 @@ on:
         required: false
         default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
   schedule:
-    # Cover 09:15 ET across US daylight/standard time. The runner is anchored to
-    # 09:15 ET and can recover a delayed GitHub start without using post-cutoff bars.
-    - cron: "15 13,14 * * 1-5"
+    # Pre-registered forward cadence: 06:45 (early), 08:00 (mid), 09:15 (late) ET.
+    # Both EDT and EST UTC slots are declared. The resolver activates exactly one
+    # slot per snapshot/session and fails closed for the inactive DST duplicate.
+    - cron: "45 10 * * 1-5"
+    - cron: "45 11 * * 1-5"
+    - cron: "0 12 * * 1-5"
+    - cron: "0 13 * * 1-5"
+    - cron: "15 13 * * 1-5"
+    - cron: "15 14 * * 1-5"
 
 permissions:
   contents: read
@@ -30,16 +36,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve preregistered Premarket V5 snapshot
+        id: target
+        shell: bash
+        env:
+          SCHEDULE_CRON: ${{ github.event.schedule }}
+        run: |
+          python scripts/resolve_premarket_v5_snapshot.py \
+            --schedule-cron "$SCHEDULE_CRON" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Report inactive DST slot
+        if: steps.target.outputs.active != 'true'
+        run: |
+          echo "Skipping inactive Premarket V5 schedule slot: ${{ steps.target.outputs.reason }}"
+          echo "Snapshot: ${{ steps.target.outputs.snapshot }}"
+          echo "Registered target: ${{ steps.target.outputs.as_of_et }}"
+
       - uses: actions/setup-python@v5
+        if: steps.target.outputs.active == 'true'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
       - name: Install backend dependencies
+        if: steps.target.outputs.active == 'true'
         run: python -m pip install -r backend/requirements.txt
 
       - name: Verify cloud credentials are configured
+        if: steps.target.outputs.active == 'true'
         shell: bash
         run: |
           if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
@@ -47,42 +73,27 @@ jobs:
             exit 2
           fi
 
-      - name: Resolve frozen 09:15 ET prediction timestamp
-        id: target
-        shell: bash
-        run: |
-          AS_OF=$(python - <<'PY'
-          from datetime import datetime, time, timezone
-          from zoneinfo import ZoneInfo
-
-          ny = ZoneInfo("America/New_York")
-          local_now = datetime.now(timezone.utc).astimezone(ny)
-          target = datetime.combine(local_now.date(), time(9, 15), tzinfo=ny)
-          print(target.astimezone(timezone.utc).isoformat())
-          PY
-          )
-          echo "as_of=$AS_OF" >> "$GITHUB_OUTPUT"
-          echo "Frozen premarket target: $AS_OF"
-
       - name: Run premarket v5 shadow prediction
+        if: steps.target.outputs.active == 'true'
         shell: bash
         run: |
           SYMBOLS="${{ github.event.inputs.symbols }}"
           if [ -z "$SYMBOLS" ]; then
             SYMBOLS="AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
           fi
+          echo "Collecting ${{ steps.target.outputs.snapshot }} Premarket V5 snapshot at ${{ steps.target.outputs.as_of_et }}"
           python scripts/run_premarket_v5_cloud_shadow.py \
             --symbols $SYMBOLS \
             --as-of "${{ steps.target.outputs.as_of }}" \
             --lookback-days 120 \
             --feed iex \
-            --output backend/data/cloud_shadow/premarket_v5/prediction-${{ github.run_id }}.json
+            --output backend/data/cloud_shadow/premarket_v5/prediction-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}.json
 
       - name: Upload immutable shadow evidence
-        if: always()
+        if: always() && steps.target.outputs.active == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: premarket-v5-shadow-${{ github.run_id }}
+          name: premarket-v5-shadow-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}
           path: |
             backend/data/cloud_shadow/premarket_v5/*.json
             backend/data/cloud_shadow/premarket_v5/*.manifest.json
