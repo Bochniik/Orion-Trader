@@ -1,0 +1,141 @@
+/* OrionTrader analysis request-state polish.
+   Presentation only: no analytics, scoring or decision logic lives here. */
+
+.analyze-view > .core-empty,
+.analyze-view > .core-error,
+.analyze-view > p[role="status"] {
+  position: relative;
+  overflow: hidden;
+  margin: 18px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 122, 26, 0.09), transparent 22rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.008)),
+    #090c11;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 20px 48px rgba(0, 0, 0, 0.2);
+}
+
+.analyze-view > .core-empty,
+.analyze-view > .core-error {
+  min-height: 210px;
+  padding: 28px clamp(22px, 4vw, 42px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.analyze-view > .core-empty::before,
+.analyze-view > .core-error::before,
+.analyze-view > p[role="status"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, #ff9447, rgba(255, 122, 26, 0.16) 68%, transparent);
+  box-shadow: 0 0 18px rgba(255, 122, 26, 0.3);
+}
+
+.analyze-view > .core-empty h2,
+.analyze-view > .core-error h2 {
+  margin: 12px 0 0;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  letter-spacing: -0.025em;
+}
+
+.analyze-view > .core-empty p,
+.analyze-view > .core-error p {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: rgba(213, 218, 226, 0.68);
+  line-height: 1.55;
+}
+
+.analyze-view > .core-empty .core-button,
+.analyze-view > .core-error .core-button {
+  margin-top: 18px;
+}
+
+.analyze-view > .core-empty .core-loading-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #ff9447;
+  box-shadow:
+    0 0 0 5px rgba(255, 122, 26, 0.08),
+    0 0 18px rgba(255, 122, 26, 0.5);
+  animation: analysis-state-pulse 1.35s ease-in-out infinite;
+}
+
+.analyze-view > .core-error {
+  border-color: rgba(255, 128, 96, 0.18);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 104, 78, 0.085), transparent 23rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.007)),
+    #090c11;
+}
+
+.analyze-view > .core-error::before {
+  background: linear-gradient(180deg, rgba(255, 128, 96, 0.92), rgba(255, 104, 78, 0.14) 68%, transparent);
+  box-shadow: 0 0 18px rgba(255, 104, 78, 0.22);
+}
+
+.analyze-view > p[role="status"] {
+  padding: 14px 18px 14px 22px;
+  color: rgba(213, 218, 226, 0.68);
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+
+.analyze-chart-panel > p {
+  min-height: 260px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 122, 26, 0.045), transparent 13rem),
+    rgba(255, 255, 255, 0.012);
+  color: rgba(194, 201, 212, 0.5);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@keyframes analysis-state-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .analyze-view > .core-empty,
+  .analyze-view > .core-error {
+    min-height: 190px;
+    padding: 24px 20px;
+  }
+
+  .analyze-view > .core-empty .core-button,
+  .analyze-view > .core-error .core-button {
+    width: 100%;
+  }
+
+  .analyze-chart-panel > p {
+    min-height: 220px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view > .core-empty .core-loading-dot {
+    animation: none;
+  }
+}
