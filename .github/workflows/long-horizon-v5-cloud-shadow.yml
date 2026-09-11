@@ -42,11 +42,19 @@ jobs:
           python scripts/run_long_horizon_v5_paired_cloud_shadow.py \
             --symbols $SYMBOLS \
             --output backend/data/cloud_shadow/long_horizon_v5/prediction-${{ github.run_id }}.json
+      - name: Build score-blind collection health diagnostic
+        if: always()
+        run: |
+          python scripts/audit_long_horizon_v5_collection_health.py \
+            --input backend/data/cloud_shadow/long_horizon_v5/prediction-${{ github.run_id }}.json \
+            --output backend/data/cloud_shadow/long_horizon_v5/collection-health-${{ github.run_id }}.json
       - name: Upload immutable paired prediction evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: long-horizon-v5-paired-shadow-${{ github.run_id }}
-          path: backend/data/cloud_shadow/long_horizon_v5/prediction-*.json
+          path: |
+            backend/data/cloud_shadow/long_horizon_v5/prediction-*.json
+            backend/data/cloud_shadow/long_horizon_v5/collection-health-*.json
           if-no-files-found: warn
           retention-days: 45

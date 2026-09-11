@@ -65,10 +65,20 @@ For the 10-symbol frozen universe on 2026-09-11, the current schedule has three 
 
 This audit does not change the pre-registered 80-observation or 8-session thresholds. It exists to diagnose collection reliability before any outcome-dependent interpretation.
 
+## Score-blind collection-health audit
+
+`scripts/audit_long_horizon_v5_collection_health.py` consumes paired prediction artifacts but deliberately projects only top-level operational metadata: run status, ET session timestamp, eligible horizons, requested symbols, expected/observed pair counts and explicit `missing_pairs`. It never reads `paired_predictions`, probabilities, directions, realized outcomes, Brier score, log loss, directional accuracy or ECE.
+
+The report aggregates total and per-horizon coverage, missing-pair counts by symbol, distinct collection sessions, skip reasons and a dedicated `critical_5h` view. This makes the single settleable 5h slot measurable without exposing interim model performance. An operational SHA-256 fingerprint is computed from the canonical score-blind projections so repeating the audit over the same collection geometry is deterministic.
+
+The production paired-shadow workflow runs this diagnostic even when the prediction runner exits degraded, then uploads the health JSON beside the immutable prediction artifact. The audit fails closed if the artifact contract is unexpected, `coverage.score_blind` is not true, pair counts disagree with the requested symbol/horizon geometry, or status/coverage semantics are inconsistent. Regression tests verify that changing probabilities, directions or injected outcome/score fields cannot change the health report.
+
+Collection health is not a model-quality metric and does not change the 80-observation/8-session maturity gate. A degraded collection run means evidence is missing and may require more sessions; it is neither evidence for nor against V5.
+
 ## Reproducibility
 
 Every readiness/decision artifact records the SHA-256 of the exact cumulative ledger it evaluated. Re-running the builder against the same ledger therefore ties the conclusion to a concrete immutable evidence state. Pairing and ordering are deterministic. The cumulative ledger itself also carries an independent deterministic records digest, so corruption or truncation is detected before the next accumulation cycle.
 
 ## Next logical step
 
-Let the append-only forward ledger accumulate untouched observations until both pre-registered horizon gates are mature. Track `coverage.complete`, `missing_pairs`, settled-observation counts and distinct-session counts from score-blind operational summaries alongside the capacity audit so operational data loss is separated from model performance. Do not tune V5 or change thresholds based on interim outcomes. Once a mature decision artifact exists, review the paired session-block tournament; a failure should reject this frozen V5, while a pass should move only to an explicit research-review step before any runtime consideration.
+Let the append-only forward ledger accumulate untouched observations until both pre-registered horizon gates are mature. Track the score-blind collection-health report, settled-observation counts and distinct-session counts alongside the capacity audit so operational data loss is separated from model performance. In particular, verify whether the critical 10:05 ET 5h collection consistently reaches 10/10 symbol coverage; if it does not, fix market-data/inference reliability rather than changing thresholds. Do not tune V5 or change thresholds based on interim outcomes. Once a mature decision artifact exists, review the paired session-block tournament; a failure should reject this frozen V5, while a pass should move only to an explicit research-review step before any runtime consideration.

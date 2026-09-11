@@ -8,10 +8,12 @@ on:
       - "scripts/settle_long_horizon_v5_shadow.py"
       - "scripts/accumulate_cloud_shadow_evidence.py"
       - "scripts/audit_long_horizon_v5_collection_capacity.py"
+      - "scripts/audit_long_horizon_v5_collection_health.py"
       - "backend/tests/test_cloud_shadow_evidence_ledger.py"
       - "backend/tests/test_long_horizon_v5_forward_shadow.py"
       - "backend/tests/test_long_horizon_v5_settlement_score_blind.py"
       - "backend/tests/test_long_horizon_v5_collection_capacity.py"
+      - "backend/tests/test_long_horizon_v5_collection_health.py"
       - ".github/workflows/long-horizon-v5-cloud-shadow.yml"
       - ".github/workflows/long-horizon-v5-evidence-cycle.yml"
       - ".github/workflows/long-horizon-v5-forward-shadow-ci.yml"
@@ -42,6 +44,7 @@ jobs:
           python -m py_compile scripts/settle_long_horizon_v5_shadow.py
           python -m py_compile scripts/accumulate_cloud_shadow_evidence.py
           python -m py_compile scripts/audit_long_horizon_v5_collection_capacity.py
+          python -m py_compile scripts/audit_long_horizon_v5_collection_health.py
       - name: Run focused regression tests
         run: |
           cd backend
@@ -51,4 +54,5 @@ jobs:
             tests/test_cloud_shadow_evidence_ledger.py \
             tests/test_long_horizon_v5_forward_shadow.py \
             tests/test_long_horizon_v5_settlement_score_blind.py \
-            tests/test_long_horizon_v5_collection_capacity.py
+            tests/test_long_horizon_v5_collection_capacity.py \
+            tests/test_long_horizon_v5_collection_health.py
