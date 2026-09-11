@@ -181,6 +181,72 @@
 }
 .advanced-chart .green { color: #56d39b; }
 .advanced-chart .red { color: #ff7f8f; }
+
+.analyze-chart-panel {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(148, 163, 184, .13);
+  background: radial-gradient(circle at 82% 0%, rgba(249, 115, 22, .055), transparent 26%), linear-gradient(180deg, rgba(8, 12, 19, .98), rgba(4, 8, 14, .98));
+}
+.analyze-chart-panel > .analyze-section-heading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 0 2px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, .1);
+}
+.analyze-chart-panel > .analyze-section-heading::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 88px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(249, 115, 22, .9), rgba(249, 115, 22, 0));
+}
+.analyze-chart-panel > .analyze-section-heading > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.analyze-chart-panel > .analyze-section-heading h2 {
+  margin: 0;
+  color: #edf2f7;
+  font-size: clamp(18px, 2vw, 22px);
+  font-weight: 760;
+  letter-spacing: -.025em;
+}
+.analyze-chart-panel > .analyze-section-heading h2::first-letter {
+  color: #ff8a3d;
+}
+.analyze-chart-panel > .analyze-section-heading > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid rgba(52, 211, 153, .14);
+  border-radius: 999px;
+  background: rgba(52, 211, 153, .05);
+  color: #7f958c;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+.analyze-chart-panel > .analyze-section-heading > span::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 9px rgba(52, 211, 153, .42);
+}
+
 @media (max-width: 1180px) {
   .chart-toolbar { align-items: flex-start; flex-direction: column; }
   .chart-time-controls { justify-content: flex-start; }
@@ -193,6 +259,11 @@
   .range-buttons { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 3px; scrollbar-width: thin; }
   .range-btn { flex: 0 0 auto; }
   .chart-box { min-height: 420px; }
+  .analyze-chart-panel > .analyze-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .range-btn, .chart-time-controls button, .indicator-toggle { transition: none; }
