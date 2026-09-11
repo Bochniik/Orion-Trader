@@ -18,8 +18,10 @@ import "./market-explorer-polish.css";
 import "./my-stocks-polish.css";
 import "./data-connections-polish.css";
 import "./auth-polish.css";
+import "./system-states.css";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import AuthPanel from "./components/AuthPanel";
+import OrionMark from "./components/OrionMark";
 import CoreApp from "./core/CoreApp";
 import { getAuthSession, logoutAccount } from "./api/api";
 
@@ -32,7 +34,17 @@ function Root() {
     try { await logoutAccount(); setSession(null); setError(""); }
     catch { setError("Sign out failed. Your session remains active; please try again."); }
   }
-  if (checking) return <main className="auth-screen"><p>Loading OrionTrader…</p></main>;
+  if (checking) return (
+    <main className="orion-system-state" aria-busy="true" aria-live="polite">
+      <section className="orion-system-state-card">
+        <OrionMark size={54} className="orion-system-state-mark" />
+        <p className="orion-system-state-eyebrow">Market intelligence workspace</p>
+        <h1>Preparing OrionTrader</h1>
+        <p className="orion-system-state-copy">Restoring your secure session and preparing the workspace.</p>
+        <div className="orion-system-state-progress" aria-hidden="true" />
+      </section>
+    </main>
+  );
   if (!session) return <AuthPanel onAuthenticated={setSession} />;
   return <>{error && <p className="core-warning" role="alert">{error}</p>}<CoreApp key={session.user.id} user={session.user} onLogout={logout} /></>;
 }
