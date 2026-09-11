@@ -1,6 +1,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -57,6 +58,18 @@ def _direction(probability_up: float) -> str:
     if probability_up <= 45.0:
         return "bearish"
     return "neutral"
+
+
+def _canonical_as_of(value: Any) -> str | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc).isoformat()
 
 
 def combine_probabilities(
@@ -211,19 +224,33 @@ def estimate_intraday_probabilities_v3(
         else "mixed_or_neutral"
     )
 
+    v1_as_of = _canonical_as_of(v1.get("as_of") if isinstance(v1, dict) else None)
+    v2_as_of = _canonical_as_of(v2.get("as_of") if isinstance(v2, dict) else None)
+    timestamp_aligned = bool(v1_as_of and v2_as_of and v1_as_of == v2_as_of)
+    aligned_as_of = v1_as_of if timestamp_aligned else None
+    warnings = [
+        "V3 remains experimental until multi-symbol walk-forward calibration is completed.",
+        "High probability values are intentionally capped to reduce overconfidence.",
+    ]
+    if not timestamp_aligned:
+        warnings.append(
+            "V1/V2 source timestamps are missing or not aligned; V3 probability values are retained, "
+            "but as_of is withheld so forward evidence cannot treat the ensemble as exactly timestamp-paired."
+        )
+
     return {
         "symbol": ticker,
         "available": bool(available),
+        "as_of": aligned_as_of,
+        "source_timestamp_aligned": timestamp_aligned,
+        "source_as_of": {"v1": v1_as_of, "v2": v2_as_of},
         "horizons": results,
         "cross_horizon_consensus": consensus,
         "source_models": {
             "v1_available": bool(v1.get("available")) if isinstance(v1, dict) else False,
             "v2_available": bool(v2.get("available")) if isinstance(v2, dict) else False,
         },
-        "warnings": [
-            "V3 remains experimental until multi-symbol walk-forward calibration is completed.",
-            "High probability values are intentionally capped to reduce overconfidence.",
-        ],
+        "warnings": warnings,
         "semantics": SEMANTICS,
     }
 
