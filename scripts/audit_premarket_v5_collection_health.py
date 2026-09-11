@@ -98,8 +98,7 @@ def _validate_projection(payload: dict[str, Any]) -> dict[str, Any]:
     unavailable_reasons: Counter[str] = Counter()
     for symbol in normalized_symbols:
         row = prediction_by_symbol[symbol]
-        available = row.get("available") is True
-        if not available:
+        if row.get("available") is not True:
             reason = str(row.get("reason") or "unspecified")
             unavailable_reasons[reason] += 1
             for horizon in SUPPORTED_HORIZONS:
@@ -148,7 +147,6 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
     sessions = sorted({row["session"] for row in projections})
     expected_total = sum(row["expected_pair_count"] for row in projections)
     observed_total = sum(row["observed_pair_count"] for row in projections)
-    missing_total = expected_total - observed_total
 
     missing_by_symbol: Counter[str] = Counter()
     unavailable_reasons: Counter[str] = Counter()
@@ -173,7 +171,7 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
 
     by_horizon: dict[str, dict[str, Any]] = {}
     for horizon in SUPPORTED_HORIZONS:
-        expected = len(projections) * sum(row["symbol_count"] for row in projections) if False else 0
+        expected = 0
         observed = 0
         for row in projections:
             expected += row["symbol_count"]
@@ -199,7 +197,7 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "coverage": {
             "expected_pair_count": expected_total,
             "observed_pair_count": observed_total,
-            "missing_pair_count": missing_total,
+            "missing_pair_count": expected_total - observed_total,
             "coverage_fraction": _fraction(observed_total, expected_total),
             "by_snapshot": by_snapshot,
             "by_horizon": by_horizon,
