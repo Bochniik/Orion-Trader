@@ -98,4 +98,6 @@ jobs:
             backend/data/cloud_shadow/premarket_v5/*.json
             backend/data/cloud_shadow/premarket_v5/*.manifest.json
           if-no-files-found: warn
-          retention-days: 30
+          # Issue #3 needs at least 55 distinct sessions (40 train + 10 calibration + 5 test).
+          # 90 days preserves the minimum 11-week weekday geometry plus holiday/missing-run slack.
+          retention-days: 90
