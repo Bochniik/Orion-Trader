@@ -17,8 +17,10 @@ SEMANTICS = (
     "The candidate is judged only on the 3h and 5h horizons fixed before new forward evidence "
     "arrives. Historical evidence may screen a design but can never make it research-eligible. "
     "Forward-holdout eligibility requires every paired challenger observation to occur at or "
-    "after the pre-registration cutoff and both horizons to pass the existing paired proper-score "
-    "and session-block-bootstrap tournament."
+    "after the pre-registration cutoff, the pre-registered sample-size/session coverage gate to "
+    "be fully mature on both horizons, and both horizons to pass the existing paired proper-score "
+    "and session-block-bootstrap tournament. An immature but uncontaminated forward sample is "
+    "reported as evidence collection in progress rather than as model failure."
 )
 
 
@@ -81,6 +83,46 @@ def _paired_forward_coverage(
     }
 
 
+def _forward_sample_readiness(tournament: Mapping[str, Any]) -> Dict[str, Any]:
+    """Expose score-blind maturity of the forward sample before interpreting model quality."""
+    horizon_results = tournament.get("horizons") or {}
+    if not isinstance(horizon_results, Mapping):
+        raise ValueError("paired tournament must contain horizon results")
+
+    details: Dict[str, Any] = {}
+    all_ready = True
+    for horizon in LONG_HORIZONS:
+        result = horizon_results.get(horizon)
+        if not isinstance(result, Mapping):
+            all_ready = False
+            details[horizon] = {
+                "ready": False,
+                "reason": "missing_horizon_result",
+            }
+            continue
+
+        paired = int(result.get("paired_observations") or 0)
+        sessions = int(result.get("distinct_sessions") or 0)
+        minimum_observations = int(result.get("minimum_observations") or 0)
+        minimum_sessions = int(result.get("minimum_sessions") or 0)
+        ready = bool(result.get("coverage_ok"))
+        all_ready = all_ready and ready
+        details[horizon] = {
+            "ready": ready,
+            "paired_observations": paired,
+            "minimum_observations": minimum_observations,
+            "observations_remaining": max(0, minimum_observations - paired),
+            "distinct_sessions": sessions,
+            "minimum_sessions": minimum_sessions,
+            "sessions_remaining": max(0, minimum_sessions - sessions),
+        }
+
+    return {
+        "all_required_horizons_ready": all_ready,
+        "horizons": details,
+    }
+
+
 def evaluate_long_horizon_candidate(
     incumbent: Mapping[str, Any],
     challenger: Mapping[str, Any],
@@ -104,6 +146,7 @@ def evaluate_long_horizon_candidate(
         seed=seed,
     )
     forward_coverage = _paired_forward_coverage(incumbent, challenger)
+    forward_sample_readiness = _forward_sample_readiness(tournament)
 
     tournament_passed = tournament.get("research_conclusion") == "challenger_research_eligible"
     if evidence_mode == "historical_screen":
@@ -111,6 +154,9 @@ def evaluate_long_horizon_candidate(
         forward_eligible = False
     elif not forward_coverage["all_required_horizons_forward_only"]:
         conclusion = "forward_holdout_contaminated_or_missing"
+        forward_eligible = False
+    elif not forward_sample_readiness["all_required_horizons_ready"]:
+        conclusion = "forward_holdout_collecting_evidence"
         forward_eligible = False
     elif tournament_passed:
         conclusion = "long_horizon_challenger_research_eligible"
@@ -129,6 +175,7 @@ def evaluate_long_horizon_candidate(
         "pre_registered_cutoff_utc": PREREGISTERED_CUTOFF_UTC,
         "evidence_mode": evidence_mode,
         "forward_coverage": forward_coverage,
+        "forward_sample_readiness": forward_sample_readiness,
         "paired_tournament": tournament,
         "forward_research_eligible": forward_eligible,
         "research_conclusion": conclusion,
