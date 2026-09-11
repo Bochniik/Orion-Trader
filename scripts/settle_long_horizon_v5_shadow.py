@@ -98,7 +98,39 @@ def collect_bars(forecasts: list[dict[str, Any]], *, cutoff: datetime, output: P
     }
 
 
-def settle(forecasts: list[dict[str, Any]], bars_path: Path, cutoff: datetime) -> dict[str, Any]:
+def _score_blind_summary(settled: list[ForecastRecord], mature_count: int) -> dict[str, Any]:
+    sessions = {row.prediction_time_utc[:10] for row in settled}
+    return {
+        "forecasts_considered": mature_count,
+        "settled_observations": len(settled),
+        "distinct_sessions": len(sessions),
+        "score_blind": True,
+        "metrics_exposed": False,
+    }
+
+
+def _score_blind_grouped_summaries(settled: list[ForecastRecord]) -> dict[str, Any]:
+    groups: dict[str, list[ForecastRecord]] = {}
+    for row in settled:
+        groups.setdefault(f"{row.engine}:{row.horizon}", []).append(row)
+    return {
+        key: {
+            "settled_observations": len(rows),
+            "distinct_sessions": len({row.prediction_time_utc[:10] for row in rows}),
+            "score_blind": True,
+            "metrics_exposed": False,
+        }
+        for key, rows in sorted(groups.items())
+    }
+
+
+def settle(
+    forecasts: list[dict[str, Any]],
+    bars_path: Path,
+    cutoff: datetime,
+    *,
+    score_blind_summary: bool = False,
+) -> dict[str, Any]:
     bars = load_bars(bars_path)
     mature = []
     settled: list[ForecastRecord] = []
@@ -113,6 +145,13 @@ def settle(forecasts: list[dict[str, Any]], bars_path: Path, cutoff: datetime) -
         if record is not None:
             settled.append(record)
 
+    if score_blind_summary:
+        summary = _score_blind_summary(settled, len(mature))
+        by_engine_horizon = _score_blind_grouped_summaries(settled)
+    else:
+        summary = summarize(settled, len(mature))
+        by_engine_horizon = grouped_summaries(settled)
+
     return {
         "contract": EVALUATION_CONTRACT,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -120,8 +159,9 @@ def settle(forecasts: list[dict[str, Any]], bars_path: Path, cutoff: datetime) -
         "leakage_safe": True,
         "research_only": True,
         "paired_long_horizon_v5": True,
-        "summary": summarize(settled, len(mature)),
-        "by_engine_horizon": grouped_summaries(settled),
+        "score_blind_summary": bool(score_blind_summary),
+        "summary": summary,
+        "by_engine_horizon": by_engine_horizon,
         "records": [asdict(row) for row in settled],
     }
 
@@ -133,12 +173,17 @@ def main() -> int:
     parser.add_argument("--feed", default="iex")
     parser.add_argument("--bars-output", type=Path, default=Path("backend/data/cloud_shadow/long_horizon_v5/outcome-bars.csv"))
     parser.add_argument("--output", type=Path, default=Path("backend/data/cloud_shadow/long_horizon_v5/evaluation.json"))
+    parser.add_argument(
+        "--score-blind-summary",
+        action="store_true",
+        help="Hide outcome-derived performance metrics from settlement summaries and CI stdout while preserving raw records.",
+    )
     args = parser.parse_args()
 
     cutoff = parse_iso(args.as_of) if args.as_of else datetime.now(timezone.utc)
     forecasts = load_forecasts(args.predictions)
     diagnostics = collect_bars(forecasts, cutoff=cutoff, output=args.bars_output, feed=args.feed)
-    payload = settle(forecasts, args.bars_output, cutoff)
+    payload = settle(forecasts, args.bars_output, cutoff, score_blind_summary=args.score_blind_summary)
     payload["outcome_collection"] = diagnostics
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
