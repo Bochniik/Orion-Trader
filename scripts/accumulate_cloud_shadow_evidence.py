@@ -140,7 +140,19 @@ def expected_calibration_error(records: list[dict[str, Any]], bins: int = 10) ->
     return ece
 
 
-def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
+def _coverage_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    sessions = {str(row["prediction_time_utc"])[:10] for row in records}
+    return {
+        "observations": len(records),
+        "distinct_sessions": len(sessions),
+        "score_blind": True,
+        "metrics_exposed": False,
+    }
+
+
+def summarize(records: list[dict[str, Any]], *, score_blind: bool = False) -> dict[str, Any]:
+    if score_blind:
+        return _coverage_summary(records)
     if not records:
         return {
             "observations": 0,
@@ -162,12 +174,12 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def grouped_summaries(records: list[dict[str, Any]]) -> dict[str, Any]:
+def grouped_summaries(records: list[dict[str, Any]], *, score_blind: bool = False) -> dict[str, Any]:
     groups: dict[str, list[dict[str, Any]]] = {}
     for row in records:
         key = f"{row['engine']}:{row['horizon']}"
         groups.setdefault(key, []).append(row)
-    return {key: summarize(rows) for key, rows in sorted(groups.items())}
+    return {key: summarize(rows, score_blind=score_blind) for key, rows in sorted(groups.items())}
 
 
 def evaluation_descriptor(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
@@ -180,7 +192,12 @@ def evaluation_descriptor(path: Path, payload: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def build_ledger(existing: dict[str, Any], evaluations: list[tuple[Path, dict[str, Any]]]) -> dict[str, Any]:
+def build_ledger(
+    existing: dict[str, Any],
+    evaluations: list[tuple[Path, dict[str, Any]]],
+    *,
+    score_blind_summary: bool = False,
+) -> dict[str, Any]:
     incoming = [record for _, payload in evaluations for record in (payload.get("records") or [])]
     records = merge_records(existing.get("records") or [], incoming)
 
@@ -199,8 +216,9 @@ def build_ledger(existing: dict[str, Any], evaluations: list[tuple[Path, dict[st
         "append_only_semantics": True,
         "deduplication_key": "sha256(engine,symbol,horizon,prediction_time,target_time,lineage)",
         "conflict_policy": "fail_closed_if_same_record_id_has_different_material_outcome_or_prediction_fields",
-        "summary": summarize(records),
-        "by_engine_horizon": grouped_summaries(records),
+        "score_blind_summary": bool(score_blind_summary),
+        "summary": summarize(records, score_blind=score_blind_summary),
+        "by_engine_horizon": grouped_summaries(records, score_blind=score_blind_summary),
         "source_evaluations": sorted(sources.values(), key=lambda row: (str(row.get("created_at_utc")), row["sha256"])),
         "records": records,
     }
@@ -211,11 +229,16 @@ def main() -> int:
     parser.add_argument("evaluations", nargs="+", type=Path, help="One or more orion-cloud-shadow-evaluation-v1 JSON files")
     parser.add_argument("--existing", type=Path, default=None, help="Optional prior evidence ledger")
     parser.add_argument("--output", type=Path, default=Path("backend/data/cloud_shadow/evidence/ledger.json"))
+    parser.add_argument(
+        "--score-blind-summary",
+        action="store_true",
+        help="Expose coverage counts only; keep outcome-derived metrics hidden in summaries and CI logs.",
+    )
     args = parser.parse_args()
 
     existing = load_existing(args.existing)
     evaluations = [(path, load_evaluation(path)) for path in args.evaluations]
-    ledger = build_ledger(existing, evaluations)
+    ledger = build_ledger(existing, evaluations, score_blind_summary=args.score_blind_summary)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(ledger["summary"], sort_keys=True))
