@@ -17,7 +17,7 @@ DEFAULT_SEED = 20260910
 
 SEMANTICS = (
     "Offline paired challenger tournament. Incumbent and challenger are scored only on the "
-    "same timestamped out-of-sample observations. Session-block bootstrap resamples whole "
+    "same symbol/timestamped out-of-sample observations. Session-block bootstrap resamples whole "
     "trading days, preserving intraday dependence. A challenger is research-eligible only "
     "when coverage is sufficient and proper-score improvement is positive and stable."
 )
@@ -30,6 +30,7 @@ class PairedObservation:
     actual_up: int
     incumbent_p: float
     challenger_p: float
+    symbol: str = ""
 
 
 def _finite_probability_pct(value: Any) -> float | None:
@@ -49,12 +50,14 @@ def _session_key(timestamp: str) -> str | None:
         return None
 
 
-def _normalize_records(records: Iterable[Mapping[str, Any]]) -> Dict[str, Tuple[int, float]]:
-    result: Dict[str, Tuple[int, float]] = {}
+def _normalize_records(records: Iterable[Mapping[str, Any]]) -> Dict[Tuple[str, str], Tuple[int, float]]:
+    """Normalize records by (symbol, timestamp), preserving legacy symbol-less reports."""
+    result: Dict[Tuple[str, str], Tuple[int, float]] = {}
     for row in records:
         if not isinstance(row, Mapping):
             continue
         timestamp = str(row.get("timestamp") or "").strip()
+        symbol = str(row.get("symbol") or "").upper().strip()
         session = _session_key(timestamp)
         p = _finite_probability_pct(row.get("p_up"))
         try:
@@ -63,10 +66,12 @@ def _normalize_records(records: Iterable[Mapping[str, Any]]) -> Dict[str, Tuple[
             continue
         if not timestamp or session is None or p is None or actual not in (0, 1):
             continue
+        key = (symbol, timestamp)
         candidate = (actual, p)
-        if timestamp in result and result[timestamp] != candidate:
-            raise ValueError(f"Conflicting duplicate record at {timestamp}")
-        result[timestamp] = candidate
+        if key in result and result[key] != candidate:
+            label = f"{symbol}@{timestamp}" if symbol else timestamp
+            raise ValueError(f"Conflicting duplicate record at {label}")
+        result[key] = candidate
     return result
 
 
@@ -77,11 +82,12 @@ def pair_records(
     incumbent = _normalize_records(incumbent_records)
     challenger = _normalize_records(challenger_records)
     paired: List[PairedObservation] = []
-    for timestamp in sorted(set(incumbent) & set(challenger)):
-        incumbent_actual, incumbent_p = incumbent[timestamp]
-        challenger_actual, challenger_p = challenger[timestamp]
+    for symbol, timestamp in sorted(set(incumbent) & set(challenger), key=lambda key: (key[1], key[0])):
+        incumbent_actual, incumbent_p = incumbent[(symbol, timestamp)]
+        challenger_actual, challenger_p = challenger[(symbol, timestamp)]
         if incumbent_actual != challenger_actual:
-            raise ValueError(f"Outcome mismatch at {timestamp}")
+            label = f"{symbol}@{timestamp}" if symbol else timestamp
+            raise ValueError(f"Outcome mismatch at {label}")
         paired.append(
             PairedObservation(
                 timestamp=timestamp,
@@ -89,6 +95,7 @@ def pair_records(
                 actual_up=incumbent_actual,
                 incumbent_p=incumbent_p,
                 challenger_p=challenger_p,
+                symbol=symbol,
             )
         )
     return paired
