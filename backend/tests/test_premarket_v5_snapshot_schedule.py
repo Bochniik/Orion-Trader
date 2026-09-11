@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 import importlib.util
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -10,6 +11,7 @@ SCRIPT = ROOT / "scripts" / "resolve_premarket_v5_snapshot.py"
 spec = importlib.util.spec_from_file_location("premarket_v5_snapshot_schedule", SCRIPT)
 module = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
+sys.modules[spec.name] = module
 spec.loader.exec_module(module)
 
 
