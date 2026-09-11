@@ -26,6 +26,7 @@ SNAPSHOT_CLOCKS = {
     "mid": (8, 0),
     "late": (9, 15),
 }
+REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT = 55
 
 
 class CollectionHealthError(ValueError):
@@ -147,6 +148,28 @@ def _canonical_projection_digest(projections: list[dict[str, Any]]) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
+def _build_readiness(by_snapshot: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    per_snapshot: dict[str, dict[str, Any]] = {}
+    for snapshot in SNAPSHOT_CLOCKS:
+        observed = int(by_snapshot[snapshot]["distinct_session_count"])
+        remaining = max(0, REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT - observed)
+        per_snapshot[snapshot] = {
+            "distinct_session_count": observed,
+            "required_distinct_session_count": REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
+            "remaining_distinct_session_count": remaining,
+            "ready": remaining == 0,
+        }
+
+    ready = all(row["ready"] for row in per_snapshot.values())
+    return {
+        "policy": "40_train_10_calibration_5_test_per_snapshot",
+        "score_blind": True,
+        "required_distinct_sessions_per_snapshot": REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
+        "ready_for_issue_3_score_inspection": ready,
+        "per_snapshot": per_snapshot,
+    }
+
+
 def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
     projections = [_validate_projection(payload) for payload in payloads]
     projections.sort(key=lambda row: (row["as_of_et"], row["snapshot"], tuple(row["symbols"])))
@@ -216,6 +239,7 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
             "missing_by_symbol": dict(sorted(missing_by_symbol.items())),
             "unavailable_reasons": dict(sorted(unavailable_reasons.items())),
         },
+        "readiness": _build_readiness(by_snapshot),
         "operational_projection_sha256": _canonical_projection_digest(projections),
     }
 
@@ -250,6 +274,7 @@ def main() -> int:
         "distinct_session_count": report["distinct_session_count"],
         "coverage_fraction": report["coverage"]["coverage_fraction"],
         "by_snapshot": report["coverage"]["by_snapshot"],
+        "readiness": report["readiness"],
     }, sort_keys=True))
     return 0
 

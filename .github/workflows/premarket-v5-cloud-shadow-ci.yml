@@ -11,6 +11,7 @@ on:
       - "backend/tests/test_premarket_v5_cloud_shadow.py"
       - "backend/tests/test_premarket_v5_snapshot_schedule.py"
       - "backend/tests/test_premarket_v5_collection_health.py"
+      - "backend/tests/test_premarket_v5_readiness_gate.py"
       - "backend/tests/test_premarket_v5_evidence_retention.py"
       - ".github/workflows/premarket-v5-cloud-shadow*.yml"
       - "scripts/premarket_directional_v5_common.py"
@@ -52,4 +53,5 @@ jobs:
             backend/tests/test_premarket_v5_cloud_shadow.py \
             backend/tests/test_premarket_v5_snapshot_schedule.py \
             backend/tests/test_premarket_v5_collection_health.py \
+            backend/tests/test_premarket_v5_readiness_gate.py \
             backend/tests/test_premarket_v5_evidence_retention.py
