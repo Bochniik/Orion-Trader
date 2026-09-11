@@ -10,6 +10,7 @@ The audit consumes immutable `premarket-v5-cloud-shadow-v2` prediction artifacts
 
 - is `shadow_research_only` with order submission disabled;
 - declares `causal_cutoff_enforced=true`;
+- belongs to a real NYSE trading session rather than merely a Monday-Friday calendar date;
 - belongs exactly to one pre-registered New York snapshot: 06:45 ET (`early`), 08:00 ET (`mid`), or 09:15 ET (`late`);
 - uses exactly the frozen research universe `AAPL, MSFT, NVDA, AMZN, META, GOOGL, TSLA, AMD, SPY, QQQ` (ordering is irrelevant, membership is not);
 - contains exactly one prediction row for every requested symbol;
@@ -17,6 +18,8 @@ The audit consumes immutable `premarket-v5-cloud-shadow-v2` prediction artifacts
 - does not duplicate the same session/snapshot pair inside one health report.
 
 The fixed-universe check is intentionally independent of the artifact's own declaration. An artifact cannot make a substituted ticker appear protocol-valid merely by changing both its `symbols` list and its matching prediction row. This protects forward validation from silent universe drift while keeping the audit score-blind.
+
+The trading-session check uses `scripts/nyse_session_calendar.py`, a deterministic standard-library implementation of recurring NYSE full-day closures including Good Friday, Juneteenth, observed Independence Day and the other regular exchange holidays. This avoids treating a weekday exchange holiday as one of the 55 distinct forward sessions required by Issue #3. One-off emergency closures are not guessed; they remain collection failures and must not silently increase validation readiness.
 
 ## Score-blind contract
 
@@ -39,9 +42,11 @@ Retention is an operational safeguard only. Extending evidence lifetime does not
 
 ## Failure policy
 
-The audit fails closed on off-cadence timestamps, weekend artifacts, non-causal artifacts, duplicate session/snapshot artifacts, duplicate symbols, any missing/extra/substituted member of the frozen research universe, unexpected prediction tickers, missing prediction rows, or malformed available forecasts. Missing market data for an explicitly unavailable preregistered symbol is not fabricated; it reduces coverage and its reason is counted.
+The audit fails closed on off-cadence timestamps, weekends, recurring NYSE full-day market holidays, non-causal artifacts, duplicate session/snapshot artifacts, duplicate symbols, any missing/extra/substituted member of the frozen research universe, unexpected prediction tickers, missing prediction rows, or malformed available forecasts. Missing market data for an explicitly unavailable preregistered symbol is not fabricated; it reduces coverage and its reason is counted.
 
 The frozen-universe regression test includes the particularly dangerous case where the artifact keeps the same symbol count but substitutes one ticker and supplies a matching prediction for that substitute. That artifact must fail rather than contributing apparently complete coverage.
+
+The snapshot resolver applies the same NYSE-session gate before dependency installation and market-data collection, so scheduled holiday cron events terminate as inactive `market_holiday` slots instead of consuming Alpaca calls or creating evidence that cannot count toward forward validation.
 
 ## Interpretation
 
