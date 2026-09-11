@@ -9,6 +9,7 @@ import "./news-polish.css";
 import "./news-state-polish.css";
 import "./chart-polish.css";
 import "./analysis-polish.css";
+import "./analysis-state-polish.css";
 import "./analysis-commandbar.css";
 import "./watchlist-polish.css";
 import "./quote-polish.css";
