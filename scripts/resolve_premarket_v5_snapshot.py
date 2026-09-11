@@ -5,7 +5,14 @@ from dataclasses import dataclass
 from datetime import datetime, time, timezone
 import json
 from pathlib import Path
+import sys
 from zoneinfo import ZoneInfo
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.nyse_session_calendar import is_nyse_trading_day
 
 NY = ZoneInfo("America/New_York")
 
@@ -76,6 +83,8 @@ def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None) 
 
     if target_et.weekday() >= 5:
         return SnapshotResolution(False, "weekend", snapshot, target_utc, target_et)
+    if not is_nyse_trading_day(target_et.date()):
+        return SnapshotResolution(False, "market_holiday", snapshot, target_utc, target_et)
 
     if schedule_cron:
         cron_hour, cron_minute = _cron_clock(schedule_cron)
