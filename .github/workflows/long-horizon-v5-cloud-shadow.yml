@@ -1,0 +1,52 @@
+name: Long-horizon V5 paired cloud shadow
+
+on:
+  workflow_dispatch:
+    inputs:
+      symbols:
+        description: "Space-separated symbols"
+        required: false
+        default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
+  schedule:
+    # Broad UTC window covers EDT/EST. Python enforces 10:00-13:30 ET and
+    # each horizon additionally requires its target to remain before 16:00 ET.
+    - cron: "5 14-19 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: long-horizon-v5-paired-cloud-shadow
+  cancel-in-progress: false
+
+jobs:
+  paired-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Run atomic V3.1 versus frozen V5 shadow prediction
+        shell: bash
+        run: |
+          SYMBOLS="${{ github.event.inputs.symbols }}"
+          if [ -z "$SYMBOLS" ]; then
+            SYMBOLS="AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
+          fi
+          python scripts/run_long_horizon_v5_paired_cloud_shadow.py \
+            --symbols $SYMBOLS \
+            --output backend/data/cloud_shadow/long_horizon_v5/prediction-${{ github.run_id }}.json
+      - name: Upload immutable paired prediction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-horizon-v5-paired-shadow-${{ github.run_id }}
+          path: backend/data/cloud_shadow/long_horizon_v5/prediction-*.json
+          if-no-files-found: warn
+          retention-days: 45
