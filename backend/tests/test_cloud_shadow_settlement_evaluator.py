@@ -30,6 +30,19 @@ def test_horizon_parser_supports_both_engines():
     assert module.horizon_minutes("5h") == 300
 
 
+def test_premarket_regime_boundaries_are_dst_safe_and_match_sampling_cadence():
+    # September is EDT, so 11:00/13:00 UTC map to 07:00/09:00 ET.
+    assert module.premarket_regime("2026-09-10T10:59:00Z") == "early"
+    assert module.premarket_regime("2026-09-10T11:00:00Z") == "mid"
+    assert module.premarket_regime("2026-09-10T12:59:00Z") == "mid"
+    assert module.premarket_regime("2026-09-10T13:00:00Z") == "late"
+
+    # January is EST; the same ET boundaries move one UTC hour later.
+    assert module.premarket_regime("2026-01-12T11:59:00Z") == "early"
+    assert module.premarket_regime("2026-01-12T12:00:00Z") == "mid"
+    assert module.premarket_regime("2026-01-12T14:00:00Z") == "late"
+
+
 def test_iter_forecasts_excludes_regular_hours_suppressed_probabilities():
     payload = {
         "created_at_utc": "2026-09-10T14:00:00+00:00",
@@ -177,3 +190,35 @@ def test_summary_reports_probability_metrics_and_coverage():
     assert summary["coverage"] == 0.5
     assert summary["directional_accuracy"] == 1.0
     assert summary["brier_score"] == 0.04
+
+
+def test_premarket_regime_summaries_are_horizon_specific_and_exclude_regular_hours():
+    frame = bars([
+        ("AAPL", "2026-09-10T10:30:00Z", 100.0),
+        ("AAPL", "2026-09-10T10:35:00Z", 101.0),
+        ("MSFT", "2026-09-10T11:30:00Z", 200.0),
+        ("MSFT", "2026-09-10T11:45:00Z", 198.0),
+        ("NVDA", "2026-09-10T13:15:00Z", 150.0),
+        ("NVDA", "2026-09-10T13:45:00Z", 153.0),
+        ("SPY", "2026-09-10T14:00:00Z", 500.0),
+        ("SPY", "2026-09-10T14:30:00Z", 501.0),
+    ])
+    cutoff = datetime(2026, 9, 10, 15, 0, tzinfo=timezone.utc)
+    forecasts = [
+        {"source_file": "x", "engine": "premarket_v5", "symbol": "AAPL", "horizon": "premarket_5m", "prediction_time": "2026-09-10T10:30:00Z", "probability_up": 0.7, "direction": "UP", "lineage": {}},
+        {"source_file": "x", "engine": "premarket_v5", "symbol": "MSFT", "horizon": "premarket_15m", "prediction_time": "2026-09-10T11:30:00Z", "probability_up": 0.3, "direction": "DOWN", "lineage": {}},
+        {"source_file": "x", "engine": "premarket_v5", "symbol": "NVDA", "horizon": "premarket_30m", "prediction_time": "2026-09-10T13:15:00Z", "probability_up": 0.8, "direction": "UP", "lineage": {}},
+        {"source_file": "x", "engine": "regular_hours_v3_1", "symbol": "SPY", "horizon": "30m", "prediction_time": "2026-09-10T14:00:00Z", "probability_up": 0.6, "direction": "bullish", "lineage": {}},
+    ]
+    records = [module.settle_forecast(row, frame, cutoff) for row in forecasts]
+    records = [row for row in records if row is not None]
+    grouped = module.premarket_regime_summaries(records)
+
+    assert set(grouped) == {
+        "early:premarket_5m",
+        "mid:premarket_15m",
+        "late:premarket_30m",
+    }
+    assert grouped["early:premarket_5m"]["settled"] == 1
+    assert grouped["mid:premarket_15m"]["directional_accuracy"] == 1.0
+    assert grouped["late:premarket_30m"]["brier_score"] == 0.04
