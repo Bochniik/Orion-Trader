@@ -5,6 +5,7 @@ from pathlib import Path
 import importlib.util
 
 import numpy as np
+import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,6 +38,48 @@ def test_premarket_window_fails_closed_after_open():
     active, reason, _ = module.premarket_window_status(datetime(2026, 9, 10, 13, 30, tzinfo=timezone.utc))
     assert active is False
     assert reason == "regular_session_started"
+
+
+def test_scheduled_target_fails_closed_before_target_time():
+    target = datetime(2026, 9, 11, 13, 15, tzinfo=timezone.utc)
+    ready, reason = module.scheduled_target_status(
+        target,
+        now=datetime(2026, 9, 11, 12, 15, tzinfo=timezone.utc),
+    )
+    assert ready is False
+    assert reason == "scheduled_target_not_reached"
+
+
+def test_scheduled_target_allows_delayed_recovery():
+    target = datetime(2026, 9, 11, 13, 15, tzinfo=timezone.utc)
+    ready, reason = module.scheduled_target_status(
+        target,
+        now=datetime(2026, 9, 11, 14, 5, tzinfo=timezone.utc),
+    )
+    assert ready is True
+    assert reason == "target_reached"
+
+
+def test_clip_raw_history_as_of_removes_future_bars(tmp_path):
+    raw_path = tmp_path / "raw.csv"
+    frame = pd.DataFrame(
+        [
+            {"ticker": "AAPL", "timestamp": "2026-09-11T13:10:00+00:00", "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.5, "volume": 10},
+            {"ticker": "AAPL", "timestamp": "2026-09-11T13:15:00+00:00", "open": 100.5, "high": 101.5, "low": 100.0, "close": 101.0, "volume": 12},
+            {"ticker": "AAPL", "timestamp": "2026-09-11T13:20:00+00:00", "open": 101.0, "high": 102.0, "low": 100.8, "close": 101.8, "volume": 15},
+        ]
+    )
+    frame.to_csv(raw_path, index=False)
+
+    kept = module.clip_raw_history_as_of(
+        raw_path,
+        as_of=datetime(2026, 9, 11, 13, 15, tzinfo=timezone.utc),
+    )
+
+    clipped = pd.read_csv(raw_path)
+    assert kept == 2
+    assert len(clipped) == 2
+    assert clipped["timestamp"].max().startswith("2026-09-11 13:15:00")
 
 
 def test_hybrid_payload_rejects_wrong_feature_schema():

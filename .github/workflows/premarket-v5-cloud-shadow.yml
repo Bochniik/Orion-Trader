@@ -8,8 +8,8 @@ on:
         required: false
         default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
   schedule:
-    # Cover 09:15 ET across US daylight/standard time. The runner itself uses
-    # America/New_York and fails closed outside the premarket window.
+    # Cover 09:15 ET across US daylight/standard time. The runner is anchored to
+    # 09:15 ET and can recover a delayed GitHub start without using post-cutoff bars.
     - cron: "15 13,14 * * 1-5"
 
 permissions:
@@ -47,6 +47,23 @@ jobs:
             exit 2
           fi
 
+      - name: Resolve frozen 09:15 ET prediction timestamp
+        id: target
+        shell: bash
+        run: |
+          AS_OF=$(python - <<'PY'
+          from datetime import datetime, time, timezone
+          from zoneinfo import ZoneInfo
+
+          ny = ZoneInfo("America/New_York")
+          local_now = datetime.now(timezone.utc).astimezone(ny)
+          target = datetime.combine(local_now.date(), time(9, 15), tzinfo=ny)
+          print(target.astimezone(timezone.utc).isoformat())
+          PY
+          )
+          echo "as_of=$AS_OF" >> "$GITHUB_OUTPUT"
+          echo "Frozen premarket target: $AS_OF"
+
       - name: Run premarket v5 shadow prediction
         shell: bash
         run: |
@@ -56,6 +73,7 @@ jobs:
           fi
           python scripts/run_premarket_v5_cloud_shadow.py \
             --symbols $SYMBOLS \
+            --as-of "${{ steps.target.outputs.as_of }}" \
             --lookback-days 120 \
             --feed iex \
             --output backend/data/cloud_shadow/premarket_v5/prediction-${{ github.run_id }}.json
