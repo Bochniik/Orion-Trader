@@ -143,3 +143,67 @@ def test_profile_exposes_breakout_microstructure_without_raw_provider_shape(monk
     assert result["float_shares"] == 24_000_000
     assert result["short_percent_of_float"] == 17.5
     assert result["average_volume_10d"] == 4_200_000
+
+
+def test_news_preserves_article_specific_thumbnail(monkeypatch):
+    class FakeTicker:
+        news = [
+            {
+                "content": {
+                    "title": "AAPL launches a new product",
+                    "provider": {"displayName": "Example News"},
+                    "canonicalUrl": {"url": "https://example.com/aapl-news"},
+                    "pubDate": "2026-09-11T18:30:00Z",
+                    "thumbnail": {
+                        "originalUrl": "https://cdn.example.com/aapl-news.jpg",
+                        "resolutions": [
+                            {
+                                "url": "https://cdn.example.com/aapl-news-140.jpg",
+                                "width": 140,
+                                "height": 140,
+                            }
+                        ],
+                    },
+                }
+            }
+        ]
+
+    monkeypatch.setattr(market_data.yf, "Ticker", lambda _symbol: FakeTicker())
+
+    result = MarketDataService().get_news("aapl")
+
+    assert result["ticker"] == "AAPL"
+    assert result["news"][0]["thumbnail"] == "https://cdn.example.com/aapl-news.jpg"
+    assert result["news"][0]["link"] == "https://example.com/aapl-news"
+
+
+def test_news_uses_largest_thumbnail_resolution_when_original_is_missing(monkeypatch):
+    class FakeTicker:
+        news = [
+            {
+                "content": {
+                    "title": "NVDA market update",
+                    "canonicalUrl": {"url": "https://example.com/nvda-news"},
+                    "thumbnail": {
+                        "resolutions": [
+                            {
+                                "url": "https://cdn.example.com/nvda-140.jpg",
+                                "width": 140,
+                                "height": 140,
+                            },
+                            {
+                                "url": "https://cdn.example.com/nvda-640.jpg",
+                                "width": 640,
+                                "height": 360,
+                            },
+                        ]
+                    },
+                }
+            }
+        ]
+
+    monkeypatch.setattr(market_data.yf, "Ticker", lambda _symbol: FakeTicker())
+
+    result = MarketDataService().get_news("NVDA")
+
+    assert result["news"][0]["thumbnail"] == "https://cdn.example.com/nvda-640.jpg"

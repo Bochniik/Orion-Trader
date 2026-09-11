@@ -350,6 +350,37 @@ class MarketDataService:
             ),
         }
 
+    @staticmethod
+    def _news_thumbnail_url(item, content):
+        thumbnail = content.get("thumbnail") or item.get("thumbnail")
+        if isinstance(thumbnail, str):
+            return thumbnail.strip() or None
+        if not isinstance(thumbnail, dict):
+            return None
+
+        original_url = thumbnail.get("originalUrl") or thumbnail.get("url")
+        if isinstance(original_url, str) and original_url.strip():
+            return original_url.strip()
+
+        resolutions = thumbnail.get("resolutions") or []
+        candidates = [
+            resolution
+            for resolution in resolutions
+            if isinstance(resolution, dict)
+            and isinstance(resolution.get("url"), str)
+            and resolution.get("url").strip()
+        ]
+        if not candidates:
+            return None
+
+        candidates.sort(
+            key=lambda resolution: (
+                (resolution.get("width") or 0) * (resolution.get("height") or 0)
+            ),
+            reverse=True,
+        )
+        return candidates[0]["url"].strip()
+
     def get_news(self, ticker: str, limit: int = 8):
         clean_ticker = self.normalize_ticker(ticker)
         safe_limit = max(1, min(int(limit), 25))
@@ -370,6 +401,7 @@ class MarketDataService:
             link = canonical.get("url") or click_through.get("url") or item.get("link")
             publisher = provider.get("displayName") or item.get("publisher")
             published_at = content.get("pubDate") or item.get("providerPublishTime")
+            thumbnail = self._news_thumbnail_url(item, content)
 
             if isinstance(published_at, str):
                 try:
@@ -382,14 +414,15 @@ class MarketDataService:
                     published_at = None
 
             if title and link:
-                articles.append(
-                    {
-                        "title": title,
-                        "publisher": publisher,
-                        "link": link,
-                        "published_at": published_at,
-                    }
-                )
+                article = {
+                    "title": title,
+                    "publisher": publisher,
+                    "link": link,
+                    "published_at": published_at,
+                }
+                if thumbnail:
+                    article["thumbnail"] = thumbnail
+                articles.append(article)
 
         return {"ticker": clean_ticker, "news": articles}
 
