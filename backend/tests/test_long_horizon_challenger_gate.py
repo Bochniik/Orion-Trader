@@ -34,8 +34,13 @@ def _records(*, strong: bool, start_day: int, sessions: int = 10, rows_per_sessi
     return rows
 
 
-def _report(*, strong: bool, start_day: int):
-    records = _records(strong=strong, start_day=start_day)
+def _report(*, strong: bool, start_day: int, sessions: int = 10, rows_per_session: int = 10):
+    records = _records(
+        strong=strong,
+        start_day=start_day,
+        sessions=sessions,
+        rows_per_session=rows_per_session,
+    )
     return {
         "prediction_records": {
             "30m": [],
@@ -75,6 +80,43 @@ def test_forward_holdout_rejects_any_pre_registration_observation():
     assert result["research_conclusion"] == "forward_holdout_contaminated_or_missing"
 
 
+def test_forward_holdout_reports_collecting_until_preregistered_sample_is_mature():
+    incumbent = _report(strong=False, start_day=11, sessions=4, rows_per_session=10)
+    challenger = _report(strong=True, start_day=11, sessions=4, rows_per_session=10)
+    result = MODULE.evaluate_long_horizon_candidate(
+        incumbent,
+        challenger,
+        evidence_mode="forward_holdout",
+        min_observations=80,
+        min_sessions=8,
+        bootstrap_samples=100,
+    )
+    assert result["forward_coverage"]["all_required_horizons_forward_only"] is True
+    assert result["forward_sample_readiness"]["all_required_horizons_ready"] is False
+    assert result["forward_sample_readiness"]["horizons"]["3h"]["paired_observations"] == 40
+    assert result["forward_sample_readiness"]["horizons"]["3h"]["observations_remaining"] == 40
+    assert result["forward_sample_readiness"]["horizons"]["3h"]["sessions_remaining"] == 4
+    assert result["forward_research_eligible"] is False
+    assert result["research_conclusion"] == "forward_holdout_collecting_evidence"
+
+
+def test_mature_forward_sample_can_fail_as_model_not_demonstrated():
+    incumbent = _report(strong=True, start_day=11)
+    challenger = _report(strong=False, start_day=11)
+    result = MODULE.evaluate_long_horizon_candidate(
+        incumbent,
+        challenger,
+        evidence_mode="forward_holdout",
+        min_observations=80,
+        min_sessions=8,
+        bootstrap_samples=100,
+    )
+    assert result["forward_sample_readiness"]["all_required_horizons_ready"] is True
+    assert result["paired_tournament"]["research_conclusion"] == "challenger_not_demonstrated"
+    assert result["forward_research_eligible"] is False
+    assert result["research_conclusion"] == "long_horizon_challenger_not_demonstrated"
+
+
 def test_forward_holdout_can_pass_only_on_pre_registered_3h_and_5h():
     incumbent = _report(strong=False, start_day=11)
     challenger = _report(strong=True, start_day=11)
@@ -90,6 +132,7 @@ def test_forward_holdout_can_pass_only_on_pre_registered_3h_and_5h():
     assert result["paired_tournament"]["horizons_required"] == ["3h", "5h"]
     assert result["paired_tournament"]["eligible_horizons"] == 2
     assert result["forward_coverage"]["all_required_horizons_forward_only"] is True
+    assert result["forward_sample_readiness"]["all_required_horizons_ready"] is True
     assert result["forward_research_eligible"] is True
     assert result["research_conclusion"] == "long_horizon_challenger_research_eligible"
 

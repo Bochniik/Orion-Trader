@@ -51,6 +51,29 @@ Any replacement protocol must be specified before evaluating a new untouched hol
 
 Future V5 evidence payloads embed this audit and expose a top-level `decision_grade` flag. A benchmark that cannot satisfy its own coverage geometry is explicitly marked non-decision-grade even if the underlying scoring job completes successfully.
 
+## Forward evidence readiness rule
+
+The pre-registered forward gate now also distinguishes an **immature forward sample** from an actual model failure. This is necessary because the post-registration holdout starts empty and must accumulate naturally; interpreting a sub-threshold sample as `long_horizon_challenger_not_demonstrated` would repeat the same geometry mistake in a different form.
+
+For each required horizon, the gate exposes only score-blind readiness fields before model quality is interpreted:
+
+- current paired observation count,
+- the frozen minimum observation requirement,
+- observations still required,
+- current distinct-session count,
+- the frozen minimum session requirement,
+- sessions still required.
+
+If all paired timestamps are post-cutoff but either `3h` or `5h` is still below the pre-registered coverage thresholds, the disposition is:
+
+`forward_holdout_collecting_evidence`
+
+Only once both horizons are coverage-mature can a negative paired tournament result become:
+
+`long_horizon_challenger_not_demonstrated`
+
+This does **not** weaken the statistical thresholds, inspect scores to decide when to stop collecting, or modify V5. It prevents sample-size immaturity from masquerading as evidence against the model.
+
 ## Next logical step
 
-Design and pre-register a **feasible** long-horizon validation geometry using untouched future data. Prefer changing the evidence horizon/collection duration rather than weakening statistical thresholds after outcome inspection. Once enough new 3h/5h paired observations exist, evaluate the frozen candidate and incumbent under the pre-registered gate. Runtime models, risk policy, thresholds, broker behavior and order paths remain unchanged until decision-grade evidence exists.
+Accumulate untouched post-registration paired 3h/5h shadow observations until the existing `80` observations / `8` distinct sessions gate is genuinely mature for both horizons and both incumbent comparisons. Do not stop early because interim scores look favorable or unfavorable. Once the score-blind readiness gate is mature, run the frozen paired tournament exactly once for the decision-grade forward holdout. Runtime models, risk policy, thresholds, broker behavior and order paths remain unchanged until decision-grade evidence exists.
