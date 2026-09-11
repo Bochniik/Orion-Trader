@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import date, datetime, time, timedelta
 import importlib.util
 from pathlib import Path
@@ -62,7 +63,7 @@ def _trading_days(start: date, count: int) -> list[date]:
     return days
 
 
-def test_readiness_requires_55_distinct_sessions_for_every_snapshot():
+def test_readiness_requires_55_complete_distinct_sessions_for_every_snapshot():
     days = _trading_days(date(2026, 1, 2), audit.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT)
     payloads = []
     for snapshot in audit.SNAPSHOT_CLOCKS:
@@ -77,13 +78,47 @@ def test_readiness_requires_55_distinct_sessions_for_every_snapshot():
     assert report["readiness"]["per_snapshot"]["late"]["ready"] is True
     assert report["readiness"]["per_snapshot"]["mid"] == {
         "distinct_session_count": 54,
-        "required_distinct_session_count": 55,
-        "remaining_distinct_session_count": 1,
+        "complete_distinct_session_count": 54,
+        "required_complete_distinct_session_count": 55,
+        "remaining_complete_distinct_session_count": 1,
         "ready": False,
     }
 
 
-def test_readiness_turns_true_only_when_all_three_snapshots_reach_geometry():
+def test_degraded_artifact_does_not_count_toward_readiness_geometry():
+    days = _trading_days(date(2026, 1, 2), audit.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT)
+    payloads = [
+        _payload(day, snapshot)
+        for day in days
+        for snapshot in audit.SNAPSHOT_CLOCKS
+    ]
+
+    degraded = next(
+        payload
+        for payload in payloads
+        if payload["as_of_et"].startswith(days[-1].isoformat())
+        and payload["as_of_et"][11:16] == "08:00"
+    )
+    degraded["predictions"][0]["available"] = False
+    degraded["predictions"][0]["reason"] = "insufficient_causal_bars_or_previous_close"
+    degraded["predictions"][0].pop("forecasts")
+
+    report = audit.build_health_report(payloads)
+    mid = report["readiness"]["per_snapshot"]["mid"]
+
+    assert report["coverage"]["by_snapshot"]["mid"]["distinct_session_count"] == 55
+    assert report["coverage"]["by_snapshot"]["mid"]["complete_distinct_session_count"] == 54
+    assert mid == {
+        "distinct_session_count": 55,
+        "complete_distinct_session_count": 54,
+        "required_complete_distinct_session_count": 55,
+        "remaining_complete_distinct_session_count": 1,
+        "ready": False,
+    }
+    assert report["readiness"]["ready_for_issue_3_score_inspection"] is False
+
+
+def test_readiness_turns_true_only_when_all_three_snapshots_reach_complete_geometry():
     days = _trading_days(date(2026, 1, 2), audit.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT)
     payloads = [
         _payload(day, snapshot)
@@ -93,10 +128,12 @@ def test_readiness_turns_true_only_when_all_three_snapshots_reach_geometry():
 
     report = audit.build_health_report(payloads)
 
-    assert report["readiness"]["policy"] == "40_train_10_calibration_5_test_per_snapshot"
-    assert report["readiness"]["required_distinct_sessions_per_snapshot"] == 55
+    assert report["contract"] == "orion-premarket-v5-collection-health-v2"
+    assert report["readiness"]["policy"] == "40_train_10_calibration_5_test_complete_per_snapshot"
+    assert report["readiness"]["required_complete_distinct_sessions_per_snapshot"] == 55
     assert report["readiness"]["ready_for_issue_3_score_inspection"] is True
     assert all(row["ready"] for row in report["readiness"]["per_snapshot"].values())
+    assert all(row["complete_distinct_session_count"] == 55 for row in report["readiness"]["per_snapshot"].values())
 
 
 def test_readiness_is_score_blind():
@@ -104,7 +141,8 @@ def test_readiness_is_score_blind():
     payload = _payload(day, "early")
     baseline = audit.build_health_report([payload])["readiness"]
 
-    for prediction in payload["predictions"]:
+    altered = deepcopy(payload)
+    for prediction in altered["predictions"]:
         for forecast in prediction["forecasts"].values():
             forecast.update({
                 "probability_up": 0.999,
@@ -115,4 +153,4 @@ def test_readiness_is_score_blind():
                 "realized_outcome": 1,
             })
 
-    assert audit.build_health_report([payload])["readiness"] == baseline
+    assert audit.build_health_report([altered])["readiness"] == baseline
