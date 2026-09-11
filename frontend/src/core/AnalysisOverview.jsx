@@ -112,6 +112,21 @@ function MetricValue({ value, suffix = "", tone = "" }) {
   );
 }
 
+function ProbabilityMeter({ value, tone, label }) {
+  const available = value !== null;
+  return (
+    <div
+      className={`analysis-probability-meter ${tone} ${available ? "" : "unavailable"}`}
+      role="img"
+      aria-label={available ? `${label}: ${Math.round(value)} percent` : `${label}: unavailable`}
+    >
+      <span aria-hidden="true">
+        <i style={{ width: `${available ? value : 0}%` }} />
+      </span>
+    </div>
+  );
+}
+
 export default function AnalysisOverview({ analysis }) {
   const metric = analysisMetrics(analysis);
   const direction = displayText(analysis?.decision || analysis?.direction || "WAIT").toUpperCase();
@@ -155,7 +170,7 @@ export default function AnalysisOverview({ analysis }) {
           <small>Orion Score</small>
         </div>
 
-        <div className="analysis-metric">
+        <div className="analysis-metric adjusted-score">
           <small>Adjusted score <Info size={12} /></small>
           <MetricValue value={metric.adjustedScore} />
           <span>after integrity adjustment</span>
@@ -164,12 +179,14 @@ export default function AnalysisOverview({ analysis }) {
         <div className="analysis-metric probability-up">
           <small>Up probability</small>
           <MetricValue value={metric.up} suffix="%" tone="positive" />
+          <ProbabilityMeter value={metric.up} tone="positive" label="Up probability" />
           <span>{metric.probabilityHorizon ? `${metric.probabilityHorizon} model horizon` : "validated model required"}</span>
         </div>
 
         <div className="analysis-metric probability-down">
           <small>Down probability</small>
           <MetricValue value={metric.down} suffix="%" tone="negative" />
+          <ProbabilityMeter value={metric.down} tone="negative" label="Down probability" />
           <span>{metric.probabilityHorizon ? `${metric.probabilityHorizon} model horizon` : "validated model required"}</span>
         </div>
 
