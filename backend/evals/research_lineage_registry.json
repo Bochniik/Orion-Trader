@@ -21,7 +21,14 @@
       "hypothesis_frozen_at": "2026-09-12T13:00:00Z",
       "inspired_by_datasets": ["sector-specialist-60d-5m-2026-09-11"],
       "decisive_datasets": [],
-      "status": "preregistered_only_no_decisive_dataset_assigned"
+      "status": "superseded_by_semiconductor_specialist_3h_v1"
+    },
+    {
+      "id": "semiconductor-specialist-3h-v1",
+      "hypothesis_frozen_at": "2026-09-12T14:00:00Z",
+      "inspired_by_datasets": ["sector-specialist-60d-5m-2026-09-11"],
+      "decisive_datasets": [],
+      "status": "preregistered_historical_screen_only_no_decisive_dataset_assigned"
     }
   ]
 }
