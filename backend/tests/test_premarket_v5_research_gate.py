@@ -1,13 +1,24 @@
 from pathlib import Path
 import copy
+import json
 import sys
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from evaluate_premarket_v5_research_gate import DEFAULT_TARGETS, evaluate_report
+from evaluate_premarket_v5_research_gate import (
+    DEFAULT_TARGETS,
+    GATE_SOURCE_RELATIVE,
+    canonical_json_sha256,
+    evaluate_bound_report,
+    evaluate_report,
+    file_sha256,
+    verify_validation_manifest,
+)
 from premarket_directional_v4_common import PREMARKET_TARGETS
 
 
@@ -32,6 +43,34 @@ def _passing_target():
 
 def _passing_report():
     return {"targets": {target: _passing_target() for target in DEFAULT_TARGETS}}
+
+
+def _write_bound_evidence(tmp_path: Path):
+    report_path = tmp_path / "validation.json"
+    report_path.write_text(json.dumps(_passing_report()), encoding="utf-8")
+    gate_source = tmp_path / "gate.py"
+    gate_source.write_text("gate-v3\n", encoding="utf-8")
+    sources = {
+        GATE_SOURCE_RELATIVE: file_sha256(gate_source),
+        "scripts/run_premarket_v5_validation.py": "a" * 64,
+    }
+    material = {
+        "runner_version": "premarket-v5-validation-lineage-5",
+        "validator": "validate_premarket_directional_v5_event_nested.py",
+        "targets": list(DEFAULT_TARGETS),
+        "source_sha256": dict(sorted(sources.items())),
+    }
+    manifest = {
+        **material,
+        "decision_grade": True,
+        "target_contract": "shared_PREMARKET_TARGETS_exact",
+        "supported_targets": list(DEFAULT_TARGETS),
+        "validation_report_sha256": file_sha256(report_path),
+        "execution_identity_sha256": canonical_json_sha256(material),
+    }
+    manifest_path = tmp_path / "validation.json.manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    return report_path, manifest_path, gate_source
 
 
 def test_gate_required_targets_share_the_validator_contract():
@@ -107,3 +146,51 @@ def test_gate_does_not_mutate_validation_report():
     evaluate_report(report)
 
     assert report == original
+
+
+def test_bound_gate_accepts_exact_report_manifest_and_execution_identity(tmp_path):
+    report, manifest, gate_source = _write_bound_evidence(tmp_path)
+
+    decision = evaluate_bound_report(report, manifest, gate_source_path=gate_source)
+
+    assert decision["eligible"] is True
+    evidence = decision["validation_evidence"]
+    assert evidence["validation_report_sha256"] == file_sha256(report)
+    assert evidence["validation_manifest_sha256"] == file_sha256(manifest)
+    assert len(evidence["decision_evidence_identity_sha256"]) == 64
+
+
+def test_bound_gate_rejects_report_changed_after_validation_manifest(tmp_path):
+    report, manifest, gate_source = _write_bound_evidence(tmp_path)
+    report.write_text(json.dumps({"targets": {}}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="report SHA-256"):
+        verify_validation_manifest(report, manifest, gate_source_path=gate_source)
+
+
+def test_bound_gate_rejects_tampered_execution_identity(tmp_path):
+    report, manifest, gate_source = _write_bound_evidence(tmp_path)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    payload["execution_identity_sha256"] = "0" * 64
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="execution identity"):
+        verify_validation_manifest(report, manifest, gate_source_path=gate_source)
+
+
+def test_bound_gate_rejects_target_contract_drift(tmp_path):
+    report, manifest, gate_source = _write_bound_evidence(tmp_path)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    payload["targets"] = list(DEFAULT_TARGETS[:-1])
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="target set/order"):
+        verify_validation_manifest(report, manifest, gate_source_path=gate_source)
+
+
+def test_bound_gate_rejects_different_gate_source_than_validation_fingerprinted(tmp_path):
+    report, manifest, gate_source = _write_bound_evidence(tmp_path)
+    gate_source.write_text("changed-gate-code\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Research gate source SHA-256"):
+        verify_validation_manifest(report, manifest, gate_source_path=gate_source)
