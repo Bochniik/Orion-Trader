@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AlertTriangle, ExternalLink, Newspaper, RefreshCw } from "lucide-react";
 
 function formatNewsDate(timestamp) {
@@ -18,6 +19,32 @@ function newsImage(item) {
 
 function newsLabel(item) {
   return item?.category || item?.type || "Market news";
+}
+
+function NewsMedia({ image, ticker }) {
+  const [state, setState] = useState(image ? "loading" : "fallback");
+  const fallbackLabel = String(ticker || "OR").slice(0, 2);
+
+  return (
+    <div className={`news-media news-media--${state}`} aria-hidden="true">
+      <div className="news-media-fallback">
+        <span>{fallbackLabel}</span>
+      </div>
+      {image && state !== "error" && (
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          className={state === "ready" ? "is-ready" : ""}
+          onLoad={() => setState("ready")}
+          onError={() => setState("error")}
+        />
+      )}
+      {image && state === "loading" && <span className="news-media-loading" />}
+    </div>
+  );
 }
 
 export default function StockNewsPanel({ ticker, news, loading, error, onRefresh }) {
@@ -99,20 +126,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                 target="_blank"
                 rel="noreferrer"
               >
-                <div className="news-media" aria-hidden="true">
-                  <div className="news-media-fallback">
-                    <span>{String(ticker || "OR").slice(0, 2)}</span>
-                  </div>
-                  {image && (
-                    <img
-                      src={image}
-                      alt=""
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      onError={(event) => { event.currentTarget.style.display = "none"; }}
-                    />
-                  )}
-                </div>
+                <NewsMedia image={image} ticker={ticker} />
 
                 <div className="news-copy">
                   <div className="news-meta-row">
