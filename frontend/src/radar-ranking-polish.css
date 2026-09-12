@@ -1,0 +1,133 @@
+/* Opportunity Radar ranking presentation.
+   Visual-only layer: preserves existing backend ranking and values. */
+
+.core-radar-grid {
+  counter-reset: radar-rank;
+}
+
+.core-radar-card {
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.core-radar-card:hover {
+  border-color: rgba(255, 122, 26, 0.14);
+  background: rgba(255, 122, 26, 0.014);
+}
+
+.core-radar-card > summary {
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.core-radar-card > summary:hover {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.core-radar-card li {
+  position: relative;
+  grid-template-columns: 22px minmax(56px, 0.68fr) minmax(70px, 0.86fr) minmax(94px, 1.25fr);
+  gap: 8px;
+  padding-left: 9px;
+  transition: background 140ms ease;
+}
+
+.core-radar-card li::before {
+  counter-increment: radar-rank;
+  content: counter(radar-rank);
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.018);
+  color: #68737d;
+  font-size: 8px;
+  font-weight: 680;
+  line-height: 1;
+}
+
+.core-radar-card li:hover {
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.045), rgba(255, 122, 26, 0.008));
+}
+
+.core-radar-card li:nth-child(1) {
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.055), rgba(255, 122, 26, 0.006));
+}
+
+.core-radar-card li:nth-child(1)::before {
+  border-color: rgba(255, 122, 26, 0.28);
+  background: rgba(255, 122, 26, 0.105);
+  color: #ff9a50;
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.08);
+}
+
+.core-radar-card li:nth-child(2)::before,
+.core-radar-card li:nth-child(3)::before {
+  border-color: rgba(255, 122, 26, 0.14);
+  color: #b98765;
+}
+
+.core-radar-card li .core-text-button {
+  min-width: 0;
+  justify-self: start;
+  color: #e0e5e9;
+  font-weight: 680;
+  letter-spacing: 0.015em;
+}
+
+.core-radar-card li:hover .core-text-button {
+  color: #ff9a50;
+}
+
+.core-radar-card li > span {
+  color: #d7dde2;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+}
+
+.core-radar-card li > small {
+  overflow: hidden;
+  color: #737f89;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.core-radar-card li:nth-child(1) > small {
+  color: #918273;
+}
+
+.core-prime {
+  border-color: rgba(255, 122, 26, 0.16);
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 122, 26, 0.09), transparent 14rem),
+    rgba(255, 122, 26, 0.018);
+  box-shadow: inset 2px 0 0 rgba(255, 122, 26, 0.62), 0 12px 34px rgba(0, 0, 0, 0.12);
+}
+
+.core-prime > div > strong {
+  color: #ff9850;
+  letter-spacing: 0.08em;
+}
+
+.core-prime > div > span {
+  color: #c8cfd5;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1180px) {
+  .core-radar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .core-radar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .core-radar-card li {
+    grid-template-columns: 22px minmax(52px, 0.7fr) minmax(66px, 0.9fr) minmax(88px, 1.2fr);
+  }
+}
