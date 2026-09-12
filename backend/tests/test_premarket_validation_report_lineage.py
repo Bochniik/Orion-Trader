@@ -1,5 +1,4 @@
 from pathlib import Path
-import hashlib
 import json
 import sys
 
@@ -13,6 +12,7 @@ if str(SCRIPTS) not in sys.path:
 from run_premarket_v5_validation import (
     file_sha256,
     verify_dataset_lineage,
+    verify_preflight_binding,
     write_report_manifest,
     write_research_gate_decision,
 )
@@ -29,6 +29,30 @@ def _write_manifest(dataset: Path, *, source_status="verified_source_manifest", 
     }
     path = dataset.with_suffix(dataset.suffix + ".manifest.json")
     path.write_text(json.dumps(manifest), encoding="utf-8")
+    return path
+
+
+def _write_preflight(dataset: Path, *, status="PASS", allowed=True, csv_sha=None, manifest_sha=None):
+    manifest = dataset.with_suffix(dataset.suffix + ".manifest.json")
+    payload = {
+        "contract": "orion-premarket-v5-decision-preflight-v2",
+        "status": status,
+        "decision_grade_validation_allowed": allowed,
+        "dataset_identity": {
+            "dataset_csv": {
+                "path": str(dataset),
+                "exists": True,
+                "sha256": csv_sha or file_sha256(dataset),
+            },
+            "dataset_manifest": {
+                "path": str(manifest),
+                "exists": True,
+                "sha256": manifest_sha or file_sha256(manifest),
+            },
+        },
+    }
+    path = dataset.parent / "preflight.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
     return path
 
 
@@ -96,11 +120,65 @@ def test_verify_dataset_lineage_rejects_unverified_raw_source(tmp_path):
         verify_dataset_lineage(dataset)
 
 
-def test_report_manifest_chains_dataset_report_and_gate_hashes(tmp_path):
+def test_preflight_binding_accepts_exact_dataset_and_manifest(tmp_path):
     dataset = tmp_path / "dataset.csv"
     dataset.write_text("ticker,value\nAAPL,1\n", encoding="utf-8")
     _write_manifest(dataset)
     lineage = verify_dataset_lineage(dataset)
+    preflight_path = _write_preflight(dataset)
+
+    binding = verify_preflight_binding(preflight_path, dataset, lineage)
+
+    assert binding["preflight_sha256"] == file_sha256(preflight_path)
+    assert binding["preflight_dataset_csv_sha256"] == lineage["dataset_csv_sha256"]
+    assert binding["preflight_dataset_manifest_sha256"] == lineage["dataset_manifest_sha256"]
+
+
+def test_preflight_binding_rejects_different_dataset_bytes(tmp_path):
+    dataset = tmp_path / "dataset.csv"
+    dataset.write_text("ticker,value\nAAPL,1\n", encoding="utf-8")
+    _write_manifest(dataset)
+    preflight_path = _write_preflight(dataset)
+    dataset.write_text("ticker,value\nAAPL,2\n", encoding="utf-8")
+    _write_manifest(dataset)
+    lineage = verify_dataset_lineage(dataset)
+
+    with pytest.raises(ValueError, match="dataset SHA-256"):
+        verify_preflight_binding(preflight_path, dataset, lineage)
+
+
+def test_preflight_binding_rejects_changed_dataset_manifest(tmp_path):
+    dataset = tmp_path / "dataset.csv"
+    dataset.write_text("ticker,value\nAAPL,1\n", encoding="utf-8")
+    manifest = _write_manifest(dataset)
+    preflight_path = _write_preflight(dataset)
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    payload["builder_version"] = "changed-after-preflight"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    lineage = verify_dataset_lineage(dataset)
+
+    with pytest.raises(ValueError, match="dataset-manifest SHA-256"):
+        verify_preflight_binding(preflight_path, dataset, lineage)
+
+
+def test_preflight_binding_rejects_failed_or_unauthorized_artifact(tmp_path):
+    dataset = tmp_path / "dataset.csv"
+    dataset.write_text("ticker,value\nAAPL,1\n", encoding="utf-8")
+    _write_manifest(dataset)
+    lineage = verify_dataset_lineage(dataset)
+    preflight_path = _write_preflight(dataset, status="FAIL", allowed=False)
+
+    with pytest.raises(ValueError, match="did not authorize"):
+        verify_preflight_binding(preflight_path, dataset, lineage)
+
+
+def test_report_manifest_chains_preflight_dataset_report_and_gate_hashes(tmp_path):
+    dataset = tmp_path / "dataset.csv"
+    dataset.write_text("ticker,value\nAAPL,1\n", encoding="utf-8")
+    _write_manifest(dataset)
+    lineage = verify_dataset_lineage(dataset)
+    preflight_path = _write_preflight(dataset)
+    preflight = verify_preflight_binding(preflight_path, dataset, lineage)
 
     report = tmp_path / "report.json"
     report.write_text(json.dumps(_passing_validation_report()), encoding="utf-8")
@@ -110,12 +188,14 @@ def test_report_manifest_chains_dataset_report_and_gate_hashes(tmp_path):
         report,
         dataset=dataset,
         lineage=lineage,
+        preflight=preflight,
         targets=["premarket_5m", "premarket_15m", "premarket_30m", "premarket_60m"],
         gate_path=gate_path,
     )
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     assert payload["dataset_csv_sha256"] == file_sha256(dataset)
+    assert payload["preflight_sha256"] == file_sha256(preflight_path)
     assert payload["validation_report_sha256"] == file_sha256(report)
     assert payload["research_gate_sha256"] == file_sha256(gate_path)
     assert payload["research_gate_decision"] == "eligible_for_research_promotion_review"

@@ -11,12 +11,14 @@ import subprocess
 import sys
 
 
-PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v2"
+PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v3"
 DEFAULT_TARGETS = ["premarket_5m", "premarket_15m", "premarket_30m", "premarket_60m"]
 REPRODUCIBILITY_FILES = [
     "scripts/collect_alpaca_extended_history.py",
     "scripts/build_premarket_training_dataset_v2.py",
     "scripts/audit_premarket_dataset_readiness.py",
+    "scripts/audit_premarket_dataset_provenance.py",
+    "scripts/run_premarket_v5_decision_preflight.py",
     "scripts/run_premarket_v5_validation.py",
     "scripts/evaluate_premarket_v5_research_gate.py",
     "scripts/validate_premarket_directional_v5_event_nested.py",
@@ -55,6 +57,7 @@ def build_commands(
     raw: Path,
     dataset: Path,
     readiness: Path,
+    preflight: Path,
     validation: Path,
     skip_collect: bool,
     targets: list[str],
@@ -93,8 +96,17 @@ def build_commands(
         ],
         [
             sys.executable,
+            str(scripts / "run_premarket_v5_decision_preflight.py"),
+            str(dataset),
+            "--output",
+            str(preflight),
+        ],
+        [
+            sys.executable,
             str(scripts / "run_premarket_v5_validation.py"),
             str(dataset),
+            "--preflight",
+            str(preflight),
             "--output",
             str(validation),
             "--targets",
@@ -163,6 +175,7 @@ def write_pipeline_manifest(
     raw: Path,
     dataset: Path,
     readiness: Path,
+    preflight: Path,
     validation: Path,
     targets: list[str],
     status: str,
@@ -174,6 +187,7 @@ def write_pipeline_manifest(
         "dataset_csv": artifact_identity(dataset),
         "dataset_manifest": artifact_identity(dataset.with_suffix(dataset.suffix + ".manifest.json")),
         "readiness_report": artifact_identity(readiness),
+        "decision_preflight": artifact_identity(preflight),
         "validation_report": artifact_identity(validation),
         "validation_manifest": artifact_identity(validation.with_suffix(validation.suffix + ".manifest.json")),
         "research_gate": artifact_identity(validation.with_suffix(validation.suffix + ".gate.json")),
@@ -213,9 +227,8 @@ def validate_request(start: str, end: str, feed: str, targets: list[str]) -> Non
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Run Orion's reproducible Premarket v5 evidence chain: collect -> build -> "
-            "readiness gate -> audited validation -> research gate. The readiness stage "
-            "fails closed before validation when the dataset is insufficient or unsafe."
+            "Run Orion's reproducible Premarket v5 evidence chain: collect -> build -> readiness -> "
+            "content-addressed decision preflight -> bound event-nested validation -> research gate."
         )
     )
     parser.add_argument("--symbols", nargs="+", required=True)
@@ -225,6 +238,7 @@ def main() -> None:
     parser.add_argument("--raw", type=Path, default=Path("backend/data/raw/alpaca_extended_minutes.csv"))
     parser.add_argument("--dataset", type=Path, default=Path("backend/data/premarket_training_dataset_v2.csv"))
     parser.add_argument("--readiness", type=Path, default=Path("backend/data/models/premarket_dataset_readiness.json"))
+    parser.add_argument("--preflight", type=Path, default=Path("backend/data/models/premarket_v5_decision_preflight.json"))
     parser.add_argument("--validation", type=Path, default=Path("backend/data/models/premarket_directional_v5_event_nested.json"))
     parser.add_argument("--manifest", type=Path, default=Path("backend/data/models/premarket_v5_evidence_pipeline.json"))
     parser.add_argument("--skip-collect", action="store_true", help="Reuse an existing raw CSV plus its provenance manifest")
@@ -243,6 +257,7 @@ def main() -> None:
         raw=args.raw,
         dataset=args.dataset,
         readiness=args.readiness,
+        preflight=args.preflight,
         validation=args.validation,
         skip_collect=args.skip_collect,
         targets=targets,
@@ -268,6 +283,7 @@ def main() -> None:
             raw=args.raw,
             dataset=args.dataset,
             readiness=args.readiness,
+            preflight=args.preflight,
             validation=args.validation,
             targets=targets,
             status=status,
