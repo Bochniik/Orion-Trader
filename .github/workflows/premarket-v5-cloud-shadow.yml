@@ -73,7 +73,7 @@ jobs:
             exit 2
           fi
 
-      - name: Run premarket v5 shadow prediction
+      - name: Run and attest premarket v5 shadow prediction
         if: steps.target.outputs.active == 'true'
         shell: bash
         run: |
@@ -81,13 +81,23 @@ jobs:
           if [ -z "$SYMBOLS" ]; then
             SYMBOLS="AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
           fi
+          OUTPUT="backend/data/cloud_shadow/premarket_v5/prediction-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}.json"
+          COLLECTION_STARTED_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           echo "Collecting ${{ steps.target.outputs.snapshot }} Premarket V5 snapshot at ${{ steps.target.outputs.as_of_et }}"
           python scripts/run_premarket_v5_cloud_shadow.py \
             --symbols $SYMBOLS \
             --as-of "${{ steps.target.outputs.as_of }}" \
             --lookback-days 120 \
             --feed iex \
-            --output backend/data/cloud_shadow/premarket_v5/prediction-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}.json
+            --output "$OUTPUT"
+          COLLECTION_COMPLETED_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          python scripts/finalize_premarket_v5_forward_artifact.py \
+            --input "$OUTPUT" \
+            --collection-started-at "$COLLECTION_STARTED_AT_UTC" \
+            --collection-completed-at "$COLLECTION_COMPLETED_AT_UTC" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Upload immutable shadow evidence
         if: always() && steps.target.outputs.active == 'true'
