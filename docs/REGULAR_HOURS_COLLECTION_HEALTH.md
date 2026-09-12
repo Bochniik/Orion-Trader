@@ -10,9 +10,9 @@ It deliberately does **not** inspect predictive performance.
 
 ## Score-blind contract
 
-`scripts/audit_regular_hours_collection_health.py` projects immutable Regular-hours V3.1 prediction artifacts down to operational fields only.
+`scripts/audit_regular_hours_collection_health.py` projects immutable Regular-hours V3.1 prediction artifacts down to operational fields only. `scripts/audit_regular_hours_forward_completeness.py` then adds session-level completeness without reading forecasts.
 
-The report exposes:
+The v2 report exposes:
 
 - completed vs skipped artifact counts,
 - standard 10-symbol universe vs custom-universe artifacts,
@@ -24,7 +24,10 @@ The report exposes:
 - provider/runtime failures,
 - alignment retry count and fraction,
 - total and mean alignment attempts,
-- per-session versions of the same operational coverage fields.
+- per-session versions of the same operational coverage fields,
+- complete vs incomplete standard-session counts and exact session dates.
+
+A **complete standard session** requires every standard-universe observation collected for that NYSE date to be fully available and provenance-valid, with zero provider/runtime failures and zero provenance gaps. If multiple standard artifacts exist for one date, one incomplete artifact makes the whole session incomplete. This is intentionally conservative so partial collection cannot masquerade as validation-ready evidence.
 
 The report does **not** read or expose:
 
@@ -36,7 +39,13 @@ The report does **not** read or expose:
 - realized returns or outcomes,
 - calibration metrics.
 
-A regression test mutates forecast probabilities and directions while holding the operational projection fixed and requires the collection-health report to remain byte-for-byte equivalent as a Python object.
+Regression tests mutate forecast probabilities and directions while holding the operational projection fixed and require both collection health and session completeness to remain unchanged.
+
+## No invented readiness threshold
+
+There is currently no preregistered Regular-hours V3.1 minimum session count that authorizes predictive-score inspection. The audit therefore reports `score_inspection_readiness_threshold_defined=false` and does **not** invent a `ready=true/false` gate.
+
+If a minimum forward-sample protocol is later preregistered, it should be introduced explicitly in documentation before score-bearing results are inspected. Until then, complete-session counts are operational evidence only.
 
 ## Fail-closed validation
 
@@ -50,7 +59,7 @@ Skipped artifacts are counted separately and do not reduce market-time provenanc
 
 ## Automation
 
-`.github/workflows/regular-hours-collection-health.yml` runs once after the US close on weekdays. It recovers non-expired `regular-hours-v3-1-shadow-*` artifacts from the trailing 30 days, builds the score-blind report, and retains the report artifact for 90 days.
+`.github/workflows/regular-hours-collection-health.yml` runs once after the US close on weekdays. It recovers non-expired `regular-hours-v3-1-shadow-*` artifacts from the trailing 30 days, builds the score-blind v2 collection-health/completeness report, and retains the report artifact for 90 days.
 
 This workflow is intentionally separate from the market-time prediction workflow so operational auditing does not add latency or market-data requests to live shadow collection.
 
@@ -58,4 +67,4 @@ This workflow is intentionally separate from the market-time prediction workflow
 
 Do not change V3.1 probabilities, calibration, thresholds, or risk behavior based on this report.
 
-Use several real V2 sessions of `provenance_valid_fraction`, `alignment_retry_fraction`, failure frequency, and per-session stability to decide whether the next engineering step should be a shared immutable point-in-time market snapshot for V1 and V2. The evidence should precede that larger refactor rather than assuming retries are either sufficient or inadequate.
+Use several real V2 sessions of `provenance_valid_fraction`, `alignment_retry_fraction`, complete-session coverage, failure frequency, and per-session stability to decide whether the next engineering step should be a shared immutable point-in-time market snapshot for V1 and V2. The evidence should precede that larger refactor rather than assuming retries are either sufficient or inadequate.
