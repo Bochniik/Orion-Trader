@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import time as time_module
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
@@ -21,10 +22,12 @@ from app.services.intraday_probability_runtime_v3_1 import (
 
 
 NY = ZoneInfo("America/New_York")
-RUNNER_VERSION = "regular-hours-v3-1-cloud-shadow-v1"
+RUNNER_VERSION = "regular-hours-v3-1-cloud-shadow-v2"
 REGULAR_OPEN = time(9, 30)
 LAST_PREDICTION_CUTOFF = time(15, 30)
 DEFAULT_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
+MAX_ALIGNMENT_ATTEMPTS = 3
+ALIGNMENT_RETRY_DELAY_SECONDS = 1.0
 LINEAGE_FILES = (
     "scripts/run_regular_hours_v3_1_cloud_shadow.py",
     "backend/app/services/intraday_probability_runtime_v3_1.py",
@@ -136,21 +139,55 @@ def summarize_symbol(symbol: str, result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def estimate_with_alignment_retry(symbol: str) -> tuple[dict[str, Any], int]:
+    """Bound retries for V1/V2 bar alignment without relaxing provenance rules.
+
+    The ensemble remains fail-closed. A retry only asks the same read-only model
+    path to refresh its public market-data snapshot; it never accepts mismatched
+    timestamps or substitutes the artifact creation time for the market cutoff.
+    """
+    last: dict[str, Any] = {}
+    attempts = 0
+    for attempt in range(1, MAX_ALIGNMENT_ATTEMPTS + 1):
+        attempts = attempt
+        last = estimate_intraday_probabilities_v3_1(symbol)
+        if bool(last.get("source_timestamp_aligned")) and last.get("as_of"):
+            break
+        if attempt < MAX_ALIGNMENT_ATTEMPTS:
+            time_module.sleep(ALIGNMENT_RETRY_DELAY_SECONDS)
+    return last, attempts
+
+
 def run_shadow(symbols: list[str]) -> dict[str, Any]:
     results: dict[str, Any] = {}
     failures: dict[str, str] = {}
+    total_attempts = 0
+    retried_symbols = 0
 
     for symbol in symbols:
         try:
-            raw = estimate_intraday_probabilities_v3_1(symbol)
-            results[symbol] = summarize_symbol(symbol, raw)
+            raw, attempts = estimate_with_alignment_retry(symbol)
+            total_attempts += attempts
+            if attempts > 1:
+                retried_symbols += 1
+            summary = summarize_symbol(symbol, raw)
+            summary["alignment_attempts"] = attempts
+            results[symbol] = summary
         except Exception as exc:
             failures[symbol] = f"{type(exc).__name__}: {exc}"
 
     available_symbols = sum(bool(row.get("available")) for row in results.values())
+    provenance_valid_symbols = sum(
+        bool(row.get("source_timestamp_aligned")) and bool(row.get("as_of"))
+        for row in results.values()
+    )
     return {
         "symbol_count": len(symbols),
         "available_symbol_count": available_symbols,
+        "provenance_valid_symbol_count": provenance_valid_symbols,
+        "provenance_valid_coverage_pct": round(100.0 * provenance_valid_symbols / len(symbols), 1) if symbols else 0.0,
+        "alignment_retry_symbol_count": retried_symbols,
+        "alignment_attempt_count": total_attempts,
         "failure_count": len(failures),
         "symbols": results,
         "failures": failures,
@@ -160,7 +197,7 @@ def run_shadow(symbols: list[str]) -> dict[str, Any]:
 def build_payload(symbols: list[str], now: datetime | None = None) -> dict[str, Any]:
     gate = regular_hours_gate(now)
     payload: dict[str, Any] = {
-        "contract": "orion-regular-hours-cloud-shadow-v1",
+        "contract": "orion-regular-hours-cloud-shadow-v2",
         "runner_version": RUNNER_VERSION,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "session_gate": gate,
