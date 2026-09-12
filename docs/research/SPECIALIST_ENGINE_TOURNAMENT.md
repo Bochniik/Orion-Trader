@@ -31,7 +31,7 @@ Defaults are fixed before inspecting specialist performance:
 - sector residual: at least 40 prior observations across 6 prior sessions;
 - ticker residual: at least 24 prior observations across 5 prior sessions;
 - ridge penalty: 8.0;
-- final paired evaluation: at least 80 observations across at least 8 sessions.
+- final paired evaluation: at least 80 **active specialist** observations across at least 8 sessions.
 
 Insufficient specialist history is not imputed. The row falls back to its parent layer and the fallback is counted explicitly.
 
@@ -46,7 +46,18 @@ The evaluation contract is hierarchical and direct-parent only:
 
 Ticker is deliberately **not** scored against global. Otherwise a ticker layer that merely copies a successful sector correction could appear to add ticker-specific edge even though its own residual contributes nothing. Likewise, a statistically positive ticker-over-sector result is marked non-actionable when sector-over-global itself is not demonstrated; the hierarchy cannot skip an unproven parent.
 
-A stage is `research_eligible` only when the existing paired tournament's proper-score coverage and stability conditions pass. Even a fully successful hierarchy is **not promotion authorization**. The output hard-codes `promotion_authorized=false`.
+### Active-row scoring
+
+Fallback rows are operationally useful but are **not specialist evidence**. When the sector gate is not mature, `sector` is exactly the global parent. When the ticker gate is not mature, `ticker` is exactly the sector parent. Counting those identical fallback rows toward the final 80-observation/8-session evaluation gate would inflate apparent sample size without exposing the specialist hypothesis to any risk.
+
+Every generated prediction therefore carries a causal boolean `layer_active` marker determined only from completed prior-session history. Final paired evaluation keeps only rows where the child layer was actually active:
+
+- `global -> sector` counts only rows with `sector.layer_active=true`;
+- `sector -> ticker` counts only rows with `ticker.layer_active=true`.
+
+The parent is then paired to that exact child subset by symbol/timestamp. Reports expose total candidate rows, active rows and fallback rows separately. Missing or malformed activation metadata fails closed rather than silently reverting to all-row scoring.
+
+A stage is `research_eligible` only when the existing paired tournament's proper-score coverage and stability conditions pass on this active-only subset. Even a fully successful hierarchy is **not promotion authorization**. The output hard-codes `promotion_authorized=false`.
 
 The decisive production question is staged:
 
@@ -72,4 +83,4 @@ The decisive experiment uses records containing `timestamp`, `symbol`, frozen pr
 
 ## Decision rule
 
-If sector/ticker specialization does not improve paired proper scores with session-level stability, reject it unchanged. Do not tune gates, taxonomy or ridge strength on the same decisive holdout after seeing the result. Any redesign receives a new research identity and a fresh untouched evaluation set.
+If sector/ticker specialization does not improve paired proper scores with session-level stability on the active-only specialist subset, reject it unchanged. Do not tune gates, taxonomy or ridge strength on the same decisive holdout after seeing the result. Any redesign receives a new research identity and a fresh untouched evaluation set.

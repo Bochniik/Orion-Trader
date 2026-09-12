@@ -12,7 +12,7 @@ import numpy as np
 
 from evals.intraday_challenger_tournament import evaluate_paired_horizon
 
-CONTRACT = "orion-sector-ticker-specialist-tournament-v2"
+CONTRACT = "orion-sector-ticker-specialist-tournament-v3"
 DEFAULT_MIN_GLOBAL_OBS = 80
 DEFAULT_MIN_GLOBAL_SESSIONS = 8
 DEFAULT_MIN_SECTOR_OBS = 40
@@ -24,9 +24,10 @@ DEFAULT_RIDGE = 8.0
 SEMANTICS = (
     "Research-only hierarchical calibration tournament. Global, sector and ticker layers are fit "
     "strictly on completed prior sessions. Every candidate is evaluated on identical symbol/timestamp "
-    "rows against its direct parent: sector vs global, ticker vs sector. Specialist layers fail back "
-    "to their parent when their preregistered prior-sample gate is not met. No result authorizes "
-    "runtime promotion."
+    "rows against its direct parent: sector vs global, ticker vs sector. Proper-score coverage includes "
+    "only rows where the child specialist was actually active; parent-fallback rows cannot manufacture "
+    "specialist sample size. Specialist layers fail back to their parent when their preregistered prior-"
+    "sample gate is not met. No result authorizes runtime promotion."
 )
 
 
@@ -121,14 +122,28 @@ def _enough(rows: Sequence[Observation], min_obs: int, min_sessions: int) -> boo
     return len(rows) >= min_obs and len({row.session for row in rows}) >= min_sessions
 
 
-def _record(row: Observation, probability: float) -> Dict[str, Any]:
+def _record(row: Observation, probability: float, *, layer_active: bool) -> Dict[str, Any]:
     return {
         "timestamp": row.timestamp,
         "symbol": row.symbol,
         "sector": row.sector,
         "actual_up": row.actual_up,
         "p_up": round(100.0 * probability, 8),
+        "layer_active": bool(layer_active),
     }
+
+
+def _active_child_rows(rows: Sequence[Mapping[str, Any]], *, layer: str) -> List[Mapping[str, Any]]:
+    active: List[Mapping[str, Any]] = []
+    for row in rows:
+        marker = row.get("layer_active")
+        if not isinstance(marker, bool):
+            timestamp = str(row.get("timestamp") or "")
+            symbol = str(row.get("symbol") or "")
+            raise ValueError(f"missing boolean layer_active for {layer}: {symbol}@{timestamp}")
+        if marker:
+            active.append(row)
+    return active
 
 
 def generate_walk_forward_predictions(
@@ -166,9 +181,9 @@ def generate_walk_forward_predictions(
         sector_offsets: Dict[str, float] = {}
         ticker_offsets: Dict[str, float] = {}
         for row in session_rows:
-            predictions["base"].append(_record(row, row.base_p))
+            predictions["base"].append(_record(row, row.base_p, layer_active=True))
             global_p = _sigmoid(_logit(row.base_p) + global_offset)
-            predictions["global"].append(_record(row, global_p))
+            predictions["global"].append(_record(row, global_p, layer_active=global_ready))
             if not global_ready:
                 diagnostics["global_fallback_rows"] += 1
 
@@ -182,7 +197,7 @@ def generate_walk_forward_predictions(
                 )
             sector_offset = sector_offsets.get(row.sector, 0.0)
             sector_p = _sigmoid(_logit(row.base_p) + global_offset + sector_offset)
-            predictions["sector"].append(_record(row, sector_p))
+            predictions["sector"].append(_record(row, sector_p, layer_active=sector_ready))
             if not sector_ready:
                 diagnostics["sector_fallback_rows"] += 1
 
@@ -196,7 +211,7 @@ def generate_walk_forward_predictions(
                 )
             ticker_offset = ticker_offsets.get(row.symbol, 0.0)
             ticker_p = _sigmoid(_logit(row.base_p) + global_offset + sector_offset + ticker_offset)
-            predictions["ticker"].append(_record(row, ticker_p))
+            predictions["ticker"].append(_record(row, ticker_p, layer_active=ticker_ready))
             if not ticker_ready:
                 diagnostics["ticker_fallback_rows"] += 1
 
@@ -243,9 +258,12 @@ def evaluate_specialists(
     }
     results: Dict[str, Any] = {}
     for name, (parent, child, seed) in comparisons.items():
+        parent_rows = records.get(parent) or []
+        child_rows = records.get(child) or []
+        active_child_rows = _active_child_rows(child_rows, layer=child)
         result = evaluate_paired_horizon(
-            records.get(parent) or [],
-            records.get(child) or [],
+            parent_rows,
+            active_child_rows,
             min_observations=min_observations,
             min_sessions=min_sessions,
             bootstrap_samples=bootstrap_samples,
@@ -254,6 +272,10 @@ def evaluate_specialists(
         results[name] = {
             "parent": parent,
             "child": child,
+            "candidate_rows_total": len(child_rows),
+            "candidate_rows_active": len(active_child_rows),
+            "candidate_rows_fallback": len(child_rows) - len(active_child_rows),
+            "coverage_policy": "active_child_rows_only",
             **result,
         }
 
@@ -273,7 +295,7 @@ def evaluate_specialists(
         "research_only": True,
         "promotion_authorized": False,
         "paired_only": True,
-        "comparison_policy": "direct_parent_only",
+        "comparison_policy": "direct_parent_active_child_only",
         "comparisons": results,
         "stage_eligibility": {
             "sector_over_global": sector_eligible,
