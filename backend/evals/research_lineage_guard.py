@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 CONTRACT = "orion-research-lineage-registry-v1"
 VALID_DATASET_ROLES = {"screening", "diagnostic", "decisive"}
+NON_DECISIVE_ROLES = {"screening", "diagnostic"}
 
 
 def _require_text(row: Mapping[str, Any], field: str) -> str:
@@ -14,6 +15,31 @@ def _require_text(row: Mapping[str, Any], field: str) -> str:
     if not value:
         raise ValueError(f"missing {field}")
     return value
+
+
+def _require_dataset_refs(
+    candidate_id: str,
+    field: str,
+    candidate: Mapping[str, Any],
+    dataset_by_id: Mapping[str, Mapping[str, Any]],
+) -> list[str]:
+    refs = candidate.get(field) or []
+    if not isinstance(refs, list):
+        raise ValueError(f"dataset references must be lists for {candidate_id}")
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw_dataset_id in refs:
+        dataset_id = str(raw_dataset_id or "").strip()
+        if not dataset_id:
+            raise ValueError(f"empty dataset reference in {field} for {candidate_id}")
+        if dataset_id in seen:
+            raise ValueError(f"duplicate dataset reference in {field} for {candidate_id}: {dataset_id}")
+        if dataset_id not in dataset_by_id:
+            label = field.replace("_datasets", "").replace("_", "-")
+            raise ValueError(f"unknown {label} dataset for {candidate_id}: {dataset_id}")
+        seen.add(dataset_id)
+        normalized.append(dataset_id)
+    return normalized
 
 
 def validate_registry(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -39,6 +65,7 @@ def validate_registry(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     candidate_ids: set[str] = set()
     decisive_identity_owner: dict[str, str] = {}
+    screened_identity_count = 0
     for candidate in candidates:
         if not isinstance(candidate, Mapping):
             raise ValueError("candidate entry must be an object")
@@ -48,27 +75,31 @@ def validate_registry(payload: Mapping[str, Any]) -> dict[str, Any]:
         candidate_ids.add(candidate_id)
         _require_text(candidate, "hypothesis_frozen_at")
 
-        inspired_by = candidate.get("inspired_by_datasets") or []
-        decisive = candidate.get("decisive_datasets") or []
-        if not isinstance(inspired_by, list) or not isinstance(decisive, list):
-            raise ValueError(f"dataset references must be lists for {candidate_id}")
+        inspired_by = _require_dataset_refs(candidate_id, "inspired_by_datasets", candidate, dataset_by_id)
+        screened = _require_dataset_refs(candidate_id, "screening_datasets", candidate, dataset_by_id)
+        decisive = _require_dataset_refs(candidate_id, "decisive_datasets", candidate, dataset_by_id)
 
-        inspired_identities: set[str] = set()
+        contaminated_identities: set[str] = set()
         for dataset_id in inspired_by:
-            if dataset_id not in dataset_by_id:
-                raise ValueError(f"unknown inspired-by dataset for {candidate_id}: {dataset_id}")
-            inspired_identities.add(str(dataset_by_id[dataset_id]["identity"]))
+            contaminated_identities.add(str(dataset_by_id[dataset_id]["identity"]))
+
+        for dataset_id in screened:
+            row = dataset_by_id[dataset_id]
+            if row.get("role") not in NON_DECISIVE_ROLES:
+                raise ValueError(f"decisive dataset cannot be registered as screening for {candidate_id}: {dataset_id}")
+            if row.get("inspected") is not True:
+                raise ValueError(f"screening dataset must be marked inspected for {candidate_id}: {dataset_id}")
+            contaminated_identities.add(str(row["identity"]))
+            screened_identity_count += 1
 
         for dataset_id in decisive:
-            if dataset_id not in dataset_by_id:
-                raise ValueError(f"unknown decisive dataset for {candidate_id}: {dataset_id}")
             row = dataset_by_id[dataset_id]
             if row.get("role") != "decisive":
                 raise ValueError(f"non-decisive dataset referenced as decisive for {candidate_id}: {dataset_id}")
             identity = str(row["identity"])
-            if identity in inspired_identities:
+            if identity in contaminated_identities:
                 raise ValueError(
-                    f"contaminated decisive evidence for {candidate_id}: identity {identity} was already used to inspire the hypothesis"
+                    f"contaminated decisive evidence for {candidate_id}: identity {identity} was already used to inspire or screen the hypothesis"
                 )
             prior_owner = decisive_identity_owner.get(identity)
             if prior_owner and prior_owner != candidate_id:
@@ -82,6 +113,7 @@ def validate_registry(payload: Mapping[str, Any]) -> dict[str, Any]:
         "valid": True,
         "dataset_count": len(dataset_by_id),
         "candidate_count": len(candidate_ids),
+        "screening_reference_count": screened_identity_count,
         "decisive_identity_count": len(decisive_identity_owner),
     }
 

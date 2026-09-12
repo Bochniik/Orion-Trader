@@ -21,12 +21,14 @@
       "id": "sector-specialist-v1",
       "hypothesis_frozen_at": "2026-09-12T00:00:00Z",
       "inspired_by_datasets": [],
+      "screening_datasets": ["sector-specialist-60d-5m-2026-09-11"],
       "decisive_datasets": []
     },
     {
       "id": "future-industry-specialist-v1",
       "hypothesis_frozen_at": "2026-09-12T13:00:00Z",
       "inspired_by_datasets": ["sector-specialist-60d-5m-2026-09-11"],
+      "screening_datasets": [],
       "decisive_datasets": [],
       "status": "superseded_by_semiconductor_specialist_3h_v1"
     },
@@ -34,6 +36,7 @@
       "id": "semiconductor-specialist-3h-v1",
       "hypothesis_frozen_at": "2026-09-12T14:00:00Z",
       "inspired_by_datasets": ["sector-specialist-60d-5m-2026-09-11"],
+      "screening_datasets": ["semiconductor-specialist-3h-v1-60d-5m-2026-09-11"],
       "decisive_datasets": [],
       "status": "historical_screen_rejected_no_decisive_dataset_assigned"
     }
