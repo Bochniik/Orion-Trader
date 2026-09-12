@@ -39,12 +39,32 @@ The scheduled workflow now follows this order:
 
 The resulting readiness report exposes no Brier score, log loss, realized outcome, probability, directional confidence, or other predictive-performance metric. Readiness remains independent of model quality so collection cannot stop early because observed scores look favorable or unfavorable.
 
+## Schedule-delivery completeness
+
+Artifact readiness alone cannot distinguish a naturally young cohort from a GitHub schedule slot that was never delivered. The cloud-shadow workflow therefore gives every run an auditable name containing the exact `github.event.schedule` cron value.
+
+`scripts/audit_premarket_v5_schedule_delivery.py` consumes GitHub Actions workflow-run metadata and reconstructs the preregistered NYSE trading-session geometry from the existing snapshot resolver. A slot becomes mature 20 minutes after its target timestamp, matching the latest start time that could still qualify as decision-grade forward acquisition.
+
+For each mature early/mid/late slot the audit reports whether:
+
+- a matching active DST-safe scheduled run was delivered;
+- at least one matching run completed successfully;
+- delivery is missing entirely;
+- a delivered run failed/cancelled or otherwise did not succeed;
+- duplicate active deliveries occurred.
+
+Inactive DST duplicate schedules and manual workflow dispatches never satisfy delivery completeness. Future or not-yet-mature slots are excluded rather than being reported as failures. This keeps the audit score-blind and prevents a young cohort from being mistaken for an operational outage.
+
+The schedule audit is intentionally separate from forward-readiness: a successful workflow run proves delivery, while the acquisition/readiness audit proves that the resulting prediction artifact itself is operationally complete, timely, scheduled, and payload-integrity bound. Both are needed to understand why Issue #3 evidence is or is not accumulating.
+
 ## Issue #3 interpretation
 
-`ready_for_issue_3_score_inspection=true` now means that every preregistered snapshot family (06:45, 08:00, 09:15 ET) contains at least 55 distinct sessions that are both operationally complete and acquisition-provenance eligible.
+`ready_for_issue_3_score_inspection=true` means that every preregistered snapshot family (06:45, 08:00, 09:15 ET) contains at least 55 distinct sessions that are both operationally complete and acquisition-provenance eligible.
 
 Historical/manual reconstructions and scheduled runs that start outside the frozen acquisition window are explicitly excluded from that count. They must never be relabeled as untouched forward evidence.
 
+A schedule-delivery report with missing mature slots does not change model scores or promotion thresholds; it identifies evidence-acquisition debt that must be resolved or explicitly documented before the 55-session geometry can be considered operationally trustworthy.
+
 ## Safety scope
 
-This change does not modify model weights, calibration, thresholds, risk rules, symbols, Alpaca feed choice, broker behavior, or order paths. It only strengthens research-evidence provenance and readiness semantics.
+This change does not modify model weights, calibration, thresholds, risk rules, symbols, Alpaca feed choice, broker behavior, or order paths. It only strengthens research-evidence provenance, delivery observability, and readiness semantics.
