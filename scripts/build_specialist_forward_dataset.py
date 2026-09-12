@@ -171,7 +171,8 @@ def build_records(
     symbol_meta = universe["symbols"]
     output: list[dict[str, Any]] = []
     skipped = Counter()
-    seen: set[str] = set()
+    seen_record_ids: set[str] = set()
+    seen_tournament_ids: set[tuple[str, str, str]] = set()
 
     for raw in ledger.get("records") or []:
         if raw.get("engine") != REGULAR_HOURS_ENGINE:
@@ -190,9 +191,16 @@ def build_records(
             skipped["etf_excluded"] += 1
             continue
         record_id = str(raw["record_id"])
-        if record_id in seen:
+        if record_id in seen_record_ids:
             raise ValueError(f"Duplicate record_id in evidence ledger: {record_id}")
-        seen.add(record_id)
+        seen_record_ids.add(record_id)
+        tournament_id = (horizon, symbol, str(raw["prediction_time_utc"]))
+        if tournament_id in seen_tournament_ids:
+            raise ValueError(
+                "Duplicate specialist tournament identity within horizon: "
+                f"{horizon}:{symbol}@{raw['prediction_time_utc']}"
+            )
+        seen_tournament_ids.add(tournament_id)
         output.append(
             {
                 "timestamp": str(raw["prediction_time_utc"]),
@@ -233,7 +241,21 @@ def build_dataset(
     include_etfs: bool = False,
 ) -> dict[str, Any]:
     records, diagnostics = build_records(ledger, universe, include_etfs=include_etfs)
-    source_identity = [_record_material_identity(row) for row in (ledger.get("records") or [])]
+    records_by_horizon = {
+        horizon: [dict(row) for row in records if row["horizon"] == horizon]
+        for horizon in SUPPORTED_HORIZONS
+    }
+    selected_source_identity = [
+        {
+            "record_id": row["evidence_record_id"],
+            "material_sha256": row["evidence_material_sha256"],
+            "horizon": row["horizon"],
+            "symbol": row["symbol"],
+            "timestamp": row["timestamp"],
+            "prediction_lineage": row["prediction_lineage"],
+        }
+        for row in records
+    ]
     taxonomy = {
         "contract": universe.get("contract"),
         "effective_date": universe.get("effective_date"),
@@ -247,10 +269,11 @@ def build_dataset(
         "sector_metadata_policy": "frozen_prediction_time_research_taxonomy",
         "etfs_included": bool(include_etfs),
         "supported_horizons": list(SUPPORTED_HORIZONS),
+        "partition_policy": "one independent specialist tournament dataset per horizon; horizons are never pooled",
         "source": {
             "ledger_contract": ledger.get("contract"),
             "ledger_records_sha256": (ledger.get("integrity") or {}).get("records_sha256"),
-            "selected_source_identity_sha256": _sha256(source_identity),
+            "selected_source_identity_sha256": _sha256(selected_source_identity),
         },
         "taxonomy": {
             "contract": universe.get("contract"),
@@ -258,7 +281,7 @@ def build_dataset(
             "sha256": _sha256(taxonomy),
         },
         "readiness": diagnostics,
-        "records": records,
+        "records_by_horizon": records_by_horizon,
     }
 
 
@@ -270,6 +293,7 @@ def score_blind_summary(dataset: Mapping[str, Any]) -> dict[str, Any]:
         "promotion_authorized": False,
         "score_blind": True,
         "metrics_exposed": False,
+        "partition_policy": dataset.get("partition_policy"),
         "taxonomy": dataset.get("taxonomy"),
         "source": dataset.get("source"),
         "readiness": readiness,
