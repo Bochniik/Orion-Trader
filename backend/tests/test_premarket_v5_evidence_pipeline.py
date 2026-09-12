@@ -9,6 +9,7 @@ SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
+from premarket_directional_v4_common import PREMARKET_TARGETS
 from run_premarket_v5_evidence_pipeline import (
     DEFAULT_TARGETS,
     REPRODUCIBILITY_FILES,
@@ -19,6 +20,11 @@ from run_premarket_v5_evidence_pipeline import (
     validate_request,
     write_pipeline_manifest,
 )
+
+
+def test_pipeline_targets_share_validator_contract():
+    assert DEFAULT_TARGETS == tuple(PREMARKET_TARGETS)
+    assert DEFAULT_TARGETS == ("premarket_5m", "premarket_15m", "premarket_30m")
 
 
 def test_parse_symbols_normalizes_and_deduplicates():
@@ -54,7 +60,7 @@ def test_build_commands_runs_preflight_before_bound_validation(tmp_path):
     assert commands[4][1].endswith("run_premarket_v5_validation.py")
     assert commands[3].index(str(dataset)) > 0
     assert commands[4][commands[4].index("--preflight") + 1] == str(preflight)
-    assert commands[4][-4:] == list(DEFAULT_TARGETS)
+    assert commands[4][-len(DEFAULT_TARGETS):] == list(DEFAULT_TARGETS)
 
 
 def test_skip_collect_still_builds_audits_preflights_and_validates(tmp_path):
@@ -77,9 +83,16 @@ def test_skip_collect_still_builds_audits_preflights_and_validates(tmp_path):
     assert commands[3][1].endswith("run_premarket_v5_validation.py")
 
 
-def test_validate_request_requires_complete_target_set():
-    with pytest.raises(ValueError, match="all four"):
+def test_validate_request_requires_exact_complete_target_set():
+    with pytest.raises(ValueError, match="exact shared PREMARKET_TARGETS"):
         validate_request("2026-01-01", "2026-04-30", "iex", ["premarket_5m"])
+    with pytest.raises(ValueError, match="exact shared PREMARKET_TARGETS"):
+        validate_request(
+            "2026-01-01",
+            "2026-04-30",
+            "iex",
+            [*DEFAULT_TARGETS, "premarket_60m"],
+        )
 
 
 def test_validate_request_rejects_reverse_dates():
@@ -138,7 +151,9 @@ def test_pipeline_manifest_hashes_preflight_and_existing_artifacts_without_secre
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["status"] == "COMPLETED"
-    assert payload["pipeline_version"] == "premarket-v5-evidence-pipeline-v3"
+    assert payload["pipeline_version"] == "premarket-v5-evidence-pipeline-v4"
+    assert payload["target_contract"] == "shared_PREMARKET_TARGETS_exact"
+    assert payload["request"]["targets"] == list(PREMARKET_TARGETS)
     assert payload["artifacts"]["raw_csv"]["exists"] is True
     assert len(payload["artifacts"]["raw_csv"]["sha256"]) == 64
     assert payload["artifacts"]["decision_preflight"]["exists"] is True
