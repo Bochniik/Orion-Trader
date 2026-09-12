@@ -11,7 +11,9 @@ from scripts.audit_regular_hours_collection_health import (
     build_health_report,
 )
 
-REPORT_CONTRACT = "orion-regular-hours-collection-health-v2"
+REPORT_CONTRACT = "orion-regular-hours-collection-health-v3"
+FORWARD_PROTOCOL_ID = "regular-hours-v3-1-forward-validation-2026-09-12"
+MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION = 30
 
 
 def _session_is_complete(row: dict[str, Any]) -> bool:
@@ -48,12 +50,20 @@ def add_session_completeness(report: dict[str, Any]) -> dict[str, Any]:
         by_session[session] = row
         (complete_sessions if complete else incomplete_sessions).append(session)
 
+    complete_count = len(complete_sessions)
+    remaining = max(0, MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION - complete_count)
+
     report["contract"] = REPORT_CONTRACT
-    report["complete_standard_session_count"] = len(complete_sessions)
+    report["forward_validation_protocol"] = FORWARD_PROTOCOL_ID
+    report["complete_standard_session_count"] = complete_count
     report["incomplete_standard_session_count"] = len(incomplete_sessions)
     report["complete_standard_sessions"] = complete_sessions
     report["incomplete_standard_sessions"] = incomplete_sessions
-    report["score_inspection_readiness_threshold_defined"] = False
+    report["score_inspection_readiness_threshold_defined"] = True
+    report["score_inspection_required_complete_sessions"] = MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION
+    report["score_inspection_remaining_complete_sessions"] = remaining
+    report["ready_for_score_inspection"] = complete_count >= MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION
+    report["promotion_authorized"] = False
     return report
 
 
@@ -64,8 +74,8 @@ def build_completeness_report(payloads: Iterable[dict[str, Any]]) -> dict[str, A
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Audit complete regular-hours V3.1 standard sessions without inspecting "
-            "predictive scores or inventing a score-inspection threshold."
+            "Audit complete regular-hours V3.1 standard sessions and apply the "
+            "pre-registered score-inspection gate without reading predictive scores."
         )
     )
     parser.add_argument("predictions", nargs="*", type=Path)
