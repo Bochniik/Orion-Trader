@@ -68,6 +68,8 @@
   border-radius: 13px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.008));
   overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   transition:
     transform 180ms cubic-bezier(.2,.8,.2,1),
     border-color 180ms ease,
@@ -94,10 +96,32 @@
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16), inset 0 0 0 1px rgba(255, 142, 37, 0.025);
 }
 
+.news-item--terminal:focus-visible {
+  outline: 2px solid rgba(255, 146, 47, 0.78);
+  outline-offset: 2px;
+  border-color: rgba(255, 146, 47, 0.48);
+  box-shadow:
+    0 0 0 4px rgba(255, 137, 25, 0.1),
+    0 14px 30px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 1px rgba(255, 151, 57, 0.05);
+}
+
+.news-item--terminal:active {
+  transform: translateY(0) scale(0.995);
+  border-color: rgba(255, 145, 42, 0.34);
+  background: linear-gradient(135deg, rgba(255, 139, 31, 0.07), rgba(255, 255, 255, 0.015));
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 142, 37, 0.04);
+  transition-duration: 70ms;
+}
+
 .news-item--terminal:hover::after,
 .news-item--terminal:focus-visible::after {
   opacity: 1;
   transform: translateX(8%);
+}
+
+.news-item--terminal:focus-visible .news-copy h3 {
+  color: rgba(255, 255, 255, 0.98);
 }
 
 .news-media {
@@ -252,6 +276,10 @@
   color: #ff922f;
   background: rgba(255, 139, 25, 0.075);
   transform: translate(1px, -1px);
+}
+
+.news-item--terminal:active .news-link-icon {
+  transform: translate(2px, -2px) scale(0.94);
 }
 
 .news-state {
