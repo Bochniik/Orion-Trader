@@ -10,7 +10,12 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from run_premarket_v5_validation import (
+    MATERIAL_VALIDATION_SOURCES,
+    SUPPORTED_TARGETS,
+    execution_identity,
     file_sha256,
+    normalize_decision_targets,
+    source_fingerprints,
     verify_dataset_lineage,
     verify_preflight_binding,
     write_report_manifest,
@@ -73,12 +78,45 @@ def _passing_validation_report():
             "mean_signed_return_pct": 0.05,
         },
     }
-    return {
-        "targets": {
-            name: dict(target)
-            for name in ("premarket_5m", "premarket_15m", "premarket_30m", "premarket_60m")
-        }
-    }
+    return {"targets": {name: dict(target) for name in SUPPORTED_TARGETS}}
+
+
+def test_decision_target_contract_is_exact_and_rejects_subsets_or_extra_targets():
+    assert normalize_decision_targets(list(SUPPORTED_TARGETS)) == list(SUPPORTED_TARGETS)
+    with pytest.raises(ValueError, match="exact shared PREMARKET_TARGETS"):
+        normalize_decision_targets(list(SUPPORTED_TARGETS[:-1]))
+    with pytest.raises(ValueError, match="exact shared PREMARKET_TARGETS"):
+        normalize_decision_targets([*SUPPORTED_TARGETS, "premarket_60m"])
+
+
+def test_execution_identity_hashes_material_validation_sources(tmp_path):
+    for relative in MATERIAL_VALIDATION_SOURCES:
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative + "\n", encoding="utf-8")
+
+    sources = source_fingerprints(tmp_path)
+    identity = execution_identity(targets=list(SUPPORTED_TARGETS), sources=sources)
+
+    assert set(sources) == set(MATERIAL_VALIDATION_SOURCES)
+    assert all(len(value) == 64 for value in sources.values())
+    assert len(identity["execution_identity_sha256"]) == 64
+
+
+def test_execution_identity_changes_when_material_source_changes(tmp_path):
+    for relative in MATERIAL_VALIDATION_SOURCES:
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative + "\n", encoding="utf-8")
+    first_sources = source_fingerprints(tmp_path)
+    first = execution_identity(targets=list(SUPPORTED_TARGETS), sources=first_sources)
+
+    changed = tmp_path / MATERIAL_VALIDATION_SOURCES[0]
+    changed.write_text("changed\n", encoding="utf-8")
+    second_sources = source_fingerprints(tmp_path)
+    second = execution_identity(targets=list(SUPPORTED_TARGETS), sources=second_sources)
+
+    assert first["execution_identity_sha256"] != second["execution_identity_sha256"]
 
 
 def test_verify_dataset_lineage_accepts_verified_hash_chain(tmp_path):
@@ -172,7 +210,7 @@ def test_preflight_binding_rejects_failed_or_unauthorized_artifact(tmp_path):
         verify_preflight_binding(preflight_path, dataset, lineage)
 
 
-def test_report_manifest_chains_preflight_dataset_report_and_gate_hashes(tmp_path):
+def test_report_manifest_chains_data_code_report_and_gate_hashes(tmp_path):
     dataset = tmp_path / "dataset.csv"
     dataset.write_text("ticker,value\nAAPL,1\n", encoding="utf-8")
     _write_manifest(dataset)
@@ -183,14 +221,17 @@ def test_report_manifest_chains_preflight_dataset_report_and_gate_hashes(tmp_pat
     report = tmp_path / "report.json"
     report.write_text(json.dumps(_passing_validation_report()), encoding="utf-8")
     gate_path = write_research_gate_decision(report)
+    fake_sources = {relative: (str(index) * 64)[:64] for index, relative in enumerate(MATERIAL_VALIDATION_SOURCES, start=1)}
 
     manifest_path = write_report_manifest(
         report,
         dataset=dataset,
         lineage=lineage,
         preflight=preflight,
-        targets=["premarket_5m", "premarket_15m", "premarket_30m", "premarket_60m"],
+        targets=list(SUPPORTED_TARGETS),
         gate_path=gate_path,
+        sources=fake_sources,
+        repository_git_sha="a" * 40,
     )
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
 
@@ -200,6 +241,12 @@ def test_report_manifest_chains_preflight_dataset_report_and_gate_hashes(tmp_pat
     assert payload["research_gate_sha256"] == file_sha256(gate_path)
     assert payload["research_gate_decision"] == "eligible_for_research_promotion_review"
     assert payload["research_gate_eligible"] is True
+    assert payload["targets"] == list(SUPPORTED_TARGETS)
+    assert payload["supported_targets"] == list(SUPPORTED_TARGETS)
+    assert payload["target_contract"] == "shared_PREMARKET_TARGETS_exact"
+    assert payload["source_sha256"] == dict(sorted(fake_sources.items()))
+    assert payload["repository_git_sha"] == "a" * 40
+    assert len(payload["execution_identity_sha256"]) == 64
     serialized = manifest_path.read_text(encoding="utf-8").lower()
     assert "api_key" not in serialized
     assert "secret" not in serialized
