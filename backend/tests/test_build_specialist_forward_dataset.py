@@ -15,12 +15,13 @@ import build_specialist_forward_dataset as adapter
 
 
 def _raw_record(*, symbol="AAPL", engine="regular_hours_v3_1", horizon="30m", probability=0.6, actual=1):
+    minutes = {"30m": 30, "1h": 60, "3h": 180, "5h": 300}.get(horizon, 30)
     return {
         "engine": engine,
         "symbol": symbol,
         "horizon": horizon,
         "prediction_time_utc": "2026-09-11T14:00:00+00:00",
-        "target_time_utc": "2026-09-11T14:30:00+00:00",
+        "target_time_utc": f"2026-09-11T{14 + minutes // 60:02d}:{minutes % 60:02d}:00+00:00",
         "probability_up": probability,
         "predicted_direction": "UP" if probability >= 0.5 else "DOWN",
         "actual_up": actual,
@@ -68,6 +69,10 @@ def _universe():
     }
 
 
+def _rows(dataset, horizon="30m"):
+    return dataset["records_by_horizon"][horizon]
+
+
 def test_adapter_uses_settled_regular_hours_rows_and_excludes_etfs_by_default():
     ledger = _ledger(
         [
@@ -77,23 +82,33 @@ def test_adapter_uses_settled_regular_hours_rows_and_excludes_etfs_by_default():
         ]
     )
     dataset = adapter.build_dataset(ledger, _universe())
-    assert [row["symbol"] for row in dataset["records"]] == ["AAPL"]
-    assert dataset["records"][0]["sector"] == "Information Technology"
-    assert dataset["records"][0]["prediction_lineage"]["git_commit"] == "abc123"
+    assert [row["symbol"] for row in _rows(dataset)] == ["AAPL"]
+    assert _rows(dataset)[0]["sector"] == "Information Technology"
+    assert _rows(dataset)[0]["prediction_lineage"]["git_commit"] == "abc123"
     assert dataset["readiness"]["skipped"] == {"etf_excluded": 1, "other_engine": 1}
     assert dataset["promotion_authorized"] is False
 
 
+def test_multiple_horizons_for_same_symbol_timestamp_are_partitioned_not_pooled():
+    dataset = adapter.build_dataset(
+        _ledger([_raw_record(symbol="AAPL", horizon="30m"), _raw_record(symbol="AAPL", horizon="1h")]),
+        _universe(),
+    )
+    assert len(dataset["records_by_horizon"]["30m"]) == 1
+    assert len(dataset["records_by_horizon"]["1h"]) == 1
+    assert dataset["partition_policy"].startswith("one independent specialist tournament dataset per horizon")
+
+
 def test_etf_inclusion_is_explicit_and_never_mislabeled_as_equity_sector():
     dataset = adapter.build_dataset(_ledger([_raw_record(symbol="SPY")]), _universe(), include_etfs=True)
-    assert dataset["records"][0]["asset_type"] == "etf"
-    assert dataset["records"][0]["sector"] == "ETF"
+    assert _rows(dataset)[0]["asset_type"] == "etf"
+    assert _rows(dataset)[0]["sector"] == "ETF"
     assert dataset["etfs_included"] is True
 
 
 def test_unclassified_symbol_is_counted_not_guessed():
     dataset = adapter.build_dataset(_ledger([_raw_record(symbol="XYZ")]), _universe())
-    assert dataset["records"] == []
+    assert all(not rows for rows in dataset["records_by_horizon"].values())
     assert dataset["readiness"]["skipped"]["unclassified_symbol"] == 1
 
 
