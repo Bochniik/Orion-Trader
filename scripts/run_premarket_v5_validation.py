@@ -10,7 +10,8 @@ from pathlib import Path
 from evaluate_premarket_v5_research_gate import evaluate_report
 
 
-RUNNER_VERSION = "premarket-v5-validation-lineage-2"
+RUNNER_VERSION = "premarket-v5-validation-lineage-3"
+PREFLIGHT_CONTRACT = "orion-premarket-v5-decision-preflight-v2"
 
 
 def file_sha256(path: Path) -> str:
@@ -72,6 +73,54 @@ def verify_dataset_lineage(dataset: Path) -> dict:
     }
 
 
+def verify_preflight_binding(preflight_path: Path, dataset: Path, lineage: dict) -> dict:
+    if not preflight_path.exists():
+        raise ValueError(f"Decision preflight artifact is required: {preflight_path}")
+    try:
+        payload = json.loads(preflight_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Invalid decision preflight artifact: {preflight_path}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("Decision preflight artifact must contain a JSON object")
+    if payload.get("contract") != PREFLIGHT_CONTRACT:
+        raise ValueError(
+            "Unsupported decision preflight contract: "
+            f"{payload.get('contract') or '<missing>'}"
+        )
+    if payload.get("status") != "PASS" or payload.get("decision_grade_validation_allowed") is not True:
+        raise ValueError("Decision preflight did not authorize decision-grade validation")
+
+    identity = payload.get("dataset_identity")
+    if not isinstance(identity, dict):
+        raise ValueError("Decision preflight is missing dataset_identity")
+    csv_identity = identity.get("dataset_csv")
+    manifest_identity = identity.get("dataset_manifest")
+    if not isinstance(csv_identity, dict) or not isinstance(manifest_identity, dict):
+        raise ValueError("Decision preflight dataset_identity is malformed")
+
+    expected_csv_sha = str(csv_identity.get("sha256") or "").strip().lower()
+    expected_manifest_sha = str(manifest_identity.get("sha256") or "").strip().lower()
+    actual_csv_sha = str(lineage.get("dataset_csv_sha256") or "").strip().lower()
+    actual_manifest_sha = str(lineage.get("dataset_manifest_sha256") or "").strip().lower()
+    if not expected_csv_sha or expected_csv_sha != actual_csv_sha:
+        raise ValueError(
+            "Decision preflight dataset SHA-256 does not match the dataset selected for validation"
+        )
+    if not expected_manifest_sha or expected_manifest_sha != actual_manifest_sha:
+        raise ValueError(
+            "Decision preflight dataset-manifest SHA-256 does not match the manifest selected for validation"
+        )
+
+    return {
+        "preflight_path": str(preflight_path),
+        "preflight_sha256": file_sha256(preflight_path),
+        "preflight_contract": payload["contract"],
+        "preflight_status": payload["status"],
+        "preflight_dataset_csv_sha256": expected_csv_sha,
+        "preflight_dataset_manifest_sha256": expected_manifest_sha,
+    }
+
+
 def write_research_gate_decision(report_path: Path) -> Path:
     if not report_path.exists():
         raise FileNotFoundError(report_path)
@@ -90,6 +139,7 @@ def write_report_manifest(
     *,
     dataset: Path,
     lineage: dict,
+    preflight: dict,
     targets: list[str],
     gate_path: Path | None = None,
 ) -> Path:
@@ -104,6 +154,7 @@ def write_report_manifest(
         "validator": "validate_premarket_directional_v5_event_nested.py",
         "dataset_path": str(dataset),
         **lineage,
+        **preflight,
         "targets": list(targets),
         "validation_report_sha256": file_sha256(report_path),
     }
@@ -121,8 +172,9 @@ def write_report_manifest(
     return manifest_path
 
 
-def run_validation(dataset: Path, output: Path, targets: list[str]) -> Path:
+def run_validation(dataset: Path, output: Path, targets: list[str], *, preflight_path: Path) -> Path:
     lineage = verify_dataset_lineage(dataset)
+    preflight = verify_preflight_binding(preflight_path, dataset, lineage)
     validator = Path(__file__).with_name("validate_premarket_directional_v5_event_nested.py")
     command = [sys.executable, str(validator), str(dataset), "--output", str(output)]
     if targets:
@@ -133,6 +185,7 @@ def run_validation(dataset: Path, output: Path, targets: list[str]) -> Path:
         output,
         dataset=dataset,
         lineage=lineage,
+        preflight=preflight,
         targets=targets,
         gate_path=gate_path,
     )
@@ -141,11 +194,17 @@ def run_validation(dataset: Path, output: Path, targets: list[str]) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Run Orion Premarket Directional Engine v5 validation with strict, "
-            "content-addressed dataset lineage, a fail-closed research gate, and an audited manifest."
+            "Run Orion Premarket Directional Engine v5 validation only after a PASS decision preflight "
+            "that is cryptographically bound to the exact dataset and dataset manifest being evaluated."
         )
     )
     parser.add_argument("dataset", type=Path)
+    parser.add_argument(
+        "--preflight",
+        type=Path,
+        required=True,
+        help="PASS artifact produced by run_premarket_v5_decision_preflight.py for this exact dataset",
+    )
     parser.add_argument(
         "--output",
         type=Path,
@@ -158,7 +217,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    manifest_path = run_validation(args.dataset, args.output, list(args.targets))
+    manifest_path = run_validation(
+        args.dataset,
+        args.output,
+        list(args.targets),
+        preflight_path=args.preflight,
+    )
     print(f"Saved audited validation manifest to {manifest_path}")
 
 
