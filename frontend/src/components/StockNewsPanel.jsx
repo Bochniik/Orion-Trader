@@ -90,9 +90,11 @@ function NewsMedia({ image, ticker }) {
 
 export default function StockNewsPanel({ ticker, news, loading, error, onRefresh }) {
   const items = Array.isArray(news) ? news : [];
+  const hasItems = items.length > 0;
+  const backgroundRefreshing = loading && hasItems;
 
   return (
-    <section className="card news-card news-card--terminal">
+    <section className="card news-card news-card--terminal" aria-busy={loading ? "true" : "false"}>
       <div className="news-header news-header--terminal">
         <div>
           <div className="card-title news-title">
@@ -101,7 +103,9 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
             </span>
             Latest news
           </div>
-          <p className="news-subtitle">Recent headlines and catalysts for {ticker}</p>
+          <p className="news-subtitle" aria-live="polite" aria-atomic="true">
+            Recent headlines and catalysts for {ticker}{backgroundRefreshing ? " · Updating feed…" : ""}
+          </p>
         </div>
 
         <button
@@ -120,7 +124,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
         <div className="news-error-state" role="alert" aria-live="assertive">
           <span className="news-error-icon" aria-hidden="true"><AlertTriangle size={18} /></span>
           <div className="news-error-copy">
-            <strong>News feed temporarily unavailable</strong>
+            <strong>{hasItems ? "Couldn’t refresh the latest headlines" : "News feed temporarily unavailable"}</strong>
             <p>{error}</p>
           </div>
           <button type="button" className="ghost-btn news-error-retry" onClick={onRefresh} disabled={loading}>
@@ -130,7 +134,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
         </div>
       )}
 
-      {!error && loading && items.length === 0 && (
+      {!error && loading && !hasItems && (
         <div className="news-skeleton-list" aria-label="Loading news">
           {[0, 1, 2].map((item) => (
             <div className="news-skeleton-item" key={item} aria-hidden="true">
@@ -145,7 +149,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
         </div>
       )}
 
-      {!error && !loading && items.length === 0 && (
+      {!error && !loading && !hasItems && (
         <div className="news-empty-state">
           <span className="news-empty-mark" aria-hidden="true">{String(ticker || "OR").slice(0, 2)}</span>
           <div>
@@ -155,7 +159,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
         </div>
       )}
 
-      {!error && items.length > 0 && (
+      {hasItems && (
         <div className="news-list news-list--terminal">
           {items.map((item) => {
             const image = newsImage(item);
