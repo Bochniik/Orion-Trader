@@ -1,0 +1,36 @@
+name: Research lineage contamination guard
+
+on:
+  pull_request:
+    paths:
+      - "backend/evals/research_lineage_guard.py"
+      - "backend/evals/research_lineage_registry.json"
+      - "backend/tests/test_research_lineage_guard.py"
+      - ".github/workflows/research-lineage-guard-ci.yml"
+      - "docs/research/RESEARCH_LINEAGE_GUARD.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-lineage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Compile guard
+        run: python -m py_compile backend/evals/research_lineage_guard.py
+      - name: Validate committed registry
+        env:
+          PYTHONPATH: backend
+        run: python backend/evals/research_lineage_guard.py backend/evals/research_lineage_registry.json
+      - name: Run focused regressions
+        run: |
+          cd backend
+          python -m pytest -q tests/test_research_lineage_guard.py
