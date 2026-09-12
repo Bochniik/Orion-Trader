@@ -157,23 +157,72 @@
 }
 
 .core-command-search {
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.018);
+  position: relative;
+  min-height: 38px;
+  border-color: rgba(255, 255, 255, 0.085);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.008)),
+    rgba(9, 11, 15, 0.72);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.025),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.core-command-search::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 122, 26, 0.62), transparent);
+  transition: opacity var(--orion-motion-fast, 160ms) ease;
+}
+
+.core-command-search svg {
+  color: rgba(255, 148, 71, 0.9);
+  filter: drop-shadow(0 0 7px rgba(255, 122, 26, 0.16));
+}
+
+.core-command-search kbd {
+  border-color: rgba(255, 255, 255, 0.075);
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
 }
 
 .core-command-search:hover {
   border-color: rgba(255, 122, 26, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 122, 26, 0.042), rgba(255, 122, 26, 0.012)),
+    rgba(9, 11, 15, 0.78);
   box-shadow:
     inset 0 1px rgba(255, 255, 255, 0.025),
     0 0 0 3px rgba(255, 122, 26, 0.025),
-    0 10px 28px rgba(0, 0, 0, 0.13);
+    0 10px 28px rgba(0, 0, 0, 0.13),
+    0 0 24px rgba(255, 122, 26, 0.035);
+}
+
+.core-command-search:hover::after {
+  opacity: 1;
+}
+
+.core-topbar-actions {
+  gap: 7px;
 }
 
 .core-market-status {
-  padding: 7px 10px;
-  margin-right: 4px;
+  min-height: 34px;
+  padding: 7px 11px;
+  margin-right: 3px;
   border: 1px solid rgba(97, 216, 155, 0.09);
   border-radius: 999px;
-  background: rgba(97, 216, 155, 0.025);
+  background:
+    linear-gradient(180deg, rgba(97, 216, 155, 0.035), rgba(97, 216, 155, 0.012)),
+    rgba(255, 255, 255, 0.01);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.02);
+  letter-spacing: 0.01em;
 }
 
 .core-market-status > span {
@@ -181,15 +230,22 @@
 }
 
 .core-topbar-icon {
-  border-color: rgba(255, 255, 255, 0.035);
-  background: rgba(255, 255, 255, 0.014);
+  width: 34px;
+  height: 34px;
+  border-color: rgba(255, 255, 255, 0.045);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent),
+    rgba(255, 255, 255, 0.012);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.018);
 }
 
 .core-topbar-icon:hover {
   color: #f0f2f4;
   border-color: rgba(255, 122, 26, 0.18);
   background: rgba(255, 122, 26, 0.045);
-  box-shadow: 0 0 18px rgba(255, 122, 26, 0.06);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.02),
+    0 0 18px rgba(255, 122, 26, 0.06);
 }
 
 .core-main {
@@ -224,8 +280,22 @@
     background: radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.055), transparent 22rem);
   }
 
+  .core-command-search {
+    min-height: 36px;
+  }
+
+  .core-command-search kbd {
+    display: none;
+  }
+
   .core-market-status {
+    min-height: 32px;
     padding: 6px 8px;
+  }
+
+  .core-topbar-icon {
+    width: 32px;
+    height: 32px;
   }
 }
 
@@ -236,7 +306,8 @@
 
   .core-brand-mark,
   .core-brand::after,
-  .core-nav button::after {
+  .core-nav button::after,
+  .core-command-search::after {
     transition: none;
   }
 }
