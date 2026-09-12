@@ -1,11 +1,39 @@
 import { useState } from "react";
 import { AlertTriangle, ExternalLink, Newspaper, RefreshCw } from "lucide-react";
 
-function formatNewsDate(timestamp) {
-  if (!timestamp) return "Recently";
+function newsDate(timestamp) {
+  if (!timestamp) return null;
 
-  const date = new Date(timestamp * 1000);
+  const numericTimestamp = Number(timestamp);
+  const date = Number.isFinite(numericTimestamp)
+    ? new Date(numericTimestamp < 1e12 ? numericTimestamp * 1000 : numericTimestamp)
+    : new Date(timestamp);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatNewsDate(timestamp) {
+  const date = newsDate(timestamp);
+  if (!date) return "Recently";
+
+  const diffMs = date.getTime() - Date.now();
+  const absMs = Math.abs(diffMs);
+  const formatter = new Intl.RelativeTimeFormat([], { numeric: "auto" });
+
+  if (absMs < 60_000) return "Just now";
+  if (absMs < 3_600_000) return formatter.format(Math.round(diffMs / 60_000), "minute");
+  if (absMs < 86_400_000) return formatter.format(Math.round(diffMs / 3_600_000), "hour");
+  if (absMs < 604_800_000) return formatter.format(Math.round(diffMs / 86_400_000), "day");
+
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function formatExactNewsDate(timestamp) {
+  const date = newsDate(timestamp);
+  if (!date) return "Publication time unavailable";
+
   return date.toLocaleString([], {
+    year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -133,7 +161,9 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                     <span className="news-kind">{newsLabel(item)}</span>
                     <span>{item.publisher || "Unknown source"}</span>
                     <span aria-hidden="true">•</span>
-                    <time>{formatNewsDate(item.published_at)}</time>
+                    <time dateTime={newsDate(item.published_at)?.toISOString()} title={formatExactNewsDate(item.published_at)}>
+                      {formatNewsDate(item.published_at)}
+                    </time>
                   </div>
                   <h3>{item.title}</h3>
                 </div>
