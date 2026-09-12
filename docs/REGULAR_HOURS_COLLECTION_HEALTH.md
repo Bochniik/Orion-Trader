@@ -16,6 +16,7 @@ The report exposes:
 
 - completed vs skipped artifact counts,
 - standard 10-symbol universe vs custom-universe artifacts,
+- legacy V1 artifact counts excluded from V2 provenance coverage,
 - distinct NYSE sessions represented,
 - requested / available symbol counts,
 - provenance-valid symbol count and fraction,
@@ -39,9 +40,11 @@ A regression test mutates forecast probabilities and directions while holding th
 
 ## Fail-closed validation
 
-Completed artifacts are accepted only when they remain research-only, order submission is disabled, the runtime was not modified, the regular-hours session gate was open, and the observation belongs to a deterministic NYSE trading day.
+Completed V2 artifacts are accepted only when they remain research-only, order submission is disabled, the runtime was not modified, the regular-hours session gate was open, and the observation belongs to a deterministic NYSE trading day.
 
 Operational counts are recomputed from symbol rows rather than trusted blindly. If the artifact-reported symbol, availability, provenance, retry, attempt, or failure counts disagree with the recomputed projection, the audit raises an error instead of publishing a misleading health report.
+
+Older `regular-hours-v3-1-cloud-shadow-v1` artifacts predate the strict timestamp-provenance contract. They remain visible as `legacy_excluded_artifact_count` but are never mixed into V2 provenance coverage. Unknown future or malformed runner versions still fail closed.
 
 Skipped artifacts are counted separately and do not reduce market-time provenance coverage. Custom-universe completed runs are visible but excluded from the preregistered 10-symbol aggregate so manual experiments cannot contaminate standard collection health.
 
@@ -55,4 +58,4 @@ This workflow is intentionally separate from the market-time prediction workflow
 
 Do not change V3.1 probabilities, calibration, thresholds, or risk behavior based on this report.
 
-Use several real sessions of `provenance_valid_fraction`, `alignment_retry_fraction`, failure frequency, and per-session stability to decide whether the next engineering step should be a shared immutable point-in-time market snapshot for V1 and V2. The evidence should precede that larger refactor rather than assuming retries are either sufficient or inadequate.
+Use several real V2 sessions of `provenance_valid_fraction`, `alignment_retry_fraction`, failure frequency, and per-session stability to decide whether the next engineering step should be a shared immutable point-in-time market snapshot for V1 and V2. The evidence should precede that larger refactor rather than assuming retries are either sufficient or inadequate.
