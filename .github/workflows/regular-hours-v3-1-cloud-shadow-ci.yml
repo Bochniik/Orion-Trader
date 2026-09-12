@@ -8,6 +8,7 @@ on:
       - "backend/tests/test_regular_hours_v3_1_cloud_shadow.py"
       - "backend/tests/test_regular_hours_schedule_delivery_audit.py"
       - "backend/tests/test_regular_hours_timestamp_provenance.py"
+      - "backend/tests/test_regular_hours_evidence_retention.py"
       - ".github/workflows/regular-hours-v3-1-cloud-shadow*.yml"
       - "backend/app/services/intraday_probability_*"
       - "backend/requirements.txt"
@@ -42,4 +43,5 @@ jobs:
           python -m pytest -q \
             backend/tests/test_regular_hours_v3_1_cloud_shadow.py \
             backend/tests/test_regular_hours_schedule_delivery_audit.py \
-            backend/tests/test_regular_hours_timestamp_provenance.py
+            backend/tests/test_regular_hours_timestamp_provenance.py \
+            backend/tests/test_regular_hours_evidence_retention.py
