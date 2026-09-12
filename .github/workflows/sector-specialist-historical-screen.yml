@@ -8,7 +8,9 @@ on:
       - "backend/evals/specialist_universe_v1.json"
       - "backend/evals/benchmark_intraday_challenger_v4.py"
       - "backend/app/services/intraday_probability_backtest_v3.py"
+      - "scripts/run_sector_specialist_historical_evidence.py"
       - "backend/tests/test_benchmark_sector_specialists.py"
+      - "backend/tests/test_run_sector_specialist_historical_evidence.py"
       - ".github/workflows/sector-specialist-historical-screen.yml"
   workflow_dispatch:
 
@@ -35,15 +37,20 @@ jobs:
           python -m py_compile backend/evals/benchmark_sector_specialists.py
           python -m py_compile backend/evals/specialist_engine_tournament.py
           python -m py_compile backend/evals/benchmark_intraday_challenger_v4.py
+          python -m py_compile scripts/run_sector_specialist_historical_evidence.py
       - name: Run focused regressions
         env:
           PYTHONPATH: backend
-        run: python -m pytest -q backend/tests/test_benchmark_sector_specialists.py backend/tests/test_specialist_engine_tournament.py
-      - name: Run 60d real-data historical screen
+        run: |
+          python -m pytest -q \
+            backend/tests/test_benchmark_sector_specialists.py \
+            backend/tests/test_specialist_engine_tournament.py \
+            backend/tests/test_run_sector_specialist_historical_evidence.py
+      - name: Run 60d real-data historical screen with provenance
         env:
           PYTHONPATH: backend
         run: |
-          python -m evals.benchmark_sector_specialists \
+          python scripts/run_sector_specialist_historical_evidence.py \
             AAPL MSFT NVDA AMD AMZN TSLA META GOOGL \
             --period 60d \
             --interval 5m \
@@ -51,12 +58,12 @@ jobs:
             --min-observations 80 \
             --min-sessions 8 \
             --bootstrap-samples 2000 \
-            --output artifacts/sector-specialist-historical-screen.json
+            --output artifacts/sector-specialist-historical-evidence.json
       - name: Upload screening artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sector-specialist-historical-screen-${{ github.run_id }}
-          path: artifacts/sector-specialist-historical-screen.json
+          name: sector-specialist-historical-evidence-${{ github.run_id }}
+          path: artifacts/sector-specialist-historical-evidence.json
           if-no-files-found: error
           retention-days: 30
