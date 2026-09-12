@@ -51,6 +51,28 @@
 .market-explorer-tabs button,
 .market-explorer-list-picker button {
   white-space: nowrap;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.market-explorer-tabs button:hover,
+.market-explorer-list-picker button:hover {
+  border-color: rgba(255, 122, 26, 0.24);
+  color: #dce2e8;
+  background: rgba(255, 122, 26, 0.045);
+}
+
+.market-explorer-tabs button.active,
+.market-explorer-list-picker button.active {
+  border-color: rgba(255, 122, 26, 0.34);
+  color: #f5f7f9;
+  background: linear-gradient(180deg, rgba(255, 122, 26, 0.11), rgba(255, 122, 26, 0.055));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 182, 117, 0.08),
+    0 0 18px rgba(255, 122, 26, 0.055);
 }
 
 .market-v3-layout {
@@ -69,6 +91,14 @@
 
 .market-v3-group-nav button {
   min-height: 35px;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.market-v3-group-nav button:hover {
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.052), rgba(255, 255, 255, 0.01));
 }
 
 .market-v3-group-nav button:focus-visible,
@@ -98,6 +128,14 @@
 
 .market-v3-controls select {
   font-variant-numeric: tabular-nums;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.market-v3-controls select:hover {
+  border-color: rgba(255, 122, 26, 0.22);
+  background-color: rgba(255, 255, 255, 0.028);
 }
 
 .market-v3-table-wrap {
@@ -112,6 +150,14 @@
   z-index: 2;
   backdrop-filter: blur(12px);
   background: rgba(11, 14, 19, 0.94);
+}
+
+.market-v3-table-head > span {
+  color: #68727c;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
 }
 
 /* Market Explorer's ranked-list payload does not expose exchange/venue metadata.
@@ -144,10 +190,19 @@
 
 .market-v3-row {
   min-height: 48px;
+  border-bottom-color: rgba(255, 255, 255, 0.042);
   font-variant-numeric: tabular-nums;
+  transition:
+    background 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
-.market-v3-row:hover {
+.market-v3-row:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.006);
+}
+
+.market-v3-row:hover,
+.market-v3-row:focus-visible {
   background:
     linear-gradient(90deg, rgba(255, 122, 26, 0.052), rgba(255, 255, 255, 0.012) 58%, transparent);
   box-shadow: inset 2px 0 0 rgba(255, 122, 26, 0.58);
@@ -161,6 +216,17 @@
 
 .market-v3-company-copy {
   min-width: 0;
+}
+
+.market-v3-company-copy > strong,
+.market-v3-company-copy > span:first-child {
+  color: #e5e9ed;
+  font-weight: 620;
+}
+
+.market-v3-company-copy > small,
+.market-v3-company-copy > span:not(:first-child) {
+  color: #69737d;
 }
 
 .market-v3-symbol,
@@ -177,7 +243,13 @@
 }
 
 .market-v3-price {
+  color: #e7ebef;
+  font-weight: 620;
   letter-spacing: -0.01em;
+}
+
+.market-v3-exchange {
+  color: #66707a;
 }
 
 .market-v3-change.positive,
