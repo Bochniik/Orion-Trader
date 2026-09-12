@@ -19,7 +19,6 @@ from run_premarket_v5_validation import (
     verify_dataset_lineage,
     verify_preflight_binding,
     write_report_manifest,
-    write_research_gate_decision,
 )
 
 
@@ -210,7 +209,7 @@ def test_preflight_binding_rejects_failed_or_unauthorized_artifact(tmp_path):
         verify_preflight_binding(preflight_path, dataset, lineage)
 
 
-def test_report_manifest_chains_data_code_report_and_gate_hashes(tmp_path):
+def test_report_manifest_chains_data_code_and_report_before_gate(tmp_path):
     dataset = tmp_path / "dataset.csv"
     dataset.write_text("ticker,value\nAAPL,1\n", encoding="utf-8")
     _write_manifest(dataset)
@@ -220,7 +219,6 @@ def test_report_manifest_chains_data_code_report_and_gate_hashes(tmp_path):
 
     report = tmp_path / "report.json"
     report.write_text(json.dumps(_passing_validation_report()), encoding="utf-8")
-    gate_path = write_research_gate_decision(report)
     fake_sources = {relative: (str(index) * 64)[:64] for index, relative in enumerate(MATERIAL_VALIDATION_SOURCES, start=1)}
 
     manifest_path = write_report_manifest(
@@ -229,7 +227,6 @@ def test_report_manifest_chains_data_code_report_and_gate_hashes(tmp_path):
         lineage=lineage,
         preflight=preflight,
         targets=list(SUPPORTED_TARGETS),
-        gate_path=gate_path,
         sources=fake_sources,
         repository_git_sha="a" * 40,
     )
@@ -238,9 +235,8 @@ def test_report_manifest_chains_data_code_report_and_gate_hashes(tmp_path):
     assert payload["dataset_csv_sha256"] == file_sha256(dataset)
     assert payload["preflight_sha256"] == file_sha256(preflight_path)
     assert payload["validation_report_sha256"] == file_sha256(report)
-    assert payload["research_gate_sha256"] == file_sha256(gate_path)
-    assert payload["research_gate_decision"] == "eligible_for_research_promotion_review"
-    assert payload["research_gate_eligible"] is True
+    assert "research_gate_sha256" not in payload
+    assert "research_gate_decision" not in payload
     assert payload["targets"] == list(SUPPORTED_TARGETS)
     assert payload["supported_targets"] == list(SUPPORTED_TARGETS)
     assert payload["target_contract"] == "shared_PREMARKET_TARGETS_exact"
@@ -250,15 +246,3 @@ def test_report_manifest_chains_data_code_report_and_gate_hashes(tmp_path):
     serialized = manifest_path.read_text(encoding="utf-8").lower()
     assert "api_key" not in serialized
     assert "secret" not in serialized
-
-
-def test_gate_decision_rejects_incomplete_validation_report(tmp_path):
-    report = tmp_path / "report.json"
-    report.write_text('{"targets": {}}\n', encoding="utf-8")
-
-    gate_path = write_research_gate_decision(report)
-    payload = json.loads(gate_path.read_text(encoding="utf-8"))
-
-    assert payload["eligible"] is False
-    assert payload["decision"] == "reject_research_promotion"
-    assert any("required_target_missing" in reason for reason in payload["reasons"])
