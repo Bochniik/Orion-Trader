@@ -57,7 +57,15 @@ export default function Watchlist({
         );
 
         if (isMounted) {
-          setQuotes(Object.fromEntries(results));
+          setQuotes((previousQuotes) => Object.fromEntries(
+            results.map(([symbol, quote]) => {
+              const previousQuote = previousQuotes[symbol];
+              if (quote?.error && previousQuote && !previousQuote.error) {
+                return [symbol, { ...previousQuote, stale: true }];
+              }
+              return [symbol, quote?.error ? quote : { ...quote, stale: false }];
+            })
+          ));
         }
       } catch (err) {
         if (isMounted) setError(err.message || "Could not refresh watchlist");
@@ -75,6 +83,8 @@ export default function Watchlist({
     };
   }, [watchlist]);
 
+  const hasStaleQuotes = watchlist.some((symbol) => quotes[symbol]?.stale);
+
   return (
     <section className="card watchlist-card">
       <div className="watchlist-header">
@@ -85,7 +95,7 @@ export default function Watchlist({
 
         <div className="watchlist-refresh" aria-live="polite">
           <RefreshCw size={15} className={loading ? "spin" : ""} />
-          <span>{loading ? "Refreshing" : "30s refresh"}</span>
+          <span>{loading ? "Refreshing" : hasStaleQuotes ? "Using last quote" : "30s refresh"}</span>
         </div>
       </div>
 
@@ -112,12 +122,17 @@ export default function Watchlist({
           {watchlist.map((symbol) => {
             const quote = quotes[symbol];
             const unavailable = Boolean(quote?.error);
+            const stale = Boolean(quote?.stale);
             const changePercent = quote?.change_percent;
             const isUp = Number(changePercent) >= 0;
             const TrendIcon = isUp ? TrendingUp : TrendingDown;
 
             return (
-              <div className={`watchlist-row${unavailable ? " is-unavailable" : ""}`} key={symbol}>
+              <div
+                className={`watchlist-row${unavailable ? " is-unavailable" : ""}`}
+                key={symbol}
+                title={stale ? `${symbol}: showing the last successful quote while live refresh is temporarily unavailable` : undefined}
+              >
                 <button className="watch-symbol" onClick={() => onSelectStock(symbol)}>
                   {symbol}
                 </button>
