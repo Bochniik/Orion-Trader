@@ -8,6 +8,7 @@ from scripts.audit_regular_hours_forward_completeness import (
     MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION,
     build_completeness_report,
 )
+from scripts.nyse_session_calendar import is_nyse_trading_day
 
 
 def _artifact(*, as_of_et: str, provenance_gap: str | None = None, failed_symbol: str | None = None) -> dict:
@@ -57,7 +58,7 @@ def _complete_sessions(count: int) -> list[dict]:
     payloads = []
     session = date(2026, 7, 1)
     while len(payloads) < count:
-        if session.weekday() < 5:
+        if is_nyse_trading_day(session):
             payloads.append(_artifact(as_of_et=f"{session.isoformat()}T10:05:00-04:00"))
         session += timedelta(days=1)
     return payloads
