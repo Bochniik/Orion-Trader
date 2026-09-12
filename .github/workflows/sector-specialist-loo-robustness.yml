@@ -1,0 +1,66 @@
+name: Sector specialist LOO robustness
+
+on:
+  pull_request:
+    paths:
+      - "backend/evals/audit_sector_specialist_leave_one_out.py"
+      - "backend/evals/benchmark_sector_specialists.py"
+      - "backend/evals/specialist_engine_tournament.py"
+      - "scripts/run_sector_specialist_loo_evidence.py"
+      - "scripts/run_sector_specialist_historical_evidence.py"
+      - "backend/tests/test_audit_sector_specialist_leave_one_out.py"
+      - ".github/workflows/sector-specialist-loo-robustness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sector-specialist-loo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused dependencies
+        run: python -m pip install --disable-pip-version-check numpy==2.5.1 pandas==3.0.3 pytest yfinance==1.5.1
+      - name: Compile audit path
+        run: |
+          python -m py_compile backend/evals/audit_sector_specialist_leave_one_out.py
+          python -m py_compile backend/evals/benchmark_sector_specialists.py
+          python -m py_compile scripts/run_sector_specialist_loo_evidence.py
+      - name: Run focused regressions
+        env:
+          PYTHONPATH: backend
+        run: |
+          python -m pytest -q \
+            backend/tests/test_audit_sector_specialist_leave_one_out.py \
+            backend/tests/test_benchmark_sector_specialists.py \
+            backend/tests/test_specialist_engine_tournament.py
+      - name: Run content-addressed 60d leave-one-out audit
+        env:
+          PYTHONPATH: backend
+        run: |
+          python scripts/run_sector_specialist_loo_evidence.py \
+            AAPL MSFT NVDA AMD AMZN TSLA META GOOGL \
+            --period 60d \
+            --interval 5m \
+            --calibration-fraction 0.60 \
+            --min-observations 80 \
+            --min-sessions 8 \
+            --bootstrap-samples 2000 \
+            --output artifacts/sector-specialist-loo-evidence.json
+      - name: Upload audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sector-specialist-loo-evidence-${{ github.run_id }}
+          path: artifacts/sector-specialist-loo-evidence.json
+          if-no-files-found: error
+          retention-days: 30
