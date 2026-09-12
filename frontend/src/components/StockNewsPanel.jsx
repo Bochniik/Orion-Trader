@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, ExternalLink, Newspaper, RefreshCw } from "lucide-react";
 
 function newsDate(timestamp) {
@@ -61,6 +61,10 @@ function newsLabel(item) {
 function NewsMedia({ image, ticker }) {
   const [state, setState] = useState(image ? "loading" : "fallback");
   const fallbackLabel = String(ticker || "OR").slice(0, 2);
+
+  useEffect(() => {
+    setState(image ? "loading" : "fallback");
+  }, [image]);
 
   return (
     <div className={`news-media news-media--${state}`} aria-hidden="true">
