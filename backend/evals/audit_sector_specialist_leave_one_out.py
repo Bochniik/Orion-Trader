@@ -9,10 +9,11 @@ from app.services.intraday_probability_backtest_v3 import HORIZONS, walk_forward
 from evals.benchmark_sector_specialists import (
     DEFAULT_SYMBOLS,
     DEFAULT_UNIVERSE,
+    _screen_group,
     build_horizon_records,
     load_taxonomy,
-    screen_records,
 )
+from evals.specialist_engine_tournament import generate_walk_forward_predictions
 
 CONTRACT = "orion-sector-specialist-loo-robustness-v1"
 DEFAULT_TARGET_SECTOR = "Information Technology"
@@ -25,18 +26,31 @@ SEMANTICS = (
 )
 
 
-def _sector_row(report: Mapping[str, Any], horizon: str, sector: str) -> dict[str, Any]:
-    try:
-        row = report["horizons"][horizon]["sectors"][sector]
-    except KeyError as exc:
-        raise ValueError(f"missing sector result for {sector} at {horizon}") from exc
-    return dict(row)
-
-
 def _point_positive(row: Mapping[str, Any]) -> bool:
     brier = row.get("brier_improvement")
     logloss = row.get("log_loss_improvement")
     return bool(brier is not None and logloss is not None and float(brier) > 0 and float(logloss) > 0)
+
+
+def _screen_target(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    target_sector: str,
+    min_observations: int,
+    min_sessions: int,
+    bootstrap_samples: int,
+    seed: int,
+) -> dict[str, Any]:
+    generated = generate_walk_forward_predictions(rows)
+    return _screen_group(
+        generated,
+        group_field="sector",
+        group_value=target_sector,
+        min_observations=min_observations,
+        min_sessions=min_sessions,
+        bootstrap_samples=bootstrap_samples,
+        seed=seed,
+    )
 
 
 def audit_leave_one_out(
@@ -63,46 +77,44 @@ def audit_leave_one_out(
     if len(sector_symbols) < 3:
         raise ValueError("leave-one-out audit requires at least three target-sector symbols")
 
-    baseline = screen_records(
-        records_by_horizon,
-        min_observations=min_observations,
-        min_sessions=min_sessions,
-        bootstrap_samples=bootstrap_samples,
-    )
-    omissions: dict[str, Any] = {}
-    for symbol in sector_symbols:
-        reduced = {
-            horizon: [dict(row) for row in (records_by_horizon.get(horizon) or []) if str(row.get("symbol")) != symbol]
-            for horizon in HORIZONS
-        }
-        screened = screen_records(
-            reduced,
+    horizon_summary: dict[str, Any] = {}
+    any_sensitive = False
+    for h_index, horizon in enumerate(focus_horizons):
+        rows = [dict(row) for row in (records_by_horizon.get(horizon) or [])]
+        if not rows:
+            raise ValueError(f"missing records for focus horizon {horizon}")
+        baseline = _screen_target(
+            rows,
+            target_sector=target_sector,
             min_observations=min_observations,
             min_sessions=min_sessions,
             bootstrap_samples=bootstrap_samples,
+            seed=20260912 + 100 * h_index,
         )
-        omissions[symbol] = {
-            horizon: _sector_row(screened, horizon, target_sector)
-            for horizon in focus_horizons
-        }
+        omissions: dict[str, Any] = {}
+        for s_index, symbol in enumerate(sector_symbols):
+            reduced = [row for row in rows if str(row.get("symbol")) != symbol]
+            omissions[symbol] = _screen_target(
+                reduced,
+                target_sector=target_sector,
+                min_observations=min_observations,
+                min_sessions=min_sessions,
+                bootstrap_samples=bootstrap_samples,
+                seed=20261000 + 100 * h_index + s_index,
+            )
 
-    horizon_summary: dict[str, Any] = {}
-    any_sensitive = False
-    for horizon in focus_horizons:
-        base = _sector_row(baseline, horizon, target_sector)
-        rows = {symbol: omissions[symbol][horizon] for symbol in sector_symbols}
-        signs = {symbol: _point_positive(row) for symbol, row in rows.items()}
+        signs = {symbol: _point_positive(row) for symbol, row in omissions.items()}
         positive_count = sum(signs.values())
-        baseline_positive = _point_positive(base)
-        constituent_sensitive = bool(baseline_positive and positive_count != len(rows))
+        baseline_positive = _point_positive(baseline)
+        constituent_sensitive = bool(baseline_positive and positive_count != len(omissions))
         any_sensitive = any_sensitive or constituent_sensitive
         horizon_summary[horizon] = {
-            "baseline": base,
-            "omissions": rows,
+            "baseline": baseline,
+            "omissions": omissions,
             "baseline_point_positive": baseline_positive,
             "positive_omissions": positive_count,
-            "omission_count": len(rows),
-            "all_omissions_point_positive": positive_count == len(rows),
+            "omission_count": len(omissions),
+            "all_omissions_point_positive": positive_count == len(omissions),
             "constituent_sensitive": constituent_sensitive,
         }
 
