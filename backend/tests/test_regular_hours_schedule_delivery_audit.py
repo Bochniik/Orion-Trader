@@ -26,9 +26,9 @@ def test_on_time_scheduled_delivery_is_not_missed():
 
 def test_severely_delayed_delivery_flags_lost_regular_hours_slot():
     observed = datetime(2026, 9, 11, 20, 45, tzinfo=timezone.utc)  # 16:45 EDT
-    report = module.build_audit(observed_at=observed, scheduled_cron="35 19 * * 1-5")
-    assert report["expected_slot_utc"] == "2026-09-11T19:35:00+00:00"
-    assert report["delivery_delay_minutes"] == 70.0
+    report = module.build_audit(observed_at=observed, scheduled_cron="25 19 * * 1-5")
+    assert report["expected_slot_utc"] == "2026-09-11T19:25:00+00:00"
+    assert report["delivery_delay_minutes"] == 80.0
     assert report["delivery_class"] == "severely_delayed"
     assert report["expected_slot_in_regular_window"] is True
     assert report["observed_in_regular_window"] is False
