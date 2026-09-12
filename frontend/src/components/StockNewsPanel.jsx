@@ -161,12 +161,13 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
 
       {hasItems && (
         <div className="news-list news-list--terminal">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const image = newsImage(item);
             const freshness = newsFreshness(item.published_at);
+            const isLead = index === 0;
             return (
               <a
-                className="news-item news-item--terminal"
+                className={`news-item news-item--terminal${isLead ? " news-item--lead" : ""}`}
                 key={`${item.title}-${item.link}`}
                 href={item.link}
                 target="_blank"
@@ -175,6 +176,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                 <NewsMedia image={image} ticker={ticker} />
 
                 <div className="news-copy">
+                  {isLead && <span className="news-lead-label">Latest headline</span>}
                   <div className="news-meta-row">
                     {freshness && <span className="news-kind">{freshness}</span>}
                     <strong>{item.publisher || "Unknown source"}</strong>
