@@ -7,11 +7,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from evaluate_premarket_v5_research_gate import evaluate_report
 from premarket_directional_v4_common import PREMARKET_TARGETS
 
 
-RUNNER_VERSION = "premarket-v5-validation-lineage-4"
+RUNNER_VERSION = "premarket-v5-validation-lineage-5"
 PREFLIGHT_CONTRACT = "orion-premarket-v5-decision-preflight-v2"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_TARGETS = tuple(PREMARKET_TARGETS)
@@ -172,19 +171,6 @@ def verify_preflight_binding(preflight_path: Path, dataset: Path, lineage: dict)
     }
 
 
-def write_research_gate_decision(report_path: Path) -> Path:
-    if not report_path.exists():
-        raise FileNotFoundError(report_path)
-    try:
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ValueError(f"Invalid validation report: {report_path}") from exc
-    decision = evaluate_report(report, required_targets=SUPPORTED_TARGETS)
-    gate_path = report_path.with_suffix(report_path.suffix + ".gate.json")
-    gate_path.write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    return gate_path
-
-
 def execution_identity(*, targets: list[str], sources: dict[str, str]) -> dict:
     material = {
         "runner_version": RUNNER_VERSION,
@@ -205,14 +191,11 @@ def write_report_manifest(
     lineage: dict,
     preflight: dict,
     targets: list[str],
-    gate_path: Path | None = None,
     sources: dict[str, str] | None = None,
     repository_git_sha: str | None = None,
 ) -> Path:
     if not report_path.exists():
         raise FileNotFoundError(report_path)
-    if gate_path is not None and not gate_path.exists():
-        raise FileNotFoundError(gate_path)
 
     normalized_targets = normalize_decision_targets(targets)
     material_sources = sources if sources is not None else source_fingerprints()
@@ -233,16 +216,6 @@ def write_report_manifest(
         "execution_identity_sha256": identity["execution_identity_sha256"],
         "validation_report_sha256": file_sha256(report_path),
     }
-    if gate_path is not None:
-        gate_payload = json.loads(gate_path.read_text(encoding="utf-8"))
-        payload.update(
-            {
-                "research_gate_path": str(gate_path),
-                "research_gate_sha256": file_sha256(gate_path),
-                "research_gate_decision": gate_payload.get("decision"),
-                "research_gate_eligible": bool(gate_payload.get("eligible")),
-            }
-        )
     manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return manifest_path
 
@@ -264,14 +237,12 @@ def run_validation(dataset: Path, output: Path, targets: list[str], *, preflight
         *normalized_targets,
     ]
     subprocess.run(command, check=True)
-    gate_path = write_research_gate_decision(output)
     return write_report_manifest(
         output,
         dataset=dataset,
         lineage=lineage,
         preflight=preflight,
         targets=normalized_targets,
-        gate_path=gate_path,
         sources=sources,
         repository_git_sha=repository_git_sha,
     )
@@ -282,7 +253,8 @@ def main() -> None:
         description=(
             "Run Orion Premarket Directional Engine v5 validation only after a PASS decision preflight "
             "that is cryptographically bound to the exact dataset, shared target contract and material "
-            "validation source code being evaluated."
+            "validation source code being evaluated. The research gate is a separate downstream step "
+            "that must verify the completed validation manifest."
         )
     )
     parser.add_argument("dataset", type=Path)

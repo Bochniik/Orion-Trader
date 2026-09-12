@@ -31,7 +31,7 @@ def test_parse_symbols_normalizes_and_deduplicates():
     assert parse_symbols(["aapl, msft", "AAPL", " nvda "]) == ["AAPL", "MSFT", "NVDA"]
 
 
-def test_build_commands_runs_preflight_before_bound_validation(tmp_path):
+def test_build_commands_runs_gate_only_after_bound_validation_manifest(tmp_path):
     raw = tmp_path / "raw.csv"
     dataset = tmp_path / "dataset.csv"
     readiness = tmp_path / "readiness.json"
@@ -52,18 +52,26 @@ def test_build_commands_runs_preflight_before_bound_validation(tmp_path):
         targets=list(DEFAULT_TARGETS),
     )
 
-    assert len(commands) == 5
+    assert len(commands) == 6
     assert commands[0][1].endswith("collect_alpaca_extended_history.py")
     assert commands[1][1].endswith("build_premarket_training_dataset_v2.py")
     assert commands[2][1].endswith("audit_premarket_dataset_readiness.py")
     assert commands[3][1].endswith("run_premarket_v5_decision_preflight.py")
     assert commands[4][1].endswith("run_premarket_v5_validation.py")
+    assert commands[5][1].endswith("evaluate_premarket_v5_research_gate.py")
     assert commands[3].index(str(dataset)) > 0
     assert commands[4][commands[4].index("--preflight") + 1] == str(preflight)
     assert commands[4][-len(DEFAULT_TARGETS):] == list(DEFAULT_TARGETS)
+    assert commands[5][2] == str(validation)
+    assert commands[5][commands[5].index("--manifest") + 1] == str(
+        validation.with_suffix(validation.suffix + ".manifest.json")
+    )
+    assert commands[5][commands[5].index("--output") + 1] == str(
+        validation.with_suffix(validation.suffix + ".gate.json")
+    )
 
 
-def test_skip_collect_still_builds_audits_preflights_and_validates(tmp_path):
+def test_skip_collect_still_builds_audits_preflights_validates_and_gates(tmp_path):
     commands = build_commands(
         symbols=["AAPL"],
         start="2026-01-01",
@@ -77,10 +85,11 @@ def test_skip_collect_still_builds_audits_preflights_and_validates(tmp_path):
         skip_collect=True,
         targets=list(DEFAULT_TARGETS),
     )
-    assert len(commands) == 4
+    assert len(commands) == 5
     assert commands[0][1].endswith("build_premarket_training_dataset_v2.py")
     assert commands[2][1].endswith("run_premarket_v5_decision_preflight.py")
     assert commands[3][1].endswith("run_premarket_v5_validation.py")
+    assert commands[4][1].endswith("evaluate_premarket_v5_research_gate.py")
 
 
 def test_validate_request_requires_exact_complete_target_set():
@@ -151,7 +160,7 @@ def test_pipeline_manifest_hashes_preflight_and_existing_artifacts_without_secre
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["status"] == "COMPLETED"
-    assert payload["pipeline_version"] == "premarket-v5-evidence-pipeline-v4"
+    assert payload["pipeline_version"] == "premarket-v5-evidence-pipeline-v5"
     assert payload["target_contract"] == "shared_PREMARKET_TARGETS_exact"
     assert payload["request"]["targets"] == list(PREMARKET_TARGETS)
     assert payload["artifacts"]["raw_csv"]["exists"] is True

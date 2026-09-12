@@ -13,7 +13,7 @@ import sys
 from premarket_directional_v4_common import PREMARKET_TARGETS
 
 
-PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v4"
+PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v5"
 DEFAULT_TARGETS = tuple(PREMARKET_TARGETS)
 REPRODUCIBILITY_FILES = [
     "scripts/collect_alpaca_extended_history.py",
@@ -117,6 +117,15 @@ def build_commands(
             str(validation),
             "--targets",
             *targets,
+        ],
+        [
+            sys.executable,
+            str(scripts / "evaluate_premarket_v5_research_gate.py"),
+            str(validation),
+            "--manifest",
+            str(validation.with_suffix(validation.suffix + ".manifest.json")),
+            "--output",
+            str(validation.with_suffix(validation.suffix + ".gate.json")),
         ],
     ])
     return commands
@@ -236,7 +245,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Run Orion's reproducible Premarket v5 evidence chain: collect -> build -> readiness -> "
-            "content-addressed decision preflight -> bound event-nested validation -> research gate."
+            "content-addressed decision preflight -> bound event-nested validation -> validation manifest -> "
+            "content-addressed research gate."
         )
     )
     parser.add_argument("--symbols", nargs="+", required=True)
