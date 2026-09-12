@@ -1,0 +1,27 @@
+{
+  "contract": "orion-research-lineage-registry-v1",
+  "datasets": [
+    {
+      "id": "sector-specialist-60d-5m-2026-09-11",
+      "role": "diagnostic",
+      "identity": "yfinance-60d-5m-through-2026-09-11:SPY+AAPL+MSFT+NVDA+AMD+AMZN+TSLA+META+GOOGL",
+      "inspected": true,
+      "notes": "Used by PR #63 historical sector screen and PR #65 leave-one-out diagnostic. Never valid as untouched decisive evidence for a child hypothesis inspired by those results."
+    }
+  ],
+  "candidates": [
+    {
+      "id": "sector-specialist-v1",
+      "hypothesis_frozen_at": "2026-09-12T00:00:00Z",
+      "inspired_by_datasets": [],
+      "decisive_datasets": []
+    },
+    {
+      "id": "future-industry-specialist-v1",
+      "hypothesis_frozen_at": "2026-09-12T13:00:00Z",
+      "inspired_by_datasets": ["sector-specialist-60d-5m-2026-09-11"],
+      "decisive_datasets": [],
+      "status": "preregistered_only_no_decisive_dataset_assigned"
+    }
+  ]
+}
