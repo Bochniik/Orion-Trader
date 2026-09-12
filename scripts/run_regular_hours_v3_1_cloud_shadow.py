@@ -125,6 +125,8 @@ def summarize_symbol(symbol: str, result: dict[str, Any]) -> dict[str, Any]:
         "symbol": symbol,
         "available": bool(result.get("available")),
         "as_of": result.get("as_of"),
+        "source_timestamp_aligned": bool(result.get("source_timestamp_aligned", False)),
+        "source_as_of": dict(result.get("source_as_of") or {}),
         "engine_version": result.get("engine_version"),
         "cross_horizon_consensus": result.get("cross_horizon_consensus"),
         "reliability_profile_source": result.get("reliability_profile_source"),

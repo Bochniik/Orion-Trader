@@ -52,6 +52,7 @@ def test_iter_forecasts_excludes_regular_hours_suppressed_probabilities():
                 "AAPL": {
                     "available": True,
                     "as_of": "2026-09-10T10:00:00-04:00",
+                    "source_timestamp_aligned": True,
                     "reliability_profile_source": "ticker_specific_walk_forward_60d_5m",
                     "profile_validated_for_symbol": True,
                     "horizons": {

@@ -149,7 +149,21 @@ def iter_forecasts(payload: dict[str, Any], source_file: str) -> Iterable[dict[s
         for symbol, symbol_row in symbols.items():
             if not isinstance(symbol_row, dict) or not symbol_row.get("available"):
                 continue
-            as_of = symbol_row.get("as_of") or payload.get("created_at_utc")
+
+            # Regular-hours evidence is scoreable only when the ensemble itself
+            # proves that V1 and V2 used the exact same source cutoff. Artifact
+            # creation time is operational metadata, not a market-data cutoff,
+            # and must never be substituted for a missing/unaligned source time.
+            if symbol_row.get("source_timestamp_aligned") is not True:
+                continue
+            as_of = symbol_row.get("as_of")
+            if not as_of:
+                continue
+            try:
+                parse_iso(str(as_of))
+            except (TypeError, ValueError):
+                continue
+
             for label, row in (symbol_row.get("horizons") or {}).items():
                 if not isinstance(row, dict) or not row.get("available") or row.get("suppressed"):
                     continue
@@ -337,6 +351,7 @@ def main() -> int:
             "base_price": "latest bar at-or-before prediction timestamp, maximum 5 minutes stale",
             "outcome_price": "first bar at-or-after fully elapsed horizon, maximum 5 minutes late",
             "suppressed_regular_hours_probabilities": "excluded",
+            "regular_hours_timestamp_provenance": "requires symbol-level as_of and source_timestamp_aligned=true; artifact created_at_utc is never a source-data cutoff fallback",
             "future_prediction_rows": "excluded until horizon fully elapses",
             "premarket_regimes_et": "early <07:00; mid 07:00-08:59; late 09:00-09:29",
         },
