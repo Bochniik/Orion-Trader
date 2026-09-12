@@ -1,0 +1,76 @@
+name: Regular-hours collection health
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Post-close in both EDT and EST; delayed delivery is harmless for this audit.
+    - cron: "20 22 * * 1-5"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: regular-hours-collection-health
+  cancel-in-progress: false
+
+jobs:
+  audit-collection-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Recover recent regular-hours prediction artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .regular-hours-health-inputs
+          CUTOFF_EPOCH=$(date -u -d '30 days ago' +%s)
+          RECOVERED=0
+
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at] | @tsv' > /tmp/orion-artifacts.tsv
+
+          while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT; do
+            if [[ "$ARTIFACT_NAME" != regular-hours-v3-1-shadow-* ]]; then
+              continue
+            fi
+            CREATED_EPOCH=$(date -u -d "$CREATED_AT" +%s)
+            if [ "$CREATED_EPOCH" -lt "$CUTOFF_EPOCH" ]; then
+              continue
+            fi
+
+            DEST=".regular-hours-health-inputs/${ARTIFACT_ID}"
+            mkdir -p "$DEST"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/regular-hours-${ARTIFACT_ID}.zip"
+            unzip -q -o "/tmp/regular-hours-${ARTIFACT_ID}.zip" -d "$DEST"
+            RECOVERED=$((RECOVERED + 1))
+          done < /tmp/orion-artifacts.tsv
+
+          echo "Recovered ${RECOVERED} regular-hours artifacts from the trailing 30 days."
+
+      - name: Build score-blind collection health report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backend/data/cloud_shadow/regular_hours_v3_1/health
+          mapfile -t PREDICTIONS < <(find .regular-hours-health-inputs -type f -name 'prediction-*.json' | sort)
+          python scripts/audit_regular_hours_collection_health.py \
+            "${PREDICTIONS[@]}" \
+            --output backend/data/cloud_shadow/regular_hours_v3_1/health/collection-health-${{ github.run_id }}.json
+
+      - name: Upload collection health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regular-hours-collection-health-${{ github.run_id }}
+          path: backend/data/cloud_shadow/regular_hours_v3_1/health/*.json
+          if-no-files-found: warn
+          retention-days: 90
