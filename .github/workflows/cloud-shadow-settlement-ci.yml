@@ -9,6 +9,7 @@ on:
       - "backend/tests/test_cloud_shadow_settlement_evaluator.py"
       - "backend/tests/test_cloud_shadow_evidence_ledger.py"
       - "backend/tests/test_cloud_shadow_outcome_collector.py"
+      - "backend/tests/test_regular_hours_timestamp_provenance.py"
       - ".github/workflows/cloud-shadow-settlement-ci.yml"
       - ".github/workflows/cloud-shadow-evidence-cycle.yml"
       - "ENGINE_RESEARCH_LOG.md"
@@ -42,3 +43,4 @@ jobs:
           python -m pytest -q backend/tests/test_cloud_shadow_settlement_evaluator.py
           python -m pytest -q backend/tests/test_cloud_shadow_evidence_ledger.py
           python -m pytest -q backend/tests/test_cloud_shadow_outcome_collector.py
+          python -m pytest -q backend/tests/test_regular_hours_timestamp_provenance.py
