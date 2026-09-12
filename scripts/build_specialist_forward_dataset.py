@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -13,6 +13,26 @@ OUTPUT_CONTRACT = "orion-specialist-forward-dataset-v1"
 UNIVERSE_CONTRACT = "orion-specialist-universe-v1"
 REGULAR_HOURS_ENGINE = "regular_hours_v3_1"
 SUPPORTED_HORIZONS = ("30m", "1h", "3h", "5h")
+IDENTITY_FIELDS = (
+    "engine",
+    "symbol",
+    "horizon",
+    "prediction_time_utc",
+    "target_time_utc",
+)
+MATERIAL_FIELDS = (
+    "probability_up",
+    "predicted_direction",
+    "actual_up",
+    "base_price",
+    "outcome_price",
+    "realized_return_pct",
+    "correct_direction",
+    "brier",
+    "log_loss",
+    "reliability_profile_source",
+    "profile_validated_for_symbol",
+)
 
 
 def _canonical_json(value: Any) -> str:
@@ -21,6 +41,32 @@ def _canonical_json(value: Any) -> str:
 
 def _sha256(value: Any) -> str:
     return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _record_identity(row: Mapping[str, Any]) -> dict[str, Any]:
+    identity = {field: row.get(field) for field in IDENTITY_FIELDS}
+    identity["lineage"] = row.get("lineage") or {}
+    return identity
+
+
+def _material_fingerprint(row: Mapping[str, Any]) -> str:
+    payload = {field: row.get(field) for field in MATERIAL_FIELDS}
+    payload["identity"] = _record_identity(row)
+    return _sha256(payload)
+
+
+def _records_fingerprint(records: Iterable[Mapping[str, Any]]) -> str:
+    ordered = sorted(
+        (
+            {
+                "record_id": str(row.get("record_id") or ""),
+                "material_sha256": str(row.get("material_sha256") or ""),
+            }
+            for row in records
+        ),
+        key=lambda row: row["record_id"],
+    )
+    return _sha256(ordered)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -48,34 +94,6 @@ def load_universe(path: Path) -> dict[str, Any]:
     return payload
 
 
-def validate_ledger(payload: Mapping[str, Any]) -> None:
-    if payload.get("contract") != LEDGER_CONTRACT:
-        raise ValueError(f"Unsupported evidence ledger contract: {payload.get('contract')}")
-    records = payload.get("records")
-    if not isinstance(records, list):
-        raise ValueError("Evidence ledger records must be a list")
-    integrity = payload.get("integrity")
-    if not isinstance(integrity, Mapping):
-        raise ValueError("Evidence ledger must contain integrity metadata")
-    if integrity.get("algorithm") != "sha256":
-        raise ValueError("Evidence ledger integrity algorithm must be sha256")
-    if int(integrity.get("record_count", -1)) != len(records):
-        raise ValueError("Evidence ledger record_count does not match records")
-
-
-def _record_material_identity(row: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        "record_id": row.get("record_id"),
-        "material_sha256": row.get("material_sha256"),
-        "engine": row.get("engine"),
-        "symbol": row.get("symbol"),
-        "horizon": row.get("horizon"),
-        "prediction_time_utc": row.get("prediction_time_utc"),
-        "target_time_utc": row.get("target_time_utc"),
-        "lineage": row.get("lineage") or {},
-    }
-
-
 def _validate_settled_record(row: Mapping[str, Any]) -> None:
     required = (
         "record_id",
@@ -98,6 +116,48 @@ def _validate_settled_record(row: Mapping[str, Any]) -> None:
     if actual not in (0, 1):
         raise ValueError(f"Invalid actual_up for {row.get('symbol')}: {actual}")
 
+    expected_record_id = _sha256(_record_identity(row))
+    if row.get("record_id") != expected_record_id:
+        raise ValueError(f"record_id integrity mismatch for {row.get('symbol')}@{row.get('prediction_time_utc')}")
+    expected_material = _material_fingerprint(row)
+    if row.get("material_sha256") != expected_material:
+        raise ValueError(f"material_sha256 integrity mismatch for record_id {expected_record_id}")
+
+
+def validate_ledger(payload: Mapping[str, Any]) -> None:
+    if payload.get("contract") != LEDGER_CONTRACT:
+        raise ValueError(f"Unsupported evidence ledger contract: {payload.get('contract')}")
+    records = payload.get("records")
+    if not isinstance(records, list):
+        raise ValueError("Evidence ledger records must be a list")
+    integrity = payload.get("integrity")
+    if not isinstance(integrity, Mapping):
+        raise ValueError("Evidence ledger must contain integrity metadata")
+    if integrity.get("algorithm") != "sha256":
+        raise ValueError("Evidence ledger integrity algorithm must be sha256")
+    if int(integrity.get("record_count", -1)) != len(records):
+        raise ValueError("Evidence ledger record_count does not match records")
+    for row in records:
+        if not isinstance(row, Mapping):
+            raise ValueError("Evidence ledger contains a non-object record")
+        _validate_settled_record(row)
+    actual_records_sha256 = _records_fingerprint(records)
+    if integrity.get("records_sha256") != actual_records_sha256:
+        raise ValueError("Evidence ledger records_sha256 integrity mismatch")
+
+
+def _record_material_identity(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "record_id": row.get("record_id"),
+        "material_sha256": row.get("material_sha256"),
+        "engine": row.get("engine"),
+        "symbol": row.get("symbol"),
+        "horizon": row.get("horizon"),
+        "prediction_time_utc": row.get("prediction_time_utc"),
+        "target_time_utc": row.get("target_time_utc"),
+        "lineage": row.get("lineage") or {},
+    }
+
 
 def build_records(
     ledger: Mapping[str, Any],
@@ -114,9 +174,6 @@ def build_records(
     seen: set[str] = set()
 
     for raw in ledger.get("records") or []:
-        if not isinstance(raw, Mapping):
-            raise ValueError("Evidence ledger contains a non-object record")
-        _validate_settled_record(raw)
         if raw.get("engine") != REGULAR_HOURS_ENGINE:
             skipped["other_engine"] += 1
             continue
