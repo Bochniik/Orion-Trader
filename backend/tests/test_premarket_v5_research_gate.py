@@ -8,6 +8,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from evaluate_premarket_v5_research_gate import DEFAULT_TARGETS, evaluate_report
+from premarket_directional_v4_common import PREMARKET_TARGETS
 
 
 def _passing_target():
@@ -33,23 +34,30 @@ def _passing_report():
     return {"targets": {target: _passing_target() for target in DEFAULT_TARGETS}}
 
 
+def test_gate_required_targets_share_the_validator_contract():
+    assert DEFAULT_TARGETS == tuple(PREMARKET_TARGETS)
+    assert DEFAULT_TARGETS == ("premarket_5m", "premarket_15m", "premarket_30m")
+
+
 def test_all_required_targets_can_become_research_review_eligible():
     decision = evaluate_report(_passing_report())
 
     assert decision["eligible"] is True
     assert decision["decision"] == "eligible_for_research_promotion_review"
     assert decision["scope"] == "research_only_no_live_deployment"
+    assert decision["required_targets"] == list(PREMARKET_TARGETS)
     assert decision["reasons"] == []
 
 
 def test_missing_required_target_fails_closed():
     report = _passing_report()
-    del report["targets"]["premarket_60m"]
+    missing = DEFAULT_TARGETS[-1]
+    del report["targets"][missing]
 
     decision = evaluate_report(report)
 
     assert decision["eligible"] is False
-    assert "premarket_60m:required_target_missing" in decision["reasons"]
+    assert f"{missing}:required_target_missing" in decision["reasons"]
 
 
 def test_probability_metrics_must_beat_train_only_baseline():

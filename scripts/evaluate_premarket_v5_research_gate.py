@@ -5,14 +5,11 @@ import json
 import math
 from pathlib import Path
 
+from premarket_directional_v4_common import PREMARKET_TARGETS
 
-GATE_VERSION = "premarket-v5-research-gate-1"
-DEFAULT_TARGETS = (
-    "premarket_5m",
-    "premarket_15m",
-    "premarket_30m",
-    "premarket_60m",
-)
+
+GATE_VERSION = "premarket-v5-research-gate-2"
+DEFAULT_TARGETS = tuple(PREMARKET_TARGETS)
 
 
 def _finite_number(value) -> float | None:
@@ -123,11 +120,11 @@ def evaluate_report(report: dict, required_targets=DEFAULT_TARGETS) -> dict:
         "target_results": target_results,
         "reasons": top_level_reasons,
         "policy": (
-            "Fail closed. Every required horizon must have out-of-sample folds/events, "
-            "positive Brier and log-loss improvement versus the train-only prevalence baseline, "
-            "pooled accuracy above chance, positive pooled signed return, and positive accuracy "
-            "and signed return in a strict majority of evaluable folds. This gate only permits "
-            "research promotion review; it never deploys or activates a model."
+            "Fail closed. Every supported Premarket V5 target from the shared PREMARKET_TARGETS contract "
+            "must have out-of-sample folds/events, positive Brier and log-loss improvement versus the "
+            "train-only prevalence baseline, pooled accuracy above chance, positive pooled signed return, "
+            "and positive accuracy and signed return in a strict majority of evaluable folds. This gate "
+            "only permits research promotion review; it never deploys or activates a model."
         ),
     }
 

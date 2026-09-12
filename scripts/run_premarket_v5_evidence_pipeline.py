@@ -10,9 +10,11 @@ import platform
 import subprocess
 import sys
 
+from premarket_directional_v4_common import PREMARKET_TARGETS
 
-PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v3"
-DEFAULT_TARGETS = ["premarket_5m", "premarket_15m", "premarket_30m", "premarket_60m"]
+
+PIPELINE_VERSION = "premarket-v5-evidence-pipeline-v4"
+DEFAULT_TARGETS = tuple(PREMARKET_TARGETS)
 REPRODUCIBILITY_FILES = [
     "scripts/collect_alpaca_extended_history.py",
     "scripts/build_premarket_training_dataset_v2.py",
@@ -22,7 +24,11 @@ REPRODUCIBILITY_FILES = [
     "scripts/run_premarket_v5_validation.py",
     "scripts/evaluate_premarket_v5_research_gate.py",
     "scripts/validate_premarket_directional_v5_event_nested.py",
+    "scripts/validate_premarket_directional_v5_walkforward.py",
+    "scripts/premarket_directional_v4_common.py",
     "scripts/premarket_directional_v5_common.py",
+    "scripts/train_premarket_predictive.py",
+    "backend/app/services/premarket_predictive_engine.py",
     "backend/requirements.txt",
 ]
 REPRODUCIBILITY_PACKAGES = ["numpy", "pandas", "pytest", "httpx", "python-dotenv"]
@@ -195,6 +201,7 @@ def write_pipeline_manifest(
     payload = {
         "pipeline_version": PIPELINE_VERSION,
         "status": status,
+        "target_contract": "shared_PREMARKET_TARGETS_exact",
         "request": {
             "symbols": symbols,
             "start": start,
@@ -217,11 +224,12 @@ def validate_request(start: str, end: str, feed: str, targets: list[str]) -> Non
         raise ValueError("--end must be on or after --start")
     if feed not in {"iex", "sip"}:
         raise ValueError("--feed must be iex or sip")
-    unsupported = sorted(set(targets) - set(DEFAULT_TARGETS))
-    if unsupported:
-        raise ValueError("Unsupported premarket targets: " + ", ".join(unsupported))
-    if set(targets) != set(DEFAULT_TARGETS):
-        raise ValueError("Audited evidence runs must include all four required premarket targets")
+    expected = list(DEFAULT_TARGETS)
+    if list(targets) != expected:
+        raise ValueError(
+            "Audited evidence runs must include the exact shared PREMARKET_TARGETS set in contract order: "
+            f"expected={expected} got={list(targets)}"
+        )
 
 
 def main() -> None:
@@ -243,7 +251,7 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, default=Path("backend/data/models/premarket_v5_evidence_pipeline.json"))
     parser.add_argument("--skip-collect", action="store_true", help="Reuse an existing raw CSV plus its provenance manifest")
     parser.add_argument("--plan", action="store_true", help="Print the deterministic command plan without executing it")
-    parser.add_argument("--targets", nargs="+", default=list(DEFAULT_TARGETS))
+    parser.add_argument("--targets", nargs="+", choices=DEFAULT_TARGETS, default=list(DEFAULT_TARGETS))
     args = parser.parse_args()
 
     symbols = parse_symbols(args.symbols)
