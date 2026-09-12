@@ -18,6 +18,7 @@ from scripts.nyse_session_calendar import is_nyse_trading_day
 
 NY = ZoneInfo("America/New_York")
 RUNNER_VERSION = "regular-hours-v3-1-cloud-shadow-v2"
+LEGACY_RUNNER_VERSIONS = {"regular-hours-v3-1-cloud-shadow-v1"}
 REPORT_CONTRACT = "orion-regular-hours-collection-health-v1"
 PREREGISTERED_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
 
@@ -64,7 +65,30 @@ def _validate_common(payload: dict[str, Any]) -> tuple[datetime, str]:
     return local, status
 
 
+def _legacy_projection(payload: dict[str, Any]) -> dict[str, Any]:
+    version = str(payload.get("runner_version") or "")
+    if version not in LEGACY_RUNNER_VERSIONS:
+        raise CollectionHealthError("unexpected regular-hours runner_version")
+    if payload.get("research_only") is not True or payload.get("order_submission_enabled") is not False:
+        raise CollectionHealthError("legacy artifact must remain research-only with order submission disabled")
+    gate = payload.get("session_gate")
+    if not isinstance(gate, dict):
+        raise CollectionHealthError("legacy artifact session_gate must be an object")
+    local = _parse_as_of_et(gate.get("as_of_et"))
+    return {
+        "session": local.date().isoformat(),
+        "as_of_et": local.isoformat(),
+        "status": "legacy_excluded",
+        "runner_version": version,
+        "standard_universe": False,
+    }
+
+
 def _validate_projection(payload: dict[str, Any]) -> dict[str, Any]:
+    version = str(payload.get("runner_version") or "")
+    if version in LEGACY_RUNNER_VERSIONS:
+        return _legacy_projection(payload)
+
     local, status = _validate_common(payload)
     gate = payload["session_gate"]
     session = local.date().isoformat()
@@ -185,8 +209,10 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
     standard = [row for row in completed if row["standard_universe"]]
     nonstandard = [row for row in completed if not row["standard_universe"]]
     skipped = [row for row in projections if row["status"] == "skipped"]
+    legacy = [row for row in projections if row["status"] == "legacy_excluded"]
 
     skip_reasons = Counter(row["skip_reason"] for row in skipped)
+    legacy_versions = Counter(row["runner_version"] for row in legacy)
     sessions = sorted({row["session"] for row in standard})
 
     by_session: dict[str, dict[str, Any]] = {}
@@ -206,6 +232,8 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "standard_universe_artifact_count": len(standard),
         "nonstandard_universe_artifact_count": len(nonstandard),
         "skipped_artifact_count": len(skipped),
+        "legacy_excluded_artifact_count": len(legacy),
+        "legacy_excluded_runner_versions": dict(sorted(legacy_versions.items())),
         "skip_reasons": dict(sorted(skip_reasons.items())),
         "distinct_standard_session_count": len(sessions),
         "sessions": sessions,
