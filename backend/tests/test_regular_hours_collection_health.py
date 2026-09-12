@@ -6,9 +6,17 @@ import pytest
 
 from scripts.audit_regular_hours_collection_health import (
     CollectionHealthError,
+    PREDICTIVE_LINEAGE_FILES,
     PREREGISTERED_SYMBOLS,
     build_health_report,
 )
+
+
+def _lineage(seed: str = "a") -> dict:
+    return {
+        "git_commit": seed * 40,
+        "files_sha256": {path: seed * 64 for path in PREDICTIVE_LINEAGE_FILES},
+    }
 
 
 def _artifact(
@@ -17,6 +25,7 @@ def _artifact(
     provenance_gap: str | None = None,
     retry_symbol: str | None = None,
     failed_symbol: str | None = None,
+    lineage_seed: str = "a",
 ) -> dict:
     symbols = list(PREREGISTERED_SYMBOLS)
     rows = {}
@@ -65,6 +74,7 @@ def _artifact(
         "research_only": True,
         "order_submission_enabled": False,
         "runtime_modified": False,
+        "lineage": _lineage(lineage_seed),
         "status": "completed",
         "results": {
             "symbol_count": len(symbols),
@@ -85,7 +95,7 @@ def test_report_measures_provenance_retries_and_failures_without_scores() -> Non
         [_artifact(provenance_gap="AAPL", retry_symbol="MSFT", failed_symbol="NVDA")]
     )
 
-    assert report["contract"] == "orion-regular-hours-collection-health-v1"
+    assert report["contract"] == "orion-regular-hours-collection-health-v2"
     assert report["score_blind"] is True
     assert report["metrics_exposed"] is False
     assert report["standard_universe_artifact_count"] == 1
@@ -99,6 +109,8 @@ def test_report_measures_provenance_retries_and_failures_without_scores() -> Non
     assert report["coverage"]["alignment_attempt_count"] == 10
     assert report["coverage"]["provenance_valid_fraction"] == 0.8
     assert report["coverage"]["alignment_retry_fraction"] == 0.1
+    assert len(report["predictive_lineage_artifact_counts"]) == 1
+    assert report["latest_standard_predictive_lineage_sha256"]
 
 
 def test_report_is_invariant_to_predictive_probability_and_direction_changes() -> None:
@@ -110,9 +122,33 @@ def test_report_is_invariant_to_predictive_probability_and_direction_changes() -
             "5h": {"probability_up": 73.0, "probability_down": 27.0, "direction": "bullish"},
         }
 
-    original_report = build_health_report([original])
-    changed_report = build_health_report([changed])
-    assert changed_report == original_report
+    assert build_health_report([changed]) == build_health_report([original])
+
+
+def test_predictive_lineage_change_is_visible_without_reading_scores() -> None:
+    first = _artifact(as_of_et="2026-09-10T10:05:00-04:00", lineage_seed="a")
+    second = _artifact(as_of_et="2026-09-11T10:05:00-04:00", lineage_seed="b")
+    report = build_health_report([first, second])
+
+    assert len(report["predictive_lineage_artifact_counts"]) == 2
+    assert len(report["predictive_lineage_sessions"]) == 2
+    assert report["latest_standard_predictive_lineage_sha256"] in report["predictive_lineage_sessions"]
+    assert report["by_session"]["2026-09-10"]["predictive_lineages"] != report["by_session"]["2026-09-11"]["predictive_lineages"]
+
+
+def test_missing_predictive_lineage_fails_closed() -> None:
+    artifact = _artifact()
+    del artifact["lineage"]
+    with pytest.raises(CollectionHealthError, match="missing lineage"):
+        build_health_report([artifact])
+
+
+def test_malformed_predictive_lineage_digest_fails_closed() -> None:
+    artifact = _artifact()
+    path = PREDICTIVE_LINEAGE_FILES[0]
+    artifact["lineage"]["files_sha256"][path] = "not-a-sha"
+    with pytest.raises(CollectionHealthError, match="SHA-256"):
+        build_health_report([artifact])
 
 
 def test_skipped_artifacts_are_counted_but_do_not_reduce_market_coverage() -> None:
@@ -157,6 +193,7 @@ def test_nonstandard_universe_is_visible_but_excluded_from_standard_coverage() -
     assert report["standard_universe_artifact_count"] == 0
     assert report["coverage"]["requested_symbol_count"] == 0
     assert report["coverage"]["provenance_valid_fraction"] is None
+    assert report["latest_standard_predictive_lineage_sha256"] is None
 
 
 def test_report_fails_closed_when_reported_operational_counts_are_inconsistent() -> None:
@@ -170,6 +207,7 @@ def test_legacy_v1_artifacts_are_explicitly_excluded_from_v2_coverage() -> None:
     legacy = _artifact()
     legacy["runner_version"] = "regular-hours-v3-1-cloud-shadow-v1"
     legacy["contract"] = "orion-regular-hours-cloud-shadow-v1"
+    legacy.pop("lineage", None)
     for row in legacy["results"]["symbols"].values():
         row.pop("source_timestamp_aligned", None)
         row.pop("source_as_of", None)
