@@ -1,13 +1,20 @@
 export default function OrionMark({ size = 42, className = "" }) {
-  return <span
-    className={`orion-mark ${className}`.trim()}
-    style={{ "--orion-mark-size": `${size}px` }}
-    aria-hidden="true"
-  >
-    <span className="orion-mark-core">O</span>
-    <i className="orion-ring orion-ring-one" />
-    <i className="orion-ring orion-ring-two" />
-    <b className="orion-star orion-star-one" />
-    <b className="orion-star orion-star-two" />
-  </span>;
+  return (
+    <img
+      className={`orion-mark ${className}`.trim()}
+      src="/orion-icon.svg"
+      width={size}
+      height={size}
+      alt=""
+      aria-hidden="true"
+      draggable="false"
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        display: "block",
+        flex: "0 0 auto",
+        objectFit: "contain",
+      }}
+    />
+  );
 }
