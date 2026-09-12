@@ -1,0 +1,62 @@
+name: Sector specialist historical screen
+
+on:
+  pull_request:
+    paths:
+      - "backend/evals/benchmark_sector_specialists.py"
+      - "backend/evals/specialist_engine_tournament.py"
+      - "backend/evals/specialist_universe_v1.json"
+      - "backend/evals/benchmark_intraday_challenger_v4.py"
+      - "backend/app/services/intraday_probability_backtest_v3.py"
+      - "backend/tests/test_benchmark_sector_specialists.py"
+      - ".github/workflows/sector-specialist-historical-screen.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sector-specialist-historical-screen-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused dependencies
+        run: python -m pip install --disable-pip-version-check numpy==2.5.1 pandas==3.0.3 pytest yfinance==1.5.1
+      - name: Compile screening path
+        run: |
+          python -m py_compile backend/evals/benchmark_sector_specialists.py
+          python -m py_compile backend/evals/specialist_engine_tournament.py
+          python -m py_compile backend/evals/benchmark_intraday_challenger_v4.py
+      - name: Run focused regressions
+        env:
+          PYTHONPATH: backend
+        run: python -m pytest -q backend/tests/test_benchmark_sector_specialists.py backend/tests/test_specialist_engine_tournament.py
+      - name: Run 60d real-data historical screen
+        env:
+          PYTHONPATH: backend
+        run: |
+          python -m evals.benchmark_sector_specialists \
+            AAPL MSFT NVDA AMD AMZN TSLA META GOOGL \
+            --period 60d \
+            --interval 5m \
+            --calibration-fraction 0.60 \
+            --min-observations 80 \
+            --min-sessions 8 \
+            --bootstrap-samples 2000 \
+            --output artifacts/sector-specialist-historical-screen.json
+      - name: Upload screening artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sector-specialist-historical-screen-${{ github.run_id }}
+          path: artifacts/sector-specialist-historical-screen.json
+          if-no-files-found: error
+          retention-days: 30
