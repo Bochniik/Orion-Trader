@@ -12,7 +12,7 @@ import numpy as np
 
 from evals.intraday_challenger_tournament import evaluate_paired_horizon
 
-CONTRACT = "orion-sector-ticker-specialist-tournament-v1"
+CONTRACT = "orion-sector-ticker-specialist-tournament-v2"
 DEFAULT_MIN_GLOBAL_OBS = 80
 DEFAULT_MIN_GLOBAL_SESSIONS = 8
 DEFAULT_MIN_SECTOR_OBS = 40
@@ -24,8 +24,9 @@ DEFAULT_RIDGE = 8.0
 SEMANTICS = (
     "Research-only hierarchical calibration tournament. Global, sector and ticker layers are fit "
     "strictly on completed prior sessions. Every candidate is evaluated on identical symbol/timestamp "
-    "rows. Specialist layers fail back to their parent when their preregistered prior-sample gate is "
-    "not met. No result authorizes runtime promotion."
+    "rows against its direct parent: sector vs global, ticker vs sector. Specialist layers fail back "
+    "to their parent when their preregistered prior-sample gate is not met. No result authorizes "
+    "runtime promotion."
 )
 
 
@@ -236,27 +237,50 @@ def evaluate_specialists(
     bootstrap_samples: int = 2000,
 ) -> Dict[str, Any]:
     records = generated.get("prediction_records") or {}
-    global_rows = records.get("global") or []
+    comparisons = {
+        "global_to_sector": ("global", "sector", 20260912),
+        "sector_to_ticker": ("sector", "ticker", 20260913),
+    }
     results: Dict[str, Any] = {}
-    for index, candidate in enumerate(("sector", "ticker")):
-        results[candidate] = evaluate_paired_horizon(
-            global_rows,
-            records.get(candidate) or [],
+    for name, (parent, child, seed) in comparisons.items():
+        result = evaluate_paired_horizon(
+            records.get(parent) or [],
+            records.get(child) or [],
             min_observations=min_observations,
             min_sessions=min_sessions,
             bootstrap_samples=bootstrap_samples,
-            seed=20260912 + index,
+            seed=seed,
         )
-    eligible = [name for name, result in results.items() if result.get("verdict") == "research_eligible"]
+        results[name] = {
+            "parent": parent,
+            "child": child,
+            **result,
+        }
+
+    sector_eligible = results["global_to_sector"].get("verdict") == "research_eligible"
+    ticker_increment_eligible = results["sector_to_ticker"].get("verdict") == "research_eligible"
+    if sector_eligible and ticker_increment_eligible:
+        conclusion = "sector_and_ticker_increment_research_eligible"
+    elif sector_eligible:
+        conclusion = "sector_research_eligible_ticker_increment_not_demonstrated"
+    elif ticker_increment_eligible:
+        conclusion = "sector_not_demonstrated_ticker_increment_non_actionable"
+    else:
+        conclusion = "specialization_not_demonstrated"
+
     return {
         "contract": CONTRACT,
         "research_only": True,
         "promotion_authorized": False,
-        "incumbent": "global",
         "paired_only": True,
-        "specialists": results,
-        "research_eligible_specialists": eligible,
-        "research_conclusion": "specialization_not_demonstrated" if not eligible else "specialization_research_eligible",
+        "comparison_policy": "direct_parent_only",
+        "comparisons": results,
+        "stage_eligibility": {
+            "sector_over_global": sector_eligible,
+            "ticker_increment_over_sector": ticker_increment_eligible,
+            "ticker_increment_actionable": sector_eligible and ticker_increment_eligible,
+        },
+        "research_conclusion": conclusion,
     }
 
 

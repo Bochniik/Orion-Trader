@@ -99,15 +99,76 @@ def test_sector_layer_uses_only_its_sector_history_after_gate():
     assert final["BBB"] < 50.0
 
 
-def test_evaluation_is_strictly_paired_and_never_authorizes_promotion():
+def test_evaluation_uses_direct_parent_and_never_authorizes_promotion():
     generated = _run(_records(days=14))
     report = evaluate_specialists(generated, min_observations=10, min_sessions=5, bootstrap_samples=100)
     assert report["paired_only"] is True
     assert report["promotion_authorized"] is False
-    assert report["incumbent"] == "global"
-    for candidate in ("sector", "ticker"):
-        assert report["specialists"][candidate]["paired_observations"] == 28
-        assert report["specialists"][candidate]["distinct_sessions"] == 14
+    assert report["comparison_policy"] == "direct_parent_only"
+    assert report["comparisons"]["global_to_sector"]["parent"] == "global"
+    assert report["comparisons"]["global_to_sector"]["child"] == "sector"
+    assert report["comparisons"]["sector_to_ticker"]["parent"] == "sector"
+    assert report["comparisons"]["sector_to_ticker"]["child"] == "ticker"
+    for comparison in ("global_to_sector", "sector_to_ticker"):
+        assert report["comparisons"][comparison]["paired_observations"] == 28
+        assert report["comparisons"][comparison]["distinct_sessions"] == 14
+
+
+def test_ticker_cannot_claim_edge_merely_by_inheriting_sector_improvement():
+    global_rows = []
+    sector_rows = []
+    ticker_rows = []
+    start = datetime(2026, 2, 2, 15, 0, tzinfo=timezone.utc)
+    for day in range(10):
+        stamp = (start + timedelta(days=day)).isoformat()
+        for symbol, actual, specialist_p in (("AAA", 1, 80.0), ("BBB", 0, 20.0)):
+            common = {"timestamp": stamp, "symbol": symbol, "sector": "test", "actual_up": actual}
+            global_rows.append({**common, "p_up": 50.0})
+            sector_rows.append({**common, "p_up": specialist_p})
+            ticker_rows.append({**common, "p_up": specialist_p})
+
+    generated = {
+        "prediction_records": {
+            "global": global_rows,
+            "sector": sector_rows,
+            "ticker": ticker_rows,
+        }
+    }
+    report = evaluate_specialists(generated, min_observations=10, min_sessions=5, bootstrap_samples=200)
+    assert report["comparisons"]["global_to_sector"]["verdict"] == "research_eligible"
+    assert report["comparisons"]["sector_to_ticker"]["verdict"] == "not_demonstrated"
+    assert report["stage_eligibility"]["sector_over_global"] is True
+    assert report["stage_eligibility"]["ticker_increment_over_sector"] is False
+    assert report["stage_eligibility"]["ticker_increment_actionable"] is False
+    assert report["research_conclusion"] == "sector_research_eligible_ticker_increment_not_demonstrated"
+
+
+def test_ticker_increment_is_non_actionable_when_sector_parent_is_not_demonstrated():
+    global_rows = []
+    sector_rows = []
+    ticker_rows = []
+    start = datetime(2026, 3, 2, 15, 0, tzinfo=timezone.utc)
+    for day in range(10):
+        stamp = (start + timedelta(days=day)).isoformat()
+        for symbol, actual, ticker_p in (("AAA", 1, 80.0), ("BBB", 0, 20.0)):
+            common = {"timestamp": stamp, "symbol": symbol, "sector": "test", "actual_up": actual}
+            global_rows.append({**common, "p_up": 50.0})
+            sector_rows.append({**common, "p_up": 50.0})
+            ticker_rows.append({**common, "p_up": ticker_p})
+
+    generated = {
+        "prediction_records": {
+            "global": global_rows,
+            "sector": sector_rows,
+            "ticker": ticker_rows,
+        }
+    }
+    report = evaluate_specialists(generated, min_observations=10, min_sessions=5, bootstrap_samples=200)
+    assert report["comparisons"]["global_to_sector"]["verdict"] == "not_demonstrated"
+    assert report["comparisons"]["sector_to_ticker"]["verdict"] == "research_eligible"
+    assert report["stage_eligibility"]["ticker_increment_over_sector"] is True
+    assert report["stage_eligibility"]["ticker_increment_actionable"] is False
+    assert report["research_conclusion"] == "sector_not_demonstrated_ticker_increment_non_actionable"
 
 
 def test_malformed_or_duplicate_identity_fails_closed():
