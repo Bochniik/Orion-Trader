@@ -20,6 +20,7 @@ import "./watchlist-polish.css";
 import "./quote-polish.css";
 import "./stock-workspace.css";
 import "./scanner-polish.css";
+import "./radar-ranking-polish.css";
 import "./dashboard-polish.css";
 import "./market-explorer-polish.css";
 import "./my-stocks-polish.css";
