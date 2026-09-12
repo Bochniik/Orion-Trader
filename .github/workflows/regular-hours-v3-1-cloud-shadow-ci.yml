@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - "scripts/run_regular_hours_v3_1_cloud_shadow.py"
+      - "scripts/audit_regular_hours_schedule_delivery.py"
       - "backend/tests/test_regular_hours_v3_1_cloud_shadow.py"
+      - "backend/tests/test_regular_hours_schedule_delivery_audit.py"
       - ".github/workflows/regular-hours-v3-1-cloud-shadow*.yml"
       - "backend/app/services/intraday_probability_*"
       - "backend/requirements.txt"
@@ -30,8 +32,12 @@ jobs:
       - name: Compile regular-hours cloud shadow path
         run: |
           python -m py_compile scripts/run_regular_hours_v3_1_cloud_shadow.py
+          python -m py_compile scripts/audit_regular_hours_schedule_delivery.py
           python -m py_compile backend/app/services/intraday_probability_runtime_v3_1.py
           python -m py_compile backend/app/services/intraday_probability_ensemble_engine.py
           python -m py_compile backend/app/services/intraday_probability_calibration_v3_1.py
       - name: Run focused regression tests
-        run: python -m pytest -q backend/tests/test_regular_hours_v3_1_cloud_shadow.py
+        run: |
+          python -m pytest -q \
+            backend/tests/test_regular_hours_v3_1_cloud_shadow.py \
+            backend/tests/test_regular_hours_schedule_delivery_audit.py
