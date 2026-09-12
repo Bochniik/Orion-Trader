@@ -41,6 +41,15 @@ function formatExactNewsDate(timestamp) {
   });
 }
 
+function newsFreshness(timestamp) {
+  const date = newsDate(timestamp);
+  if (!date) return null;
+
+  const ageMs = Date.now() - date.getTime();
+  if (ageMs < 0 || ageMs > 2 * 60 * 60 * 1000) return null;
+  return ageMs <= 30 * 60 * 1000 ? "New" : "Recent";
+}
+
 function newsImage(item) {
   return item?.thumbnail || item?.image_url || item?.image || item?.media?.thumbnail || "";
 }
@@ -146,6 +155,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
         <div className="news-list news-list--terminal">
           {items.map((item) => {
             const image = newsImage(item);
+            const freshness = newsFreshness(item.published_at);
             return (
               <a
                 className="news-item news-item--terminal"
@@ -158,12 +168,14 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
 
                 <div className="news-copy">
                   <div className="news-meta-row">
-                    <span className="news-kind">{newsLabel(item)}</span>
-                    <span>{item.publisher || "Unknown source"}</span>
+                    {freshness && <span className="news-kind">{freshness}</span>}
+                    <strong>{item.publisher || "Unknown source"}</strong>
                     <span aria-hidden="true">•</span>
                     <time dateTime={newsDate(item.published_at)?.toISOString()} title={formatExactNewsDate(item.published_at)}>
                       {formatNewsDate(item.published_at)}
                     </time>
+                    <span aria-hidden="true">•</span>
+                    <span>{newsLabel(item)}</span>
                   </div>
                   <h3>{item.title}</h3>
                 </div>
