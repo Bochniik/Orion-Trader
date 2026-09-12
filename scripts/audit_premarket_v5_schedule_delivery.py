@@ -176,6 +176,7 @@ def build_schedule_delivery_report(
             "conclusion_counts": dict(sorted(conclusion_counts.items())),
         },
         "per_snapshot": per_snapshot,
+        "deliveries": delivery_rows,
         "missing_deliveries": missing,
         "unsuccessful_deliveries": unsuccessful,
         "duplicate_deliveries": duplicates,

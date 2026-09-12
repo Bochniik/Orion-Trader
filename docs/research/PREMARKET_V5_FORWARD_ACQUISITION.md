@@ -57,6 +57,21 @@ Inactive DST duplicate schedules and manual workflow dispatches never satisfy de
 
 The schedule audit is intentionally separate from forward-readiness: a successful workflow run proves delivery, while the acquisition/readiness audit proves that the resulting prediction artifact itself is operationally complete, timely, scheduled, and payload-integrity bound. Both are needed to understand why Issue #3 evidence is or is not accumulating.
 
+## Unified evidence-health attribution
+
+`scripts/audit_premarket_v5_evidence_health.py` now combines those two score-blind views from the same raw GitHub run metadata and prediction artifacts. Every mature expected slot is attributed to exactly one pipeline state:
+
+1. `missing_delivery` — GitHub did not deliver the active preregistered schedule slot;
+2. `workflow_unsuccessful` — the slot was delivered but no matching run succeeded;
+3. `artifact_missing_after_success` — a successful run has no matching prediction artifact bound by GitHub run ID;
+4. `forecast_incomplete` — the matching artifact exists but does not contain the full preregistered symbol × horizon geometry;
+5. `acquisition_ineligible` — the forecast is complete but fails the genuine-forward acquisition timing/provenance policy;
+6. `decision_grade_complete` — the slot survived all preceding gates.
+
+The report separately preserves the 55-session cohort-maturity requirement. A day can therefore be operationally clean while still being too young for Issue #3 score inspection. Conversely, an old-enough cohort cannot hide missing schedules, failed workflows, missing artifacts, incomplete forecasts, or ineligible acquisitions behind one aggregate readiness boolean.
+
+The unified report remains score-blind. It does not expose predictive probabilities, realized labels, Brier score, log loss, directional accuracy, calibration, or confidence. It fingerprints the score-blind schedule and forward-readiness reports and emits a deterministic evidence-health SHA-256 identity for reproducibility.
+
 ## Issue #3 interpretation
 
 `ready_for_issue_3_score_inspection=true` means that every preregistered snapshot family (06:45, 08:00, 09:15 ET) contains at least 55 distinct sessions that are both operationally complete and acquisition-provenance eligible.
