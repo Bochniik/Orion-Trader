@@ -34,8 +34,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .specialist-input
-          ARTIFACT_ID=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
-            --jq '[.artifacts[] | select(.expired == false and (.name | startswith("cloud-shadow-evidence-ledger-")))] | sort_by(.created_at) | reverse | .[0].id // empty')
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false and (.name | startswith("cloud-shadow-evidence-ledger-"))) | [.id,.created_at] | @tsv' \
+            > /tmp/specialist-ledgers.tsv
+          ARTIFACT_ID=$(sort -t $'\t' -k2,2r /tmp/specialist-ledgers.tsv | head -n 1 | cut -f1 || true)
           if [ -z "$ARTIFACT_ID" ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"
             echo "No non-expired cloud-shadow evidence ledger artifact is available yet."
