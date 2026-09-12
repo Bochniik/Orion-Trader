@@ -1,0 +1,17 @@
+{
+  "contract": "orion-specialist-universe-v1",
+  "effective_date": "2026-09-12",
+  "classification_policy": "Frozen research metadata for the standard Regular-hours V3.1 cloud-shadow universe. Equity sector labels are fixed before specialist forward outcomes are inspected; broad-market ETFs are explicitly marked as ETFs and excluded from default sector conclusions.",
+  "symbols": {
+    "AAPL": {"asset_type": "equity", "sector": "Information Technology"},
+    "AMD": {"asset_type": "equity", "sector": "Information Technology"},
+    "AMZN": {"asset_type": "equity", "sector": "Consumer Discretionary"},
+    "GOOGL": {"asset_type": "equity", "sector": "Communication Services"},
+    "META": {"asset_type": "equity", "sector": "Communication Services"},
+    "MSFT": {"asset_type": "equity", "sector": "Information Technology"},
+    "NVDA": {"asset_type": "equity", "sector": "Information Technology"},
+    "QQQ": {"asset_type": "etf", "sector": "ETF"},
+    "SPY": {"asset_type": "etf", "sector": "ETF"},
+    "TSLA": {"asset_type": "equity", "sector": "Consumer Discretionary"}
+  }
+}

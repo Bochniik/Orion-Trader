@@ -1,0 +1,80 @@
+name: Specialist forward readiness
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Post-close in both EDT and EST; uses the already-settled evidence ledger only.
+    - cron: "40 23 * * 1-5"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: specialist-forward-readiness
+  cancel-in-progress: false
+
+jobs:
+  build-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Recover latest append-only evidence ledger
+        id: recover
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .specialist-input
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired == false and (.name | startswith("cloud-shadow-evidence-ledger-"))) | [.id,.created_at] | @tsv' \
+            > /tmp/specialist-ledgers.tsv
+          ARTIFACT_ID=$(sort -t $'\t' -k2,2r /tmp/specialist-ledgers.tsv | head -n 1 | cut -f1 || true)
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No non-expired cloud-shadow evidence ledger artifact is available yet."
+            exit 0
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/ledger.zip
+          unzip -q -o /tmp/ledger.zip -d .specialist-input
+          LEDGER=$(find .specialist-input -type f -name 'ledger.json' | head -n 1 || true)
+          if [ -z "$LEDGER" ]; then
+            echo "Recovered artifact did not contain ledger.json" >&2
+            exit 2
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "ledger=$LEDGER" >> "$GITHUB_OUTPUT"
+
+      - name: Build frozen specialist forward dataset and score-blind readiness
+        if: steps.recover.outputs.found == 'true'
+        shell: bash
+        run: |
+          python scripts/build_specialist_forward_dataset.py "${{ steps.recover.outputs.ledger }}" \
+            --output backend/data/cloud_shadow/specialist/forward-dataset.json \
+            --readiness-output backend/data/cloud_shadow/specialist/readiness.json
+
+      - name: Upload score-blind readiness
+        if: steps.recover.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: specialist-forward-readiness-${{ github.run_id }}
+          path: backend/data/cloud_shadow/specialist/readiness.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload frozen specialist forward dataset
+        if: steps.recover.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: specialist-forward-dataset-${{ github.run_id }}
+          path: backend/data/cloud_shadow/specialist/forward-dataset.json
+          if-no-files-found: error
+          retention-days: 90
