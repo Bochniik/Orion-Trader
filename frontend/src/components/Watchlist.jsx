@@ -135,6 +135,30 @@ export default function Watchlist({
               >
                 <button className="watch-symbol" onClick={() => onSelectStock(symbol)}>
                   {symbol}
+                  {stale && (
+                    <span
+                      aria-label="Last successful quote"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        marginLeft: 7,
+                        padding: "2px 6px",
+                        border: "1px solid rgba(255, 155, 71, 0.22)",
+                        borderRadius: 999,
+                        background: "rgba(255, 139, 42, 0.08)",
+                        color: "#ffad68",
+                        fontSize: 9,
+                        fontWeight: 760,
+                        letterSpacing: "0.04em",
+                        lineHeight: 1.35,
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      <RefreshCw size={9} aria-hidden="true" />
+                      LAST
+                    </span>
+                  )}
                 </button>
 
                 <button className="watch-price" onClick={() => onSelectStock(symbol)}>
