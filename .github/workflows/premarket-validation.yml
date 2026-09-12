@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "scripts/audit_premarket_dataset_readiness.py"
+      - "scripts/audit_premarket_dataset_provenance.py"
       - "scripts/collect_alpaca_extended_history.py"
       - "scripts/build_premarket_training_dataset_v2.py"
       - "scripts/run_premarket_v5_evidence_pipeline.py"
@@ -44,6 +45,7 @@ jobs:
         run: |
           python -m py_compile \
             scripts/audit_premarket_dataset_readiness.py \
+            scripts/audit_premarket_dataset_provenance.py \
             scripts/collect_alpaca_extended_history.py \
             scripts/build_premarket_training_dataset_v2.py \
             scripts/run_premarket_v5_evidence_pipeline.py \
@@ -60,6 +62,7 @@ jobs:
           python -m pytest -q \
             backend/tests/test_collect_alpaca_extended_history.py \
             backend/tests/test_premarket_dataset_readiness.py \
+            backend/tests/test_premarket_dataset_provenance.py \
             backend/tests/test_premarket_training_dataset_lineage.py \
             backend/tests/test_premarket_validation_report_lineage.py \
             backend/tests/test_premarket_v5_evidence_pipeline.py \
