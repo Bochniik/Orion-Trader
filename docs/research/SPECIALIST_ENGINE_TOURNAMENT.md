@@ -39,12 +39,19 @@ Insufficient specialist history is not imputed. The row falls back to its parent
 
 The existing Orion paired challenger tournament remains the scoring authority. Brier score and log loss are primary. Directional accuracy and 10-bin ECE are supporting diagnostics. Stability uses deterministic paired session-block bootstrap rather than independent-row resampling.
 
-A specialist is only `research_eligible` when the existing paired tournament's proper-score coverage and stability conditions pass. Even that result is **not promotion authorization**. The output hard-codes `promotion_authorized=false`.
+The evaluation contract is hierarchical and direct-parent only:
+
+- `global -> sector`: the sector candidate must demonstrate incremental proper-score value over global calibration;
+- `sector -> ticker`: the ticker candidate must demonstrate incremental proper-score value over the sector prediction it actually inherits from.
+
+Ticker is deliberately **not** scored against global. Otherwise a ticker layer that merely copies a successful sector correction could appear to add ticker-specific edge even though its own residual contributes nothing. Likewise, a statistically positive ticker-over-sector result is marked non-actionable when sector-over-global itself is not demonstrated; the hierarchy cannot skip an unproven parent.
+
+A stage is `research_eligible` only when the existing paired tournament's proper-score coverage and stability conditions pass. Even a fully successful hierarchy is **not promotion authorization**. The output hard-codes `promotion_authorized=false`.
 
 The decisive production question is staged:
 
 - sector specialist must first demonstrate value against the global calibrated candidate;
-- ticker specialization should then be examined for incremental value over the sector parent, not merely against an uncalibrated baseline;
+- ticker specialization must then demonstrate incremental value over the sector parent;
 - a later runtime/promotion proposal requires untouched evidence and a separate decision.
 
 ## Forward evidence bridge
