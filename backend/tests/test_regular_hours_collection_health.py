@@ -164,3 +164,23 @@ def test_report_fails_closed_when_reported_operational_counts_are_inconsistent()
     artifact["results"]["provenance_valid_symbol_count"] = 9
     with pytest.raises(CollectionHealthError, match="provenance_valid_symbol_count"):
         build_health_report([artifact])
+
+
+def test_legacy_v1_artifacts_are_explicitly_excluded_from_v2_coverage() -> None:
+    legacy = _artifact()
+    legacy["runner_version"] = "regular-hours-v3-1-cloud-shadow-v1"
+    legacy["contract"] = "orion-regular-hours-cloud-shadow-v1"
+    for row in legacy["results"]["symbols"].values():
+        row.pop("source_timestamp_aligned", None)
+        row.pop("source_as_of", None)
+        row.pop("alignment_attempts", None)
+
+    report = build_health_report([legacy, _artifact()])
+    assert report["artifact_count"] == 2
+    assert report["legacy_excluded_artifact_count"] == 1
+    assert report["legacy_excluded_runner_versions"] == {
+        "regular-hours-v3-1-cloud-shadow-v1": 1
+    }
+    assert report["standard_universe_artifact_count"] == 1
+    assert report["coverage"]["requested_symbol_count"] == 10
+    assert report["coverage"]["provenance_valid_fraction"] == 1.0
