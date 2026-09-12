@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import date, timedelta
 
-from scripts.audit_regular_hours_collection_health import PREREGISTERED_SYMBOLS
+from scripts.audit_regular_hours_collection_health import PREDICTIVE_LINEAGE_FILES, PREREGISTERED_SYMBOLS
 from scripts.audit_regular_hours_forward_completeness import (
     MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION,
     build_completeness_report,
@@ -11,7 +11,20 @@ from scripts.audit_regular_hours_forward_completeness import (
 from scripts.nyse_session_calendar import is_nyse_trading_day
 
 
-def _artifact(*, as_of_et: str, provenance_gap: str | None = None, failed_symbol: str | None = None) -> dict:
+def _lineage(seed: str = "a") -> dict:
+    return {
+        "git_commit": seed * 40,
+        "files_sha256": {path: seed * 64 for path in PREDICTIVE_LINEAGE_FILES},
+    }
+
+
+def _artifact(
+    *,
+    as_of_et: str,
+    provenance_gap: str | None = None,
+    failed_symbol: str | None = None,
+    lineage_seed: str = "a",
+) -> dict:
     symbols = list(PREREGISTERED_SYMBOLS)
     rows = {}
     failures = {}
@@ -40,6 +53,7 @@ def _artifact(*, as_of_et: str, provenance_gap: str | None = None, failed_symbol
         "research_only": True,
         "order_submission_enabled": False,
         "runtime_modified": False,
+        "lineage": _lineage(lineage_seed),
         "status": "completed",
         "results": {
             "symbol_count": 10,
@@ -54,12 +68,12 @@ def _artifact(*, as_of_et: str, provenance_gap: str | None = None, failed_symbol
     }
 
 
-def _complete_sessions(count: int) -> list[dict]:
+def _complete_sessions(count: int, *, lineage_seed: str = "a", start: date = date(2026, 7, 1)) -> list[dict]:
     payloads = []
-    session = date(2026, 7, 1)
+    session = start
     while len(payloads) < count:
         if is_nyse_trading_day(session):
-            payloads.append(_artifact(as_of_et=f"{session.isoformat()}T10:05:00-04:00"))
+            payloads.append(_artifact(as_of_et=f"{session.isoformat()}T10:05:00-04:00", lineage_seed=lineage_seed))
         session += timedelta(days=1)
     return payloads
 
@@ -69,7 +83,7 @@ def test_complete_session_requires_full_standard_provenance_and_zero_failures() 
     incomplete = _artifact(as_of_et="2026-09-10T10:05:00-04:00", provenance_gap="AAPL")
     report = build_completeness_report([complete, incomplete])
 
-    assert report["contract"] == "orion-regular-hours-collection-health-v3"
+    assert report["contract"] == "orion-regular-hours-collection-health-v4"
     assert report["complete_standard_session_count"] == 1
     assert report["incomplete_standard_session_count"] == 1
     assert report["complete_standard_sessions"] == ["2026-09-11"]
@@ -78,6 +92,7 @@ def test_complete_session_requires_full_standard_provenance_and_zero_failures() 
     assert report["by_session"]["2026-09-10"]["complete_standard_session"] is False
     assert report["score_inspection_readiness_threshold_defined"] is True
     assert report["score_inspection_required_complete_sessions"] == 30
+    assert report["forward_validation_complete_session_count"] == 1
     assert report["ready_for_score_inspection"] is False
     assert report["promotion_authorized"] is False
 
@@ -98,6 +113,14 @@ def test_multiple_artifacts_require_session_wide_completeness() -> None:
     assert report["by_session"]["2026-09-11"]["complete_standard_session"] is False
 
 
+def test_mixed_predictive_lineage_makes_same_session_incomplete() -> None:
+    first = _artifact(as_of_et="2026-09-11T10:05:00-04:00", lineage_seed="a")
+    second = _artifact(as_of_et="2026-09-11T13:05:00-04:00", lineage_seed="b")
+    report = build_completeness_report([first, second])
+    assert report["by_session"]["2026-09-11"]["complete_standard_session"] is False
+    assert len(report["by_session"]["2026-09-11"]["predictive_lineages"]) == 2
+
+
 def test_score_inspection_unlocks_only_at_preregistered_complete_session_count() -> None:
     below = build_completeness_report(_complete_sessions(MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION - 1))
     ready = build_completeness_report(_complete_sessions(MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION))
@@ -106,7 +129,20 @@ def test_score_inspection_unlocks_only_at_preregistered_complete_session_count()
     assert below["score_inspection_remaining_complete_sessions"] == 1
     assert ready["ready_for_score_inspection"] is True
     assert ready["score_inspection_remaining_complete_sessions"] == 0
+    assert ready["forward_validation_complete_session_count"] == 30
     assert ready["promotion_authorized"] is False
+
+
+def test_new_predictive_lineage_starts_a_new_forward_gate_cohort() -> None:
+    old = _complete_sessions(MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION, lineage_seed="a")
+    new = _complete_sessions(1, lineage_seed="b", start=date(2026, 9, 1))
+    report = build_completeness_report(old + new)
+
+    assert report["complete_standard_session_count"] == 31
+    assert report["forward_validation_predictive_lineage_change_detected"] is True
+    assert report["forward_validation_complete_session_count"] == 1
+    assert report["score_inspection_remaining_complete_sessions"] == 29
+    assert report["ready_for_score_inspection"] is False
 
 
 def test_readiness_is_invariant_to_probability_and_direction() -> None:

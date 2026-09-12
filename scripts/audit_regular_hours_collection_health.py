@@ -19,8 +19,14 @@ from scripts.nyse_session_calendar import is_nyse_trading_day
 NY = ZoneInfo("America/New_York")
 RUNNER_VERSION = "regular-hours-v3-1-cloud-shadow-v2"
 LEGACY_RUNNER_VERSIONS = {"regular-hours-v3-1-cloud-shadow-v1"}
-REPORT_CONTRACT = "orion-regular-hours-collection-health-v1"
+REPORT_CONTRACT = "orion-regular-hours-collection-health-v2"
 PREREGISTERED_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
+PREDICTIVE_LINEAGE_FILES = (
+    "backend/app/services/intraday_probability_runtime_v3_1.py",
+    "backend/app/services/intraday_probability_ensemble_engine.py",
+    "backend/app/services/intraday_probability_calibration_v3_1.py",
+    "backend/app/services/intraday_probability_statistical_engine.py",
+)
 
 
 class CollectionHealthError(ValueError):
@@ -43,6 +49,28 @@ def _parse_as_of_et(value: Any) -> datetime:
     if parsed.tzinfo is None:
         raise CollectionHealthError("session_gate.as_of_et must be timezone-aware")
     return parsed.astimezone(NY)
+
+
+def _validate_sha256(value: Any, *, label: str) -> str:
+    digest = str(value or "").lower()
+    if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
+        raise CollectionHealthError(f"{label} must be a SHA-256 hex digest")
+    return digest
+
+
+def _predictive_lineage_sha256(payload: dict[str, Any]) -> str:
+    lineage = payload.get("lineage")
+    if not isinstance(lineage, dict):
+        raise CollectionHealthError("completed artifact is missing lineage")
+    files = lineage.get("files_sha256")
+    if not isinstance(files, dict):
+        raise CollectionHealthError("completed artifact lineage.files_sha256 must be an object")
+    selected = {
+        path: _validate_sha256(files.get(path), label=f"lineage.files_sha256[{path}]")
+        for path in PREDICTIVE_LINEAGE_FILES
+    }
+    canonical = json.dumps(selected, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _validate_common(payload: dict[str, Any]) -> tuple[datetime, str]:
@@ -151,14 +179,13 @@ def _validate_projection(payload: dict[str, Any]) -> dict[str, Any]:
         if attempts > 1:
             retry_symbols += 1
 
-    failure_count = len(failures)
     recomputed = {
         "symbol_count": len(symbols),
         "available_symbol_count": available,
         "provenance_valid_symbol_count": provenance_valid,
         "alignment_retry_symbol_count": retry_symbols,
         "alignment_attempt_count": alignment_attempts,
-        "failure_count": failure_count,
+        "failure_count": len(failures),
     }
     for key, expected in recomputed.items():
         if key in results and int(results.get(key) or 0) != expected:
@@ -169,6 +196,7 @@ def _validate_projection(payload: dict[str, Any]) -> dict[str, Any]:
         "as_of_et": local.isoformat(),
         "status": status,
         "standard_universe": set(symbols) == set(PREREGISTERED_SYMBOLS) and len(symbols) == len(PREREGISTERED_SYMBOLS),
+        "predictive_lineage_sha256": _predictive_lineage_sha256(payload),
         **recomputed,
     }
 
@@ -213,6 +241,7 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
 
     skip_reasons = Counter(row["skip_reason"] for row in skipped)
     legacy_versions = Counter(row["runner_version"] for row in legacy)
+    lineage_counts = Counter(row["predictive_lineage_sha256"] for row in standard)
     sessions = sorted({row["session"] for row in standard})
 
     by_session: dict[str, dict[str, Any]] = {}
@@ -220,8 +249,15 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
         rows = [row for row in standard if row["session"] == session]
         by_session[session] = {
             "artifact_count": len(rows),
+            "predictive_lineages": sorted({row["predictive_lineage_sha256"] for row in rows}),
             **_aggregate_completed(rows),
         }
+
+    latest_standard_lineage = standard[-1]["predictive_lineage_sha256"] if standard else None
+    lineage_sessions = {
+        lineage: sorted({row["session"] for row in standard if row["predictive_lineage_sha256"] == lineage})
+        for lineage in sorted(lineage_counts)
+    }
 
     return {
         "contract": REPORT_CONTRACT,
@@ -238,6 +274,9 @@ def build_health_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "distinct_standard_session_count": len(sessions),
         "sessions": sessions,
         "coverage": _aggregate_completed(standard),
+        "predictive_lineage_artifact_counts": dict(sorted(lineage_counts.items())),
+        "predictive_lineage_sessions": lineage_sessions,
+        "latest_standard_predictive_lineage_sha256": latest_standard_lineage,
         "by_session": by_session,
         "operational_projection_sha256": _canonical_projection_digest(projections),
     }

@@ -11,7 +11,7 @@ from scripts.audit_regular_hours_collection_health import (
     build_health_report,
 )
 
-REPORT_CONTRACT = "orion-regular-hours-collection-health-v3"
+REPORT_CONTRACT = "orion-regular-hours-collection-health-v4"
 FORWARD_PROTOCOL_ID = "regular-hours-v3-1-forward-validation-2026-09-12"
 MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION = 30
 
@@ -22,12 +22,15 @@ def _session_is_complete(row: dict[str, Any]) -> bool:
     provenance_valid = int(row.get("provenance_valid_symbol_count") or 0)
     failures = int(row.get("failure_count") or 0)
     provenance_gaps = int(row.get("provenance_gap_symbol_count") or 0)
+    lineages = row.get("predictive_lineages")
     return (
         requested > 0
         and available == requested
         and provenance_valid == requested
         and failures == 0
         and provenance_gaps == 0
+        and isinstance(lineages, list)
+        and len(lineages) == 1
     )
 
 
@@ -50,19 +53,32 @@ def add_session_completeness(report: dict[str, Any]) -> dict[str, Any]:
         by_session[session] = row
         (complete_sessions if complete else incomplete_sessions).append(session)
 
-    complete_count = len(complete_sessions)
-    remaining = max(0, MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION - complete_count)
+    active_lineage = report.get("latest_standard_predictive_lineage_sha256")
+    cohort_sessions = [
+        session
+        for session in complete_sessions
+        if active_lineage
+        and by_session[session].get("predictive_lineages") == [active_lineage]
+    ]
+    cohort_count = len(cohort_sessions)
+    remaining = max(0, MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION - cohort_count)
+    lineage_counts = report.get("predictive_lineage_artifact_counts")
+    lineage_change_detected = isinstance(lineage_counts, dict) and len(lineage_counts) > 1
 
     report["contract"] = REPORT_CONTRACT
     report["forward_validation_protocol"] = FORWARD_PROTOCOL_ID
-    report["complete_standard_session_count"] = complete_count
+    report["complete_standard_session_count"] = len(complete_sessions)
     report["incomplete_standard_session_count"] = len(incomplete_sessions)
     report["complete_standard_sessions"] = complete_sessions
     report["incomplete_standard_sessions"] = incomplete_sessions
+    report["forward_validation_active_predictive_lineage_sha256"] = active_lineage
+    report["forward_validation_predictive_lineage_change_detected"] = lineage_change_detected
+    report["forward_validation_complete_session_count"] = cohort_count
+    report["forward_validation_complete_sessions"] = cohort_sessions
     report["score_inspection_readiness_threshold_defined"] = True
     report["score_inspection_required_complete_sessions"] = MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION
     report["score_inspection_remaining_complete_sessions"] = remaining
-    report["ready_for_score_inspection"] = complete_count >= MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION
+    report["ready_for_score_inspection"] = bool(active_lineage) and cohort_count >= MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION
     report["promotion_authorized"] = False
     return report
 
