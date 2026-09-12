@@ -8,9 +8,11 @@ import pytest
 
 from evals.benchmark_industry_specialist_v1 import evaluate_records, load_prereg
 
+PREREG_PATH = Path(__file__).resolve().parents[1] / "evals" / "industry_specialist_prereg_v1.json"
+
 
 def _prereg():
-    payload = load_prereg(Path("evals/industry_specialist_prereg_v1.json"))
+    payload = load_prereg(PREREG_PATH)
     payload = deepcopy(payload)
     payload.update(
         {
@@ -42,7 +44,7 @@ def _rows(days=12):
 
 
 def test_preregistration_is_frozen_to_three_hour_screen():
-    prereg = load_prereg(Path("evals/industry_specialist_prereg_v1.json"))
+    prereg = load_prereg(PREREG_PATH)
     assert prereg["candidate_id"] == "semiconductor-specialist-3h-v1"
     assert prereg["target_horizon"] == "3h"
     assert prereg["decisive_holdout_assigned"] is False
