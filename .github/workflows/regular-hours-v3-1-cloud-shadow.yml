@@ -56,4 +56,4 @@ jobs:
           name: regular-hours-v3-1-shadow-${{ github.run_id }}
           path: backend/data/cloud_shadow/regular_hours_v3_1/*.json
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 90
