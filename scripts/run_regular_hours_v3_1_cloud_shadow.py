@@ -13,12 +13,16 @@ from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
+SCRIPTS = ROOT / "scripts"
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 
 from app.services.intraday_probability_runtime_v3_1 import (
     estimate_intraday_probabilities_v3_1,
 )
+from nyse_session_calendar import is_nyse_trading_day
 
 
 NY = ZoneInfo("America/New_York")
@@ -30,6 +34,7 @@ MAX_ALIGNMENT_ATTEMPTS = 3
 ALIGNMENT_RETRY_DELAY_SECONDS = 1.0
 LINEAGE_FILES = (
     "scripts/run_regular_hours_v3_1_cloud_shadow.py",
+    "scripts/nyse_session_calendar.py",
     "backend/app/services/intraday_probability_runtime_v3_1.py",
     "backend/app/services/intraday_probability_ensemble_engine.py",
     "backend/app/services/intraday_probability_calibration_v3_1.py",
@@ -62,13 +67,22 @@ def regular_hours_gate(now: datetime | None = None) -> dict[str, Any]:
     weekday = local.weekday()
     clock = local.time().replace(tzinfo=None)
     is_weekday = weekday < 5
-    in_window = is_weekday and REGULAR_OPEN <= clock <= LAST_PREDICTION_CUTOFF
+    trading_day = is_nyse_trading_day(local.date())
+
+    if is_weekday and not trading_day:
+        allowed = False
+        reason = "market_holiday"
+    else:
+        allowed = is_weekday and trading_day and REGULAR_OPEN <= clock <= LAST_PREDICTION_CUTOFF
+        reason = None if allowed else "outside_regular_hours_shadow_window"
+
     return {
-        "allowed": in_window,
+        "allowed": allowed,
         "as_of_et": local.isoformat(),
         "weekday": weekday,
+        "nyse_trading_day": trading_day,
         "window_et": "09:30-15:30",
-        "reason": None if in_window else "outside_regular_hours_shadow_window",
+        "reason": reason,
     }
 
 
@@ -237,7 +251,11 @@ def main() -> int:
 
     symbols = parse_symbols(args.symbols)
     payload = build_payload(symbols)
-    if args.allow_outside_session and payload.get("status") == "skipped":
+    if (
+        args.allow_outside_session
+        and payload.get("status") == "skipped"
+        and payload.get("reason") != "market_holiday"
+    ):
         payload["session_gate"]["manual_override"] = True
         payload["status"] = "completed_manual_override"
         payload["reason"] = None

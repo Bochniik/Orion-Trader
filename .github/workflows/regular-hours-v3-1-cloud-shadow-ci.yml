@@ -5,7 +5,10 @@ on:
     paths:
       - "scripts/run_regular_hours_v3_1_cloud_shadow.py"
       - "scripts/audit_regular_hours_schedule_delivery.py"
+      - "scripts/nyse_session_calendar.py"
+      - "backend/tests/test_nyse_session_calendar.py"
       - "backend/tests/test_regular_hours_v3_1_cloud_shadow.py"
+      - "backend/tests/test_regular_hours_nyse_session_gate.py"
       - "backend/tests/test_regular_hours_schedule_delivery_audit.py"
       - "backend/tests/test_regular_hours_timestamp_provenance.py"
       - "backend/tests/test_regular_hours_evidence_retention.py"
@@ -35,13 +38,16 @@ jobs:
         run: |
           python -m py_compile scripts/run_regular_hours_v3_1_cloud_shadow.py
           python -m py_compile scripts/audit_regular_hours_schedule_delivery.py
+          python -m py_compile scripts/nyse_session_calendar.py
           python -m py_compile backend/app/services/intraday_probability_runtime_v3_1.py
           python -m py_compile backend/app/services/intraday_probability_ensemble_engine.py
           python -m py_compile backend/app/services/intraday_probability_calibration_v3_1.py
       - name: Run focused regression tests
         run: |
           python -m pytest -q \
+            backend/tests/test_nyse_session_calendar.py \
             backend/tests/test_regular_hours_v3_1_cloud_shadow.py \
+            backend/tests/test_regular_hours_nyse_session_gate.py \
             backend/tests/test_regular_hours_schedule_delivery_audit.py \
             backend/tests/test_regular_hours_timestamp_provenance.py \
             backend/tests/test_regular_hours_evidence_retention.py
