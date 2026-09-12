@@ -1,0 +1,60 @@
+name: Semiconductor 3h specialist historical screen
+
+on:
+  pull_request:
+    paths:
+      - "backend/evals/benchmark_industry_specialist_v1.py"
+      - "backend/evals/industry_specialist_prereg_v1.json"
+      - "backend/evals/research_lineage_registry.json"
+      - "backend/evals/specialist_engine_tournament.py"
+      - "backend/evals/benchmark_intraday_challenger_v4.py"
+      - "scripts/run_industry_specialist_historical_evidence.py"
+      - "backend/tests/test_benchmark_industry_specialist_v1.py"
+      - ".github/workflows/industry-specialist-historical-screen.yml"
+      - "docs/research/SEMICONDUCTOR_SPECIALIST_3H_V1.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semiconductor-specialist-3h-screen-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused dependencies
+        run: python -m pip install --disable-pip-version-check numpy==2.5.1 pandas==3.0.3 pytest yfinance==1.5.1
+      - name: Compile screening path
+        run: |
+          python -m py_compile backend/evals/benchmark_industry_specialist_v1.py
+          python -m py_compile scripts/run_industry_specialist_historical_evidence.py
+      - name: Run focused regressions
+        env:
+          PYTHONPATH: backend
+        run: python -m pytest -q backend/tests/test_benchmark_industry_specialist_v1.py backend/tests/test_research_lineage_guard.py
+      - name: Validate research lineage registry
+        env:
+          PYTHONPATH: backend
+        run: python backend/evals/research_lineage_guard.py backend/evals/research_lineage_registry.json
+      - name: Run preregistered 60d 5m semiconductor 3h screen
+        env:
+          PYTHONPATH: backend
+        run: |
+          python scripts/run_industry_specialist_historical_evidence.py \
+            --output artifacts/semiconductor-specialist-3h-v1-evidence.json
+      - name: Upload screening artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semiconductor-specialist-3h-v1-evidence-${{ github.run_id }}
+          path: artifacts/semiconductor-specialist-3h-v1-evidence.json
+          if-no-files-found: error
+          retention-days: 30
