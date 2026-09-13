@@ -1,0 +1,80 @@
+/* OrionTrader Analysis interaction affordances.
+   Presentation only: improves keyboard focus, disabled states and control feedback. */
+
+.analyze-view > .core-search-wrap .core-search input:focus-visible,
+.analyze-view > .core-search-wrap .core-search button:focus-visible,
+.analyze-view > .core-search-wrap .core-suggestions button:focus-visible,
+.analyze-horizon-tabs button:focus-visible {
+  outline: 1px solid rgba(255, 148, 71, 0.92);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 3px rgba(255, 122, 26, 0.1),
+    0 0 18px rgba(255, 122, 26, 0.08);
+}
+
+.analyze-view > .core-search-wrap .core-search input:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
+.analyze-view > .core-search-wrap .core-suggestions button:focus-visible {
+  border-color: rgba(255, 148, 71, 0.28);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.115), transparent 50%),
+    rgba(255, 255, 255, 0.03);
+}
+
+.analyze-view > .core-search-wrap .core-suggestions button:active,
+.analyze-horizon-tabs button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.analyze-horizon-tabs button:focus-visible {
+  position: relative;
+  z-index: 1;
+  color: rgba(255, 246, 238, 0.96);
+  border-color: rgba(255, 148, 71, 0.28);
+  background: rgba(255, 122, 26, 0.075);
+}
+
+.analyze-horizon-tabs button.active:focus-visible {
+  background: linear-gradient(180deg, rgba(255, 132, 43, 0.22), rgba(255, 122, 26, 0.1));
+}
+
+.analyze-view > .core-search-wrap button:disabled,
+.analyze-horizon-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.44;
+  filter: saturate(0.62);
+  box-shadow: none;
+}
+
+.analyze-view > .core-search-wrap button:disabled:hover,
+.analyze-horizon-tabs button:disabled:hover {
+  transform: none;
+}
+
+.analyze-view > .core-search-wrap .core-search:has(input:disabled) {
+  opacity: 0.58;
+  border-color: rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.016);
+  box-shadow: none;
+}
+
+.analyze-view > .core-search-wrap .core-search:has(input:disabled) svg {
+  color: rgba(190, 197, 208, 0.34);
+}
+
+.analyze-view > .core-search-wrap .core-suggestions button[aria-selected="true"]:focus-visible,
+.analyze-view > .core-search-wrap .core-suggestions button.active:focus-visible {
+  box-shadow:
+    inset 2px 0 0 rgba(255, 140, 57, 0.78),
+    0 0 0 3px rgba(255, 122, 26, 0.09);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view > .core-search-wrap .core-suggestions button:active,
+  .analyze-horizon-tabs button:active:not(:disabled) {
+    transform: none;
+  }
+}
