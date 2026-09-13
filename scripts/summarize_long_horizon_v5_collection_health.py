@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 CONTRACT = "orion-long-horizon-v5-paired-shadow-v1"
-SUMMARY_CONTRACT = "orion-long-horizon-v5-collection-health-v2"
+SUMMARY_CONTRACT = "orion-long-horizon-v5-collection-health-v3"
+SUPPORTED_STATUSES = {"completed", "degraded", "skipped"}
+SUPPORTED_HORIZONS = {"3h", "5h"}
 
 
 def _reason_category(reason: Any) -> str:
@@ -36,6 +38,105 @@ def _is_forward_eligible(payload: dict[str, Any]) -> bool:
     return value
 
 
+def _strict_nonnegative_int(value: Any, field: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{field} must be a non-negative integer")
+    return value
+
+
+def _validated_forward_projection(payload: dict[str, Any]) -> dict[str, Any]:
+    status = payload.get("status")
+    if status not in SUPPORTED_STATUSES:
+        raise ValueError(f"unexpected forward run status: {status!r}")
+
+    symbols = payload.get("symbols_requested")
+    gate = payload.get("session_gate")
+    coverage = payload.get("coverage")
+    failures = payload.get("failures")
+    if not isinstance(symbols, list):
+        raise ValueError("symbols_requested must be a JSON array")
+    if not isinstance(gate, dict):
+        raise ValueError("session_gate must be a JSON object")
+    if not isinstance(coverage, dict):
+        raise ValueError("coverage must be a JSON object")
+    if not isinstance(failures, dict):
+        raise ValueError("failures must be a JSON object")
+    if coverage.get("score_blind") is not True:
+        raise ValueError("coverage.score_blind must be true")
+
+    normalized_symbols = [str(symbol).strip().upper() for symbol in symbols]
+    if any(not symbol for symbol in normalized_symbols):
+        raise ValueError("symbols_requested cannot contain empty symbols")
+    if len(normalized_symbols) != len(set(normalized_symbols)):
+        raise ValueError("symbols_requested contains duplicates")
+
+    eligible_horizons = gate.get("eligible_horizons")
+    if not isinstance(eligible_horizons, list):
+        raise ValueError("session_gate.eligible_horizons must be a JSON array")
+    normalized_horizons = [str(horizon) for horizon in eligible_horizons]
+    unknown_horizons = sorted(set(normalized_horizons) - SUPPORTED_HORIZONS)
+    if unknown_horizons:
+        raise ValueError(f"unsupported eligible horizons: {','.join(unknown_horizons)}")
+    if len(normalized_horizons) != len(set(normalized_horizons)):
+        raise ValueError("session_gate.eligible_horizons contains duplicates")
+
+    expected_geometry = {
+        (symbol, horizon)
+        for symbol in normalized_symbols
+        for horizon in normalized_horizons
+    }
+    missing_pairs_raw = coverage.get("missing_pairs")
+    if not isinstance(missing_pairs_raw, list):
+        raise ValueError("coverage.missing_pairs must be a JSON array")
+    missing_pairs: list[tuple[str, str]] = []
+    for row in missing_pairs_raw:
+        if not isinstance(row, dict):
+            raise ValueError("coverage.missing_pairs entries must be JSON objects")
+        pair = (
+            str(row.get("symbol", "")).strip().upper(),
+            str(row.get("horizon", "")),
+        )
+        if pair not in expected_geometry:
+            raise ValueError("coverage.missing_pairs contains an unexpected symbol/horizon")
+        missing_pairs.append(pair)
+    if len(missing_pairs) != len(set(missing_pairs)):
+        raise ValueError("coverage.missing_pairs contains duplicates")
+
+    expected = _strict_nonnegative_int(coverage.get("expected_pair_count"), "coverage.expected_pair_count")
+    observed = _strict_nonnegative_int(coverage.get("observed_pair_count"), "coverage.observed_pair_count")
+    if expected != len(expected_geometry):
+        raise ValueError("coverage.expected_pair_count disagrees with symbol/horizon geometry")
+    if observed != expected - len(missing_pairs):
+        raise ValueError("coverage.observed_pair_count disagrees with coverage.missing_pairs")
+
+    complete = coverage.get("complete")
+    if not isinstance(complete, bool):
+        raise ValueError("coverage.complete must be boolean")
+    if complete != (len(missing_pairs) == 0):
+        raise ValueError("coverage.complete disagrees with coverage.missing_pairs")
+    if status == "completed" and not complete:
+        raise ValueError("completed run must have complete coverage")
+    if status == "degraded" and complete:
+        raise ValueError("degraded run must have incomplete coverage")
+    if status == "skipped" and expected != 0:
+        raise ValueError("skipped run cannot expect prediction pairs")
+
+    normalized_failures: dict[str, Any] = {}
+    for symbol, reason in failures.items():
+        normalized_symbol = str(symbol).strip().upper()
+        if normalized_symbol not in set(normalized_symbols):
+            raise ValueError("failures contains a symbol outside symbols_requested")
+        normalized_failures[normalized_symbol] = reason
+
+    return {
+        "status": status,
+        "expected_pair_count": expected,
+        "observed_pair_count": observed,
+        "complete": complete,
+        "failures": normalized_failures,
+    }
+
+
 def summarize_payloads(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
     status_counts: Counter[str] = Counter()
     reason_counts: Counter[str] = Counter()
@@ -53,24 +154,18 @@ def summarize_payloads(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
             ignored_non_forward_runs += 1
             continue
 
+        projection = _validated_forward_projection(payload)
         forward_eligible_runs += 1
-        status_counts[str(payload.get("status") or "unknown")] += 1
-
-        coverage = payload.get("coverage") or {}
-        if not isinstance(coverage, dict):
-            raise ValueError("coverage must be a JSON object")
-        expected_pairs += int(coverage.get("expected_pair_count") or 0)
-        observed_pairs += int(coverage.get("observed_pair_count") or 0)
-        if coverage.get("complete") is True:
+        status_counts[projection["status"]] += 1
+        expected_pairs += projection["expected_pair_count"]
+        observed_pairs += projection["observed_pair_count"]
+        if projection["complete"]:
             complete_runs += 1
 
-        failures = payload.get("failures") or {}
-        if not isinstance(failures, dict):
-            raise ValueError("failures must be a JSON object")
-        for symbol, reason in failures.items():
+        for symbol, reason in projection["failures"].items():
             category = _reason_category(reason)
             reason_counts[category] += 1
-            symbols_by_reason[category].add(str(symbol).upper())
+            symbols_by_reason[category].add(symbol)
 
     coverage_rate = None
     if expected_pairs > 0:

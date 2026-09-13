@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The long-horizon forward-evidence pipeline now has several acquisition-integrity guards: source freshness, completed-bar age, stock-timeline integrity, benchmark alignment, OHLCV validity, and strict artifact provenance. The next useful step is to measure which guard actually limits genuine weekday coverage instead of adding more speculative checks.
+The long-horizon forward-evidence pipeline has several acquisition-integrity guards: source freshness, completed-bar age, stock-timeline integrity, benchmark alignment, OHLCV validity, and strict artifact provenance. The useful next step is to measure which guard actually limits genuine weekday coverage instead of adding speculative checks.
 
 This utility summarizes collection health without inspecting model probabilities, directions, calibration, outcomes, or performance metrics.
 
@@ -11,6 +11,25 @@ This utility summarizes collection health without inspecting model probabilities
 Operational health metrics are computed only from artifacts whose `acquisition_provenance.forward_eligible` value is the boolean `true`. Manual and diagnostic artifacts are counted in `ignored_non_forward_run_count` but do not contribute to status counts, coverage, failure reasons, affected symbols, or complete-run counts.
 
 This distinction is required because mixing diagnostic runs into genuine forward evidence can distort the measured bottleneck. Missing, malformed, or non-boolean forward-eligibility provenance fails closed rather than being guessed.
+
+## Coverage integrity
+
+Forward-eligible artifacts are now validated before they can affect health telemetry. The summarizer reconstructs the expected symbol/horizon geometry from `symbols_requested` and `session_gate.eligible_horizons`, then requires all coverage metadata to agree with that geometry.
+
+It fails closed when any of the following is inconsistent or malformed:
+
+- unsupported or duplicate eligible horizons;
+- duplicate or empty requested symbols;
+- non-score-blind coverage metadata;
+- negative/non-integer expected or observed counts;
+- expected count that disagrees with the symbol/horizon cross-product;
+- unexpected or duplicate entries in `missing_pairs`;
+- observed count that disagrees with expected minus missing pairs;
+- a `complete` flag that disagrees with `missing_pairs`;
+- completed/degraded/skipped status semantics that disagree with coverage;
+- a failure entry for a symbol outside `symbols_requested`.
+
+This prevents a damaged or partially-written prediction artifact from creating a believable but incorrect operational bottleneck report.
 
 ## Output
 
@@ -29,14 +48,14 @@ The summarizer never traverses `paired_predictions`, so incumbent/challenger pro
 
 ## Contract
 
-The output contract is `orion-long-horizon-v5-collection-health-v2`, is explicitly marked `score_blind: true`, and declares `population: forward_eligible_only`.
+The output contract is `orion-long-horizon-v5-collection-health-v3`, is explicitly marked `score_blind: true`, and declares `population: forward_eligible_only`.
 
 Input files must use the paired-shadow contract `orion-long-horizon-v5-paired-shadow-v1`; unexpected contracts fail closed.
 
 ## Verification
 
-Focused tests cover forward-only aggregation, exclusion of non-forward diagnostic failures and coverage, normalization of dynamic failure detail, exclusion of model probabilities from the result, malformed failure structures, ambiguous provenance, missing provenance, and rejection of unexpected input contracts.
+Focused tests cover forward-only aggregation, exclusion of non-forward diagnostic data, normalization of dynamic failure detail, exclusion of model probabilities, ambiguous provenance, unexpected input contracts, and the coverage-integrity invariants above.
 
 ## Next evidence step
 
-After this change is green and merged, run the summarizer against the first genuine weekday prediction artifacts produced under paired runner v5. Use only the forward-eligible reason counts and observed-pair rate to choose the next engineering task. A recurring source-freshness or completed-bar problem should lead to provider/workflow timing investigation; timeline, OHLCV, or benchmark-alignment failures should lead to ingestion-quality investigation. Do not relax a guard solely to improve coverage.
+After this change is green and merged, run the summarizer against the first genuine weekday prediction artifacts produced under paired runner v5. Use only validated forward-eligible reason counts and observed-pair rate to choose the next engineering task. A recurring source-freshness or completed-bar problem should lead to provider/workflow timing investigation; timeline, OHLCV, or benchmark-alignment failures should lead to ingestion-quality investigation. Do not relax a guard solely to improve coverage.
