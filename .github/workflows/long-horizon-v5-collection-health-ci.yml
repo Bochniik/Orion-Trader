@@ -40,8 +40,9 @@ jobs:
           assert 'Build aggregate score-blind collection health' in workflow
           assert 'summarize_long_horizon_v5_collection_health.py' in workflow
           assert 'find .long-shadow/predictions' in workflow
-          assert 'collection-health-${{ github.run_id }}.json' in workflow
-          assert 'long-horizon-v5-collection-health-${{ github.run_id }}' in workflow
+          assert 'collection-health-' in workflow
+          assert 'long-horizon-v5-collection-health-' in workflow
+          assert 'github.run_id' in workflow
           assert 'if-no-files-found: error' in workflow
           build = workflow.index('Build aggregate score-blind collection health')
           settle = workflow.index('Settle mature paired predictions')
