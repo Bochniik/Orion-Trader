@@ -20,7 +20,7 @@ def _frame(index: pd.DatetimeIndex) -> pd.DataFrame:
 
 
 def test_benchmark_alignment_accepts_exact_stock_timeline():
-    index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min", tz="UTC")
+    index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min")
     stock = _frame(index)
     spy = _frame(index)
 
@@ -28,7 +28,7 @@ def test_benchmark_alignment_accepts_exact_stock_timeline():
 
 
 def test_benchmark_alignment_rejects_any_spy_gap_on_stock_timeline():
-    index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min", tz="UTC")
+    index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min")
     stock = _frame(index)
     spy = _frame(index.delete(3))
 
@@ -40,7 +40,7 @@ def test_benchmark_alignment_rejects_any_spy_gap_on_stock_timeline():
 
 
 def test_forward_adapter_fails_before_feature_build_when_spy_would_forward_fill(monkeypatch):
-    index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min", tz="UTC")
+    index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min")
     stock = _frame(index)
     spy = _frame(index.delete(3))
 
@@ -57,7 +57,27 @@ def test_forward_adapter_fails_before_feature_build_when_spy_would_forward_fill(
 
 
 def test_extra_spy_timestamps_do_not_block_forward_alignment():
-    stock_index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min", tz="UTC")
+    stock_index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min")
     spy_index = stock_index.append(pd.DatetimeIndex([pd.Timestamp("2026-09-11T14:10:00Z")]))
 
     assert forward._benchmark_alignment_error(_frame(stock_index), _frame(spy_index)) is None
+
+
+def test_point_in_time_cutoff_ignores_unused_future_benchmark_gap():
+    index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min")
+    stock = _frame(index)
+    spy = _frame(index.delete(-1))
+
+    assert forward._benchmark_alignment_error(
+        stock,
+        spy,
+        as_of=pd.Timestamp("2026-09-11T14:00:00Z"),
+    ) is None
+    assert forward._benchmark_alignment_error(stock, spy) is not None
+
+
+def test_alignment_compares_equivalent_instants_across_timezones():
+    utc_index = pd.date_range("2026-09-11T13:30:00Z", periods=8, freq="5min")
+    ny_index = utc_index.tz_convert("America/New_York")
+
+    assert forward._benchmark_alignment_error(_frame(ny_index), _frame(utc_index)) is None
