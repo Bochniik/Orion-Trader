@@ -52,10 +52,16 @@ The output contract is `orion-long-horizon-v5-collection-health-v3`, is explicit
 
 Input files must use the paired-shadow contract `orion-long-horizon-v5-paired-shadow-v1`; unexpected contracts fail closed.
 
+## Scheduled integration
+
+The long-horizon evidence-cycle workflow recovers only authenticated scheduled paired-shadow prediction artifacts and now builds the aggregate collection-health summary from that exact recovered population before settlement. When at least one prediction artifact is recovered, the workflow uploads a dedicated `long-horizon-v5-collection-health-<run_id>` artifact. A malformed forward artifact therefore fails the health projection before its operational telemetry can be reported as trustworthy.
+
+The health artifact remains score-blind and separate from the cumulative evidence ledger and model-performance decision. It is intended to answer only whether the collection pipeline is healthy enough to support later outcome analysis.
+
 ## Verification
 
-Focused tests cover forward-only aggregation, exclusion of non-forward diagnostic data, normalization of dynamic failure detail, exclusion of model probabilities, ambiguous provenance, unexpected input contracts, and the coverage-integrity invariants above.
+Focused tests cover forward-only aggregation, exclusion of non-forward diagnostic data, normalization of dynamic failure detail, exclusion of model probabilities, ambiguous provenance, unexpected input contracts, and the coverage-integrity invariants above. Collection-health CI also verifies that the scheduled evidence-cycle invokes the summarizer over the recovered prediction set and uploads the resulting health artifact.
 
 ## Next evidence step
 
-After this change is green and merged, run the summarizer against the first genuine weekday prediction artifacts produced under paired runner v5. Use only validated forward-eligible reason counts and observed-pair rate to choose the next engineering task. A recurring source-freshness or completed-bar problem should lead to provider/workflow timing investigation; timeline, OHLCV, or benchmark-alignment failures should lead to ingestion-quality investigation. Do not relax a guard solely to improve coverage.
+Use the first genuine weekday evidence-cycle artifact to inspect validated forward-eligible reason counts and observed-pair rate. A recurring source-freshness or completed-bar problem should lead to provider/workflow timing investigation; timeline, OHLCV, or benchmark-alignment failures should lead to ingestion-quality investigation. If coverage is healthy, return to leakage-safe model validation and calibration rather than adding more acquisition guards. Do not relax a guard solely to improve coverage.
