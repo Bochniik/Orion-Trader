@@ -17,7 +17,8 @@ from app.services.intraday_probability_long_horizon_challenger_v5 import (
 )
 
 REGULAR_CLOSE = time(16, 0)
-FORWARD_ADAPTER_ID = "long-horizon-v5-forward-adapter-v2"
+EXPECTED_BAR_INTERVAL = pd.Timedelta(minutes=5)
+FORWARD_ADAPTER_ID = "long-horizon-v5-forward-adapter-v3"
 
 
 def _direction(probability_up: float) -> str:
@@ -33,6 +34,74 @@ def _utc_index(frame: pd.DataFrame) -> pd.DatetimeIndex:
     if index.tz is None:
         return index.tz_localize("UTC")
     return index.tz_convert("UTC")
+
+
+def _point_in_time_index(frame: pd.DataFrame, as_of: pd.Timestamp | None = None) -> pd.DatetimeIndex:
+    index = _utc_index(frame)
+    if as_of is None:
+        return index
+    cutoff = pd.Timestamp(as_of)
+    if cutoff.tzinfo is None:
+        cutoff = cutoff.tz_localize("UTC")
+    else:
+        cutoff = cutoff.tz_convert("UTC")
+    return index[index <= cutoff]
+
+
+def _stock_timeline_integrity_error(
+    stock: pd.DataFrame,
+    *,
+    as_of: pd.Timestamp | None = None,
+) -> str | None:
+    """Reject stock histories whose row cadence cannot safely represent elapsed time.
+
+    Long-horizon V5 features and targets use fixed bar counts (for example 36 rows for
+    3h and 60 rows for 5h). A missing or duplicate stock bar would therefore change the
+    elapsed-time meaning of both rolling features and resolved labels. Genuine forward
+    evidence must only use a clean five-minute regular-session timeline.
+    """
+    if stock.empty:
+        return "empty_market_data"
+
+    index = _point_in_time_index(stock, as_of=as_of)
+    if len(index) == 0:
+        return None
+
+    duplicated = index[index.duplicated(keep=False)]
+    if len(duplicated) > 0:
+        first = pd.Timestamp(duplicated.min()).isoformat()
+        last = pd.Timestamp(duplicated.max()).isoformat()
+        return f"stock_duplicate_timestamps:{len(duplicated)}:{first}:{last}"
+
+    local = index.tz_convert(NEW_YORK)
+    misaligned = [
+        ts
+        for ts in local
+        if ts.minute % 5 != 0 or ts.second != 0 or ts.microsecond != 0 or ts.nanosecond != 0
+    ]
+    if misaligned:
+        first = pd.Timestamp(misaligned[0]).tz_convert("UTC").isoformat()
+        last = pd.Timestamp(misaligned[-1]).tz_convert("UTC").isoformat()
+        return f"stock_off_grid_timestamps:{len(misaligned)}:{first}:{last}"
+
+    sessions = pd.Series(local.date, index=index)
+    gaps: list[tuple[pd.Timestamp, pd.Timestamp, pd.Timedelta]] = []
+    for session_day in dict.fromkeys(sessions.tolist()):
+        session_index = index[sessions.to_numpy() == session_day]
+        if len(session_index) < 2:
+            continue
+        deltas = session_index[1:] - session_index[:-1]
+        for pos, delta in enumerate(deltas):
+            if delta != EXPECTED_BAR_INTERVAL:
+                gaps.append((pd.Timestamp(session_index[pos]), pd.Timestamp(session_index[pos + 1]), delta))
+
+    if gaps:
+        before, after, delta = gaps[0]
+        return (
+            f"stock_noncontiguous_5m_timeline:{len(gaps)}:"
+            f"{before.isoformat()}:{after.isoformat()}:{int(delta.total_seconds())}s"
+        )
+    return None
 
 
 def _benchmark_alignment_error(
@@ -51,16 +120,8 @@ def _benchmark_alignment_error(
     if stock.empty or spy.empty:
         return "empty_market_data"
 
-    stock_index = _utc_index(stock)
-    spy_index = _utc_index(spy)
-    if as_of is not None:
-        cutoff = pd.Timestamp(as_of)
-        if cutoff.tzinfo is None:
-            cutoff = cutoff.tz_localize("UTC")
-        else:
-            cutoff = cutoff.tz_convert("UTC")
-        stock_index = stock_index[stock_index <= cutoff]
-        spy_index = spy_index[spy_index <= cutoff]
+    stock_index = _point_in_time_index(stock, as_of=as_of)
+    spy_index = _point_in_time_index(spy, as_of=as_of)
 
     if len(stock_index) == 0:
         return None
@@ -85,9 +146,10 @@ def estimate_long_horizon_v5_frame(
     The frozen V5 model itself is not modified. Training rows are still restricted by
     the model's horizon-resolution cutoff. Horizons whose target would extend beyond
     the regular-hours close are suppressed because they cannot be settled on the
-    regular-hours evidence feed. Forward evidence additionally fails closed when SPY
+    regular-hours evidence feed. Forward evidence additionally fails closed when the
+    stock timeline is not a contiguous five-minute regular-session sequence or SPY
     does not contain every normalized stock timestamp used at or before the requested
-    cutoff, preventing benchmark forward fill from masquerading as current data.
+    cutoff.
     """
     ticker = str(symbol or "").strip().upper()
     if not ticker:
@@ -98,12 +160,23 @@ def estimate_long_horizon_v5_frame(
     if stock.empty or spy.empty:
         return {"symbol": ticker, "available": False, "reason": "empty_market_data"}
 
+    stock_timeline_error = _stock_timeline_integrity_error(stock, as_of=as_of)
+    if stock_timeline_error is not None:
+        return {
+            "symbol": ticker,
+            "available": False,
+            "reason": stock_timeline_error,
+            "stock_timeline_verified": False,
+            "benchmark_alignment_verified": False,
+        }
+
     benchmark_error = _benchmark_alignment_error(stock, spy, as_of=as_of)
     if benchmark_error is not None:
         return {
             "symbol": ticker,
             "available": False,
             "reason": benchmark_error,
+            "stock_timeline_verified": True,
             "benchmark_alignment_verified": False,
         }
 
@@ -165,6 +238,7 @@ def estimate_long_horizon_v5_frame(
         "forward_adapter_id": FORWARD_ADAPTER_ID,
         "as_of": prediction_ts.isoformat(),
         "horizons": horizons,
+        "stock_timeline_verified": True,
         "benchmark_alignment_verified": True,
         "research_only": True,
         "runtime_modified": False,
