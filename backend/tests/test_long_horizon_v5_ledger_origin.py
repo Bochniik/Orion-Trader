@@ -28,7 +28,7 @@ def _sealed_ledger() -> dict:
     empty_records_sha = validator.hashlib.sha256(validator._canonical_json([]).encode("utf-8")).hexdigest()
     return {
         "contract": validator.LEDGER_CONTRACT,
-        "created_at_utc": "2026-09-13T07:00:00+00:00",
+        "created_at_utc": "2026-09-12T15:40:00+00:00",
         "integrity": {
             "algorithm": "sha256",
             "record_count": 0,
@@ -48,6 +48,7 @@ def _run() -> dict:
         "conclusion": "success",
         "run_attempt": 2,
         "head_sha": HEAD_SHA,
+        "created_at": "2026-09-12T15:40:00Z",
     }
 
 
@@ -138,5 +139,17 @@ def test_allows_one_way_migration_only_for_integrity_sealed_legacy_ledger():
             unsealed,
             "long-horizon-v5-evidence-ledger-456",
             _run(),
+            allow_legacy_sealed_migration=True,
+        )
+
+
+def test_rejects_legacy_migration_for_post_hardening_run():
+    run = _run()
+    run["created_at"] = "2026-09-13T15:40:00Z"
+    with pytest.raises(ValueError, match="migration is closed"):
+        validator.validate_origin(
+            _sealed_ledger(),
+            "long-horizon-v5-evidence-ledger-456",
+            run,
             allow_legacy_sealed_migration=True,
         )
