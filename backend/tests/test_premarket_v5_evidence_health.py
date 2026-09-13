@@ -5,6 +5,8 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 import sys
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -137,6 +139,47 @@ def test_forecast_and_acquisition_failures_are_separated():
     assert counts["decision_grade_complete"] == 1
     assert "forecast_completeness" in report["summary"]["blocking_layers"]
     assert "acquisition_eligibility" in report["summary"]["blocking_layers"]
+
+
+def test_score_inspection_fails_closed_when_mature_artifact_is_unmatched(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(health, "REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT", 1)
+    day = date(2026, 9, 11)
+    runs = [_run(day, "early", "1"), _run(day, "mid", "2"), _run(day, "late", "3")]
+    payloads = [
+        _payload(day, "early", "1"),
+        _payload(day, "mid", "2"),
+        _payload(day, "late", "999"),
+    ]
+
+    report = evidence.build_evidence_health_report(runs, payloads, start_date=day, as_of=_as_of(day))
+
+    assert report["forward_readiness"]["readiness"]["ready_for_issue_3_score_inspection"] is True
+    assert report["summary"]["unmatched_artifact_count"] == 1
+    assert report["summary"]["operationally_clean"] is False
+    assert report["summary"]["ready_for_issue_3_score_inspection"] is False
+    assert "artifact_persistence" in report["summary"]["blocking_layers"]
+    assert "unmatched_artifact" in report["summary"]["blocking_layers"]
+    assert "cohort_maturity" not in report["summary"]["blocking_layers"]
+
+
+def test_score_inspection_fails_closed_on_duplicate_delivery(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(health, "REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT", 1)
+    day = date(2026, 9, 11)
+    runs = [
+        _run(day, "early", "1"),
+        _run(day, "early", "11"),
+        _run(day, "mid", "2"),
+        _run(day, "late", "3"),
+    ]
+    payloads = [_payload(day, "early", "1"), _payload(day, "mid", "2"), _payload(day, "late", "3")]
+
+    report = evidence.build_evidence_health_report(runs, payloads, start_date=day, as_of=_as_of(day))
+
+    assert report["forward_readiness"]["readiness"]["ready_for_issue_3_score_inspection"] is True
+    assert report["summary"]["duplicate_delivery_count"] == 1
+    assert report["summary"]["operationally_clean"] is False
+    assert report["summary"]["ready_for_issue_3_score_inspection"] is False
+    assert "duplicate_delivery" in report["summary"]["blocking_layers"]
 
 
 def test_score_changes_do_not_change_evidence_health_classification():

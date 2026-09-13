@@ -141,6 +141,14 @@ def build_evidence_health_report(
             "ready": readiness_row["ready"],
         }
 
+    duplicate_count = schedule_report["summary"]["duplicate_delivery_count"]
+    all_mature_slots_decision_grade = bool(evidence_rows) and all(
+        row["status"] == "decision_grade_complete" for row in evidence_rows
+    )
+    operationally_clean = all_mature_slots_decision_grade and duplicate_count == 0 and not unmatched
+    cohort_mature = forward_report["readiness"]["ready_for_issue_3_score_inspection"]
+    ready_for_score_inspection = bool(cohort_mature and operationally_clean)
+
     blocking_layers: list[str] = []
     if status_counts["missing_delivery"]:
         blocking_layers.append("delivery")
@@ -152,14 +160,12 @@ def build_evidence_health_report(
         blocking_layers.append("forecast_completeness")
     if status_counts["acquisition_ineligible"]:
         blocking_layers.append("acquisition_eligibility")
-    if not forward_report["readiness"]["ready_for_issue_3_score_inspection"]:
+    if duplicate_count:
+        blocking_layers.append("duplicate_delivery")
+    if unmatched:
+        blocking_layers.append("unmatched_artifact")
+    if not cohort_mature:
         blocking_layers.append("cohort_maturity")
-
-    duplicate_count = schedule_report["summary"]["duplicate_delivery_count"]
-    all_mature_slots_decision_grade = bool(evidence_rows) and all(
-        row["status"] == "decision_grade_complete" for row in evidence_rows
-    )
-    operationally_clean = all_mature_slots_decision_grade and duplicate_count == 0 and not unmatched
 
     score_blind_material = {
         "schedule_delivery_sha256": _canonical_sha256(schedule_report),
@@ -188,9 +194,7 @@ def build_evidence_health_report(
             "unmatched_artifact_count": len(unmatched),
             "all_mature_slots_decision_grade_complete": all_mature_slots_decision_grade,
             "operationally_clean": operationally_clean,
-            "ready_for_issue_3_score_inspection": forward_report["readiness"][
-                "ready_for_issue_3_score_inspection"
-            ],
+            "ready_for_issue_3_score_inspection": ready_for_score_inspection,
             "blocking_layers": blocking_layers,
         },
         "per_snapshot": per_snapshot,

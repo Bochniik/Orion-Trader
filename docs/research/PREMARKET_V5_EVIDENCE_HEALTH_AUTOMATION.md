@@ -18,6 +18,15 @@ The collector intentionally keeps only score-blind delivery metadata. It does no
 
 The resulting report and its score-blind input summary are retained for 90 days. A red or blocked evidence-health state is an operational/research-readiness signal only; it does not change the runtime model, calibration, thresholds, risk rules, market-data feed, broker integration, or order path.
 
+## Fail-closed score-inspection gate
+
+Cohort maturity alone is not sufficient to unlock Issue #3 model-score inspection. The unified evidence-health report may mark `ready_for_issue_3_score_inspection=true` only when both conditions hold:
+
+1. every early/mid/late cohort has the preregistered number of decision-grade forward sessions; and
+2. the delivery-to-artifact chain is operationally clean for every mature expected slot.
+
+Duplicate scheduled deliveries and prediction artifacts that cannot be matched to the exact mature scheduled run are explicit blocking layers. They cannot be masked by having enough otherwise valid artifacts. This keeps the transition from score-blind collection to Brier/log-loss/calibration inspection fail closed.
+
 ## Interpretation
 
-Before the 55-session early/mid/late geometry is complete, the correct action is to repair the first non-zero operational blocking layer and continue forward collection. Predictive metrics must remain uninspected. Once every preregistered cohort is mature and decision-grade, Issue #3 may proceed to the already bound event-nested validation and research-gate path.
+Before the 55-session early/mid/late geometry is complete, the correct action is to repair the first non-zero operational blocking layer and continue forward collection. Predictive metrics must remain uninspected. Once every preregistered cohort is mature, every mature expected slot is decision-grade complete, and there are no duplicate deliveries or unmatched artifacts, Issue #3 may proceed to the already bound event-nested validation and research-gate path.
