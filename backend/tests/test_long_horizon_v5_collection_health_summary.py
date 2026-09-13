@@ -22,15 +22,40 @@ def _load_module():
 health = _load_module()
 
 
-def _payload(*, status="degraded", forward=True, expected=4, observed=2, failures=None):
+def _payload(
+    *,
+    status="degraded",
+    forward=True,
+    symbols=None,
+    horizons=None,
+    missing=None,
+    failures=None,
+):
+    symbols = list(symbols or ["AAPL", "MSFT"])
+    horizons = list(horizons or ["3h", "5h"])
+    missing = list(missing if missing is not None else [{"symbol": "MSFT", "horizon": "5h"}])
+    expected = len(symbols) * len(horizons)
+    observed = expected - len(missing)
+    if status == "completed":
+        missing = []
+        observed = expected
+    if status == "skipped":
+        horizons = []
+        missing = []
+        expected = 0
+        observed = 0
     return {
         "contract": health.CONTRACT,
         "status": status,
         "acquisition_provenance": {"forward_eligible": forward},
+        "symbols_requested": symbols,
+        "session_gate": {"eligible_horizons": horizons},
         "coverage": {
+            "score_blind": True,
             "expected_pair_count": expected,
             "observed_pair_count": observed,
-            "complete": expected == observed,
+            "complete": not missing,
+            "missing_pairs": missing,
         },
         "failures": failures or {},
         "paired_predictions": [
@@ -54,13 +79,12 @@ def test_summary_aggregates_only_score_blind_forward_collection_health():
             ),
             _payload(
                 status="completed",
-                expected=4,
-                observed=4,
-                failures={"NVDA": "prediction_bar_not_closed:120s"},
+                failures={"AAPL": "prediction_bar_not_closed:120s"},
             ),
         ]
     )
 
+    assert result["contract"] == "orion-long-horizon-v5-collection-health-v3"
     assert result["score_blind"] is True
     assert result["population"] == "forward_eligible_only"
     assert result["input_run_count"] == 2
@@ -70,15 +94,15 @@ def test_summary_aggregates_only_score_blind_forward_collection_health():
     assert result["status_counts"] == {"completed": 1, "degraded": 1}
     assert result["coverage"] == {
         "expected_pair_count": 8,
-        "observed_pair_count": 6,
-        "observed_pair_rate": 0.75,
+        "observed_pair_count": 7,
+        "observed_pair_rate": 0.875,
     }
     assert result["failure_reason_counts"] == {
         "prediction_bar_not_closed": 2,
         "stale_prediction_timestamp": 1,
     }
     assert result["affected_symbols_by_reason"] == {
-        "prediction_bar_not_closed": ["AAPL", "NVDA"],
+        "prediction_bar_not_closed": ["AAPL"],
         "stale_prediction_timestamp": ["MSFT"],
     }
     rendered = str(result)
@@ -86,17 +110,15 @@ def test_summary_aggregates_only_score_blind_forward_collection_health():
     assert "0.000001" not in rendered
 
 
-def test_non_forward_runs_are_counted_but_excluded_from_health_metrics():
+def test_non_forward_runs_are_counted_but_excluded_before_projection_validation():
+    diagnostic = _payload(forward=False)
+    diagnostic["coverage"] = "intentionally malformed diagnostic coverage"
+    diagnostic["failures"] = ["also malformed"]
+
     result = health.summarize_payloads(
         [
-            _payload(status="completed", expected=4, observed=4),
-            _payload(
-                forward=False,
-                status="degraded",
-                expected=100,
-                observed=0,
-                failures={"FAKE": "provider_failure:manual-diagnostic"},
-            ),
+            _payload(status="completed"),
+            diagnostic,
         ]
     )
 
@@ -112,8 +134,6 @@ def test_non_forward_runs_are_counted_but_excluded_from_health_metrics():
     }
     assert result["failure_reason_counts"] == {}
     assert result["affected_symbols_by_reason"] == {}
-    assert "FAKE" not in str(result)
-    assert "manual-diagnostic" not in str(result)
 
 
 def test_dynamic_failure_details_are_not_preserved():
@@ -123,6 +143,66 @@ def test_dynamic_failure_details_are_not_preserved():
     assert result["failure_reason_counts"] == {"paired_timestamp_mismatch": 1}
     assert "secret-a" not in str(result)
     assert "secret-b" not in str(result)
+
+
+def test_summary_rejects_inconsistent_coverage_counts():
+    payload = _payload()
+    payload["coverage"]["observed_pair_count"] = 4
+    with pytest.raises(ValueError, match="observed_pair_count disagrees"):
+        health.summarize_payloads([payload])
+
+
+def test_summary_rejects_expected_count_that_disagrees_with_geometry():
+    payload = _payload()
+    payload["coverage"]["expected_pair_count"] = 99
+    with pytest.raises(ValueError, match="expected_pair_count disagrees"):
+        health.summarize_payloads([payload])
+
+
+def test_summary_rejects_complete_flag_that_disagrees_with_missing_pairs():
+    payload = _payload()
+    payload["coverage"]["complete"] = True
+    with pytest.raises(ValueError, match="complete disagrees"):
+        health.summarize_payloads([payload])
+
+
+def test_summary_rejects_unexpected_or_duplicate_missing_pairs():
+    unexpected = _payload()
+    unexpected["coverage"]["missing_pairs"] = [{"symbol": "NVDA", "horizon": "5h"}]
+    with pytest.raises(ValueError, match="unexpected symbol/horizon"):
+        health.summarize_payloads([unexpected])
+
+    duplicate = _payload()
+    duplicate["coverage"]["missing_pairs"] = [
+        {"symbol": "MSFT", "horizon": "5h"},
+        {"symbol": "MSFT", "horizon": "5h"},
+    ]
+    duplicate["coverage"]["observed_pair_count"] = 2
+    with pytest.raises(ValueError, match="missing_pairs contains duplicates"):
+        health.summarize_payloads([duplicate])
+
+
+def test_summary_rejects_non_score_blind_forward_coverage():
+    payload = _payload()
+    payload["coverage"]["score_blind"] = False
+    with pytest.raises(ValueError, match="score_blind"):
+        health.summarize_payloads([payload])
+
+
+def test_summary_rejects_invalid_status_geometry_and_failure_symbol():
+    completed = _payload(status="completed")
+    completed["status"] = "degraded"
+    with pytest.raises(ValueError, match="degraded run must have incomplete coverage"):
+        health.summarize_payloads([completed])
+
+    skipped = _payload(status="skipped")
+    skipped["coverage"]["expected_pair_count"] = 1
+    with pytest.raises(ValueError, match="expected_pair_count disagrees"):
+        health.summarize_payloads([skipped])
+
+    failure = _payload(failures={"NVDA": "provider_failure:x"})
+    with pytest.raises(ValueError, match="outside symbols_requested"):
+        health.summarize_payloads([failure])
 
 
 def test_summary_rejects_non_mapping_failures_on_forward_run():
