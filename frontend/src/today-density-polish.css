@@ -210,6 +210,46 @@
   color: #d69a6e;
 }
 
+/* Keep the selected Explorer row visually connected to the quick-analysis surface. */
+.market-explorer-panel.market-v3 .market-v3-row:focus {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 122, 26, 0.095),
+      rgba(255, 122, 26, 0.024) 46%,
+      rgba(255, 255, 255, 0.008)
+    );
+  box-shadow:
+    inset 2px 0 0 #ff7a1a,
+    inset 0 0 0 1px rgba(255, 122, 26, 0.11);
+}
+
+.dashboard-grid:has(.market-explorer-panel.market-v3 .market-v3-row:focus) .dashboard-orion-card {
+  border-color: rgba(255, 122, 26, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    inset 2px 0 0 rgba(255, 122, 26, 0.52),
+    0 16px 42px rgba(0, 0, 0, 0.2),
+    0 0 28px rgba(255, 122, 26, 0.045);
+}
+
+.dashboard-grid:has(.market-explorer-panel.market-v3 .market-v3-row:focus) .dashboard-orion-card .dashboard-heading-icon {
+  border-color: rgba(255, 122, 26, 0.28);
+  box-shadow: 0 0 16px rgba(255, 122, 26, 0.1);
+}
+
+.dashboard-orion-card {
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.dashboard-orion-card .dashboard-heading-icon {
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
 @media (min-width: 1181px) {
   .dashboard-side {
     top: 70px;
