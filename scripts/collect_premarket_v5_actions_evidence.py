@@ -23,6 +23,18 @@ class ActionsEvidenceError(RuntimeError):
     pass
 
 
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is None:
+            return None
+        source_host = urllib.parse.urlsplit(req.full_url).netloc.lower()
+        target_host = urllib.parse.urlsplit(redirected.full_url).netloc.lower()
+        if source_host != target_host:
+            redirected.remove_header("Authorization")
+        return redirected
+
+
 def _iso_utc(value: Any, *, field: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -107,6 +119,7 @@ class GitHubActionsClient:
         self.repository = repository
         self.token = token
         self.api_url = api_url.rstrip("/")
+        self._opener = urllib.request.build_opener(_SafeRedirectHandler())
 
     def _request(self, path: str, *, accept: str = "application/vnd.github+json") -> bytes:
         request = urllib.request.Request(
@@ -119,7 +132,7 @@ class GitHubActionsClient:
             },
         )
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:
+            with self._opener.open(request, timeout=30) as response:
                 return response.read()
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:500]
