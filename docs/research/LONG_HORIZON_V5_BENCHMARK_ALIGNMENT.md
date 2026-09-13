@@ -8,13 +8,13 @@ The frozen long-horizon V5 feature builder aligns SPY to each stock timestamp wi
 
 The frozen V5 model and feature definitions are not changed. Instead, the forward adapter now validates normalized regular-session inputs before feature construction.
 
-For a forward forecast to be eligible, every normalized stock timestamp present in the downloaded research frame must also exist in the normalized SPY frame. Extra SPY timestamps are allowed. If any stock timestamp is absent from SPY, the adapter fails closed with `benchmark_missing_stock_timestamps:<count>:<first>:<last>` and does not call the feature builder.
+For a forward forecast to be eligible, every normalized stock timestamp that is at or before the point-in-time cutoff must also exist in the normalized SPY frame. Extra SPY timestamps are allowed. Equivalent instants are compared in UTC so differing timezone representations do not create false mismatches. If any used stock timestamp is absent from SPY, the adapter fails closed with `benchmark_missing_stock_timestamps:<count>:<first>:<last>` and does not call the feature builder.
 
-This makes the existing SPY forward-fill path unreachable for genuine forward evidence while preserving the preregistered model implementation itself.
+This makes the existing SPY forward-fill path unreachable for genuine forward evidence while preserving the preregistered model implementation itself. When an explicit historical `as_of` cutoff is supplied, later unused rows do not affect the alignment decision.
 
-## Why validate the full frame
+## Why validate the used frame rather than only the latest bar
 
-The challenger retrains its daily model from the same downloaded 60-day frame on each run. Checking only the final prediction bar would protect the current feature vector but could still allow forward-filled SPY values into historical training rows. Requiring exact SPY coverage for all stock timestamps used by the frame prevents that hidden benchmark imputation from affecting either the current prediction features or the training sample.
+The challenger retrains its daily model from the same downloaded 60-day frame on each run. Checking only the final prediction bar would protect the current feature vector but could still allow forward-filled SPY values into historical training rows. Requiring exact SPY coverage for all stock timestamps used at or before the cutoff prevents that hidden benchmark imputation from affecting either the current prediction features or the training sample.
 
 ## Scope and safety
 
@@ -29,7 +29,9 @@ Focused tests cover:
 - exact stock/SPY timestamp alignment,
 - rejection of a single missing SPY timestamp,
 - fail-closed behavior before feature construction,
-- allowance for harmless extra SPY timestamps.
+- allowance for harmless extra SPY timestamps,
+- historical point-in-time cutoffs that ignore later unused gaps,
+- timezone-equivalent timestamp representations.
 
 The existing long-horizon forward-shadow regression workflow still runs because the adapter itself changed, and a dedicated benchmark-alignment CI job runs the new tests directly.
 
