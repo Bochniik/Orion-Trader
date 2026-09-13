@@ -136,6 +136,16 @@ jobs:
           done < /tmp/long-shadow-artifacts.tsv
           echo "prediction_artifacts=$COUNT" >> "$GITHUB_OUTPUT"
           echo "ledger_found=$LEDGER_FOUND" >> "$GITHUB_OUTPUT"
+      - name: Build aggregate score-blind collection health
+        if: steps.recover.outputs.prediction_artifacts != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backend/data/cloud_shadow/long_horizon_v5/health
+          mapfile -t PREDICTIONS < <(find .long-shadow/predictions -type f -name 'prediction-*.json' | sort)
+          python scripts/summarize_long_horizon_v5_collection_health.py \
+            "${PREDICTIONS[@]}" \
+            --output backend/data/cloud_shadow/long_horizon_v5/health/collection-health-${{ github.run_id }}.json
       - name: Settle mature paired predictions
         id: settle
         if: steps.recover.outputs.prediction_artifacts != '0'
@@ -201,6 +211,14 @@ jobs:
           path: backend/data/cloud_shadow/long_horizon_v5/
           if-no-files-found: warn
           retention-days: 45
+      - name: Upload aggregate score-blind collection health
+        if: steps.recover.outputs.prediction_artifacts != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-horizon-v5-collection-health-${{ github.run_id }}
+          path: backend/data/cloud_shadow/long_horizon_v5/health/collection-health-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Upload cumulative paired evidence ledger
         if: always()
         uses: actions/upload-artifact@v4
