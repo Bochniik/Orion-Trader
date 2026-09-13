@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -18,6 +19,7 @@ ARTIFACT_RE = re.compile(r"^long-horizon-v5-evidence-ledger-(\d+)$")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 EXPECTED_WORKFLOW_PATH = ".github/workflows/long-horizon-v5-evidence-cycle.yml"
 PROVENANCE_CONTRACT = "orion-long-horizon-v5-evidence-cycle-provenance-v1"
+LEGACY_MIGRATION_CUTOFF_UTC = datetime(2026, 9, 13, 8, 0, 0, tzinfo=timezone.utc)
 
 
 def _canonical_json(value: Any) -> str:
@@ -38,6 +40,17 @@ def _positive_int(value: Any, message: str) -> int:
     if parsed <= 0:
         raise ValueError(message)
     return parsed
+
+
+def _run_created_at(run: dict[str, Any]) -> datetime:
+    raw = str(run.get("created_at") or "")
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError("GitHub run metadata is missing a valid created_at timestamp") from None
+    if parsed.tzinfo is None:
+        raise ValueError("GitHub run created_at timestamp must be timezone-aware")
+    return parsed.astimezone(timezone.utc)
 
 
 def attest_ledger(
@@ -116,6 +129,8 @@ def validate_origin(
         )
         if not allow_legacy_sealed_migration or not sealed:
             raise ValueError("Ledger is missing evidence-cycle provenance")
+        if _run_created_at(run) >= LEGACY_MIGRATION_CUTOFF_UTC:
+            raise ValueError("Legacy ledger provenance migration is closed for post-hardening runs")
         return {
             "valid": True,
             "legacy_sealed_migration": True,
