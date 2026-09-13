@@ -146,6 +146,12 @@ jobs:
           assert 'ARTIFACT_HEAD_SHA' in workflow
           assert 'producing run mismatch' in workflow
           assert 'head SHA does not match producing run metadata' in workflow
+          assert 'RUN_EVENT=$(jq -r' in workflow
+          assert 'if [ "$RUN_EVENT" != "schedule" ]; then' in workflow
+          assert 'Skipping non-forward long-horizon prediction artifact' in workflow
+          event_filter = workflow.index('RUN_EVENT=$(jq -r')
+          prediction_download = workflow.index('gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/long-prediction-')
+          assert event_filter < prediction_download
           PY
       - name: Run focused regression tests
         run: |
