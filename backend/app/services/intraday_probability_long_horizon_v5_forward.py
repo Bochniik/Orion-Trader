@@ -17,7 +17,7 @@ from app.services.intraday_probability_long_horizon_challenger_v5 import (
 )
 
 REGULAR_CLOSE = time(16, 0)
-FORWARD_ADAPTER_ID = "long-horizon-v5-forward-adapter-v1"
+FORWARD_ADAPTER_ID = "long-horizon-v5-forward-adapter-v2"
 
 
 def _direction(probability_up: float) -> str:
@@ -26,6 +26,51 @@ def _direction(probability_up: float) -> str:
     if probability_up <= 45.0:
         return "bearish"
     return "neutral"
+
+
+def _utc_index(frame: pd.DataFrame) -> pd.DatetimeIndex:
+    index = frame.index
+    if index.tz is None:
+        return index.tz_localize("UTC")
+    return index.tz_convert("UTC")
+
+
+def _benchmark_alignment_error(
+    stock: pd.DataFrame,
+    spy: pd.DataFrame,
+    *,
+    as_of: pd.Timestamp | None = None,
+) -> str | None:
+    """Reject source frames that would make SPY forward-fill onto used stock timestamps.
+
+    V5's frozen feature builder intentionally remains unchanged. It reindexes SPY to
+    the stock timeline and forward-fills gaps. For genuine forward evidence we must
+    not silently exercise that fallback because a stale benchmark value can distort
+    relative-strength inputs while the stock prediction timestamp still looks fresh.
+    """
+    if stock.empty or spy.empty:
+        return "empty_market_data"
+
+    stock_index = _utc_index(stock)
+    spy_index = _utc_index(spy)
+    if as_of is not None:
+        cutoff = pd.Timestamp(as_of)
+        if cutoff.tzinfo is None:
+            cutoff = cutoff.tz_localize("UTC")
+        else:
+            cutoff = cutoff.tz_convert("UTC")
+        stock_index = stock_index[stock_index <= cutoff]
+        spy_index = spy_index[spy_index <= cutoff]
+
+    if len(stock_index) == 0:
+        return None
+
+    missing = stock_index.difference(spy_index)
+    if len(missing) > 0:
+        first = pd.Timestamp(missing[0]).isoformat()
+        last = pd.Timestamp(missing[-1]).isoformat()
+        return f"benchmark_missing_stock_timestamps:{len(missing)}:{first}:{last}"
+    return None
 
 
 def estimate_long_horizon_v5_frame(
@@ -40,7 +85,9 @@ def estimate_long_horizon_v5_frame(
     The frozen V5 model itself is not modified. Training rows are still restricted by
     the model's horizon-resolution cutoff. Horizons whose target would extend beyond
     the regular-hours close are suppressed because they cannot be settled on the
-    regular-hours evidence feed.
+    regular-hours evidence feed. Forward evidence additionally fails closed when SPY
+    does not contain every normalized stock timestamp used at or before the requested
+    cutoff, preventing benchmark forward fill from masquerading as current data.
     """
     ticker = str(symbol or "").strip().upper()
     if not ticker:
@@ -50,6 +97,15 @@ def estimate_long_horizon_v5_frame(
     spy = _normalize_ohlcv(spy)
     if stock.empty or spy.empty:
         return {"symbol": ticker, "available": False, "reason": "empty_market_data"}
+
+    benchmark_error = _benchmark_alignment_error(stock, spy, as_of=as_of)
+    if benchmark_error is not None:
+        return {
+            "symbol": ticker,
+            "available": False,
+            "reason": benchmark_error,
+            "benchmark_alignment_verified": False,
+        }
 
     dataset = attach_targets(_build_long_horizon_features(stock, spy))
     if dataset.empty:
@@ -109,6 +165,7 @@ def estimate_long_horizon_v5_frame(
         "forward_adapter_id": FORWARD_ADAPTER_ID,
         "as_of": prediction_ts.isoformat(),
         "horizons": horizons,
+        "benchmark_alignment_verified": True,
         "research_only": True,
         "runtime_modified": False,
         "promotion_allowed": False,
