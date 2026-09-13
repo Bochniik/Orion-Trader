@@ -10,12 +10,14 @@ on:
       - "scripts/audit_long_horizon_v5_collection_capacity.py"
       - "scripts/audit_long_horizon_v5_collection_health.py"
       - "scripts/validate_long_horizon_v5_artifact_origin.py"
+      - "scripts/validate_long_horizon_v5_ledger_origin.py"
       - "backend/tests/test_cloud_shadow_evidence_ledger.py"
       - "backend/tests/test_long_horizon_v5_forward_shadow.py"
       - "backend/tests/test_long_horizon_v5_settlement_score_blind.py"
       - "backend/tests/test_long_horizon_v5_collection_capacity.py"
       - "backend/tests/test_long_horizon_v5_collection_health.py"
       - "backend/tests/test_long_horizon_v5_artifact_origin.py"
+      - "backend/tests/test_long_horizon_v5_ledger_origin.py"
       - ".github/workflows/long-horizon-v5-cloud-shadow.yml"
       - ".github/workflows/long-horizon-v5-evidence-cycle.yml"
       - ".github/workflows/long-horizon-v5-forward-shadow-ci.yml"
@@ -48,6 +50,7 @@ jobs:
           python -m py_compile scripts/audit_long_horizon_v5_collection_capacity.py
           python -m py_compile scripts/audit_long_horizon_v5_collection_health.py
           python -m py_compile scripts/validate_long_horizon_v5_artifact_origin.py
+          python -m py_compile scripts/validate_long_horizon_v5_ledger_origin.py
       - name: Run focused regression tests
         run: |
           cd backend
@@ -59,4 +62,5 @@ jobs:
             tests/test_long_horizon_v5_settlement_score_blind.py \
             tests/test_long_horizon_v5_collection_capacity.py \
             tests/test_long_horizon_v5_collection_health.py \
-            tests/test_long_horizon_v5_artifact_origin.py
+            tests/test_long_horizon_v5_artifact_origin.py \
+            tests/test_long_horizon_v5_ledger_origin.py
