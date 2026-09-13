@@ -12,6 +12,7 @@ const PortfolioPanel = lazy(() => import("../components/PortfolioPanel"));
 export default function MyStocksView({ saved, savedError, savedLoading, onSave, onRemove, onAnalyze, dataRevision }) {
   const [ticker, setTicker] = useState("");
   const [inputError, setInputError] = useState("");
+  const [savingTicker, setSavingTicker] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const portfolio = useAsyncTask(), alerts = useAsyncTask();
   const refresh = () => { portfolio.run(() => getPortfolio()); alerts.run(() => getAlerts()); };
@@ -20,9 +21,20 @@ export default function MyStocksView({ saved, savedError, savedLoading, onSave, 
     event.preventDefault();
     const symbol = ticker.trim().toUpperCase();
     if (!/^[A-Z0-9.^=-]{1,15}$/.test(symbol)) { setInputError("Enter a valid ticker."); return; }
+    if (saved.some(item => String(item?.ticker || item || "").trim().toUpperCase() === symbol)) {
+      setInputError(`${symbol} is already in your watchlist.`);
+      return;
+    }
     setInputError("");
-    if (await onSave(symbol)) setTicker("");
+    setSavingTicker(true);
+    try {
+      if (await onSave(symbol)) setTicker("");
+    } finally {
+      setSavingTicker(false);
+    }
   }
+  const normalizedTicker = ticker.trim().toUpperCase();
+  const duplicateTicker = normalizedTicker && saved.some(item => String(item?.ticker || item || "").trim().toUpperCase() === normalizedTicker);
   const rules = (alerts.data?.alerts || []).filter(rule => rule.enabled);
   const exceptions = rules.filter(rule => rule.triggered || rule.message?.startsWith("Check failed"));
   const positions = Object.entries(portfolio.data?.positions || {});
@@ -43,7 +55,12 @@ export default function MyStocksView({ saved, savedError, savedLoading, onSave, 
     </section>
     <SavedPlans onAnalyze={onAnalyze} dataRevision={dataRevision} />
     <DecisionQuality dataRevision={dataRevision} />
-    <form className="core-save-form" onSubmit={add}><label htmlFor="save-ticker">Save a stock</label><input id="save-ticker" placeholder="Ticker" value={ticker} maxLength={15} onChange={event => setTicker(event.target.value.toUpperCase())} /><button className="core-button secondary" type="submit" disabled={!ticker.trim()}><Plus size={16} />Add</button></form>
+    <form className={`core-save-form${duplicateTicker ? " is-duplicate" : ""}${savingTicker ? " is-saving" : ""}`} onSubmit={add} aria-busy={savingTicker}>
+      <div className="core-save-copy"><label htmlFor="save-ticker">Save a stock</label><small>Add a ticker to your market watchlist.</small></div>
+      <div className="core-save-command"><span aria-hidden="true">›</span><input id="save-ticker" placeholder="AAPL" value={ticker} maxLength={15} autoComplete="off" spellCheck="false" disabled={savingTicker} onChange={event => { setTicker(event.target.value.toUpperCase()); if (inputError) setInputError(""); }} /></div>
+      <button className="core-button secondary" type="submit" disabled={!normalizedTicker || duplicateTicker || savingTicker}><Plus size={16} />{savingTicker ? "Saving…" : duplicateTicker ? "Saved" : "Add"}</button>
+      <span className="core-save-hint" aria-live="polite">{duplicateTicker ? `${normalizedTicker} is already saved` : normalizedTicker ? `Ready to add ${normalizedTicker}` : "Type a US ticker symbol"}</span>
+    </form>
     {inputError && <p className="core-warning" role="alert">{inputError}</p>}
     {savedError ? <p className="core-error" role="alert">{savedError}</p> : savedLoading ? <p role="status">Loading watchlist…</p>
       : saved.length ? <Watchlist watchlist={saved} onSelectStock={onAnalyze} onRemoveStock={onRemove} /> : <p className="core-quiet">Your watchlist is empty. Save a ticker here or from an analysis.</p>}
