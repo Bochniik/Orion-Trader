@@ -485,7 +485,7 @@ export default function TodayView(props) {
   const premarketResearch = marketState?.premarket_research || {};
 
   const resultTicker = analysis?.ticker || analysis?.symbol || null;
-  const ticker = analysisBusy ? quickTicker || resultTicker : resultTicker;
+  const ticker = analysisBusy || analysisError ? quickTicker || resultTicker : resultTicker;
   const companyName =
     analysis?.company_name || analysis?.name || analysis?.company || "";
   const bias = analysis?.bias || analysis?.decision || analysis?.direction || null;
@@ -648,9 +648,11 @@ export default function TodayView(props) {
                 <span>
                   {analysisBusy
                     ? "ORION ANALYZING"
-                    : ticker
-                      ? "LAST ANALYSIS"
-                      : "ORION ENGINE"}
+                    : analysisError
+                      ? "ANALYSIS INTERRUPTED"
+                      : ticker
+                        ? "LAST ANALYSIS"
+                        : "ORION ENGINE"}
                 </span>
                 <strong>
                   {analysisBusy
@@ -660,9 +662,11 @@ export default function TodayView(props) {
                 <small>
                   {analysisBusy
                     ? "Running the Orion engine directly in the dashboard..."
-                    : ticker
-                      ? companyName || "Latest Orion research result"
-                      : "Select any stock to generate a quick research view."}
+                    : analysisError
+                      ? "The latest request did not complete. Retry without leaving Today."
+                      : ticker
+                        ? companyName || "Latest Orion research result"
+                        : "Select any stock to generate a quick research view."}
                 </small>
               </div>
             </div>
@@ -793,6 +797,20 @@ export default function TodayView(props) {
               )}
             </div>
 
+            {analysisError && !analysisBusy && quickTicker && (
+              <div className="core-error" role="alert">
+                <h3>{quickTicker} analysis unavailable</h3>
+                <p>{errorText(analysisError)}</p>
+                <button
+                  type="button"
+                  className="core-button"
+                  onClick={() => runQuickAnalysis(quickTicker)}
+                >
+                  Retry {quickTicker}
+                </button>
+              </div>
+            )}
+
             <div className="orion-setup-summary">
               <span className="orion-summary-icon">
                 <Sparkles size={14} />
@@ -803,7 +821,7 @@ export default function TodayView(props) {
                   {analysisBusy
                     ? "Orion is evaluating the available evidence for this stock."
                     : analysisError
-                      ? errorText(analysisError)
+                      ? "The requested quick analysis did not complete. Retry to refresh this panel."
                       : setupSummary ||
                         (isPremarket
                           ? premarketForecastAvailable
@@ -821,10 +839,14 @@ export default function TodayView(props) {
             <button
               type="button"
               className="dashboard-primary-action"
-              disabled={analysisBusy || !ticker}
+              disabled={analysisBusy || !ticker || Boolean(analysisError)}
               onClick={() => ticker && props.onOpenFullAnalysis?.(ticker, analysis)}
             >
-              {ticker ? `Open ${ticker} Full Analysis` : "Select a stock first"}
+              {analysisError
+                ? `Retry ${quickTicker || ticker || "analysis"} above`
+                : ticker
+                  ? `Open ${ticker} Full Analysis`
+                  : "Select a stock first"}
               <ArrowRight size={14} />
             </button>
           </section>
