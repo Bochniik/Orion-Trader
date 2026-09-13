@@ -121,6 +121,35 @@
   color: #ff9a42;
 }
 
+/* Keep the My Stocks workspace dense without changing any data or interaction flow. */
+.core-view:has(> .core-stocks-status) > .core-monitoring,
+.core-view:has(> .core-stocks-status) > .core-save-form,
+.core-view:has(> .core-stocks-status) > .core-watchlist-state,
+.core-view:has(> .core-stocks-status) > .watchlist-card,
+.core-view:has(> .core-stocks-status) > .core-positions {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring:first-of-type {
+  margin-top: 0;
+}
+
+.core-view:has(> .core-stocks-status) > .core-warning {
+  margin: 8px 2px 0;
+}
+
+.core-view:has(> .core-stocks-status) > .core-save-form + .core-warning + .core-watchlist-state,
+.core-view:has(> .core-stocks-status) > .core-save-form + .core-warning + .watchlist-card,
+.core-view:has(> .core-stocks-status) > .core-save-form + .core-watchlist-state,
+.core-view:has(> .core-stocks-status) > .core-save-form + .watchlist-card {
+  margin-top: 8px;
+}
+
+.core-view:has(> .core-stocks-status) > .core-positions {
+  margin-top: 14px;
+}
+
 @media (max-width: 1040px) {
   .core-stocks-status {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -157,5 +186,13 @@
 
   .core-stocks-status > div:last-child {
     border-bottom: 0;
+  }
+
+  .core-view:has(> .core-stocks-status) > .core-monitoring,
+  .core-view:has(> .core-stocks-status) > .core-save-form,
+  .core-view:has(> .core-stocks-status) > .core-watchlist-state,
+  .core-view:has(> .core-stocks-status) > .watchlist-card,
+  .core-view:has(> .core-stocks-status) > .core-positions {
+    margin-top: 10px;
   }
 }
