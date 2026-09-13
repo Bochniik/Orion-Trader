@@ -10,6 +10,8 @@ The long-horizon evidence cycle already integrity-sealed cumulative ledger recor
 
 A second operational risk exists at the artifact-storage layer: workflow YAML can request a retention period, while repository/org policy may shorten the actual GitHub Actions artifact lifetime. Because the forward protocol depends on historical prediction artifacts and a cumulative ledger, silently shortened retention can turn a healthy collection process into an unrecoverable evidence gap. The recovery path therefore treats GitHub's actual `created_at`/`expires_at` metadata as part of the evidence contract instead of trusting YAML intent alone.
 
+A third ambiguity exists when GitHub exposes more than one non-expired recovery artifact of the same long-horizon type for the same producing workflow run, for example around a rerun. Processing both would make recovery order-dependent and can overwrite the same local prediction filename while inflating artifact counts. Recovery therefore treats `(artifact type, workflow_run.id)` as a unique identity and fails closed if that identity appears more than once.
+
 ## Provenance contract
 
 Every newly uploaded cumulative ledger is now attested with `orion-long-horizon-v5-evidence-cycle-provenance-v1`. The attestation binds the ledger to:
@@ -26,6 +28,8 @@ Only scheduled runs are marked `forward_eligible=true`.
 On recovery, the workflow parses the run ID from the artifact name, fetches GitHub's run metadata, requires the expected evidence-cycle workflow path, a successful completed scheduled run, an exact run-attempt match, an exact head-SHA match, and an exact ledger-content SHA-256 match. Manual workflow-dispatch ledger artifacts are skipped as forward lineage candidates rather than allowed to shadow the latest scheduled ledger.
 
 The repository-wide artifact listing is also treated as provenance evidence rather than only as a name index. Before any candidate prediction or ledger artifact is downloaded, its GitHub artifact metadata must expose a positive `workflow_run.id` and a 40-character `workflow_run.head_sha`. The producing run ID must match the run encoded in the artifact name, and the artifact's producing head SHA must match the head SHA returned by GitHub for that exact run. Missing or conflicting artifact-level run metadata fails closed. This prevents a same-repository artifact from another workflow run from being accepted merely because its name and embedded payload imitate an expected run.
+
+Recovery-critical artifact identity is additionally unique per artifact type and producing run. Multiple non-expired `long-horizon-v5-paired-shadow-*` artifacts for one `workflow_run.id`, or multiple non-expired `long-horizon-v5-evidence-ledger-*` artifacts for one `workflow_run.id`, are rejected before download. Prediction and ledger artifacts may legitimately share a numeric run ID only because their artifact types are distinct identities. This guard keeps rerun/duplicate storage states from becoming an order-dependent evidence source.
 
 ## Retention contract
 
@@ -51,12 +55,12 @@ An unsealed legacy ledger is not eligible for migration. The next successful cyc
 
 ## Score blindness
 
-The provenance validator does not inspect probabilities, directions, realized labels, Brier score, log loss, directional accuracy, ECE, or tournament deltas. It validates only origin, immutable ledger integrity, artifact lifetime, and workflow identity. Therefore this hardening does not create a path for outcome-driven early stopping or tuning before the pre-registered maturity gates.
+The provenance validator does not inspect probabilities, directions, realized labels, Brier score, log loss, directional accuracy, ECE, or tournament deltas. It validates only origin, immutable ledger integrity, artifact lifetime, unique recovery identity, and workflow identity. Therefore this hardening does not create a path for outcome-driven early stopping or tuning before the pre-registered maturity gates.
 
 ## Failure semantics
 
-Recovery fails closed on malformed artifact IDs, malformed artifact producing-run metadata, malformed retention timestamps, shortened required retention, artifact/run-ID mismatch, artifact/run head-SHA mismatch, unexpected workflow paths, unsuccessful scheduled runs, run-attempt drift, commit-SHA drift, unsupported provenance contracts, internal ledger-integrity failures, or content-digest drift. A manual-run ledger is ignored for forward lineage. This keeps the forward evidence chain anchored to genuine scheduled collection while preserving manual diagnostics.
+Recovery fails closed on malformed artifact IDs, malformed artifact producing-run metadata, malformed retention timestamps, shortened required retention, duplicate recovery identity, artifact/run-ID mismatch, artifact/run head-SHA mismatch, unexpected workflow paths, unsuccessful scheduled runs, run-attempt drift, commit-SHA drift, unsupported provenance contracts, internal ledger-integrity failures, or content-digest drift. A manual-run ledger is ignored for forward lineage. This keeps the forward evidence chain anchored to genuine scheduled collection while preserving manual diagnostics.
 
 ## Next logical step
 
-Observe the first scheduled evidence-cycle recovery after this change. Confirm that recovered prediction and ledger candidates carry artifact-level producing-run metadata that agrees with the separately fetched run metadata and that GitHub reports at least the required 45/90-day actual retention. Then confirm the one-way legacy migration/strict provenance transition. After that, further work should target measured collection-health blockers rather than adding provenance layers unless a concrete new integrity gap is found.
+Observe the first scheduled evidence-cycle recovery after this change. Confirm that recovered prediction and ledger candidates carry artifact-level producing-run metadata that agrees with the separately fetched run metadata, that GitHub reports at least the required 45/90-day actual retention, and that no duplicate `(artifact type, producing run)` identities are present. Then confirm the one-way legacy migration/strict provenance transition. After that, further work should target measured collection-health blockers rather than adding provenance layers unless a concrete new integrity gap is found.
