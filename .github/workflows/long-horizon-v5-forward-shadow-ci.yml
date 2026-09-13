@@ -11,6 +11,7 @@ on:
       - "scripts/audit_long_horizon_v5_collection_health.py"
       - "scripts/validate_long_horizon_v5_artifact_origin.py"
       - "scripts/validate_long_horizon_v5_ledger_origin.py"
+      - "scripts/sort_long_horizon_v5_recovery_artifacts.py"
       - "backend/tests/test_cloud_shadow_evidence_ledger.py"
       - "backend/tests/test_long_horizon_v5_forward_shadow.py"
       - "backend/tests/test_long_horizon_v5_settlement_score_blind.py"
@@ -22,6 +23,7 @@ on:
       - ".github/workflows/long-horizon-v5-evidence-cycle.yml"
       - ".github/workflows/long-horizon-v5-forward-shadow-ci.yml"
       - "docs/research/LONG_HORIZON_V5_FORWARD_SHADOW.md"
+      - "docs/research/LONG_HORIZON_V5_LEDGER_PROVENANCE.md"
 
 permissions:
   contents: read
@@ -51,6 +53,29 @@ jobs:
           python -m py_compile scripts/audit_long_horizon_v5_collection_health.py
           python -m py_compile scripts/validate_long_horizon_v5_artifact_origin.py
           python -m py_compile scripts/validate_long_horizon_v5_ledger_origin.py
+          python -m py_compile scripts/sort_long_horizon_v5_recovery_artifacts.py
+      - name: Test deterministic recovery artifact ordering
+        run: |
+          python - <<'PY'
+          from scripts.sort_long_horizon_v5_recovery_artifacts import sort_artifact_rows
+
+          old = "100\tlong-horizon-v5-evidence-ledger-10\t2026-09-11T15:40:00Z"
+          new = "300\tlong-horizon-v5-evidence-ledger-30\t2026-09-13T15:40:00Z"
+          mid = "200\tlong-horizon-v5-paired-shadow-20\t2026-09-12T15:40:00Z"
+          assert sort_artifact_rows([old, new, mid]) == [new, mid, old]
+
+          low = "100\told\t2026-09-13T15:40:00Z"
+          high = "101\tnew\t2026-09-13T15:40:00Z"
+          assert sort_artifact_rows([low, high]) == [high, low]
+
+          for bad in ("bad\tname\t2026-09-13T15:40:00Z", "1\tname\tnot-a-time"):
+              try:
+                  sort_artifact_rows([bad])
+              except ValueError:
+                  pass
+              else:
+                  raise AssertionError(f"malformed artifact metadata was accepted: {bad}")
+          PY
       - name: Run focused regression tests
         run: |
           cd backend
