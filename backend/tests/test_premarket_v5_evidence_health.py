@@ -18,6 +18,9 @@ import scripts.finalize_premarket_v5_forward_artifact as attestation
 import scripts.resolve_premarket_v5_snapshot as resolver
 
 
+HEAD_SHA = "a" * 40
+
+
 def _forecast():
     return {
         "direction": "NO_TRADE",
@@ -62,6 +65,7 @@ def _payload(day: date, snapshot: str, run_id: str, *, complete: bool = True, la
         event_name="schedule",
         run_id=run_id,
         run_attempt=1,
+        github_head_sha=HEAD_SHA,
     )
 
 
@@ -199,6 +203,7 @@ def test_score_changes_do_not_change_evidence_health_classification():
         event_name="schedule",
         run_id="3",
         run_attempt=1,
+        github_head_sha=HEAD_SHA,
     )
 
     baseline = evidence.build_evidence_health_report(runs, [baseline_payload], start_date=day, as_of=_as_of(day))
