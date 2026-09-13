@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import time
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from app.services.intraday_probability_engine import HORIZON_MINUTES, NEW_YORK, _normalize_ohlcv
@@ -18,7 +19,7 @@ from app.services.intraday_probability_long_horizon_challenger_v5 import (
 
 REGULAR_CLOSE = time(16, 0)
 EXPECTED_BAR_INTERVAL = pd.Timedelta(minutes=5)
-FORWARD_ADAPTER_ID = "long-horizon-v5-forward-adapter-v3"
+FORWARD_ADAPTER_ID = "long-horizon-v5-forward-adapter-v4"
 
 
 def _direction(probability_up: float) -> str:
@@ -46,6 +47,67 @@ def _point_in_time_index(frame: pd.DataFrame, as_of: pd.Timestamp | None = None)
     else:
         cutoff = cutoff.tz_convert("UTC")
     return index[index <= cutoff]
+
+
+def _point_in_time_frame(frame: pd.DataFrame, as_of: pd.Timestamp | None = None) -> pd.DataFrame:
+    if as_of is None:
+        return frame
+    cutoff = pd.Timestamp(as_of)
+    if cutoff.tzinfo is None:
+        cutoff = cutoff.tz_localize("UTC")
+    else:
+        cutoff = cutoff.tz_convert("UTC")
+    return frame.loc[_utc_index(frame) <= cutoff]
+
+
+def _ohlcv_integrity_error(
+    frame: pd.DataFrame,
+    *,
+    source: str,
+    as_of: pd.Timestamp | None = None,
+) -> str | None:
+    """Reject malformed OHLCV rows before they can influence V5 features or labels."""
+    if frame.empty:
+        return "empty_market_data"
+
+    used = _point_in_time_frame(frame, as_of=as_of)
+    if used.empty:
+        return None
+
+    columns = ["Open", "High", "Low", "Close", "Volume"]
+    values = used[columns].to_numpy(dtype=float)
+    finite_rows = np.isfinite(values).all(axis=1)
+    if not finite_rows.all():
+        bad = used.index[~finite_rows]
+        first = pd.Timestamp(bad[0]).tz_convert("UTC").isoformat()
+        last = pd.Timestamp(bad[-1]).tz_convert("UTC").isoformat()
+        return f"{source}_nonfinite_ohlcv:{len(bad)}:{first}:{last}"
+
+    nonpositive_price = (used[["Open", "High", "Low", "Close"]] <= 0.0).any(axis=1)
+    if nonpositive_price.any():
+        bad = used.index[nonpositive_price]
+        first = pd.Timestamp(bad[0]).tz_convert("UTC").isoformat()
+        last = pd.Timestamp(bad[-1]).tz_convert("UTC").isoformat()
+        return f"{source}_nonpositive_price:{len(bad)}:{first}:{last}"
+
+    negative_volume = used["Volume"] < 0.0
+    if negative_volume.any():
+        bad = used.index[negative_volume]
+        first = pd.Timestamp(bad[0]).tz_convert("UTC").isoformat()
+        last = pd.Timestamp(bad[-1]).tz_convert("UTC").isoformat()
+        return f"{source}_negative_volume:{len(bad)}:{first}:{last}"
+
+    invalid_envelope = (
+        (used["High"] < used[["Open", "Close", "Low"]].max(axis=1))
+        | (used["Low"] > used[["Open", "Close", "High"]].min(axis=1))
+    )
+    if invalid_envelope.any():
+        bad = used.index[invalid_envelope]
+        first = pd.Timestamp(bad[0]).tz_convert("UTC").isoformat()
+        last = pd.Timestamp(bad[-1]).tz_convert("UTC").isoformat()
+        return f"{source}_invalid_ohlc_envelope:{len(bad)}:{first}:{last}"
+
+    return None
 
 
 def _stock_timeline_integrity_error(
@@ -146,10 +208,10 @@ def estimate_long_horizon_v5_frame(
     The frozen V5 model itself is not modified. Training rows are still restricted by
     the model's horizon-resolution cutoff. Horizons whose target would extend beyond
     the regular-hours close are suppressed because they cannot be settled on the
-    regular-hours evidence feed. Forward evidence additionally fails closed when the
-    stock timeline is not a contiguous five-minute regular-session sequence or SPY
-    does not contain every normalized stock timestamp used at or before the requested
-    cutoff.
+    regular-hours evidence feed. Forward evidence additionally fails closed when used
+    stock or benchmark OHLCV rows are malformed, the stock timeline is not a contiguous
+    five-minute regular-session sequence, or SPY does not contain every normalized
+    stock timestamp used at or before the requested cutoff.
     """
     ticker = str(symbol or "").strip().upper()
     if not ticker:
@@ -160,12 +222,38 @@ def estimate_long_horizon_v5_frame(
     if stock.empty or spy.empty:
         return {"symbol": ticker, "available": False, "reason": "empty_market_data"}
 
+    stock_ohlcv_error = _ohlcv_integrity_error(stock, source="stock", as_of=as_of)
+    if stock_ohlcv_error is not None:
+        return {
+            "symbol": ticker,
+            "available": False,
+            "reason": stock_ohlcv_error,
+            "stock_ohlcv_verified": False,
+            "benchmark_ohlcv_verified": False,
+            "stock_timeline_verified": False,
+            "benchmark_alignment_verified": False,
+        }
+
+    benchmark_ohlcv_error = _ohlcv_integrity_error(spy, source="benchmark", as_of=as_of)
+    if benchmark_ohlcv_error is not None:
+        return {
+            "symbol": ticker,
+            "available": False,
+            "reason": benchmark_ohlcv_error,
+            "stock_ohlcv_verified": True,
+            "benchmark_ohlcv_verified": False,
+            "stock_timeline_verified": False,
+            "benchmark_alignment_verified": False,
+        }
+
     stock_timeline_error = _stock_timeline_integrity_error(stock, as_of=as_of)
     if stock_timeline_error is not None:
         return {
             "symbol": ticker,
             "available": False,
             "reason": stock_timeline_error,
+            "stock_ohlcv_verified": True,
+            "benchmark_ohlcv_verified": True,
             "stock_timeline_verified": False,
             "benchmark_alignment_verified": False,
         }
@@ -176,6 +264,8 @@ def estimate_long_horizon_v5_frame(
             "symbol": ticker,
             "available": False,
             "reason": benchmark_error,
+            "stock_ohlcv_verified": True,
+            "benchmark_ohlcv_verified": True,
             "stock_timeline_verified": True,
             "benchmark_alignment_verified": False,
         }
@@ -238,6 +328,8 @@ def estimate_long_horizon_v5_frame(
         "forward_adapter_id": FORWARD_ADAPTER_ID,
         "as_of": prediction_ts.isoformat(),
         "horizons": horizons,
+        "stock_ohlcv_verified": True,
+        "benchmark_ohlcv_verified": True,
         "stock_timeline_verified": True,
         "benchmark_alignment_verified": True,
         "research_only": True,
