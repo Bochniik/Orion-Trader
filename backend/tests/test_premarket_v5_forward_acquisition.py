@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import date, datetime, time, timedelta, timezone
-import importlib.util
 from pathlib import Path
 import sys
 
@@ -16,6 +15,9 @@ if str(ROOT) not in sys.path:
 import scripts.audit_premarket_v5_collection_health as health
 import scripts.audit_premarket_v5_forward_readiness as readiness
 import scripts.finalize_premarket_v5_forward_artifact as attestation
+
+
+HEAD_SHA = "a" * 40
 
 
 def _forecast():
@@ -70,6 +72,7 @@ def _attested_payload(
         event_name=event_name,
         run_id="123456" if event_name == "schedule" else None,
         run_attempt=1 if event_name == "schedule" else None,
+        github_head_sha=HEAD_SHA if event_name == "schedule" else None,
     )
 
 
@@ -89,6 +92,7 @@ def test_scheduled_timely_artifact_is_forward_eligible_and_bound_to_payload():
     projection = readiness.validate_acquisition(payload)
 
     assert payload["acquisition_provenance"]["contract"] == attestation.ATTESTATION_CONTRACT
+    assert payload["acquisition_provenance"]["github_head_sha"] == HEAD_SHA
     assert payload["acquisition_provenance"]["forward_eligible"] is True
     assert payload["acquisition_provenance"]["eligibility_reason"] == "scheduled_forward_window"
     assert projection["decision_grade_complete"] is True
@@ -177,7 +181,7 @@ def test_forward_readiness_stays_score_blind():
     payload = _attested_payload(date(2026, 9, 11), "early")
     baseline = readiness.build_forward_readiness_report([payload])
     altered = deepcopy(payload)
-    provenance = altered.pop("acquisition_provenance")
+    altered.pop("acquisition_provenance")
     for prediction in altered["predictions"]:
         for forecast in prediction["forecasts"].values():
             forecast.update({"probability_up": 0.999, "brier": 0.0, "log_loss": 0.0, "realized_outcome": 1})
@@ -189,6 +193,7 @@ def test_forward_readiness_stays_score_blind():
         event_name="schedule",
         run_id="123456",
         run_attempt=1,
+        github_head_sha=HEAD_SHA,
     )
 
     changed = readiness.build_forward_readiness_report([altered])
