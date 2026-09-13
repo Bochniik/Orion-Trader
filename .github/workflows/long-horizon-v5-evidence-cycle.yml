@@ -114,6 +114,11 @@ jobs:
                 echo "Prediction artifact head SHA does not match producing run metadata: $ARTIFACT_NAME" >&2
                 exit 5
               fi
+              RUN_EVENT=$(jq -r '.event // ""' "/tmp/long-run-${RUN_ID}.json")
+              if [ "$RUN_EVENT" != "schedule" ]; then
+                echo "Skipping non-forward long-horizon prediction artifact: $ARTIFACT_NAME event=$RUN_EVENT"
+                continue
+              fi
               gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/long-prediction-${ARTIFACT_ID}.zip"
               unzip -q -o "/tmp/long-prediction-${ARTIFACT_ID}.zip" -d "$RECOVERED_DIR"
               PREDICTION="$RECOVERED_DIR/prediction-${RUN_ID}.json"
