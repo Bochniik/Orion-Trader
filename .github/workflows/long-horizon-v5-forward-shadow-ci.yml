@@ -54,7 +54,7 @@ jobs:
           python -m py_compile scripts/validate_long_horizon_v5_artifact_origin.py
           python -m py_compile scripts/validate_long_horizon_v5_ledger_origin.py
           python -m py_compile scripts/sort_long_horizon_v5_recovery_artifacts.py
-      - name: Test deterministic recovery artifact ordering, provenance, retention and duplicate guards
+      - name: Test scoped deterministic recovery artifact validation and ordering
         run: |
           python - <<'PY'
           from scripts.sort_long_horizon_v5_recovery_artifacts import sort_artifact_rows
@@ -65,9 +65,8 @@ jobs:
           mid = f"200\tlong-horizon-v5-paired-shadow-20\t2026-09-12T15:40:00Z\t2026-10-27T15:40:00Z\t20\t{sha}"
           assert sort_artifact_rows([old, new, mid]) == [new, mid, old]
 
-          low = f"100\told\t2026-09-13T15:40:00Z\t2026-09-14T15:40:00Z\t10\t{sha}"
-          high = f"101\tnew\t2026-09-13T15:40:00Z\t2026-09-14T15:40:00Z\t11\t{sha}"
-          assert sort_artifact_rows([low, high]) == [high, low]
+          unrelated = "bad\tfrontend-build\tnot-a-time\tnot-a-time\tbad\tnot-a-sha"
+          assert sort_artifact_rows([unrelated, old]) == [old]
 
           shortened_prediction = (
               f"201\tlong-horizon-v5-paired-shadow-20\t2026-09-12T15:40:00Z\t"
@@ -93,14 +92,16 @@ jobs:
               f"502\tlong-horizon-v5-evidence-ledger-50\t2026-09-12T15:41:00Z\t"
               f"2026-12-11T15:41:00Z\t50\t{sha}"
           )
+          relevant_name = "long-horizon-v5-paired-shadow-10"
+          valid_expiry = "2026-10-28T15:40:00Z"
           bad_rows = (
-              f"bad\tname\t2026-09-13T15:40:00Z\t2026-09-14T15:40:00Z\t10\t{sha}",
-              f"1\tname\tnot-a-time\t2026-09-14T15:40:00Z\t10\t{sha}",
-              f"1\tname\t2026-09-13T15:40:00Z\tnot-a-time\t10\t{sha}",
-              f"1\tname\t2026-09-13T15:40:00Z\t2026-09-12T15:40:00Z\t10\t{sha}",
-              f"1\tname\t2026-09-13T15:40:00Z\t2026-09-14T15:40:00Z\tbad\t{sha}",
-              "1\tname\t2026-09-13T15:40:00Z\t2026-09-14T15:40:00Z\t10\tnot-a-sha",
-              "1\tname\t2026-09-13T15:40:00Z\t2026-09-14T15:40:00Z",
+              f"bad\t{relevant_name}\t2026-09-13T15:40:00Z\t{valid_expiry}\t10\t{sha}",
+              f"1\t{relevant_name}\tnot-a-time\t{valid_expiry}\t10\t{sha}",
+              f"1\t{relevant_name}\t2026-09-13T15:40:00Z\tnot-a-time\t10\t{sha}",
+              f"1\t{relevant_name}\t2026-09-13T15:40:00Z\t2026-09-12T15:40:00Z\t10\t{sha}",
+              f"1\t{relevant_name}\t2026-09-13T15:40:00Z\t{valid_expiry}\tbad\t{sha}",
+              f"1\t{relevant_name}\t2026-09-13T15:40:00Z\t{valid_expiry}\t10\tnot-a-sha",
+              f"1\t{relevant_name}\t2026-09-13T15:40:00Z\t{valid_expiry}",
               shortened_prediction,
               shortened_ledger,
           )
@@ -110,7 +111,7 @@ jobs:
               except ValueError:
                   pass
               else:
-                  raise AssertionError(f"malformed or under-retained artifact metadata was accepted: {bad}")
+                  raise AssertionError(f"malformed or under-retained relevant artifact metadata was accepted: {bad}")
 
           for duplicate_pair in (
               [duplicate_prediction_a, duplicate_prediction_b],
@@ -129,12 +130,14 @@ jobs:
           ]
           assert len(sort_artifact_rows(same_run_different_types)) == 2
           PY
-      - name: Verify workflow binds artifact metadata to producing run and retention
+      - name: Verify workflow scopes and binds recovery metadata
         run: |
           python - <<'PY'
           from pathlib import Path
 
           workflow = Path('.github/workflows/long-horizon-v5-evidence-cycle.yml').read_text(encoding='utf-8')
+          assert 'startswith("long-horizon-v5-paired-shadow-")' in workflow
+          assert 'startswith("long-horizon-v5-evidence-ledger-")' in workflow
           assert '.expires_at' in workflow
           assert '(.workflow_run.id // "")' in workflow
           assert '(.workflow_run.head_sha // "")' in workflow
