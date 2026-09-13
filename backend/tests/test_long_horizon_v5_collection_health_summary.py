@@ -43,7 +43,7 @@ def _payload(*, status="degraded", forward=True, expected=4, observed=2, failure
     }
 
 
-def test_summary_aggregates_only_score_blind_collection_health():
+def test_summary_aggregates_only_score_blind_forward_collection_health():
     result = health.summarize_payloads(
         [
             _payload(
@@ -62,8 +62,10 @@ def test_summary_aggregates_only_score_blind_collection_health():
     )
 
     assert result["score_blind"] is True
-    assert result["run_count"] == 2
+    assert result["population"] == "forward_eligible_only"
+    assert result["input_run_count"] == 2
     assert result["forward_eligible_run_count"] == 2
+    assert result["ignored_non_forward_run_count"] == 0
     assert result["complete_run_count"] == 1
     assert result["status_counts"] == {"completed": 1, "degraded": 1}
     assert result["coverage"] == {
@@ -84,6 +86,36 @@ def test_summary_aggregates_only_score_blind_collection_health():
     assert "0.000001" not in rendered
 
 
+def test_non_forward_runs_are_counted_but_excluded_from_health_metrics():
+    result = health.summarize_payloads(
+        [
+            _payload(status="completed", expected=4, observed=4),
+            _payload(
+                forward=False,
+                status="degraded",
+                expected=100,
+                observed=0,
+                failures={"FAKE": "provider_failure:manual-diagnostic"},
+            ),
+        ]
+    )
+
+    assert result["input_run_count"] == 2
+    assert result["forward_eligible_run_count"] == 1
+    assert result["ignored_non_forward_run_count"] == 1
+    assert result["complete_run_count"] == 1
+    assert result["status_counts"] == {"completed": 1}
+    assert result["coverage"] == {
+        "expected_pair_count": 4,
+        "observed_pair_count": 4,
+        "observed_pair_rate": 1.0,
+    }
+    assert result["failure_reason_counts"] == {}
+    assert result["affected_symbols_by_reason"] == {}
+    assert "FAKE" not in str(result)
+    assert "manual-diagnostic" not in str(result)
+
+
 def test_dynamic_failure_details_are_not_preserved():
     result = health.summarize_payloads(
         [_payload(failures={"AAPL": "paired_timestamp_mismatch:secret-a!=secret-b"})]
@@ -93,10 +125,24 @@ def test_dynamic_failure_details_are_not_preserved():
     assert "secret-b" not in str(result)
 
 
-def test_summary_rejects_non_mapping_failures():
+def test_summary_rejects_non_mapping_failures_on_forward_run():
     payload = _payload()
     payload["failures"] = ["bad"]
     with pytest.raises(ValueError, match="failures must be a JSON object"):
+        health.summarize_payloads([payload])
+
+
+def test_summary_rejects_ambiguous_forward_eligibility():
+    payload = _payload()
+    payload["acquisition_provenance"]["forward_eligible"] = "true"
+    with pytest.raises(ValueError, match="forward_eligible must be boolean"):
+        health.summarize_payloads([payload])
+
+
+def test_summary_rejects_missing_provenance():
+    payload = _payload()
+    payload.pop("acquisition_provenance")
+    with pytest.raises(ValueError, match="acquisition_provenance must be a JSON object"):
         health.summarize_payloads([payload])
 
 

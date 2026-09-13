@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 CONTRACT = "orion-long-horizon-v5-paired-shadow-v1"
-SUMMARY_CONTRACT = "orion-long-horizon-v5-collection-health-v1"
+SUMMARY_CONTRACT = "orion-long-horizon-v5-collection-health-v2"
 
 
 def _reason_category(reason: Any) -> str:
@@ -26,30 +26,43 @@ def _load_payload(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _is_forward_eligible(payload: dict[str, Any]) -> bool:
+    provenance = payload.get("acquisition_provenance")
+    if not isinstance(provenance, dict):
+        raise ValueError("acquisition_provenance must be a JSON object")
+    value = provenance.get("forward_eligible")
+    if not isinstance(value, bool):
+        raise ValueError("acquisition_provenance.forward_eligible must be boolean")
+    return value
+
+
 def summarize_payloads(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
     status_counts: Counter[str] = Counter()
     reason_counts: Counter[str] = Counter()
     symbols_by_reason: dict[str, set[str]] = defaultdict(set)
-    run_count = 0
+    input_run_count = 0
     forward_eligible_runs = 0
+    ignored_non_forward_runs = 0
     complete_runs = 0
     expected_pairs = 0
     observed_pairs = 0
 
     for payload in payloads:
-        run_count += 1
+        input_run_count += 1
+        if not _is_forward_eligible(payload):
+            ignored_non_forward_runs += 1
+            continue
+
+        forward_eligible_runs += 1
         status_counts[str(payload.get("status") or "unknown")] += 1
 
-        provenance = payload.get("acquisition_provenance") or {}
-        if isinstance(provenance, dict) and provenance.get("forward_eligible") is True:
-            forward_eligible_runs += 1
-
         coverage = payload.get("coverage") or {}
-        if isinstance(coverage, dict):
-            expected_pairs += int(coverage.get("expected_pair_count") or 0)
-            observed_pairs += int(coverage.get("observed_pair_count") or 0)
-            if coverage.get("complete") is True:
-                complete_runs += 1
+        if not isinstance(coverage, dict):
+            raise ValueError("coverage must be a JSON object")
+        expected_pairs += int(coverage.get("expected_pair_count") or 0)
+        observed_pairs += int(coverage.get("observed_pair_count") or 0)
+        if coverage.get("complete") is True:
+            complete_runs += 1
 
         failures = payload.get("failures") or {}
         if not isinstance(failures, dict):
@@ -66,8 +79,10 @@ def summarize_payloads(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
     return {
         "contract": SUMMARY_CONTRACT,
         "score_blind": True,
-        "run_count": run_count,
+        "population": "forward_eligible_only",
+        "input_run_count": input_run_count,
         "forward_eligible_run_count": forward_eligible_runs,
+        "ignored_non_forward_run_count": ignored_non_forward_runs,
         "complete_run_count": complete_runs,
         "status_counts": dict(sorted(status_counts.items())),
         "coverage": {
@@ -91,7 +106,10 @@ def summarize_files(paths: Iterable[Path]) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Summarize score-blind long-horizon V5 collection health without reading model scores."
+        description=(
+            "Summarize score-blind long-horizon V5 collection health for genuine "
+            "forward-eligible runs only."
+        )
     )
     parser.add_argument("inputs", nargs="+", type=Path)
     parser.add_argument("--output", type=Path, default=None)
