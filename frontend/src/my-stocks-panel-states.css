@@ -1,0 +1,104 @@
+.core-panel-state {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  min-height: 94px;
+  margin: 8px 0 12px;
+  padding: 15px 16px 14px 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 9px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 58%),
+    rgba(255, 255, 255, 0.01);
+}
+
+.core-panel-state::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 122, 26, 0.34);
+  box-shadow: 0 0 10px rgba(255, 122, 26, 0.14);
+}
+
+.core-panel-state > span {
+  color: #7c8791;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.core-panel-state > strong {
+  color: #e8ecef;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+.core-panel-state > p,
+.core-panel-state > small {
+  margin: 0;
+  color: #77828c;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.core-panel-state.is-error {
+  border-color: rgba(255, 122, 26, 0.16);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.05), transparent 60%),
+    rgba(255, 255, 255, 0.01);
+}
+
+.core-panel-state.is-error > span {
+  color: #d89563;
+}
+
+.core-panel-state.is-clear::before,
+.core-panel-state.is-empty::before {
+  background: rgba(138, 148, 158, 0.24);
+  box-shadow: none;
+}
+
+.core-panel-state-lines {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.core-panel-state-lines i {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), rgba(255, 122, 26, 0.085), rgba(255, 255, 255, 0.035));
+  background-size: 220% 100%;
+  animation: core-panel-state-shimmer 1.7s linear infinite;
+}
+
+.core-panel-state-lines i:first-child {
+  width: min(76%, 430px);
+}
+
+.core-panel-state-lines i:last-child {
+  width: min(52%, 300px);
+}
+
+@keyframes core-panel-state-shimmer {
+  from { background-position: 110% 0; }
+  to { background-position: -110% 0; }
+}
+
+@media (max-width: 640px) {
+  .core-panel-state {
+    min-height: 88px;
+    padding: 14px 14px 13px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-panel-state-lines i {
+    animation: none;
+  }
+}
