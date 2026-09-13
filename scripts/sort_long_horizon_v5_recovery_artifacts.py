@@ -3,7 +3,11 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 from typing import Iterable
+
+
+_GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 
 
 def _parse_created_at(value: str) -> datetime:
@@ -23,9 +27,9 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
         if not line:
             continue
         parts = line.split("\t")
-        if len(parts) != 3:
-            raise ValueError(f"Expected artifact TSV row with 3 fields, got {len(parts)}")
-        artifact_id_raw, artifact_name, created_at_raw = parts
+        if len(parts) != 5:
+            raise ValueError(f"Expected artifact TSV row with 5 fields, got {len(parts)}")
+        artifact_id_raw, artifact_name, created_at_raw, workflow_run_id_raw, workflow_head_sha = parts
         try:
             artifact_id = int(artifact_id_raw)
         except ValueError:
@@ -34,6 +38,14 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
             raise ValueError(f"Artifact id must be positive: {artifact_id_raw}")
         if not artifact_name:
             raise ValueError("Artifact name must not be empty")
+        try:
+            workflow_run_id = int(workflow_run_id_raw)
+        except ValueError:
+            raise ValueError(f"Invalid artifact workflow_run.id: {workflow_run_id_raw}") from None
+        if workflow_run_id <= 0:
+            raise ValueError(f"Artifact workflow_run.id must be positive: {workflow_run_id_raw}")
+        if not _GIT_SHA_RE.fullmatch(workflow_head_sha):
+            raise ValueError("Artifact workflow_run.head_sha must be a 40-character hexadecimal commit SHA")
         created_at = _parse_created_at(created_at_raw)
         rows.append((created_at, artifact_id, line))
 
@@ -44,7 +56,7 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Deterministically sort GitHub Actions artifact metadata newest-first before "
+            "Validate and deterministically sort GitHub Actions artifact metadata newest-first before "
             "long-horizon V5 recovery."
         )
     )
