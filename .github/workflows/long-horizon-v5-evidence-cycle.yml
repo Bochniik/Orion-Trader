@@ -49,18 +49,27 @@ jobs:
           COUNT=0
           LEDGER_FOUND=0
           gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
-            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at] | @tsv' > /tmp/long-shadow-artifacts-raw.tsv
+            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at,(.workflow_run.id // ""),(.workflow_run.head_sha // "")] | @tsv' > /tmp/long-shadow-artifacts-raw.tsv
           python scripts/sort_long_horizon_v5_recovery_artifacts.py \
             /tmp/long-shadow-artifacts-raw.tsv \
             /tmp/long-shadow-artifacts.tsv
-          while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT; do
+          while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT ARTIFACT_RUN_ID ARTIFACT_HEAD_SHA; do
             if [ "$LEDGER_FOUND" -eq 0 ] && [[ "$ARTIFACT_NAME" == long-horizon-v5-evidence-ledger-* ]]; then
               LEDGER_RUN_ID="${ARTIFACT_NAME##*-}"
               if ! [[ "$LEDGER_RUN_ID" =~ ^[0-9]+$ ]]; then
                 echo "Malformed long-horizon ledger artifact run id: $ARTIFACT_NAME" >&2
                 exit 3
               fi
+              if [ "$ARTIFACT_RUN_ID" != "$LEDGER_RUN_ID" ]; then
+                echo "Ledger artifact producing run mismatch: artifact=$ARTIFACT_NAME metadata_run=$ARTIFACT_RUN_ID" >&2
+                exit 5
+              fi
               gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${LEDGER_RUN_ID}" > "/tmp/long-ledger-run-${LEDGER_RUN_ID}.json"
+              LEDGER_HEAD_SHA=$(jq -r '.head_sha // ""' "/tmp/long-ledger-run-${LEDGER_RUN_ID}.json")
+              if [ "${ARTIFACT_HEAD_SHA,,}" != "${LEDGER_HEAD_SHA,,}" ]; then
+                echo "Ledger artifact head SHA does not match producing run metadata: $ARTIFACT_NAME" >&2
+                exit 5
+              fi
               LEDGER_EVENT=$(jq -r '.event // ""' "/tmp/long-ledger-run-${LEDGER_RUN_ID}.json")
               if [ "$LEDGER_EVENT" != "schedule" ]; then
                 continue
@@ -93,10 +102,19 @@ jobs:
                 echo "Malformed long-horizon artifact run id: $ARTIFACT_NAME" >&2
                 exit 3
               fi
+              if [ "$ARTIFACT_RUN_ID" != "$RUN_ID" ]; then
+                echo "Prediction artifact producing run mismatch: artifact=$ARTIFACT_NAME metadata_run=$ARTIFACT_RUN_ID" >&2
+                exit 5
+              fi
               RECOVERED_DIR=".long-shadow/recovered/${ARTIFACT_ID}"
               mkdir -p "$RECOVERED_DIR"
-              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/long-prediction-${ARTIFACT_ID}.zip"
               gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" > "/tmp/long-run-${RUN_ID}.json"
+              RUN_HEAD_SHA=$(jq -r '.head_sha // ""' "/tmp/long-run-${RUN_ID}.json")
+              if [ "${ARTIFACT_HEAD_SHA,,}" != "${RUN_HEAD_SHA,,}" ]; then
+                echo "Prediction artifact head SHA does not match producing run metadata: $ARTIFACT_NAME" >&2
+                exit 5
+              fi
+              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/long-prediction-${ARTIFACT_ID}.zip"
               unzip -q -o "/tmp/long-prediction-${ARTIFACT_ID}.zip" -d "$RECOVERED_DIR"
               PREDICTION="$RECOVERED_DIR/prediction-${RUN_ID}.json"
               if [ ! -f "$PREDICTION" ]; then
