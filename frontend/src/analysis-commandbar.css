@@ -161,7 +161,9 @@
 }
 
 .analyze-view > .analyze-horizon-selector {
-  position: relative;
+  position: sticky;
+  top: 10px;
+  z-index: 3;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -173,9 +175,25 @@
   border-top-color: rgba(255, 255, 255, 0.045);
   border-radius: 0 0 14px 14px;
   background:
-    linear-gradient(90deg, rgba(255, 122, 26, 0.03), transparent 30%),
-    rgba(8, 11, 16, 0.94);
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.15);
+    linear-gradient(90deg, rgba(255, 122, 26, 0.045), transparent 32%),
+    rgba(8, 11, 16, 0.965);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.022),
+    0 16px 38px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(14px);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.analyze-view > .analyze-horizon-selector:hover,
+.analyze-view > .analyze-horizon-selector:focus-within {
+  border-color: rgba(255, 148, 71, 0.16);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.065), transparent 34%),
+    rgba(8, 11, 16, 0.975);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 18px 42px rgba(0, 0, 0, 0.24),
+    0 0 24px rgba(255, 122, 26, 0.035);
 }
 
 .analyze-view > .core-search-wrap + .core-warning + .analyze-horizon-selector {
@@ -244,8 +262,12 @@
   }
 
   .analyze-view > .analyze-horizon-selector {
+    position: relative;
+    top: auto;
+    z-index: auto;
     grid-template-columns: 1fr;
     gap: 7px;
+    backdrop-filter: none;
   }
 
   .analyze-view > .analyze-horizon-selector > p {
@@ -290,6 +312,7 @@
 @media (prefers-reduced-motion: reduce) {
   .analyze-view > .core-search-wrap .core-search,
   .analyze-view > .core-search-wrap .core-suggestions button,
+  .analyze-view > .analyze-horizon-selector,
   .analyze-horizon-tabs button {
     transition: none;
   }
