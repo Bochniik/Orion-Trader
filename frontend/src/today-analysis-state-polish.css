@@ -160,6 +160,76 @@
   color: rgba(255, 255, 255, 0.34);
 }
 
+/* Keep dense analysis states readable when the Today side rail collapses. */
+@media (max-width: 820px) {
+  .dashboard-orion-card .orion-snapshot-stock {
+    align-items: center;
+  }
+
+  .dashboard-orion-card .orion-snapshot-stock-copy {
+    min-width: 0;
+  }
+
+  .dashboard-orion-card .orion-snapshot-stock-copy strong,
+  .dashboard-orion-card .orion-snapshot-stock-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-orion-card .orion-score-area {
+    align-items: stretch;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .dashboard-orion-card .orion-score-ring {
+    width: 92px;
+    height: 92px;
+  }
+
+  .dashboard-orion-card .orion-probability-grid {
+    gap: 6px;
+  }
+
+  .dashboard-orion-card .orion-probability-grid > div {
+    min-width: 0;
+  }
+
+  .dashboard-orion-card .orion-probability-grid strong {
+    overflow-wrap: anywhere;
+  }
+
+  .dashboard-orion-card .orion-setup-summary {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .dashboard-orion-card .orion-score-area {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-orion-card .orion-score-ring {
+    justify-self: start;
+    width: 84px;
+    height: 84px;
+  }
+
+  .dashboard-orion-card .orion-probability-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-orion-card .orion-risk-row > div:first-child {
+    gap: 8px;
+  }
+
+  .dashboard-orion-card .dashboard-primary-action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @keyframes orion-dashboard-skeleton {
   0% { background-position: 180% 0; }
   100% { background-position: -40% 0; }
