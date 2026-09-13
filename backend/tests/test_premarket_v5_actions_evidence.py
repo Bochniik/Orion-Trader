@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import urllib.request
 import zipfile
 
 import pytest
@@ -53,6 +54,24 @@ def test_normalize_run_keeps_only_score_blind_delivery_fields():
         "conclusion": "success",
         "run_attempt": 2,
     }
+
+
+def test_cross_host_redirect_strips_github_bearer_token():
+    request = urllib.request.Request(
+        "https://api.github.com/repos/o/r/actions/artifacts/1/zip",
+        headers={"Authorization": "Bearer secret", "Accept": "application/octet-stream"},
+    )
+    redirected = actions._SafeRedirectHandler().redirect_request(
+        request,
+        None,
+        302,
+        "Found",
+        {},
+        "https://artifact-cache.example.net/signed.zip",
+    )
+    assert redirected is not None
+    assert redirected.get_header("Authorization") is None
+    assert redirected.get_header("Accept") == "application/octet-stream"
 
 
 def test_select_shadow_artifact_ignores_expired_and_rejects_ambiguity():
