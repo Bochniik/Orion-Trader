@@ -65,10 +65,12 @@ def normalize_run(run: dict[str, Any]) -> dict[str, Any]:
 
 
 def select_shadow_artifact(artifacts: list[dict[str, Any]], *, run_id: str) -> dict[str, Any] | None:
+    expected_suffix = f"-{run_id}"
     candidates = [
         artifact
         for artifact in artifacts
         if str(artifact.get("name", "")).startswith(ARTIFACT_PREFIX)
+        and str(artifact.get("name", "")).endswith(expected_suffix)
         and not bool(artifact.get("expired"))
     ]
     if not candidates:
@@ -95,7 +97,7 @@ def artifact_retention_contract(artifact: dict[str, Any], *, run_id: str) -> tup
     return expires_at.isoformat().replace("+00:00", "Z"), retention_seconds / (24 * 60 * 60)
 
 
-def prediction_payload_from_zip(blob: bytes, *, run_id: str) -> dict[str, Any]:
+def prediction_payload_from_zip(blob: bytes, *, run_id: str, run_attempt: int) -> dict[str, Any]:
     if len(blob) > MAX_ARTIFACT_BYTES:
         raise ActionsEvidenceError(f"run {run_id} artifact exceeds {MAX_ARTIFACT_BYTES} bytes")
     try:
@@ -125,6 +127,14 @@ def prediction_payload_from_zip(blob: bytes, *, run_id: str) -> dict[str, Any]:
     provenance = payload.get("acquisition_provenance")
     if not isinstance(provenance, dict) or str(provenance.get("github_run_id")) != str(run_id):
         raise ActionsEvidenceError(f"run {run_id} prediction payload is not bound to the workflow run")
+    try:
+        payload_attempt = int(provenance.get("github_run_attempt"))
+    except (TypeError, ValueError) as exc:
+        raise ActionsEvidenceError(f"run {run_id} prediction payload has invalid github_run_attempt") from exc
+    if payload_attempt != int(run_attempt):
+        raise ActionsEvidenceError(
+            f"run {run_id} prediction payload attempt {payload_attempt} does not match workflow attempt {run_attempt}"
+        )
     return payload
 
 
@@ -218,6 +228,7 @@ def collect(client: GitHubActionsClient, *, start_date: date) -> tuple[list[dict
         if run["status"] != "completed" or run.get("conclusion") != "success":
             continue
         run_id = str(run["id"])
+        run_attempt = int(run["run_attempt"])
         artifact = select_shadow_artifact(client.run_artifacts(run_id), run_id=run_id)
         if artifact is None:
             missing_artifact_run_ids.append(run_id)
@@ -225,7 +236,13 @@ def collect(client: GitHubActionsClient, *, start_date: date) -> tuple[list[dict
         expires_at, retention_days = artifact_retention_contract(artifact, run_id=run_id)
         live_artifact_expiries.append(expires_at)
         live_artifact_retention_days.append(retention_days)
-        payloads.append(prediction_payload_from_zip(client.download_artifact(int(artifact["id"])), run_id=run_id))
+        payloads.append(
+            prediction_payload_from_zip(
+                client.download_artifact(int(artifact["id"])),
+                run_id=run_id,
+                run_attempt=run_attempt,
+            )
+        )
     summary = {
         "score_blind": True,
         "workflow_file": WORKFLOW_FILE,
