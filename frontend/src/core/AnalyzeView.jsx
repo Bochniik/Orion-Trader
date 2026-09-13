@@ -4,6 +4,7 @@ import { getNews, searchStocks } from "../api/api";
 import StockNewsPanel from "../components/StockNewsPanel";
 import AnalysisOverview from "./AnalysisOverview";
 import useCoreJob from "./useCoreJob";
+import "../analysis-sticky-context.css";
 
 const CandleChart = lazy(() => import("../components/CandleChart"));
 
@@ -27,6 +28,17 @@ const ANALYSIS_HORIZONS = [
 
 function decisionTicker(value) {
   return String(value?.ticker || value?.symbol || "").trim().toUpperCase();
+}
+
+function decisionLabel(value) {
+  return String(value?.decision || value?.direction || "")
+    .trim()
+    .replaceAll("_", " ")
+    .toUpperCase();
+}
+
+function decisionTone(value) {
+  return value.toLowerCase().replaceAll(" ", "-");
 }
 
 export default function AnalyzeView({
@@ -53,6 +65,8 @@ export default function AnalyzeView({
   const result = useCoreJob();
   const lookup = useRef(0);
   const ticker = String(selection?.ticker || "").trim().toUpperCase();
+  const activeTicker = decisionTicker(result.data) || ticker;
+  const activeDecision = decisionLabel(result.data);
   const suggestionsOpen =
     searching &&
     Boolean(input.trim()) &&
@@ -352,6 +366,20 @@ export default function AnalyzeView({
       {inputError && <p role="alert" className="core-warning">{inputError}</p>}
 
       <div className="analyze-horizon-selector" aria-label="Analysis timeframe">
+        {activeTicker && (
+          <div
+            className="analyze-sticky-context"
+            aria-label={activeDecision ? `${activeTicker} decision ${activeDecision}` : `Analyzing ${activeTicker}`}
+          >
+            <span className="analyze-sticky-ticker">{activeTicker}</span>
+            {activeDecision && (
+              <span className={`analyze-sticky-decision ${decisionTone(activeDecision)}`}>
+                {activeDecision}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="analyze-horizon-tabs" role="group" aria-label="Trading horizon">
           {ANALYSIS_HORIZONS.map((item) => (
             <button
