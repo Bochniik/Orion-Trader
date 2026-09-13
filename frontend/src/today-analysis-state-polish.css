@@ -1,0 +1,131 @@
+/* Today Orion Analysis loading-state polish — presentation only. */
+
+/* The existing disabled full-analysis control with a ticker-specific title is the
+   dashboard's quick-analysis busy signal. Keep the data flow untouched and turn
+   that state into a compact terminal-style skeleton. */
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-ring {
+  border-color: rgba(255, 122, 26, 0.16);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 122, 26, 0.055), transparent 66%),
+    rgba(255, 255, 255, 0.012);
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-ring::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 122, 26, 0.11);
+  border-top-color: rgba(255, 122, 26, 0.7);
+  animation: orion-dashboard-score-scan 1.15s linear infinite;
+  pointer-events: none;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-ring strong,
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-ring span {
+  color: transparent;
+  text-shadow: none;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-ring > div::before {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 10px;
+  margin: 0 auto 5px;
+  border-radius: 4px;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.045) 18%,
+    rgba(255, 122, 26, 0.18) 44%,
+    rgba(255, 255, 255, 0.045) 70%
+  );
+  background-size: 220% 100%;
+  animation: orion-dashboard-skeleton 1.35s ease-in-out infinite;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-metrics strong,
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-risk-row strong {
+  position: relative;
+  min-width: 46px;
+  color: transparent !important;
+  text-shadow: none;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-metrics strong::after,
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-risk-row strong::after {
+  content: "";
+  display: block;
+  width: min(100%, 62px);
+  height: 9px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.045) 18%,
+    rgba(255, 122, 26, 0.16) 44%,
+    rgba(255, 255, 255, 0.045) 70%
+  );
+  background-size: 220% 100%;
+  animation: orion-dashboard-skeleton 1.35s ease-in-out infinite;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-probability-grid > div:nth-child(2) strong::after {
+  animation-delay: 0.12s;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-risk-row strong::after {
+  animation-delay: 0.2s;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-risk-track {
+  overflow: hidden;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-risk-track::after {
+  content: "";
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(255, 122, 26, 0.34), transparent);
+  animation: orion-dashboard-track-scan 1.3s ease-in-out infinite;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-setup-summary {
+  border-color: rgba(255, 122, 26, 0.11);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.045), transparent 42%),
+    rgba(255, 255, 255, 0.012);
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .dashboard-primary-action {
+  border-color: rgba(255, 122, 26, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(255, 255, 255, 0.34);
+}
+
+@keyframes orion-dashboard-skeleton {
+  0% { background-position: 180% 0; }
+  100% { background-position: -40% 0; }
+}
+
+@keyframes orion-dashboard-score-scan {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orion-dashboard-track-scan {
+  0% { transform: translateX(-130%); opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { transform: translateX(260%); opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-ring::after,
+  .dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-ring > div::before,
+  .dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-score-metrics strong::after,
+  .dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-risk-row strong::after,
+  .dashboard-orion-card:has(.orion-full-analysis-icon[title$="full analysis"]:disabled) .orion-risk-track::after {
+    animation: none;
+  }
+}

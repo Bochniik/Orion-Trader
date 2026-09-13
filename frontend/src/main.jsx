@@ -26,6 +26,7 @@ import "./scanner-polish.css";
 import "./radar-ranking-polish.css";
 import "./dashboard-polish.css";
 import "./today-density-polish.css";
+import "./today-analysis-state-polish.css";
 import "./market-explorer-polish.css";
 import "./my-stocks-polish.css";
 import "./my-stocks-status.css";
