@@ -25,16 +25,18 @@ def _artifact_zip(payload: dict, *, filename: str = "prediction-late-123.json") 
     return buffer.getvalue()
 
 
-def _payload(run_id: str = "123") -> dict:
+def _payload(run_id: str = "123", run_attempt: int = 1) -> dict:
     return {
         "runner_version": "premarket-v5-cloud-shadow-v2",
-        "acquisition_provenance": {"github_run_id": run_id},
+        "acquisition_provenance": {
+            "github_run_id": run_id,
+            "github_run_attempt": run_attempt,
+        },
         "predictions": [],
     }
 
 
 def _artifact(*, retention_days: int = 90) -> dict:
-    expires_day = 13 + retention_days
     # Keep fixtures simple for 90/30-day cases used below.
     if retention_days == 90:
         expires_at = "2026-12-13T13:20:00Z"
@@ -92,9 +94,12 @@ def test_cross_host_redirect_strips_github_bearer_token():
     assert redirected.get_header("Accept") == "application/octet-stream"
 
 
-def test_select_shadow_artifact_ignores_expired_and_rejects_ambiguity():
+def test_select_shadow_artifact_ignores_expired_wrong_run_and_rejects_ambiguity():
     assert actions.select_shadow_artifact(
         [{"id": 1, "name": "premarket-v5-shadow-late-123", "expired": True}], run_id="123"
+    ) is None
+    assert actions.select_shadow_artifact(
+        [{"id": 1, "name": "premarket-v5-shadow-late-999", "expired": False}], run_id="123"
     ) is None
     with pytest.raises(actions.ActionsEvidenceError, match="ambiguous"):
         actions.select_shadow_artifact(
@@ -120,18 +125,27 @@ def test_artifact_retention_contract_requires_real_90_day_api_retention():
         actions.artifact_retention_contract(missing_expiry, run_id="123")
 
 
-def test_prediction_payload_from_zip_requires_run_binding_and_safe_single_payload():
-    parsed = actions.prediction_payload_from_zip(_artifact_zip(_payload()), run_id="123")
+def test_prediction_payload_from_zip_requires_run_and_attempt_binding():
+    parsed = actions.prediction_payload_from_zip(_artifact_zip(_payload()), run_id="123", run_attempt=1)
     assert parsed["acquisition_provenance"]["github_run_id"] == "123"
+    assert parsed["acquisition_provenance"]["github_run_attempt"] == 1
 
     with pytest.raises(actions.ActionsEvidenceError, match="not bound"):
-        actions.prediction_payload_from_zip(_artifact_zip(_payload("999")), run_id="123")
+        actions.prediction_payload_from_zip(_artifact_zip(_payload("999")), run_id="123", run_attempt=1)
+
+    with pytest.raises(actions.ActionsEvidenceError, match="does not match workflow attempt"):
+        actions.prediction_payload_from_zip(_artifact_zip(_payload("123", 1)), run_id="123", run_attempt=2)
+
+    missing_attempt = _payload()
+    missing_attempt["acquisition_provenance"].pop("github_run_attempt")
+    with pytest.raises(actions.ActionsEvidenceError, match="invalid github_run_attempt"):
+        actions.prediction_payload_from_zip(_artifact_zip(missing_attempt), run_id="123", run_attempt=1)
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr("../prediction-late-123.json", json.dumps(_payload()))
     with pytest.raises(actions.ActionsEvidenceError, match="unsafe path"):
-        actions.prediction_payload_from_zip(buffer.getvalue(), run_id="123")
+        actions.prediction_payload_from_zip(buffer.getvalue(), run_id="123", run_attempt=1)
 
 
 class _FakeClient:
@@ -174,7 +188,7 @@ class _FakeClient:
 
     def download_artifact(self, artifact_id: int):
         assert artifact_id == 9
-        return _artifact_zip(_payload("123"))
+        return _artifact_zip(_payload("123", 1))
 
 
 def test_collect_preserves_failed_runs_and_reports_success_without_live_artifact():
