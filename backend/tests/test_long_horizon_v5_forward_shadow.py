@@ -5,9 +5,13 @@ import importlib.util
 from pathlib import Path
 import sys
 
+import pytest
+
 from app.services import intraday_probability_ensemble_engine as ensemble
 
 ROOT = Path(__file__).resolve().parents[2]
+HEAD_SHA = "a" * 40
+OTHER_SHA = "b" * 40
 
 
 def _load(name: str, relative: str):
@@ -140,6 +144,61 @@ def test_atomic_runner_fails_closed_when_incumbent_alignment_is_unknown(monkeypa
     assert error == "incumbent_source_timestamp_unaligned_or_missing"
 
 
+def test_scheduled_acquisition_is_bound_to_exact_run_attempt_and_commit(monkeypatch):
+    monkeypatch.setattr(runner, "lineage", lambda: {"git_commit": HEAD_SHA, "design_id": runner.DESIGN_ID, "files_sha256": {}})
+    payload = runner.build_payload(
+        ["AAPL"],
+        datetime(2026, 9, 11, 17, 5, tzinfo=timezone.utc),
+        event_name="schedule",
+        run_id="123456",
+        run_attempt=2,
+        github_head_sha=HEAD_SHA,
+    )
+    provenance = payload["acquisition_provenance"]
+    assert provenance["contract"] == runner.ACQUISITION_CONTRACT
+    assert provenance["github_run_id"] == "123456"
+    assert provenance["github_run_attempt"] == 2
+    assert provenance["github_head_sha"] == HEAD_SHA
+    assert provenance["workflow_commit_verified"] is True
+    assert provenance["forward_eligible"] is True
+    assert provenance["eligibility_reason"] == "scheduled_exact_workflow_commit"
+
+
+def test_scheduled_acquisition_fails_closed_on_invalid_or_mismatched_identity(monkeypatch):
+    lineage = {"git_commit": HEAD_SHA, "design_id": runner.DESIGN_ID, "files_sha256": {}}
+    monkeypatch.setattr(runner, "lineage", lambda: lineage)
+    common = {
+        "event_name": "schedule",
+        "run_id": "123456",
+        "run_attempt": 1,
+        "github_head_sha": HEAD_SHA,
+    }
+    with pytest.raises(ValueError, match="positive GitHub run ID"):
+        runner.build_payload(["AAPL"], event_name="schedule", run_id=None, run_attempt=1, github_head_sha=HEAD_SHA)
+    with pytest.raises(ValueError, match="positive GitHub run attempt"):
+        runner.build_payload(["AAPL"], **{**common, "run_attempt": 0})
+    with pytest.raises(ValueError, match="40-character GitHub head SHA"):
+        runner.build_payload(["AAPL"], **{**common, "github_head_sha": "bad"})
+    with pytest.raises(ValueError, match="does not match checked-out commit"):
+        runner.build_payload(["AAPL"], **{**common, "github_head_sha": OTHER_SHA})
+
+
+def test_manual_acquisition_is_explicitly_not_forward_eligible(monkeypatch):
+    monkeypatch.setattr(runner, "lineage", lambda: {"git_commit": HEAD_SHA, "design_id": runner.DESIGN_ID, "files_sha256": {}})
+    payload = runner.build_payload(
+        ["AAPL"],
+        datetime(2026, 9, 11, 17, 5, tzinfo=timezone.utc),
+        event_name="workflow_dispatch",
+        run_id="123456",
+        run_attempt=1,
+        github_head_sha=HEAD_SHA,
+    )
+    provenance = payload["acquisition_provenance"]
+    assert provenance["forward_eligible"] is False
+    assert provenance["workflow_commit_verified"] is False
+    assert provenance["eligibility_reason"] == "non_scheduled_diagnostic_run"
+
+
 def test_payload_skips_scheduled_slot_when_no_horizon_can_settle(monkeypatch):
     monkeypatch.setattr(runner, "lineage", lambda: {"git_commit": "abc", "design_id": runner.DESIGN_ID, "files_sha256": {}})
     payload = runner.build_payload(["AAPL", "MSFT"], datetime(2026, 9, 11, 17, 5, tzinfo=timezone.utc))
@@ -175,10 +234,20 @@ def test_payload_marks_missing_expected_symbol_horizon_coverage_degraded(monkeyp
     assert payload["failures"]["MSFT"] == "missing_expected_horizons:5h"
 
 
-def test_settlement_expansion_preserves_pair_identity_and_model_names():
+def test_settlement_expansion_preserves_pair_identity_model_names_and_acquisition_provenance():
+    acquisition = {
+        "contract": runner.ACQUISITION_CONTRACT,
+        "event_name": "schedule",
+        "github_run_id": "123456",
+        "github_run_attempt": 1,
+        "github_head_sha": HEAD_SHA,
+        "workflow_commit_verified": True,
+        "forward_eligible": True,
+    }
     payload = {
         "contract": settler.CONTRACT,
-        "lineage": {"git_commit": "abc", "design_id": "long-horizon-v5-20260911-a"},
+        "lineage": {"git_commit": HEAD_SHA, "design_id": "long-horizon-v5-20260911-a"},
+        "acquisition_provenance": acquisition,
         "paired_predictions": [{
             "symbol": "AAPL",
             "horizon": "3h",
@@ -192,6 +261,7 @@ def test_settlement_expansion_preserves_pair_identity_and_model_names():
     assert {row["engine"] for row in forecasts} == {"regular_hours_v3_1", "long-horizon-v5-20260911-a"}
     assert {row["prediction_time"] for row in forecasts} == {"2026-09-11T14:05:00+00:00"}
     assert {row["lineage"]["paired_role"] for row in forecasts} == {"incumbent", "challenger"}
+    assert all(row["lineage"]["acquisition_provenance"] == acquisition for row in forecasts)
 
 
 def test_workflows_are_research_only_and_do_not_expose_write_permissions():
@@ -206,3 +276,7 @@ def test_workflows_are_research_only_and_do_not_expose_write_permissions():
     prediction = (ROOT / ".github/workflows/long-horizon-v5-cloud-shadow.yml").read_text(encoding="utf-8")
     assert "retention-days: 45" in prediction
     assert "run_long_horizon_v5_paired_cloud_shadow.py" in prediction
+    assert '--event-name "$GITHUB_EVENT_NAME"' in prediction
+    assert '--run-id "$GITHUB_RUN_ID"' in prediction
+    assert '--run-attempt "$GITHUB_RUN_ATTEMPT"' in prediction
+    assert '--github-head-sha "$GITHUB_SHA"' in prediction
