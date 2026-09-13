@@ -38,6 +38,7 @@ def expand_payload(payload: dict[str, Any], source_file: str) -> list[dict[str, 
     if payload.get("contract") != CONTRACT:
         raise ValueError(f"Unsupported paired shadow contract: {payload.get('contract')}")
     lineage = dict(payload.get("lineage") or {})
+    acquisition_provenance = dict(payload.get("acquisition_provenance") or {})
     forecasts: list[dict[str, Any]] = []
     for row in payload.get("paired_predictions") or []:
         if not isinstance(row, dict):
@@ -47,6 +48,8 @@ def expand_payload(payload: dict[str, Any], source_file: str) -> list[dict[str, 
             if not isinstance(model, dict) or model.get("probability_up") is None:
                 continue
             model_lineage = dict(lineage)
+            if acquisition_provenance:
+                model_lineage["acquisition_provenance"] = acquisition_provenance
             model_lineage["paired_role"] = side
             model_lineage["engine"] = model.get("engine")
             forecasts.append({
