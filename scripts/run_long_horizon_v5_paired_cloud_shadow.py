@@ -22,13 +22,15 @@ from app.services.intraday_probability_runtime_v3_1 import estimate_intraday_pro
 
 NY = ZoneInfo("America/New_York")
 CONTRACT = "orion-long-horizon-v5-paired-shadow-v1"
-RUNNER_VERSION = "long-horizon-v5-paired-shadow-v3"
+RUNNER_VERSION = "long-horizon-v5-paired-shadow-v4"
 ACQUISITION_CONTRACT = "orion-long-horizon-v5-workflow-acquisition-v1"
 DEFAULT_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
 WINDOW_OPEN = time(10, 0)
 WINDOW_CLOSE = time(13, 30)
 REGULAR_CLOSE = time(16, 0)
 HORIZON_HOURS = {"3h": 3, "5h": 5}
+MAX_SOURCE_STALENESS = timedelta(minutes=15)
+SOURCE_FUTURE_TOLERANCE = timedelta(minutes=1)
 SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 LINEAGE_FILES = (
     "scripts/run_long_horizon_v5_paired_cloud_shadow.py",
@@ -99,6 +101,42 @@ def _canonical_timestamp(value: Any) -> str | None:
     if parsed.tzinfo is None:
         return None
     return parsed.astimezone(timezone.utc).isoformat()
+
+
+def _parse_aware_timestamp(value: Any) -> datetime | None:
+    canonical = _canonical_timestamp(value)
+    if canonical is None:
+        return None
+    return datetime.fromisoformat(canonical)
+
+
+def _prediction_freshness_error(rows: Iterable[dict[str, Any]], collection_time: Any) -> str | None:
+    reference = _parse_aware_timestamp(collection_time)
+    if reference is None:
+        return "invalid_collection_reference_time"
+
+    timestamps: set[datetime] = set()
+    for row in rows:
+        source = _parse_aware_timestamp(row.get("prediction_time_utc"))
+        if source is None:
+            return "prediction_timestamp_missing_or_invalid"
+        timestamps.add(source)
+
+    if not timestamps:
+        return None
+    if len(timestamps) != 1:
+        return "symbol_prediction_timestamps_disagree"
+
+    source = next(iter(timestamps))
+    if source > reference + SOURCE_FUTURE_TOLERANCE:
+        return "prediction_timestamp_in_future"
+    if source.astimezone(NY).date() != reference.astimezone(NY).date():
+        return "prediction_timestamp_wrong_market_session"
+
+    age = reference - source
+    if age > MAX_SOURCE_STALENESS:
+        return f"stale_prediction_timestamp:{int(age.total_seconds())}s"
+    return None
 
 
 def _sha256(path: Path) -> str | None:
@@ -274,6 +312,13 @@ def build_payload(
         "runner_version": RUNNER_VERSION,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "session_gate": gate,
+        "source_freshness": {
+            "enforced": True,
+            "score_blind": True,
+            "max_age_minutes": int(MAX_SOURCE_STALENESS.total_seconds() // 60),
+            "future_tolerance_minutes": int(SOURCE_FUTURE_TOLERANCE.total_seconds() // 60),
+            "reference_time_et": gate["as_of_et"],
+        },
         "symbols_requested": symbols,
         "research_only": True,
         "order_submission_enabled": False,
@@ -292,6 +337,10 @@ def build_payload(
     eligible_horizons = list(gate["eligible_horizons"])
     for symbol in symbols:
         rows, error = run_symbol(symbol, eligible_horizons)
+        if error is None:
+            error = _prediction_freshness_error(rows, gate["as_of_et"])
+            if error is not None:
+                rows = []
         payload["paired_predictions"].extend(rows)
         if error:
             payload["failures"][symbol] = error

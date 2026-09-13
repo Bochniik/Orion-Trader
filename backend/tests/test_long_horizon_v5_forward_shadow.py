@@ -144,6 +144,57 @@ def test_atomic_runner_fails_closed_when_incumbent_alignment_is_unknown(monkeypa
     assert error == "incumbent_source_timestamp_unaligned_or_missing"
 
 
+def test_source_freshness_guard_rejects_stale_future_wrong_session_and_mixed_timestamps():
+    reference = "2026-09-11T10:05:00-04:00"
+    assert runner._prediction_freshness_error(
+        [{"prediction_time_utc": "2026-09-11T13:50:00+00:00"}], reference
+    ) is None
+    assert runner._prediction_freshness_error(
+        [{"prediction_time_utc": "2026-09-11T13:49:59+00:00"}], reference
+    ).startswith("stale_prediction_timestamp:")
+    assert runner._prediction_freshness_error(
+        [{"prediction_time_utc": "2026-09-11T14:06:01+00:00"}], reference
+    ) == "prediction_timestamp_in_future"
+    assert runner._prediction_freshness_error(
+        [{"prediction_time_utc": "2026-09-10T20:00:00+00:00"}], reference
+    ) == "prediction_timestamp_wrong_market_session"
+    assert runner._prediction_freshness_error(
+        [
+            {"prediction_time_utc": "2026-09-11T14:05:00+00:00"},
+            {"prediction_time_utc": "2026-09-11T14:04:00+00:00"},
+        ],
+        reference,
+    ) == "symbol_prediction_timestamps_disagree"
+
+
+def test_payload_degrades_instead_of_recording_stale_forward_evidence(monkeypatch):
+    monkeypatch.setattr(runner, "lineage", lambda: {"git_commit": "abc", "design_id": runner.DESIGN_ID, "files_sha256": {}})
+
+    def fake_run(symbol, expected_horizons):
+        return [
+            {
+                "symbol": symbol,
+                "horizon": horizon,
+                "prediction_time_utc": "2026-09-11T13:45:00+00:00",
+            }
+            for horizon in expected_horizons
+        ], None
+
+    monkeypatch.setattr(runner, "run_symbol", fake_run)
+    payload = runner.build_payload(["AAPL"], datetime(2026, 9, 11, 14, 5, tzinfo=timezone.utc))
+    assert payload["status"] == "degraded"
+    assert payload["paired_predictions"] == []
+    assert payload["coverage"]["observed_pair_count"] == 0
+    assert payload["failures"]["AAPL"] == "stale_prediction_timestamp:1200s"
+    assert payload["source_freshness"] == {
+        "enforced": True,
+        "score_blind": True,
+        "max_age_minutes": 15,
+        "future_tolerance_minutes": 1,
+        "reference_time_et": "2026-09-11T10:05:00-04:00",
+    }
+
+
 def test_scheduled_acquisition_is_bound_to_exact_run_attempt_and_commit(monkeypatch):
     monkeypatch.setattr(runner, "lineage", lambda: {"git_commit": HEAD_SHA, "design_id": runner.DESIGN_ID, "files_sha256": {}})
     payload = runner.build_payload(
@@ -218,7 +269,11 @@ def test_payload_marks_missing_expected_symbol_horizon_coverage_degraded(monkeyp
 
     def fake_run(symbol, expected_horizons):
         rows = [
-            {"symbol": symbol, "horizon": horizon}
+            {
+                "symbol": symbol,
+                "horizon": horizon,
+                "prediction_time_utc": "2026-09-11T14:05:00+00:00",
+            }
             for horizon in expected_horizons
             if not (symbol == "MSFT" and horizon == "5h")
         ]
