@@ -22,7 +22,7 @@ from app.services.intraday_probability_runtime_v3_1 import estimate_intraday_pro
 
 NY = ZoneInfo("America/New_York")
 CONTRACT = "orion-long-horizon-v5-paired-shadow-v1"
-RUNNER_VERSION = "long-horizon-v5-paired-shadow-v4"
+RUNNER_VERSION = "long-horizon-v5-paired-shadow-v5"
 ACQUISITION_CONTRACT = "orion-long-horizon-v5-workflow-acquisition-v1"
 DEFAULT_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
 WINDOW_OPEN = time(10, 0)
@@ -31,6 +31,7 @@ REGULAR_CLOSE = time(16, 0)
 HORIZON_HOURS = {"3h": 3, "5h": 5}
 MAX_SOURCE_STALENESS = timedelta(minutes=15)
 SOURCE_FUTURE_TOLERANCE = timedelta(minutes=1)
+MIN_COMPLETED_BAR_AGE = timedelta(minutes=5)
 SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 LINEAGE_FILES = (
     "scripts/run_long_horizon_v5_paired_cloud_shadow.py",
@@ -110,7 +111,12 @@ def _parse_aware_timestamp(value: Any) -> datetime | None:
     return datetime.fromisoformat(canonical)
 
 
-def _prediction_freshness_error(rows: Iterable[dict[str, Any]], collection_time: Any) -> str | None:
+def _prediction_freshness_error(
+    rows: Iterable[dict[str, Any]],
+    collection_time: Any,
+    *,
+    require_completed_bar: bool = False,
+) -> str | None:
     reference = _parse_aware_timestamp(collection_time)
     if reference is None:
         return "invalid_collection_reference_time"
@@ -136,6 +142,8 @@ def _prediction_freshness_error(rows: Iterable[dict[str, Any]], collection_time:
     age = reference - source
     if age > MAX_SOURCE_STALENESS:
         return f"stale_prediction_timestamp:{int(age.total_seconds())}s"
+    if require_completed_bar and age < MIN_COMPLETED_BAR_AGE:
+        return f"prediction_bar_not_closed:{int(age.total_seconds())}s"
     return None
 
 
@@ -338,7 +346,11 @@ def build_payload(
     for symbol in symbols:
         rows, error = run_symbol(symbol, eligible_horizons)
         if error is None:
-            error = _prediction_freshness_error(rows, gate["as_of_et"])
+            error = _prediction_freshness_error(
+                rows,
+                gate["as_of_et"],
+                require_completed_bar=bool(provenance.get("forward_eligible")),
+            )
             if error is not None:
                 rows = []
         payload["paired_predictions"].extend(rows)
