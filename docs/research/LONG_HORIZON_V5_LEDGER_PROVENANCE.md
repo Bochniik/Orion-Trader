@@ -1,0 +1,47 @@
+# Long-horizon V5 cumulative-ledger provenance
+
+Date fixed: 2026-09-13
+
+This hardening step closes the provenance gap between authenticated long-horizon V5 prediction artifacts and the cumulative append-only evidence ledger. It is research infrastructure only: it does not modify model probabilities, calibration, thresholds, risk policy, runtime recommendations, broker behavior, or order submission.
+
+## Problem
+
+The long-horizon evidence cycle already integrity-sealed cumulative ledger records and authenticated recovered prediction artifacts against their exact GitHub Actions workflow run. However, recovery of the *prior cumulative ledger* still selected a `long-horizon-v5-evidence-ledger-*` artifact by name and then trusted the ledger payload's internal record digest. That protected against record corruption or truncation, but it did not prove that the ledger artifact itself came from the expected scheduled evidence-cycle run.
+
+## Provenance contract
+
+Every newly uploaded cumulative ledger is now attested with `orion-long-horizon-v5-evidence-cycle-provenance-v1`. The attestation binds the ledger to:
+
+- the exact evidence-cycle workflow path;
+- GitHub Actions run ID;
+- run attempt;
+- workflow head commit SHA;
+- triggering event (`schedule` or `workflow_dispatch`);
+- a deterministic SHA-256 over the ledger payload excluding the provenance object itself.
+
+Only scheduled runs are marked `forward_eligible=true`.
+
+On recovery, the workflow parses the run ID from the artifact name, fetches GitHub's run metadata, requires the expected evidence-cycle workflow path, a successful completed scheduled run, an exact run-attempt match, an exact head-SHA match, and an exact ledger-content SHA-256 match. Manual workflow-dispatch ledger artifacts are skipped as forward lineage candidates rather than allowed to shadow the latest scheduled ledger.
+
+## Controlled migration
+
+A one-way migration is permitted for the immediately preceding legacy ledger format because older artifacts predate the new outer provenance object. Migration is allowed only when all of the following hold:
+
+1. the artifact name resolves to the exact successful scheduled evidence-cycle run;
+2. GitHub reports the expected workflow path;
+3. the legacy ledger carries the existing SHA-256 integrity seal with record count and records digest;
+4. that integrity seal validates before the ledger is accepted.
+
+An unsealed legacy ledger is not eligible for migration. The next successful cycle rewrites the cumulative ledger with the new provenance contract, after which normal strict validation applies.
+
+## Score blindness
+
+The provenance validator does not inspect probabilities, directions, realized labels, Brier score, log loss, directional accuracy, ECE, or tournament deltas. It validates only origin, immutable ledger integrity, and workflow identity. Therefore this hardening does not create a path for outcome-driven early stopping or tuning before the pre-registered maturity gates.
+
+## Failure semantics
+
+Recovery fails closed on malformed artifact run IDs, unexpected workflow paths, unsuccessful scheduled runs, run-attempt drift, commit-SHA drift, unsupported provenance contracts, internal ledger-integrity failures, or content-digest drift. A manual-run ledger is ignored for forward lineage. This keeps the forward evidence chain anchored to genuine scheduled collection while preserving manual diagnostics.
+
+## Next logical step
+
+Observe the first scheduled evidence-cycle recovery after this change. If the legacy migration succeeds, confirm that the newly emitted ledger contains the provenance contract and that the following scheduled cycle validates it without migration mode. After that, further work should target measured collection-health blockers rather than adding provenance layers unless a concrete new integrity gap is found.
