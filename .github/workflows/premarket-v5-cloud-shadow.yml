@@ -9,9 +9,6 @@ on:
         required: false
         default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
   schedule:
-    # Pre-registered forward cadence: 06:45 (early), 08:00 (mid), 09:15 (late) ET.
-    # Both EDT and EST UTC slots are declared. The resolver activates exactly one
-    # slot per snapshot/session and fails closed for the inactive DST duplicate.
     - cron: "45 10 * * 1-5"
     - cron: "45 11 * * 1-5"
     - cron: "0 12 * * 1-5"
@@ -98,7 +95,8 @@ jobs:
             --collection-completed-at "$COLLECTION_COMPLETED_AT_UTC" \
             --event-name "$GITHUB_EVENT_NAME" \
             --run-id "$GITHUB_RUN_ID" \
-            --run-attempt "$GITHUB_RUN_ATTEMPT"
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --github-head-sha "$GITHUB_SHA"
 
       - name: Upload immutable shadow evidence
         if: always() && steps.target.outputs.active == 'true'
@@ -109,6 +107,4 @@ jobs:
             backend/data/cloud_shadow/premarket_v5/*.json
             backend/data/cloud_shadow/premarket_v5/*.manifest.json
           if-no-files-found: warn
-          # Issue #3 needs at least 55 distinct sessions (40 train + 10 calibration + 5 test).
-          # 90 days preserves the minimum 11-week weekday geometry plus holiday/missing-run slack.
           retention-days: 90
