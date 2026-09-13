@@ -18,6 +18,7 @@ import "./analysis-insight-density.css";
 import "./analysis-responsive.css";
 import "./analysis-state-polish.css";
 import "./analysis-commandbar.css";
+import "./analysis-interaction-polish.css";
 import "./watchlist-polish.css";
 import "./quote-polish.css";
 import "./stock-workspace.css";
