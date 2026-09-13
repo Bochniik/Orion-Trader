@@ -1,0 +1,64 @@
+.core-stocks-status {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: -8px 0 18px;
+}
+
+.core-stocks-status > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label value" "meta value";
+  align-items: center;
+  gap: 4px 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 139, 40, 0.035), transparent 48%), rgba(10, 12, 16, 0.88);
+}
+
+.core-stocks-status span {
+  grid-area: label;
+  color: rgba(225, 229, 235, 0.68);
+  font-size: 0.68rem;
+  font-weight: 760;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.core-stocks-status strong {
+  grid-area: value;
+  color: #f7f8f9;
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.045em;
+}
+
+.core-stocks-status small {
+  grid-area: meta;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(225, 229, 235, 0.38);
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.core-stocks-status > div.has-attention {
+  border-color: rgba(255, 139, 40, 0.22);
+  background: linear-gradient(135deg, rgba(255, 139, 40, 0.09), transparent 58%), rgba(10, 12, 16, 0.9);
+}
+
+.core-stocks-status > div.has-attention strong {
+  color: #ff9a42;
+}
+
+@media (max-width: 1040px) {
+  .core-stocks-status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .core-stocks-status { grid-template-columns: 1fr; margin-top: -4px; }
+}

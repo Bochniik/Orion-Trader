@@ -29,6 +29,12 @@ export default function MyStocksView({ saved, savedError, savedLoading, onSave, 
   return <section className="core-view">
     <div className="core-page-heading"><div><p className="core-eyebrow">KEEP WHAT MATTERS CLOSE</p><h1>My Stocks</h1><p>Your watchlist and positions, without the noise.</p></div>
       <button type="button" className="core-button secondary" onClick={refresh} disabled={portfolio.busy || alerts.busy}><RefreshCw size={16} />Refresh</button></div>
+    <section className="core-stocks-status" aria-label="My Stocks overview">
+      <div><span>Saved</span><strong>{savedLoading ? "—" : saved.length}</strong><small>Watchlist tickers</small></div>
+      <div><span>Active checks</span><strong>{alerts.busy && !alerts.data ? "—" : rules.length}</strong><small>Enabled alerts</small></div>
+      <div className={exceptions.length ? "has-attention" : ""}><span>Needs attention</span><strong>{alerts.busy && !alerts.data ? "—" : exceptions.length}</strong><small>Triggered or failed</small></div>
+      <div><span>Positions</span><strong>{portfolio.busy && !portfolio.data ? "—" : positions.length}</strong><small>{portfolio.data?.source_label || "Account snapshot"}</small></div>
+    </section>
     <section className="core-monitoring" aria-label="Monitoring status"><h2>What needs attention</h2>
       {alerts.busy ? <p role="status">Loading saved checks…</p> : alerts.error ? <p role="alert">Saved checks unavailable: {alerts.error}</p>
         : exceptions.length ? <ul>{exceptions.map(rule => <li key={rule.id}><button className="core-text-button" type="button" onClick={() => onAnalyze(rule.ticker)}>{rule.ticker}</button><span>{rule.message}</span><small>Last checked: {localTime(rule.last_checked_at?.includes("T") ? rule.last_checked_at : rule.last_checked_at ? `${rule.last_checked_at.replace(" ", "T")}Z` : null)}</small></li>)}</ul>
