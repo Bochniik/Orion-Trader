@@ -1,5 +1,60 @@
 /* Today Orion Analysis loading-state polish — presentation only. */
 
+/* Give the idle Orion card a deliberate onboarding state instead of making
+   placeholder metrics look like a completed analysis. The existing title is
+   already driven by TodayView's ticker state, so this stays presentation-only. */
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) {
+  border-color: rgba(255, 255, 255, 0.055);
+  background:
+    radial-gradient(circle at 92% 6%, rgba(255, 122, 26, 0.045), transparent 34%),
+    rgba(255, 255, 255, 0.012);
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .orion-snapshot-stock {
+  border-color: rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .orion-snapshot-logo {
+  border-color: rgba(255, 122, 26, 0.12);
+  background: rgba(255, 122, 26, 0.035);
+  color: rgba(255, 166, 97, 0.72);
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .orion-score-area,
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .orion-risk-row {
+  opacity: 0.48;
+  filter: saturate(0.72);
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .orion-score-ring {
+  border-color: rgba(255, 255, 255, 0.065);
+  background: rgba(255, 255, 255, 0.008);
+  box-shadow: none;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .orion-setup-summary {
+  border-color: rgba(255, 122, 26, 0.1);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.05), transparent 52%),
+    rgba(255, 255, 255, 0.012);
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .orion-setup-summary small {
+  color: rgba(255, 170, 104, 0.78);
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .dashboard-primary-action {
+  border-color: rgba(255, 122, 26, 0.08);
+  background: rgba(255, 255, 255, 0.018);
+  color: rgba(255, 255, 255, 0.38);
+  box-shadow: none;
+}
+
+.dashboard-orion-card:has(.orion-full-analysis-icon[title="Select a stock first"]) .orion-full-analysis-icon {
+  opacity: 0.34;
+}
+
 /* The existing disabled full-analysis control with a ticker-specific title is the
    dashboard's quick-analysis busy signal. Keep the data flow untouched and turn
    that state into a compact terminal-style skeleton. */
