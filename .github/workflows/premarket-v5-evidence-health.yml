@@ -20,6 +20,8 @@ jobs:
     timeout-minutes: 15
     env:
       GITHUB_TOKEN: ${{ github.token }}
+      # The forward workflow became decision-grade after the 2026-09-11 session;
+      # Monday 2026-09-14 is therefore the first eligible collection session.
       EVIDENCE_START_DATE: "2026-09-14"
     steps:
       - uses: actions/checkout@v4
@@ -44,17 +46,34 @@ jobs:
         run: |
           INPUT_DIR="backend/data/cloud_shadow/premarket_v5/evidence-health-input"
           REPORT="backend/data/cloud_shadow/premarket_v5/evidence-health-report.json"
+          AS_OF="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           mapfile -t PAYLOADS < <(find "$INPUT_DIR/predictions" -maxdepth 1 -type f -name 'prediction-*.json' -print | sort)
-          ARGS=(
-            --runs-json "$INPUT_DIR/runs.json"
-            --start-date "$EVIDENCE_START_DATE"
-            --as-of "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            --output "$REPORT"
-          )
           if [ "${#PAYLOADS[@]}" -gt 0 ]; then
-            ARGS+=(--input "${PAYLOADS[@]}")
+            python scripts/audit_premarket_v5_evidence_health.py \
+              --runs-json "$INPUT_DIR/runs.json" \
+              --input "${PAYLOADS[@]}" \
+              --start-date "$EVIDENCE_START_DATE" \
+              --as-of "$AS_OF" \
+              --output "$REPORT"
+          else
+            python - "$INPUT_DIR/runs.json" "$EVIDENCE_START_DATE" "$AS_OF" "$REPORT" <<'PY'
+          from datetime import date
+          import json
+          from pathlib import Path
+          import sys
+          import scripts.audit_premarket_v5_evidence_health as audit
+
+          runs_path, start_date, as_of, report_path = sys.argv[1:]
+          report = audit.build_evidence_health_report(
+              audit._load_runs(Path(runs_path)),
+              [],
+              start_date=date.fromisoformat(start_date),
+              as_of=audit._parse_timestamp(as_of, field="as_of"),
+          )
+          Path(report_path).write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(json.dumps(report["summary"], sort_keys=True))
+          PY
           fi
-          python scripts/audit_premarket_v5_evidence_health.py "${ARGS[@]}"
 
       - name: Upload score-blind evidence health
         if: always()
