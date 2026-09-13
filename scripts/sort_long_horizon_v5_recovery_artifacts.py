@@ -57,14 +57,19 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
             workflow_run_id_raw,
             workflow_head_sha,
         ) = parts
+        if not artifact_name:
+            raise ValueError("Artifact name must not be empty")
+
+        minimum_retention = _minimum_retention(artifact_name)
+        if minimum_retention is None:
+            continue
+
         try:
             artifact_id = int(artifact_id_raw)
         except ValueError:
             raise ValueError(f"Invalid artifact id: {artifact_id_raw}") from None
         if artifact_id <= 0:
             raise ValueError(f"Artifact id must be positive: {artifact_id_raw}")
-        if not artifact_name:
-            raise ValueError("Artifact name must not be empty")
         try:
             workflow_run_id = int(workflow_run_id_raw)
         except ValueError:
@@ -79,8 +84,7 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
         if expires_at <= created_at:
             raise ValueError(f"Artifact expires_at must be after created_at: {artifact_name}")
 
-        minimum_retention = _minimum_retention(artifact_name)
-        if minimum_retention is not None and expires_at - created_at < minimum_retention:
+        if expires_at - created_at < minimum_retention:
             actual_days = (expires_at - created_at).total_seconds() / 86400.0
             required_days = int(minimum_retention.total_seconds() // 86400)
             raise ValueError(
@@ -110,8 +114,8 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Validate retention/provenance metadata, reject ambiguous duplicate recovery artifacts, and "
-            "deterministically sort GitHub Actions artifacts newest-first before long-horizon V5 recovery."
+            "Ignore unrelated repository artifacts, validate retention/provenance metadata for long-horizon "
+            "recovery artifacts, reject ambiguous duplicates, and sort eligible artifacts newest-first."
         )
     )
     parser.add_argument("input", type=Path)
