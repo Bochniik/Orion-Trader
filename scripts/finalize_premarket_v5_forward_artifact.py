@@ -5,12 +5,14 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 
-ATTESTATION_CONTRACT = "orion-premarket-v5-forward-acquisition-v1"
+ATTESTATION_CONTRACT = "orion-premarket-v5-forward-acquisition-v2"
 MAX_EARLY_SKEW_MINUTES = 2.0
 MAX_START_LAG_MINUTES = 20.0
+_GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 class ForwardAcquisitionError(ValueError):
@@ -33,6 +35,17 @@ def _canonical_payload_sha256(payload: dict[str, Any]) -> str:
     material = {key: value for key, value in payload.items() if key != "acquisition_provenance"}
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _normalize_git_sha(value: str | None, *, required: bool) -> str | None:
+    if value is None or not str(value).strip():
+        if required:
+            raise ForwardAcquisitionError("scheduled collection requires GitHub head SHA")
+        return None
+    sha = str(value).strip().lower()
+    if not _GIT_SHA_RE.fullmatch(sha):
+        raise ForwardAcquisitionError("github_head_sha must be a 40-character lowercase hexadecimal commit SHA")
+    return sha
 
 
 def classify_forward_acquisition(
@@ -72,6 +85,7 @@ def finalize_payload(
     event_name: str,
     run_id: str | None,
     run_attempt: str | int | None,
+    github_head_sha: str | None = None,
 ) -> dict[str, Any]:
     if "acquisition_provenance" in payload:
         raise ForwardAcquisitionError("artifact already contains acquisition_provenance")
@@ -90,6 +104,7 @@ def finalize_payload(
         raise ForwardAcquisitionError("run_attempt must be an integer") from exc
     if event_name == "schedule" and (not run_id or attempt is None or attempt < 1):
         raise ForwardAcquisitionError("scheduled collection requires GitHub run_id and positive run_attempt")
+    head_sha = _normalize_git_sha(github_head_sha, required=event_name == "schedule")
 
     result = dict(payload)
     result["acquisition_provenance"] = {
@@ -101,6 +116,7 @@ def finalize_payload(
         "event_name": event_name,
         "github_run_id": None if run_id is None else str(run_id),
         "github_run_attempt": attempt,
+        "github_head_sha": head_sha,
         "max_early_skew_minutes": MAX_EARLY_SKEW_MINUTES,
         "max_start_lag_minutes": MAX_START_LAG_MINUTES,
         "forward_eligible": eligible,
@@ -126,6 +142,7 @@ def main() -> int:
     parser.add_argument("--event-name", required=True)
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--run-attempt", default=None)
+    parser.add_argument("--github-head-sha", default=None)
     args = parser.parse_args()
 
     try:
@@ -137,6 +154,7 @@ def main() -> int:
             event_name=args.event_name,
             run_id=args.run_id,
             run_attempt=args.run_attempt,
+            github_head_sha=args.github_head_sha,
         )
     except (OSError, json.JSONDecodeError, ForwardAcquisitionError, ValueError) as exc:
         print(json.dumps({"status": "invalid_forward_acquisition", "error": str(exc)}, sort_keys=True))
@@ -151,6 +169,7 @@ def main() -> int:
         "forward_eligible": provenance["forward_eligible"],
         "eligibility_reason": provenance["eligibility_reason"],
         "collection_start_lag_minutes": provenance["collection_start_lag_minutes"],
+        "github_head_sha": provenance["github_head_sha"],
     }, sort_keys=True))
     return 0
 

@@ -98,7 +98,8 @@ jobs:
             --collection-completed-at "$COLLECTION_COMPLETED_AT_UTC" \
             --event-name "$GITHUB_EVENT_NAME" \
             --run-id "$GITHUB_RUN_ID" \
-            --run-attempt "$GITHUB_RUN_ATTEMPT"
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --github-head-sha "$GITHUB_SHA"
 
       - name: Upload immutable shadow evidence
         if: always() && steps.target.outputs.active == 'true'

@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -19,6 +20,7 @@ ARTIFACT_PREFIX = "premarket-v5-shadow-"
 MAX_ARTIFACT_BYTES = 8 * 1024 * 1024
 REQUIRED_ARTIFACT_RETENTION_DAYS = 90
 RETENTION_TOLERANCE_SECONDS = 5 * 60
+_GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 class ActionsEvidenceError(RuntimeError):
@@ -47,8 +49,15 @@ def _iso_utc(value: Any, *, field: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _git_sha(value: Any, *, field: str) -> str:
+    sha = str(value or "").strip().lower()
+    if not _GIT_SHA_RE.fullmatch(sha):
+        raise ActionsEvidenceError(f"{field} must be a 40-character hexadecimal commit SHA")
+    return sha
+
+
 def normalize_run(run: dict[str, Any]) -> dict[str, Any]:
-    required = ("id", "event", "display_title", "created_at", "status", "run_attempt")
+    required = ("id", "event", "display_title", "created_at", "status", "run_attempt", "head_sha")
     missing = [field for field in required if field not in run]
     if missing:
         raise ActionsEvidenceError(f"workflow run missing fields: {', '.join(missing)}")
@@ -61,6 +70,7 @@ def normalize_run(run: dict[str, Any]) -> dict[str, Any]:
         "status": str(run["status"]),
         "conclusion": run.get("conclusion"),
         "run_attempt": int(run["run_attempt"]),
+        "head_sha": _git_sha(run["head_sha"], field="head_sha"),
     }
 
 
@@ -97,7 +107,13 @@ def artifact_retention_contract(artifact: dict[str, Any], *, run_id: str) -> tup
     return expires_at.isoformat().replace("+00:00", "Z"), retention_seconds / (24 * 60 * 60)
 
 
-def prediction_payload_from_zip(blob: bytes, *, run_id: str, run_attempt: int) -> dict[str, Any]:
+def prediction_payload_from_zip(
+    blob: bytes,
+    *,
+    run_id: str,
+    run_attempt: int,
+    head_sha: str,
+) -> dict[str, Any]:
     if len(blob) > MAX_ARTIFACT_BYTES:
         raise ActionsEvidenceError(f"run {run_id} artifact exceeds {MAX_ARTIFACT_BYTES} bytes")
     try:
@@ -134,6 +150,12 @@ def prediction_payload_from_zip(blob: bytes, *, run_id: str, run_attempt: int) -
     if payload_attempt != int(run_attempt):
         raise ActionsEvidenceError(
             f"run {run_id} prediction payload attempt {payload_attempt} does not match workflow attempt {run_attempt}"
+        )
+    expected_sha = _git_sha(head_sha, field=f"run {run_id} head_sha")
+    payload_sha = _git_sha(provenance.get("github_head_sha"), field=f"run {run_id} prediction github_head_sha")
+    if payload_sha != expected_sha:
+        raise ActionsEvidenceError(
+            f"run {run_id} prediction payload commit {payload_sha} does not match workflow head_sha {expected_sha}"
         )
     return payload
 
@@ -241,6 +263,7 @@ def collect(client: GitHubActionsClient, *, start_date: date) -> tuple[list[dict
                 client.download_artifact(int(artifact["id"])),
                 run_id=run_id,
                 run_attempt=run_attempt,
+                head_sha=str(run["head_sha"]),
             )
         )
     summary = {
