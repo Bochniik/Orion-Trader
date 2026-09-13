@@ -28,6 +28,7 @@ import "./dashboard-polish.css";
 import "./market-explorer-polish.css";
 import "./my-stocks-polish.css";
 import "./my-stocks-status.css";
+import "./my-stocks-monitoring.css";
 import "./data-connections-polish.css";
 import "./auth-polish.css";
 import "./system-states.css";
