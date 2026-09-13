@@ -15,6 +15,7 @@ import "./analysis-news-context.css";
 import "./analysis-snapshot.css";
 import "./analysis-decision-hierarchy.css";
 import "./analysis-insight-density.css";
+import "./analysis-responsive.css";
 import "./analysis-state-polish.css";
 import "./analysis-commandbar.css";
 import "./watchlist-polish.css";

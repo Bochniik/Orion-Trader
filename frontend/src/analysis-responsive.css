@@ -1,0 +1,118 @@
+/* OrionTrader analysis responsive composition
+   Presentation only: keeps the existing research surfaces readable at intermediate widths. */
+
+@media (max-width: 1320px) and (min-width: 981px) {
+  .analyze-view .analysis-market-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.82fr);
+    gap: 12px;
+  }
+
+  .analyze-view .analyze-chart-panel,
+  .analyze-view .analyze-news-panel {
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-news-panel .stock-news-list {
+    gap: 8px;
+  }
+
+  .analyze-view .analysis-insight-grid {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .analyze-view .analysis-market-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analyze-view .analyze-chart-panel,
+  .analyze-view .analyze-news-panel {
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-news-panel {
+    max-height: none;
+  }
+
+  .analyze-view .analysis-insight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .analyze-view .core-page-heading,
+  .analyze-view .analyze-horizon-selector,
+  .analyze-view .analyze-result-horizon {
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-horizon-selector {
+    align-items: stretch;
+  }
+
+  .analyze-view .analyze-horizon-tabs {
+    width: 100%;
+  }
+
+  .analyze-view .analyze-horizon-tabs button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-section-heading {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .analyze-view .analyze-chart-panel > .analyze-section-heading > span {
+    white-space: normal;
+    text-align: right;
+  }
+}
+
+@media (max-width: 680px) {
+  .analyze-view .analysis-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analyze-view .analyze-horizon-selector {
+    gap: 10px;
+  }
+
+  .analyze-view .analyze-horizon-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .analyze-view .analyze-horizon-tabs button {
+    padding-inline: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  .analyze-view .analyze-section-heading {
+    flex-direction: column;
+  }
+
+  .analyze-view .analyze-chart-panel > .analyze-section-heading > span {
+    align-self: flex-start;
+    text-align: left;
+  }
+
+  .analyze-view .core-chart,
+  .analyze-view .analyze-news-panel,
+  .analyze-view .analysis-insight {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 430px) {
+  .analyze-view .analyze-horizon-tabs button {
+    font-size: 0.68rem;
+    padding-inline: 5px;
+  }
+
+  .analyze-view .analyze-result-horizon {
+    gap: 6px;
+  }
+}
