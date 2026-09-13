@@ -52,8 +52,31 @@ jobs:
             --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at] | @tsv' > /tmp/long-shadow-artifacts.tsv
           while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT; do
             if [ "$LEDGER_FOUND" -eq 0 ] && [[ "$ARTIFACT_NAME" == long-horizon-v5-evidence-ledger-* ]]; then
-              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/long-ledger.zip
-              unzip -q -o /tmp/long-ledger.zip -d .long-shadow/prior
+              LEDGER_RUN_ID="${ARTIFACT_NAME##*-}"
+              if ! [[ "$LEDGER_RUN_ID" =~ ^[0-9]+$ ]]; then
+                echo "Malformed long-horizon ledger artifact run id: $ARTIFACT_NAME" >&2
+                exit 3
+              fi
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${LEDGER_RUN_ID}" > "/tmp/long-ledger-run-${LEDGER_RUN_ID}.json"
+              LEDGER_EVENT=$(jq -r '.event // ""' "/tmp/long-ledger-run-${LEDGER_RUN_ID}.json")
+              if [ "$LEDGER_EVENT" != "schedule" ]; then
+                continue
+              fi
+              LEDGER_DIR=".long-shadow/recovered/ledger-${ARTIFACT_ID}"
+              mkdir -p "$LEDGER_DIR"
+              gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/long-ledger-${ARTIFACT_ID}.zip"
+              unzip -q -o "/tmp/long-ledger-${ARTIFACT_ID}.zip" -d "$LEDGER_DIR"
+              LEDGER="$LEDGER_DIR/ledger.json"
+              if [ ! -f "$LEDGER" ]; then
+                echo "Expected ledger payload missing from artifact $ARTIFACT_NAME" >&2
+                exit 4
+              fi
+              python scripts/validate_long_horizon_v5_ledger_origin.py \
+                --ledger "$LEDGER" \
+                --artifact-name "$ARTIFACT_NAME" \
+                --run-metadata "/tmp/long-ledger-run-${LEDGER_RUN_ID}.json" \
+                --allow-legacy-sealed-migration
+              cp "$LEDGER" .long-shadow/prior/ledger.json
               LEDGER_FOUND=1
               continue
             fi
@@ -124,6 +147,18 @@ jobs:
           mkdir -p backend/data/cloud_shadow/long_horizon_v5/evidence
           PRIOR=$(find .long-shadow/prior -type f -name 'ledger.json' | head -n 1)
           cp "$PRIOR" backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json
+      - name: Attest cumulative ledger to exact evidence-cycle run
+        if: steps.recover.outputs.prediction_artifacts != '0' || steps.recover.outputs.ledger_found == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/validate_long_horizon_v5_ledger_origin.py \
+            --ledger backend/data/cloud_shadow/long_horizon_v5/evidence/ledger.json \
+            --attest \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --head-sha "${{ github.sha }}" \
+            --event-name "${{ github.event_name }}"
       - name: Build score-blind readiness or mature tournament decision
         if: steps.recover.outputs.prediction_artifacts != '0' || steps.recover.outputs.ledger_found == '1'
         shell: bash
