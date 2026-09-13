@@ -39,12 +39,12 @@ jobs:
             echo "Missing existing repository market-data credentials." >&2
             exit 2
           fi
-      - name: Recover paired predictions and prior dedicated ledger
+      - name: Recover and authenticate paired predictions and prior dedicated ledger
         id: recover
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .long-shadow/predictions .long-shadow/prior
+          mkdir -p .long-shadow/predictions .long-shadow/prior .long-shadow/recovered
           CUTOFF_EPOCH=$(date -u -d '35 days ago' +%s)
           COUNT=0
           LEDGER_FOUND=0
@@ -62,8 +62,26 @@ jobs:
               if [ "$CREATED_EPOCH" -lt "$CUTOFF_EPOCH" ]; then
                 continue
               fi
+              RUN_ID="${ARTIFACT_NAME##*-}"
+              if ! [[ "$RUN_ID" =~ ^[0-9]+$ ]]; then
+                echo "Malformed long-horizon artifact run id: $ARTIFACT_NAME" >&2
+                exit 3
+              fi
+              RECOVERED_DIR=".long-shadow/recovered/${ARTIFACT_ID}"
+              mkdir -p "$RECOVERED_DIR"
               gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/long-prediction-${ARTIFACT_ID}.zip"
-              unzip -q -o "/tmp/long-prediction-${ARTIFACT_ID}.zip" -d .long-shadow/predictions
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" > "/tmp/long-run-${RUN_ID}.json"
+              unzip -q -o "/tmp/long-prediction-${ARTIFACT_ID}.zip" -d "$RECOVERED_DIR"
+              PREDICTION="$RECOVERED_DIR/prediction-${RUN_ID}.json"
+              if [ ! -f "$PREDICTION" ]; then
+                echo "Expected prediction payload missing from artifact $ARTIFACT_NAME" >&2
+                exit 4
+              fi
+              python scripts/validate_long_horizon_v5_artifact_origin.py \
+                --prediction "$PREDICTION" \
+                --artifact-name "$ARTIFACT_NAME" \
+                --run-metadata "/tmp/long-run-${RUN_ID}.json"
+              cp "$PREDICTION" ".long-shadow/predictions/prediction-${RUN_ID}.json"
               COUNT=$((COUNT + 1))
             fi
           done < /tmp/long-shadow-artifacts.tsv
