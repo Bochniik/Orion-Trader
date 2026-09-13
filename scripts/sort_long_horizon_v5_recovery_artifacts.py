@@ -1,23 +1,34 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 from typing import Iterable
 
 
 _GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
+_MIN_RETENTION_BY_PREFIX = {
+    "long-horizon-v5-paired-shadow-": timedelta(days=45),
+    "long-horizon-v5-evidence-ledger-": timedelta(days=90),
+}
 
 
-def _parse_created_at(value: str) -> datetime:
+def _parse_timestamp(value: str, field_name: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
-        raise ValueError(f"Invalid artifact created_at timestamp: {value}") from None
+        raise ValueError(f"Invalid artifact {field_name} timestamp: {value}") from None
     if parsed.tzinfo is None:
-        raise ValueError(f"Artifact created_at timestamp must be timezone-aware: {value}")
+        raise ValueError(f"Artifact {field_name} timestamp must be timezone-aware: {value}")
     return parsed.astimezone(timezone.utc)
+
+
+def _minimum_retention(artifact_name: str) -> timedelta | None:
+    for prefix, minimum in _MIN_RETENTION_BY_PREFIX.items():
+        if artifact_name.startswith(prefix):
+            return minimum
+    return None
 
 
 def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
@@ -27,9 +38,16 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
         if not line:
             continue
         parts = line.split("\t")
-        if len(parts) != 5:
-            raise ValueError(f"Expected artifact TSV row with 5 fields, got {len(parts)}")
-        artifact_id_raw, artifact_name, created_at_raw, workflow_run_id_raw, workflow_head_sha = parts
+        if len(parts) != 6:
+            raise ValueError(f"Expected artifact TSV row with 6 fields, got {len(parts)}")
+        (
+            artifact_id_raw,
+            artifact_name,
+            created_at_raw,
+            expires_at_raw,
+            workflow_run_id_raw,
+            workflow_head_sha,
+        ) = parts
         try:
             artifact_id = int(artifact_id_raw)
         except ValueError:
@@ -46,7 +64,21 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
             raise ValueError(f"Artifact workflow_run.id must be positive: {workflow_run_id_raw}")
         if not _GIT_SHA_RE.fullmatch(workflow_head_sha):
             raise ValueError("Artifact workflow_run.head_sha must be a 40-character hexadecimal commit SHA")
-        created_at = _parse_created_at(created_at_raw)
+
+        created_at = _parse_timestamp(created_at_raw, "created_at")
+        expires_at = _parse_timestamp(expires_at_raw, "expires_at")
+        if expires_at <= created_at:
+            raise ValueError(f"Artifact expires_at must be after created_at: {artifact_name}")
+
+        minimum_retention = _minimum_retention(artifact_name)
+        if minimum_retention is not None and expires_at - created_at < minimum_retention:
+            actual_days = (expires_at - created_at).total_seconds() / 86400.0
+            required_days = int(minimum_retention.total_seconds() // 86400)
+            raise ValueError(
+                f"Artifact retention shorter than required: {artifact_name} "
+                f"actual_days={actual_days:.3f} required_days={required_days}"
+            )
+
         rows.append((created_at, artifact_id, line))
 
     rows.sort(key=lambda item: (item[0], item[1]), reverse=True)
@@ -56,8 +88,8 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Validate and deterministically sort GitHub Actions artifact metadata newest-first before "
-            "long-horizon V5 recovery."
+            "Validate retention/provenance metadata and deterministically sort GitHub Actions artifacts "
+            "newest-first before long-horizon V5 recovery."
         )
     )
     parser.add_argument("input", type=Path)
