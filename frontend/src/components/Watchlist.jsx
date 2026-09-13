@@ -23,6 +23,13 @@ function formatVolume(value) {
   return Number(value).toLocaleString(undefined, { notation: "compact" });
 }
 
+function quoteState(quote, loading) {
+  if (quote?.error) return { label: "OFFLINE", tone: "#ff9292", border: "rgba(255, 105, 105, 0.18)", background: "rgba(255, 79, 79, 0.06)" };
+  if (quote?.stale) return { label: "LAST", tone: "#ffad68", border: "rgba(255, 155, 71, 0.22)", background: "rgba(255, 139, 42, 0.08)" };
+  if (quote) return { label: "LIVE", tone: "#71dda1", border: "rgba(113, 221, 161, 0.18)", background: "rgba(72, 192, 126, 0.06)" };
+  return { label: loading ? "SYNC" : "WAIT", tone: "rgba(205, 210, 220, 0.52)", border: "rgba(255, 255, 255, 0.08)", background: "rgba(255, 255, 255, 0.025)" };
+}
+
 export default function Watchlist({
   watchlist,
   onSelectStock,
@@ -126,39 +133,41 @@ export default function Watchlist({
             const changePercent = quote?.change_percent;
             const isUp = Number(changePercent) >= 0;
             const TrendIcon = isUp ? TrendingUp : TrendingDown;
+            const state = quoteState(quote, loading);
 
             return (
               <div
                 className={`watchlist-row${unavailable ? " is-unavailable" : ""}`}
                 key={symbol}
-                title={stale ? `${symbol}: showing the last successful quote while live refresh is temporarily unavailable` : undefined}
+                title={stale ? `${symbol}: showing the last successful quote while live refresh is temporarily unavailable` : unavailable ? `${symbol}: live quote is temporarily unavailable` : undefined}
               >
                 <button className="watch-symbol" onClick={() => onSelectStock(symbol)}>
                   {symbol}
-                  {stale && (
+                  <span
+                    aria-label={`${symbol} quote status: ${state.label.toLowerCase()}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      marginLeft: 7,
+                      padding: "2px 6px",
+                      border: `1px solid ${state.border}`,
+                      borderRadius: 999,
+                      background: state.background,
+                      color: state.tone,
+                      fontSize: 9,
+                      fontWeight: 760,
+                      letterSpacing: "0.05em",
+                      lineHeight: 1.35,
+                      verticalAlign: "middle",
+                    }}
+                  >
                     <span
-                      aria-label="Last successful quote"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        marginLeft: 7,
-                        padding: "2px 6px",
-                        border: "1px solid rgba(255, 155, 71, 0.22)",
-                        borderRadius: 999,
-                        background: "rgba(255, 139, 42, 0.08)",
-                        color: "#ffad68",
-                        fontSize: 9,
-                        fontWeight: 760,
-                        letterSpacing: "0.04em",
-                        lineHeight: 1.35,
-                        verticalAlign: "middle",
-                      }}
-                    >
-                      <RefreshCw size={9} aria-hidden="true" />
-                      LAST
-                    </span>
-                  )}
+                      aria-hidden="true"
+                      style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", boxShadow: "0 0 8px currentColor" }}
+                    />
+                    {state.label}
+                  </span>
                 </button>
 
                 <button className="watch-price" onClick={() => onSelectStock(symbol)}>
