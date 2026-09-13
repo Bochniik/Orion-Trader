@@ -12,6 +12,7 @@ _MIN_RETENTION_BY_PREFIX = {
     "long-horizon-v5-paired-shadow-": timedelta(days=45),
     "long-horizon-v5-evidence-ledger-": timedelta(days=90),
 }
+_RECOVERY_IDENTITY_PREFIXES = tuple(_MIN_RETENTION_BY_PREFIX)
 
 
 def _parse_timestamp(value: str, field_name: str) -> datetime:
@@ -31,8 +32,16 @@ def _minimum_retention(artifact_name: str) -> timedelta | None:
     return None
 
 
+def _recovery_identity(artifact_name: str, workflow_run_id: int) -> tuple[str, int] | None:
+    for prefix in _RECOVERY_IDENTITY_PREFIXES:
+        if artifact_name.startswith(prefix):
+            return prefix, workflow_run_id
+    return None
+
+
 def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
     rows: list[tuple[datetime, int, str]] = []
+    seen_recovery_identities: dict[tuple[str, int], tuple[int, str]] = {}
     for raw in lines:
         line = raw.rstrip("\n")
         if not line:
@@ -79,6 +88,19 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
                 f"actual_days={actual_days:.3f} required_days={required_days}"
             )
 
+        recovery_identity = _recovery_identity(artifact_name, workflow_run_id)
+        if recovery_identity is not None:
+            previous = seen_recovery_identities.get(recovery_identity)
+            if previous is not None:
+                previous_artifact_id, previous_name = previous
+                raise ValueError(
+                    "Ambiguous duplicate recovery artifact for producing run: "
+                    f"run_id={workflow_run_id} artifact_type={recovery_identity[0]} "
+                    f"artifact_ids={previous_artifact_id},{artifact_id} "
+                    f"artifact_names={previous_name},{artifact_name}"
+                )
+            seen_recovery_identities[recovery_identity] = (artifact_id, artifact_name)
+
         rows.append((created_at, artifact_id, line))
 
     rows.sort(key=lambda item: (item[0], item[1]), reverse=True)
@@ -88,8 +110,8 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Validate retention/provenance metadata and deterministically sort GitHub Actions artifacts "
-            "newest-first before long-horizon V5 recovery."
+            "Validate retention/provenance metadata, reject ambiguous duplicate recovery artifacts, and "
+            "deterministically sort GitHub Actions artifacts newest-first before long-horizon V5 recovery."
         )
     )
     parser.add_argument("input", type=Path)

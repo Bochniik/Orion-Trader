@@ -54,7 +54,7 @@ jobs:
           python -m py_compile scripts/validate_long_horizon_v5_artifact_origin.py
           python -m py_compile scripts/validate_long_horizon_v5_ledger_origin.py
           python -m py_compile scripts/sort_long_horizon_v5_recovery_artifacts.py
-      - name: Test deterministic recovery artifact ordering, provenance and retention metadata
+      - name: Test deterministic recovery artifact ordering, provenance, retention and duplicate guards
         run: |
           python - <<'PY'
           from scripts.sort_long_horizon_v5_recovery_artifacts import sort_artifact_rows
@@ -77,6 +77,22 @@ jobs:
               f"301\tlong-horizon-v5-evidence-ledger-30\t2026-09-13T15:40:00Z\t"
               f"2026-12-11T15:40:00Z\t30\t{sha}"
           )
+          duplicate_prediction_a = (
+              f"401\tlong-horizon-v5-paired-shadow-40\t2026-09-12T15:40:00Z\t"
+              f"2026-10-27T15:40:00Z\t40\t{sha}"
+          )
+          duplicate_prediction_b = (
+              f"402\tlong-horizon-v5-paired-shadow-40\t2026-09-12T15:41:00Z\t"
+              f"2026-10-27T15:41:00Z\t40\t{sha}"
+          )
+          duplicate_ledger_a = (
+              f"501\tlong-horizon-v5-evidence-ledger-50\t2026-09-12T15:40:00Z\t"
+              f"2026-12-11T15:40:00Z\t50\t{sha}"
+          )
+          duplicate_ledger_b = (
+              f"502\tlong-horizon-v5-evidence-ledger-50\t2026-09-12T15:41:00Z\t"
+              f"2026-12-11T15:41:00Z\t50\t{sha}"
+          )
           bad_rows = (
               f"bad\tname\t2026-09-13T15:40:00Z\t2026-09-14T15:40:00Z\t10\t{sha}",
               f"1\tname\tnot-a-time\t2026-09-14T15:40:00Z\t10\t{sha}",
@@ -95,6 +111,23 @@ jobs:
                   pass
               else:
                   raise AssertionError(f"malformed or under-retained artifact metadata was accepted: {bad}")
+
+          for duplicate_pair in (
+              [duplicate_prediction_a, duplicate_prediction_b],
+              [duplicate_ledger_a, duplicate_ledger_b],
+          ):
+              try:
+                  sort_artifact_rows(duplicate_pair)
+              except ValueError as exc:
+                  assert "Ambiguous duplicate recovery artifact" in str(exc)
+              else:
+                  raise AssertionError(f"duplicate recovery identity was accepted: {duplicate_pair}")
+
+          same_run_different_types = [
+              f"601\tlong-horizon-v5-paired-shadow-60\t2026-09-12T15:40:00Z\t2026-10-27T15:40:00Z\t60\t{sha}",
+              f"602\tlong-horizon-v5-evidence-ledger-60\t2026-09-12T15:40:00Z\t2026-12-11T15:40:00Z\t60\t{sha}",
+          ]
+          assert len(sort_artifact_rows(same_run_different_types)) == 2
           PY
       - name: Verify workflow binds artifact metadata to producing run and retention
         run: |
