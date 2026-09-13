@@ -49,7 +49,10 @@ jobs:
           COUNT=0
           LEDGER_FOUND=0
           gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
-            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at] | @tsv' > /tmp/long-shadow-artifacts.tsv
+            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at] | @tsv' > /tmp/long-shadow-artifacts-raw.tsv
+          python scripts/sort_long_horizon_v5_recovery_artifacts.py \
+            /tmp/long-shadow-artifacts-raw.tsv \
+            /tmp/long-shadow-artifacts.tsv
           while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT; do
             if [ "$LEDGER_FOUND" -eq 0 ] && [[ "$ARTIFACT_NAME" == long-horizon-v5-evidence-ledger-* ]]; then
               LEDGER_RUN_ID="${ARTIFACT_NAME##*-}"
