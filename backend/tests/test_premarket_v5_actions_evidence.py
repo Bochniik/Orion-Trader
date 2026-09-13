@@ -33,6 +33,24 @@ def _payload(run_id: str = "123") -> dict:
     }
 
 
+def _artifact(*, retention_days: int = 90) -> dict:
+    expires_day = 13 + retention_days
+    # Keep fixtures simple for 90/30-day cases used below.
+    if retention_days == 90:
+        expires_at = "2026-12-13T13:20:00Z"
+    elif retention_days == 30:
+        expires_at = "2026-10-14T13:20:00Z"
+    else:
+        raise AssertionError("unsupported fixture retention")
+    return {
+        "id": 9,
+        "name": "premarket-v5-shadow-late-123",
+        "expired": False,
+        "created_at": "2026-09-14T13:20:00Z",
+        "expires_at": expires_at,
+    }
+
+
 def test_normalize_run_keeps_only_score_blind_delivery_fields():
     raw = {
         "id": 123,
@@ -88,6 +106,20 @@ def test_select_shadow_artifact_ignores_expired_and_rejects_ambiguity():
         )
 
 
+def test_artifact_retention_contract_requires_real_90_day_api_retention():
+    expires_at, observed_days = actions.artifact_retention_contract(_artifact(retention_days=90), run_id="123")
+    assert expires_at == "2026-12-13T13:20:00Z"
+    assert observed_days == pytest.approx(90.0)
+
+    with pytest.raises(actions.ActionsEvidenceError, match="requires at least 90 days"):
+        actions.artifact_retention_contract(_artifact(retention_days=30), run_id="123")
+
+    missing_expiry = _artifact(retention_days=90)
+    missing_expiry.pop("expires_at")
+    with pytest.raises(actions.ActionsEvidenceError, match="expires_at must be ISO-8601"):
+        actions.artifact_retention_contract(missing_expiry, run_id="123")
+
+
 def test_prediction_payload_from_zip_requires_run_binding_and_safe_single_payload():
     parsed = actions.prediction_payload_from_zip(_artifact_zip(_payload()), run_id="123")
     assert parsed["acquisition_provenance"]["github_run_id"] == "123"
@@ -137,7 +169,7 @@ class _FakeClient:
 
     def run_artifacts(self, run_id: str):
         if run_id == "123":
-            return [{"id": 9, "name": "premarket-v5-shadow-late-123", "expired": False}]
+            return [_artifact(retention_days=90)]
         return []
 
     def download_artifact(self, artifact_id: int):
@@ -153,3 +185,6 @@ def test_collect_preserves_failed_runs_and_reports_success_without_live_artifact
     assert summary["scheduled_run_count"] == 3
     assert summary["prediction_artifact_count"] == 1
     assert summary["successful_runs_missing_live_artifact_ids"] == ["124"]
+    assert summary["required_artifact_retention_days"] == 90
+    assert summary["minimum_observed_artifact_retention_days"] == pytest.approx(90.0)
+    assert summary["earliest_live_artifact_expires_at"] == "2026-12-13T13:20:00Z"

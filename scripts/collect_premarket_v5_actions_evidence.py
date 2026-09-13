@@ -17,6 +17,8 @@ API_VERSION = "2022-11-28"
 WORKFLOW_FILE = "premarket-v5-cloud-shadow.yml"
 ARTIFACT_PREFIX = "premarket-v5-shadow-"
 MAX_ARTIFACT_BYTES = 8 * 1024 * 1024
+REQUIRED_ARTIFACT_RETENTION_DAYS = 90
+RETENTION_TOLERANCE_SECONDS = 5 * 60
 
 
 class ActionsEvidenceError(RuntimeError):
@@ -75,6 +77,22 @@ def select_shadow_artifact(artifacts: list[dict[str, Any]], *, run_id: str) -> d
         names = sorted(str(row.get("name")) for row in candidates)
         raise ActionsEvidenceError(f"run {run_id} has ambiguous Premarket V5 artifacts: {names}")
     return candidates[0]
+
+
+def artifact_retention_contract(artifact: dict[str, Any], *, run_id: str) -> tuple[str, float]:
+    created_at = _iso_utc(artifact.get("created_at"), field=f"run {run_id} artifact created_at")
+    expires_at = _iso_utc(artifact.get("expires_at"), field=f"run {run_id} artifact expires_at")
+    retention_seconds = (expires_at - created_at).total_seconds()
+    minimum_seconds = REQUIRED_ARTIFACT_RETENTION_DAYS * 24 * 60 * 60
+    if retention_seconds <= 0:
+        raise ActionsEvidenceError(f"run {run_id} artifact expires_at must be after created_at")
+    if retention_seconds + RETENTION_TOLERANCE_SECONDS < minimum_seconds:
+        observed_days = retention_seconds / (24 * 60 * 60)
+        raise ActionsEvidenceError(
+            f"run {run_id} artifact retention is {observed_days:.3f} days; "
+            f"Issue #3 requires at least {REQUIRED_ARTIFACT_RETENTION_DAYS} days"
+        )
+    return expires_at.isoformat().replace("+00:00", "Z"), retention_seconds / (24 * 60 * 60)
 
 
 def prediction_payload_from_zip(blob: bytes, *, run_id: str) -> dict[str, Any]:
@@ -194,6 +212,8 @@ def collect(client: GitHubActionsClient, *, start_date: date) -> tuple[list[dict
     runs = client.scheduled_runs(start_date=start_date)
     payloads: list[dict[str, Any]] = []
     missing_artifact_run_ids: list[str] = []
+    live_artifact_expiries: list[str] = []
+    live_artifact_retention_days: list[float] = []
     for run in runs:
         if run["status"] != "completed" or run.get("conclusion") != "success":
             continue
@@ -202,6 +222,9 @@ def collect(client: GitHubActionsClient, *, start_date: date) -> tuple[list[dict
         if artifact is None:
             missing_artifact_run_ids.append(run_id)
             continue
+        expires_at, retention_days = artifact_retention_contract(artifact, run_id=run_id)
+        live_artifact_expiries.append(expires_at)
+        live_artifact_retention_days.append(retention_days)
         payloads.append(prediction_payload_from_zip(client.download_artifact(int(artifact["id"])), run_id=run_id))
     summary = {
         "score_blind": True,
@@ -211,6 +234,11 @@ def collect(client: GitHubActionsClient, *, start_date: date) -> tuple[list[dict
         "prediction_artifact_count": len(payloads),
         "successful_runs_missing_live_artifact_count": len(missing_artifact_run_ids),
         "successful_runs_missing_live_artifact_ids": missing_artifact_run_ids,
+        "required_artifact_retention_days": REQUIRED_ARTIFACT_RETENTION_DAYS,
+        "minimum_observed_artifact_retention_days": (
+            min(live_artifact_retention_days) if live_artifact_retention_days else None
+        ),
+        "earliest_live_artifact_expires_at": min(live_artifact_expiries) if live_artifact_expiries else None,
     }
     return runs, payloads, summary
 
