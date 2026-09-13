@@ -5,6 +5,7 @@ from datetime import datetime, time, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 from typing import Any, Iterable
@@ -21,12 +22,14 @@ from app.services.intraday_probability_runtime_v3_1 import estimate_intraday_pro
 
 NY = ZoneInfo("America/New_York")
 CONTRACT = "orion-long-horizon-v5-paired-shadow-v1"
-RUNNER_VERSION = "long-horizon-v5-paired-shadow-v2"
+RUNNER_VERSION = "long-horizon-v5-paired-shadow-v3"
+ACQUISITION_CONTRACT = "orion-long-horizon-v5-workflow-acquisition-v1"
 DEFAULT_SYMBOLS = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA", "AMD", "SPY", "QQQ")
 WINDOW_OPEN = time(10, 0)
 WINDOW_CLOSE = time(13, 30)
 REGULAR_CLOSE = time(16, 0)
 HORIZON_HOURS = {"3h": 3, "5h": 5}
+SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 LINEAGE_FILES = (
     "scripts/run_long_horizon_v5_paired_cloud_shadow.py",
     "backend/app/services/intraday_probability_long_horizon_v5_forward.py",
@@ -120,6 +123,55 @@ def lineage() -> dict[str, Any]:
     }
 
 
+def acquisition_provenance(
+    lineage_payload: dict[str, Any],
+    *,
+    event_name: str | None = None,
+    run_id: str | None = None,
+    run_attempt: int | str | None = None,
+    github_head_sha: str | None = None,
+) -> dict[str, Any]:
+    event = str(event_name or "local").strip() or "local"
+    commit = str(lineage_payload.get("git_commit") or "").strip().lower()
+    head_sha = str(github_head_sha or "").strip().lower()
+    run = str(run_id or "").strip()
+    try:
+        attempt = int(run_attempt) if run_attempt is not None else None
+    except (TypeError, ValueError):
+        attempt = None
+
+    provenance = {
+        "contract": ACQUISITION_CONTRACT,
+        "event_name": event,
+        "github_run_id": run or None,
+        "github_run_attempt": attempt,
+        "github_head_sha": head_sha or None,
+        "workflow_commit_verified": False,
+        "forward_eligible": False,
+        "eligibility_reason": "non_scheduled_diagnostic_run",
+    }
+    if event != "schedule":
+        return provenance
+
+    if not run.isdigit() or int(run) <= 0:
+        raise ValueError("Scheduled long-horizon evidence requires a positive GitHub run ID")
+    if attempt is None or attempt <= 0:
+        raise ValueError("Scheduled long-horizon evidence requires a positive GitHub run attempt")
+    if not SHA_RE.fullmatch(head_sha):
+        raise ValueError("Scheduled long-horizon evidence requires a 40-character GitHub head SHA")
+    if not SHA_RE.fullmatch(commit):
+        raise ValueError("Scheduled long-horizon evidence requires a valid 40-character local Git commit")
+    if commit != head_sha:
+        raise ValueError(f"Workflow head SHA does not match checked-out commit: {head_sha}!={commit}")
+
+    provenance.update({
+        "workflow_commit_verified": True,
+        "forward_eligible": True,
+        "eligibility_reason": "scheduled_exact_workflow_commit",
+    })
+    return provenance
+
+
 def _incumbent_probability(row: dict[str, Any]) -> float | None:
     raw = row.get("probability_up")
     if raw is None:
@@ -199,8 +251,24 @@ def _coverage(symbols: list[str], horizons: list[str], rows: list[dict[str, Any]
     }
 
 
-def build_payload(symbols: list[str], now: datetime | None = None) -> dict[str, Any]:
+def build_payload(
+    symbols: list[str],
+    now: datetime | None = None,
+    *,
+    event_name: str | None = None,
+    run_id: str | None = None,
+    run_attempt: int | str | None = None,
+    github_head_sha: str | None = None,
+) -> dict[str, Any]:
     gate = session_gate(now)
+    lineage_payload = lineage()
+    provenance = acquisition_provenance(
+        lineage_payload,
+        event_name=event_name,
+        run_id=run_id,
+        run_attempt=run_attempt,
+        github_head_sha=github_head_sha,
+    )
     payload: dict[str, Any] = {
         "contract": CONTRACT,
         "runner_version": RUNNER_VERSION,
@@ -211,7 +279,8 @@ def build_payload(symbols: list[str], now: datetime | None = None) -> dict[str, 
         "order_submission_enabled": False,
         "runtime_modified": False,
         "promotion_allowed": False,
-        "lineage": lineage(),
+        "lineage": lineage_payload,
+        "acquisition_provenance": provenance,
         "paired_predictions": [],
         "failures": {},
     }
@@ -246,8 +315,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Collect atomic paired V3.1/V5 long-horizon research predictions.")
     parser.add_argument("--symbols", nargs="*", default=list(DEFAULT_SYMBOLS))
     parser.add_argument("--output", type=Path, default=Path("backend/data/cloud_shadow/long_horizon_v5/prediction.json"))
+    parser.add_argument("--event-name", default=None)
+    parser.add_argument("--run-id", default=None)
+    parser.add_argument("--run-attempt", default=None)
+    parser.add_argument("--github-head-sha", default=None)
     args = parser.parse_args()
-    payload = build_payload(parse_symbols(args.symbols))
+    payload = build_payload(
+        parse_symbols(args.symbols),
+        event_name=args.event_name,
+        run_id=args.run_id,
+        run_attempt=args.run_attempt,
+        github_head_sha=args.github_head_sha,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({
@@ -255,6 +334,7 @@ def main() -> int:
         "paired_prediction_count": len(payload["paired_predictions"]),
         "eligible_horizons": payload["session_gate"].get("eligible_horizons", []),
         "coverage_complete": payload.get("coverage", {}).get("complete"),
+        "forward_eligible": payload.get("acquisition_provenance", {}).get("forward_eligible"),
         "failures": len(payload["failures"]),
     }, sort_keys=True))
     if payload["status"] == "skipped":
