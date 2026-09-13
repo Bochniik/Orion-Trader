@@ -28,8 +28,20 @@ def _direction(probability_up: float) -> str:
     return "neutral"
 
 
-def _benchmark_alignment_error(stock: pd.DataFrame, spy: pd.DataFrame) -> str | None:
-    """Reject source frames that would make SPY forward-fill onto stock timestamps.
+def _utc_index(frame: pd.DataFrame) -> pd.DatetimeIndex:
+    index = frame.index
+    if index.tz is None:
+        return index.tz_localize("UTC")
+    return index.tz_convert("UTC")
+
+
+def _benchmark_alignment_error(
+    stock: pd.DataFrame,
+    spy: pd.DataFrame,
+    *,
+    as_of: pd.Timestamp | None = None,
+) -> str | None:
+    """Reject source frames that would make SPY forward-fill onto used stock timestamps.
 
     V5's frozen feature builder intentionally remains unchanged. It reindexes SPY to
     the stock timeline and forward-fills gaps. For genuine forward evidence we must
@@ -39,7 +51,21 @@ def _benchmark_alignment_error(stock: pd.DataFrame, spy: pd.DataFrame) -> str | 
     if stock.empty or spy.empty:
         return "empty_market_data"
 
-    missing = stock.index.difference(spy.index)
+    stock_index = _utc_index(stock)
+    spy_index = _utc_index(spy)
+    if as_of is not None:
+        cutoff = pd.Timestamp(as_of)
+        if cutoff.tzinfo is None:
+            cutoff = cutoff.tz_localize("UTC")
+        else:
+            cutoff = cutoff.tz_convert("UTC")
+        stock_index = stock_index[stock_index <= cutoff]
+        spy_index = spy_index[spy_index <= cutoff]
+
+    if len(stock_index) == 0:
+        return None
+
+    missing = stock_index.difference(spy_index)
     if len(missing) > 0:
         first = pd.Timestamp(missing[0]).isoformat()
         last = pd.Timestamp(missing[-1]).isoformat()
@@ -60,8 +86,8 @@ def estimate_long_horizon_v5_frame(
     the model's horizon-resolution cutoff. Horizons whose target would extend beyond
     the regular-hours close are suppressed because they cannot be settled on the
     regular-hours evidence feed. Forward evidence additionally fails closed when SPY
-    does not contain every normalized stock timestamp, preventing benchmark forward
-    fill from masquerading as current relative-strength data.
+    does not contain every normalized stock timestamp used at or before the requested
+    cutoff, preventing benchmark forward fill from masquerading as current data.
     """
     ticker = str(symbol or "").strip().upper()
     if not ticker:
@@ -72,7 +98,7 @@ def estimate_long_horizon_v5_frame(
     if stock.empty or spy.empty:
         return {"symbol": ticker, "available": False, "reason": "empty_market_data"}
 
-    benchmark_error = _benchmark_alignment_error(stock, spy)
+    benchmark_error = _benchmark_alignment_error(stock, spy, as_of=as_of)
     if benchmark_error is not None:
         return {
             "symbol": ticker,
