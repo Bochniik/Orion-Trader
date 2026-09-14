@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "scripts/run_regular_hours_v3_1_cloud_shadow.py"
+      - "scripts/finalize_regular_hours_v3_1_forward_artifact.py"
       - "scripts/audit_regular_hours_schedule_delivery.py"
       - "scripts/audit_regular_hours_collection_health.py"
       - "scripts/audit_regular_hours_forward_completeness.py"
       - "scripts/nyse_session_calendar.py"
       - "backend/tests/test_nyse_session_calendar.py"
       - "backend/tests/test_regular_hours_v3_1_cloud_shadow.py"
+      - "backend/tests/test_finalize_regular_hours_v3_1_forward_artifact.py"
       - "backend/tests/test_regular_hours_nyse_session_gate.py"
       - "backend/tests/test_regular_hours_schedule_delivery_audit.py"
       - "backend/tests/test_regular_hours_collection_health.py"
@@ -42,6 +44,7 @@ jobs:
       - name: Compile regular-hours cloud shadow path
         run: |
           python -m py_compile scripts/run_regular_hours_v3_1_cloud_shadow.py
+          python -m py_compile scripts/finalize_regular_hours_v3_1_forward_artifact.py
           python -m py_compile scripts/audit_regular_hours_schedule_delivery.py
           python -m py_compile scripts/audit_regular_hours_collection_health.py
           python -m py_compile scripts/audit_regular_hours_forward_completeness.py
@@ -54,6 +57,7 @@ jobs:
           python -m pytest -q \
             backend/tests/test_nyse_session_calendar.py \
             backend/tests/test_regular_hours_v3_1_cloud_shadow.py \
+            backend/tests/test_finalize_regular_hours_v3_1_forward_artifact.py \
             backend/tests/test_regular_hours_nyse_session_gate.py \
             backend/tests/test_regular_hours_schedule_delivery_audit.py \
             backend/tests/test_regular_hours_collection_health.py \
