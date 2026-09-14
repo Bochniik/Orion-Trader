@@ -10,9 +10,9 @@ on:
         default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
   schedule:
     # Frozen decision timestamps remain 06:45 / 08:00 / 09:15 ET.
-    # Each primary slot has a fixed +10 minute recovery opportunity. The recovery
-    # preserves the original as-of timestamp and collects only when the score-blind
-    # guard proves that no successful same-session evidence artifact already exists.
+    # Each primary slot has a fixed +10 minute recovery opportunity. Both scheduled
+    # modes use the same score-blind idempotency guard, so delayed primary delivery
+    # cannot create a duplicate after recovery has already produced valid evidence.
     # EDT primary/recovery slots.
     - cron: "45 10 * * 1-5"
     - cron: "55 10 * * 1-5"
@@ -72,9 +72,9 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
-      - name: Guard recovery against duplicate decision-grade evidence
+      - name: Claim scheduled evidence slot idempotently
         id: claim
-        if: steps.target.outputs.active == 'true' && steps.target.outputs.mode == 'recovery'
+        if: steps.target.outputs.active == 'true' && github.event_name == 'schedule'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -85,19 +85,19 @@ jobs:
             --current-run-id "$GITHUB_RUN_ID" \
             --github-output "$GITHUB_OUTPUT"
 
-      - name: Report idempotent recovery skip
-        if: steps.target.outputs.active == 'true' && steps.target.outputs.mode == 'recovery' && steps.claim.outputs.collect_allowed != 'true'
+      - name: Report idempotent scheduled skip
+        if: steps.target.outputs.active == 'true' && github.event_name == 'schedule' && steps.claim.outputs.collect_allowed != 'true'
         run: |
-          echo "Recovery collection skipped: ${{ steps.claim.outputs.reason }}"
+          echo "Scheduled collection skipped: ${{ steps.claim.outputs.reason }}"
           echo "Existing run: ${{ steps.claim.outputs.blocking_run_id }}"
           echo "Existing artifact: ${{ steps.claim.outputs.blocking_artifact }}"
 
       - name: Install backend dependencies
-        if: steps.target.outputs.active == 'true' && (steps.target.outputs.mode != 'recovery' || steps.claim.outputs.collect_allowed == 'true')
+        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
         run: python -m pip install -r backend/requirements.txt
 
       - name: Verify cloud credentials are configured
-        if: steps.target.outputs.active == 'true' && (steps.target.outputs.mode != 'recovery' || steps.claim.outputs.collect_allowed == 'true')
+        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
         shell: bash
         run: |
           if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
@@ -106,7 +106,7 @@ jobs:
           fi
 
       - name: Run and attest premarket v5 shadow prediction
-        if: steps.target.outputs.active == 'true' && (steps.target.outputs.mode != 'recovery' || steps.claim.outputs.collect_allowed == 'true')
+        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
         shell: bash
         run: |
           SYMBOLS="${{ github.event.inputs.symbols }}"
@@ -133,7 +133,7 @@ jobs:
             --github-head-sha "$GITHUB_SHA"
 
       - name: Upload immutable shadow evidence
-        if: always() && steps.target.outputs.active == 'true' && (steps.target.outputs.mode != 'recovery' || steps.claim.outputs.collect_allowed == 'true')
+        if: always() && steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
         uses: actions/upload-artifact@v4
         with:
           name: premarket-v5-shadow-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}
