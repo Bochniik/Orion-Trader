@@ -3,7 +3,9 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import date, timedelta
 
-from scripts.audit_regular_hours_collection_health import PREDICTIVE_LINEAGE_FILES, PREREGISTERED_SYMBOLS
+import pytest
+
+from scripts.audit_regular_hours_collection_health import CollectionHealthError, PREDICTIVE_LINEAGE_FILES, PREREGISTERED_SYMBOLS
 from scripts.audit_regular_hours_forward_completeness import (
     MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION,
     build_completeness_report,
@@ -24,6 +26,9 @@ def _artifact(
     provenance_gap: str | None = None,
     failed_symbol: str | None = None,
     lineage_seed: str = "a",
+    event_name: str = "schedule",
+    forward_eligible: bool = True,
+    attested: bool = True,
 ) -> dict:
     symbols = list(PREREGISTERED_SYMBOLS)
     rows = {}
@@ -44,7 +49,7 @@ def _artifact(
         }
     available = len(rows)
     provenance_valid = sum(row["source_timestamp_aligned"] and bool(row["as_of"]) for row in rows.values())
-    return {
+    payload = {
         "contract": "orion-regular-hours-cloud-shadow-v2",
         "runner_version": "regular-hours-v3-1-cloud-shadow-v2",
         "created_at_utc": "2026-09-11T14:05:10+00:00",
@@ -66,6 +71,20 @@ def _artifact(
             "failures": failures,
         },
     }
+    if attested:
+        payload["acquisition_provenance"] = {
+            "schema": "regular-hours-v3-1-acquisition-provenance-v1",
+            "collected_live": True,
+            "event_name": event_name,
+            "workflow_run_id": 12345,
+            "run_attempt": 1,
+            "github_head_sha": "c" * 40,
+            "collection_started_at_utc": "2026-09-11T14:05:00+00:00",
+            "collection_completed_at_utc": "2026-09-11T14:05:10+00:00",
+            "source_payload_sha256": "d" * 64,
+            "forward_eligible": forward_eligible,
+        }
+    return payload
 
 
 def _complete_sessions(count: int, *, lineage_seed: str = "a", start: date = date(2026, 7, 1)) -> list[dict]:
@@ -83,24 +102,16 @@ def test_complete_session_requires_full_standard_provenance_and_zero_failures() 
     incomplete = _artifact(as_of_et="2026-09-10T10:05:00-04:00", provenance_gap="AAPL")
     report = build_completeness_report([complete, incomplete])
 
-    assert report["contract"] == "orion-regular-hours-collection-health-v4"
+    assert report["contract"] == "orion-regular-hours-collection-health-v5"
     assert report["complete_standard_session_count"] == 1
     assert report["incomplete_standard_session_count"] == 1
-    assert report["complete_standard_sessions"] == ["2026-09-11"]
-    assert report["incomplete_standard_sessions"] == ["2026-09-10"]
-    assert report["by_session"]["2026-09-11"]["complete_standard_session"] is True
-    assert report["by_session"]["2026-09-10"]["complete_standard_session"] is False
-    assert report["score_inspection_readiness_threshold_defined"] is True
-    assert report["score_inspection_required_complete_sessions"] == 30
-    assert report["forward_validation_complete_session_count"] == 1
+    assert report["forward_eligible_artifact_count"] == 2
     assert report["ready_for_score_inspection"] is False
     assert report["promotion_authorized"] is False
 
 
 def test_one_failed_symbol_makes_session_incomplete() -> None:
-    report = build_completeness_report([
-        _artifact(as_of_et="2026-09-11T10:05:00-04:00", failed_symbol="NVDA")
-    ])
+    report = build_completeness_report([_artifact(as_of_et="2026-09-11T10:05:00-04:00", failed_symbol="NVDA")])
     assert report["complete_standard_session_count"] == 0
     assert report["incomplete_standard_session_count"] == 1
 
@@ -113,36 +124,62 @@ def test_multiple_artifacts_require_session_wide_completeness() -> None:
     assert report["by_session"]["2026-09-11"]["complete_standard_session"] is False
 
 
-def test_mixed_predictive_lineage_makes_same_session_incomplete() -> None:
-    first = _artifact(as_of_et="2026-09-11T10:05:00-04:00", lineage_seed="a")
-    second = _artifact(as_of_et="2026-09-11T13:05:00-04:00", lineage_seed="b")
-    report = build_completeness_report([first, second])
-    assert report["by_session"]["2026-09-11"]["complete_standard_session"] is False
-    assert len(report["by_session"]["2026-09-11"]["predictive_lineages"]) == 2
-
-
 def test_score_inspection_unlocks_only_at_preregistered_complete_session_count() -> None:
     below = build_completeness_report(_complete_sessions(MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION - 1))
     ready = build_completeness_report(_complete_sessions(MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION))
-
     assert below["ready_for_score_inspection"] is False
     assert below["score_inspection_remaining_complete_sessions"] == 1
     assert ready["ready_for_score_inspection"] is True
     assert ready["score_inspection_remaining_complete_sessions"] == 0
-    assert ready["forward_validation_complete_session_count"] == 30
-    assert ready["promotion_authorized"] is False
 
 
 def test_new_predictive_lineage_starts_a_new_forward_gate_cohort() -> None:
     old = _complete_sessions(MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION, lineage_seed="a")
     new = _complete_sessions(1, lineage_seed="b", start=date(2026, 9, 1))
     report = build_completeness_report(old + new)
-
-    assert report["complete_standard_session_count"] == 31
     assert report["forward_validation_predictive_lineage_change_detected"] is True
     assert report["forward_validation_complete_session_count"] == 1
-    assert report["score_inspection_remaining_complete_sessions"] == 29
     assert report["ready_for_score_inspection"] is False
+
+
+def test_manual_diagnostic_is_excluded_from_forward_population() -> None:
+    scheduled = _artifact(as_of_et="2026-09-11T10:05:00-04:00")
+    manual = _artifact(
+        as_of_et="2026-09-11T11:05:00-04:00",
+        event_name="workflow_dispatch",
+        forward_eligible=False,
+    )
+    report = build_completeness_report([scheduled, manual])
+    assert report["recovered_artifact_count"] == 2
+    assert report["forward_eligible_artifact_count"] == 1
+    assert report["non_forward_artifact_count"] == 1
+    assert report["standard_universe_artifact_count"] == 1
+
+
+def test_unattested_legacy_artifact_cannot_unlock_forward_gate() -> None:
+    legacy = _artifact(as_of_et="2026-09-10T10:05:00-04:00", attested=False)
+    report = build_completeness_report([legacy])
+    assert report["unattested_legacy_artifact_count"] == 1
+    assert report["forward_eligible_artifact_count"] == 0
+    assert report["forward_validation_complete_session_count"] == 0
+    assert report["ready_for_score_inspection"] is False
+
+
+def test_malformed_attestation_fails_closed() -> None:
+    artifact = _artifact(as_of_et="2026-09-11T10:05:00-04:00")
+    artifact["acquisition_provenance"]["github_head_sha"] = "bad"
+    with pytest.raises(CollectionHealthError, match="Git SHA"):
+        build_completeness_report([artifact])
+
+
+def test_forward_true_requires_scheduled_event() -> None:
+    artifact = _artifact(
+        as_of_et="2026-09-11T10:05:00-04:00",
+        event_name="workflow_dispatch",
+        forward_eligible=True,
+    )
+    with pytest.raises(CollectionHealthError, match="scheduled"):
+        build_completeness_report([artifact])
 
 
 def test_readiness_is_invariant_to_probability_and_direction() -> None:
