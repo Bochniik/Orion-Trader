@@ -7,6 +7,7 @@ on:
       - "scripts/audit_premarket_dataset_provenance.py"
       - "scripts/run_premarket_v5_decision_preflight.py"
       - "scripts/collect_alpaca_extended_history.py"
+      - "scripts/resolve_early_premarket_observation.py"
       - "scripts/build_premarket_training_dataset_v2.py"
       - "scripts/run_premarket_v5_evidence_pipeline.py"
       - "scripts/run_premarket_v5_validation.py"
@@ -17,7 +18,10 @@ on:
       - "scripts/validate_premarket_directional_v5_*.py"
       - "backend/tests/test_premarket_*.py"
       - "backend/tests/test_collect_alpaca_extended_history.py"
+      - "backend/tests/test_resolve_early_premarket_observation.py"
       - "docs/research/PREMARKET_V5_DECISION_PREFLIGHT.md"
+      - "docs/research/EARLY_PREMARKET_OBSERVATIONAL_COLLECTION.md"
+      - ".github/workflows/early-premarket-observational.yml"
       - ".github/workflows/premarket-validation.yml"
 
 permissions:
@@ -50,6 +54,7 @@ jobs:
             scripts/audit_premarket_dataset_provenance.py \
             scripts/run_premarket_v5_decision_preflight.py \
             scripts/collect_alpaca_extended_history.py \
+            scripts/resolve_early_premarket_observation.py \
             scripts/build_premarket_training_dataset_v2.py \
             scripts/run_premarket_v5_evidence_pipeline.py \
             scripts/run_premarket_v5_validation.py \
@@ -64,6 +69,7 @@ jobs:
         run: |
           python -m pytest -q \
             backend/tests/test_collect_alpaca_extended_history.py \
+            backend/tests/test_resolve_early_premarket_observation.py \
             backend/tests/test_premarket_dataset_readiness.py \
             backend/tests/test_premarket_dataset_provenance.py \
             backend/tests/test_premarket_v5_decision_preflight.py \
