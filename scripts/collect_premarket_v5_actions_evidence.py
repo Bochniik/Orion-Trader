@@ -234,10 +234,10 @@ class GitHubActionsClient:
         return rows
 
     def download_artifact(self, artifact_id: int) -> bytes:
-        return self._request(
-            f"/repos/{self.repository}/actions/artifacts/{artifact_id}/zip",
-            accept="application/octet-stream",
-        )
+        # GitHub's artifact download endpoint is an API endpoint that returns a
+        # temporary redirect to the ZIP. The API request must use GitHub's JSON
+        # media type; the redirect target still returns the binary archive.
+        return self._request(f"/repos/{self.repository}/actions/artifacts/{artifact_id}/zip")
 
 
 def collect(client: GitHubActionsClient, *, start_date: date) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
