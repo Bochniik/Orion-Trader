@@ -193,6 +193,101 @@
   color: rgba(255, 205, 168, 0.65);
 }
 
+/* Today scan diagnostics: compact disclosure using backend-owned coverage values. */
+.core-scan-details {
+  position: relative;
+  overflow: hidden;
+  margin: 12px 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.024), transparent 34%),
+    rgba(255, 255, 255, 0.008);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.014);
+}
+
+.core-scan-details::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, transparent 12%, rgba(255, 122, 26, 0.44), transparent 88%);
+  pointer-events: none;
+}
+
+.core-scan-details > summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 9px 38px 9px 14px;
+  color: rgba(255, 213, 181, 0.7);
+  font-size: 9px;
+  font-weight: 680;
+  line-height: 1.35;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+
+.core-scan-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.core-scan-details > summary::before {
+  content: "COVERAGE";
+  margin-right: 9px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 122, 26, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 122, 26, 0.035);
+  color: rgba(255, 165, 98, 0.64);
+  font-size: 7px;
+  font-weight: 740;
+  letter-spacing: 0.11em;
+}
+
+.core-scan-details > summary::after {
+  content: "+";
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.012);
+  color: rgba(255, 255, 255, 0.44);
+  font-size: 13px;
+  transform: translateY(-50%);
+}
+
+.core-scan-details[open] > summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.007);
+}
+
+.core-scan-details[open] > summary::after {
+  content: "−";
+  color: rgba(255, 178, 120, 0.72);
+}
+
+.core-scan-details > p {
+  margin: 0;
+  padding: 10px 14px 11px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 10px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.core-scan-details:focus-within {
+  border-color: rgba(255, 122, 26, 0.13);
+}
+
 @media (max-width: 640px) {
   .scanner-last-known > summary {
     min-height: 40px;
@@ -212,6 +307,16 @@
   .scanner-progress + .scanner-empty {
     min-height: 138px;
     padding: 27px 16px 20px;
+  }
+
+  .core-scan-details > summary {
+    min-height: 36px;
+    padding-left: 11px;
+    font-size: 8px;
+  }
+
+  .core-scan-details > p {
+    padding-inline: 11px;
   }
 }
 
