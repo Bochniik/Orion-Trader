@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 import json
 from pathlib import Path
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo
 
 
-REPORT_CONTRACT = "orion-long-horizon-v5-schedule-delivery-v1"
+REPORT_CONTRACT = "orion-long-horizon-v5-schedule-delivery-v2"
 SCHEDULE_CRON = "5 14-19 * * 1-5"
 SCHEDULE_MINUTE = 5
 SCHEDULE_HOURS_UTC = tuple(range(14, 20))
@@ -17,6 +18,11 @@ SCHEDULE_HOURS_UTC = tuple(range(14, 20))
 PROTOCOL_NOT_BEFORE_UTC = datetime(2026, 9, 11, 5, 10, tzinfo=timezone.utc)
 MATURE_AFTER_MINUTES = 20
 MAX_DELIVERY_DELAY_MINUTES = 55
+NY = ZoneInfo("America/New_York")
+WINDOW_OPEN = time(10, 0)
+WINDOW_CLOSE = time(13, 30)
+REGULAR_CLOSE = time(16, 0)
+HORIZON_HOURS = {"3h": 3, "5h": 5}
 
 
 class ScheduleDeliveryError(ValueError):
@@ -31,6 +37,21 @@ def _parse_timestamp(value: Any, *, field: str) -> datetime:
     if parsed.tzinfo is None:
         raise ScheduleDeliveryError(f"{field} must be timezone-aware")
     return parsed.astimezone(timezone.utc)
+
+
+def _eligible_horizons(moment: datetime) -> list[str]:
+    if moment.tzinfo is None:
+        raise ScheduleDeliveryError("eligibility moment must be timezone-aware")
+    local = moment.astimezone(NY)
+    clock = local.time().replace(tzinfo=None)
+    if local.weekday() >= 5 or not (WINDOW_OPEN <= clock <= WINDOW_CLOSE):
+        return []
+    eligible: list[str] = []
+    for horizon, hours in HORIZON_HOURS.items():
+        target = local + timedelta(hours=hours)
+        if target.date() == local.date() and target.time().replace(tzinfo=None) <= REGULAR_CLOSE:
+            eligible.append(horizon)
+    return eligible
 
 
 def expected_slots(*, start: datetime, as_of: datetime) -> list[datetime]:
@@ -83,6 +104,30 @@ def _project_runs(runs: Iterable[dict[str, Any]], *, start: datetime, as_of: dat
     return projected
 
 
+def _opportunity_summary(deliveries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    summary: dict[str, dict[str, Any]] = {}
+    for horizon in HORIZON_HOURS:
+        rows = [row for row in deliveries if horizon in row["expected_eligible_horizons"]]
+        effective = [
+            row
+            for row in rows
+            if row["delivered"] and horizon in row["effective_eligible_horizons"]
+        ]
+        lost = [
+            row
+            for row in rows
+            if not (row["delivered"] and horizon in row["effective_eligible_horizons"])
+        ]
+        summary[horizon] = {
+            "expected_opportunity_count": len(rows),
+            "effective_delivery_count": len(effective),
+            "lost_opportunity_count": len(lost),
+            "effective_delivery_rate": None if not rows else round(len(effective) / len(rows), 6),
+            "lost_expected_slots_utc": [row["expected_slot_utc"] for row in lost],
+        }
+    return summary
+
+
 def build_schedule_delivery_report(
     runs: Iterable[dict[str, Any]], *, start: datetime, as_of: datetime
 ) -> dict[str, Any]:
@@ -100,6 +145,8 @@ def build_schedule_delivery_report(
     deliveries: list[dict[str, Any]] = []
     max_delay = timedelta(minutes=MAX_DELIVERY_DELAY_MINUTES)
     for slot in slots:
+        expected_horizons = _eligible_horizons(slot)
+        slot_et = slot.astimezone(NY)
         candidates = [
             index
             for index in unmatched
@@ -110,10 +157,15 @@ def build_schedule_delivery_report(
             deliveries.append(
                 {
                     "expected_slot_utc": slot.isoformat(),
+                    "expected_slot_et": slot_et.isoformat(),
                     "utc_hour": slot.hour,
+                    "expected_eligible_horizons": expected_horizons,
                     "delivered": False,
                     "run_id": None,
                     "created_at_utc": None,
+                    "created_at_et": None,
+                    "effective_eligible_horizons": [],
+                    "lost_eligible_horizons": expected_horizons,
                     "delivery_delay_minutes": None,
                     "status": None,
                     "conclusion": None,
@@ -123,13 +175,19 @@ def build_schedule_delivery_report(
         unmatched.remove(matched_index)
         row = observed[matched_index]
         delay = (row["created_at"] - slot).total_seconds() / 60.0
+        effective_horizons = _eligible_horizons(row["created_at"])
         deliveries.append(
             {
                 "expected_slot_utc": slot.isoformat(),
+                "expected_slot_et": slot_et.isoformat(),
                 "utc_hour": slot.hour,
+                "expected_eligible_horizons": expected_horizons,
                 "delivered": True,
                 "run_id": row["run_id"],
                 "created_at_utc": row["created_at"].isoformat(),
+                "created_at_et": row["created_at"].astimezone(NY).isoformat(),
+                "effective_eligible_horizons": effective_horizons,
+                "lost_eligible_horizons": sorted(set(expected_horizons) - set(effective_horizons)),
                 "delivery_delay_minutes": round(delay, 3),
                 "status": row["status"],
                 "conclusion": row["conclusion"],
@@ -140,6 +198,8 @@ def build_schedule_delivery_report(
         {
             "run_id": observed[index]["run_id"],
             "created_at_utc": observed[index]["created_at"].isoformat(),
+            "created_at_et": observed[index]["created_at"].astimezone(NY).isoformat(),
+            "effective_eligible_horizons": _eligible_horizons(observed[index]["created_at"]),
             "status": observed[index]["status"],
             "conclusion": observed[index]["conclusion"],
         }
@@ -160,6 +220,7 @@ def build_schedule_delivery_report(
     conclusion_counts = Counter(str(row["conclusion"] or "pending") for row in delivered)
     delivered_count = len(delivered)
     expected_count = len(deliveries)
+    opportunities = _opportunity_summary(deliveries)
     return {
         "contract": REPORT_CONTRACT,
         "score_blind": True,
@@ -170,6 +231,9 @@ def build_schedule_delivery_report(
             "protocol_not_before_utc": PROTOCOL_NOT_BEFORE_UTC.isoformat(),
             "mature_after_minutes": MATURE_AFTER_MINUTES,
             "max_delivery_delay_minutes": MAX_DELIVERY_DELAY_MINUTES,
+            "market_timezone": "America/New_York",
+            "collection_window_et": "10:00-13:30",
+            "regular_close_et": "16:00",
         },
         "audit_window": {
             "start_utc": start_utc.isoformat(),
@@ -184,6 +248,8 @@ def build_schedule_delivery_report(
             "all_mature_slots_delivered": not missing,
             "delivered_run_conclusion_counts": dict(sorted(conclusion_counts.items())),
         },
+        "evidence_opportunities": opportunities,
+        "critical_5h": opportunities["5h"],
         "per_utc_slot": per_hour,
         "deliveries": deliveries,
         "missing_slots": missing,
@@ -220,7 +286,7 @@ def main() -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps(report["summary"], sort_keys=True))
+    print(json.dumps({**report["summary"], "evidence_opportunities": report["evidence_opportunities"]}, sort_keys=True))
     return 0
 
 
