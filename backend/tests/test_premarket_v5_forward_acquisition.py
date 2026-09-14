@@ -88,7 +88,12 @@ def _trading_days(start: date, count: int) -> list[date]:
 
 
 def test_scheduled_timely_artifact_is_forward_eligible_and_bound_to_payload():
-    payload = _attested_payload(date(2026, 9, 11), "late", start_lag_minutes=4.0)
+    payload = _attested_payload(
+        date(2026, 9, 11),
+        "late",
+        start_lag_minutes=4.0,
+        collection_duration_minutes=0.5,
+    )
 
     projection = readiness.validate_acquisition(payload)
 
@@ -98,7 +103,7 @@ def test_scheduled_timely_artifact_is_forward_eligible_and_bound_to_payload():
     assert payload["acquisition_provenance"]["eligibility_reason"] == "scheduled_forward_window"
     assert projection["decision_grade_complete"] is True
     assert projection["horizon_forward_eligible"] == {
-        "premarket_5m": False,
+        "premarket_5m": True,
         "premarket_15m": True,
         "premarket_30m": True,
     }
