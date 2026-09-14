@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 import scripts.audit_premarket_v5_forward_readiness as readiness
 import scripts.audit_premarket_v5_schedule_delivery as delivery
 import scripts.audit_premarket_v5_collection_health as collection_health
+import scripts.resolve_premarket_v5_snapshot as resolver
 
 
 REPORT_CONTRACT = "orion-premarket-v5-evidence-health-v2"
@@ -52,6 +53,31 @@ def _projection_key(row: dict[str, Any]) -> tuple[str, str, str]:
     return (str(row["session"]), str(row["snapshot"]), str(row.get("github_run_id") or ""))
 
 
+def _recovery_run_keys(runs: Iterable[dict[str, Any]]) -> set[tuple[str, str, str]]:
+    keys: set[tuple[str, str, str]] = set()
+    for run in runs:
+        if str(run.get("event") or "") != "schedule":
+            continue
+        title = str(run.get("display_title") or run.get("name") or "")
+        if not title.startswith(delivery.RUN_NAME_PREFIX):
+            continue
+        cron = title[len(delivery.RUN_NAME_PREFIX) :].strip()
+        snapshot = resolver.RECOVERY_CRON_SLOTS.get(cron)
+        if snapshot is None:
+            continue
+        created = _parse_timestamp(run.get("created_at"), field="workflow run created_at")
+        resolution = resolver.resolve_snapshot(schedule_cron=cron, now=created)
+        if not resolution.active or resolution.mode != "recovery":
+            continue
+        if str(run.get("status") or "") != "completed" or str(run.get("conclusion") or "") != "success":
+            continue
+        run_id = str(run.get("id") or "")
+        if not run_id:
+            raise EvidenceHealthError("recovery workflow run is missing id")
+        keys.add((resolution.as_of_et.date().isoformat(), snapshot, run_id))
+    return keys
+
+
 def build_evidence_health_report(
     runs: Iterable[dict[str, Any]],
     payloads: Iterable[dict[str, Any]],
@@ -59,45 +85,65 @@ def build_evidence_health_report(
     start_date: date,
     as_of: datetime,
 ) -> dict[str, Any]:
+    materialized_runs = list(runs)
     materialized_payloads = list(payloads)
-    schedule_report = delivery.build_schedule_delivery_report(runs, start_date=start_date, as_of=as_of)
+    schedule_report = delivery.build_schedule_delivery_report(materialized_runs, start_date=start_date, as_of=as_of)
     forward_report = readiness.build_forward_readiness_report(materialized_payloads)
     projections = [readiness.validate_acquisition(payload) for payload in materialized_payloads]
     projections.sort(key=_projection_key)
 
     projection_by_key = {_projection_key(row): row for row in projections}
+    recovery_keys = _recovery_run_keys(materialized_runs)
     consumed_projection_keys: set[tuple[str, str, str]] = set()
     evidence_rows: list[dict[str, Any]] = []
 
     for delivered in schedule_report.get("deliveries", []):
         status: str
         matched_projection: dict[str, Any] | None = None
+        recovered_transport = False
 
-        if not delivered["delivered"]:
+        primary_matching = [
+            projection_by_key[(delivered["session"], delivered["snapshot"], str(run_id))]
+            for run_id in delivered["run_ids"]
+            if (delivered["session"], delivered["snapshot"], str(run_id)) in projection_by_key
+        ]
+        if len(primary_matching) > 1:
+            raise EvidenceHealthError(
+                f"multiple prediction artifacts match primary delivery {delivered['session']}:{delivered['snapshot']}"
+            )
+
+        if primary_matching:
+            matched_projection = primary_matching[0]
+        else:
+            recovery_matching = [
+                projection_by_key[key]
+                for key in sorted(recovery_keys)
+                if key[0] == delivered["session"]
+                and key[1] == delivered["snapshot"]
+                and key in projection_by_key
+            ]
+            if len(recovery_matching) > 1:
+                raise EvidenceHealthError(
+                    f"multiple recovery prediction artifacts match {delivered['session']}:{delivered['snapshot']}"
+                )
+            if recovery_matching:
+                matched_projection = recovery_matching[0]
+                recovered_transport = True
+
+        if matched_projection is not None:
+            consumed_projection_keys.add(_projection_key(matched_projection))
+            if not matched_projection["forecast_complete"]:
+                status = "forecast_incomplete"
+            elif not matched_projection["forward_eligible"]:
+                status = "acquisition_ineligible"
+            else:
+                status = "decision_grade_complete"
+        elif not delivered["delivered"]:
             status = "missing_delivery"
         elif not delivered["successful"]:
             status = "workflow_unsuccessful"
         else:
-            matching = [
-                projection_by_key[(delivered["session"], delivered["snapshot"], str(run_id))]
-                for run_id in delivered["run_ids"]
-                if (delivered["session"], delivered["snapshot"], str(run_id)) in projection_by_key
-            ]
-            if not matching:
-                status = "artifact_missing_after_success"
-            else:
-                if len(matching) > 1:
-                    raise EvidenceHealthError(
-                        f"multiple prediction artifacts match successful delivery {delivered['session']}:{delivered['snapshot']}"
-                    )
-                matched_projection = matching[0]
-                consumed_projection_keys.add(_projection_key(matched_projection))
-                if not matched_projection["forecast_complete"]:
-                    status = "forecast_incomplete"
-                elif not matched_projection["forward_eligible"]:
-                    status = "acquisition_ineligible"
-                else:
-                    status = "decision_grade_complete"
+            status = "artifact_missing_after_success"
 
         row = {
             "session": delivered["session"],
@@ -107,6 +153,7 @@ def build_evidence_health_report(
             "status": status,
             "run_count": delivered["run_count"],
             "run_ids": list(delivered["run_ids"]),
+            "recovered_transport": recovered_transport,
         }
         if matched_projection is not None:
             row.update(
@@ -129,6 +176,7 @@ def build_evidence_health_report(
         per_snapshot[snapshot] = {
             "mature_expected_slot_count": len(rows),
             "status_counts": {status: counts.get(status, 0) for status in STATUS_ORDER},
+            "recovered_transport_count": sum(1 for row in rows if row["recovered_transport"]),
             "decision_grade_complete_distinct_session_count": readiness_row[
                 "decision_grade_complete_distinct_session_count"
             ],
@@ -145,23 +193,22 @@ def build_evidence_health_report(
     all_mature_slots_decision_grade = bool(evidence_rows) and all(
         row["status"] == "decision_grade_complete" for row in evidence_rows
     )
-    # Historical transport/acquisition incidents are measured, but they do not
-    # permanently poison a cohort that later reaches the preregistered count of
-    # complete, forward-eligible sessions. Structural provenance ambiguity still
-    # fails closed because it can make the accepted evidence population unclear.
-    historically_gap_free = all_mature_slots_decision_grade
+    # Recovery can preserve a decision-grade observation, but it must never erase
+    # the fact that primary GitHub schedule transport was missing or unsuccessful.
+    historically_gap_free = bool(
+        all_mature_slots_decision_grade
+        and schedule_report["summary"]["missing_count"] == 0
+        and schedule_report["summary"]["unsuccessful_count"] == 0
+    )
     structurally_clean = duplicate_count == 0 and not unmatched
-    # Preserve the v1 field's composite meaning for compatibility. In v2 it is
-    # diagnostic only; score-inspection readiness is cohort maturity plus the
-    # explicit structural-integrity gate below.
     operationally_clean = historically_gap_free and structurally_clean
     cohort_mature = forward_report["readiness"]["ready_for_issue_3_score_inspection"]
     ready_for_score_inspection = bool(cohort_mature and structurally_clean)
 
     historical_incident_layers: list[str] = []
-    if status_counts["missing_delivery"]:
+    if schedule_report["summary"]["missing_count"]:
         historical_incident_layers.append("delivery")
-    if status_counts["workflow_unsuccessful"]:
+    if schedule_report["summary"]["unsuccessful_count"]:
         historical_incident_layers.append("workflow_execution")
     if status_counts["artifact_missing_after_success"]:
         historical_incident_layers.append("artifact_persistence")
@@ -201,6 +248,7 @@ def build_evidence_health_report(
         "summary": {
             "mature_expected_slot_count": len(evidence_rows),
             "status_counts": {status: status_counts.get(status, 0) for status in STATUS_ORDER},
+            "recovered_transport_count": sum(1 for row in evidence_rows if row["recovered_transport"]),
             "duplicate_delivery_count": duplicate_count,
             "unmatched_artifact_count": len(unmatched),
             "all_mature_slots_decision_grade_complete": all_mature_slots_decision_grade,
