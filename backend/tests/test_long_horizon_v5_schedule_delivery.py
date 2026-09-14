@@ -1,13 +1,28 @@
 from datetime import datetime, timezone
+import importlib.util
+from pathlib import Path
+import sys
 
 import pytest
 
-from scripts.audit_long_horizon_v5_schedule_delivery import (
-    PROTOCOL_NOT_BEFORE_UTC,
-    ScheduleDeliveryError,
-    build_schedule_delivery_report,
-    expected_slots,
-)
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load_module():
+    path = ROOT / "scripts/audit_long_horizon_v5_schedule_delivery.py"
+    spec = importlib.util.spec_from_file_location("long_horizon_schedule_delivery", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+audit = _load_module()
+PROTOCOL_NOT_BEFORE_UTC = audit.PROTOCOL_NOT_BEFORE_UTC
+ScheduleDeliveryError = audit.ScheduleDeliveryError
+build_schedule_delivery_report = audit.build_schedule_delivery_report
+expected_slots = audit.expected_slots
 
 
 def dt(value: str) -> datetime:
