@@ -412,3 +412,109 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Today Orion telemetry — presentation-only hierarchy for quick research. */
+.dashboard-orion-card .orion-snapshot-stock {
+  position: relative;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.05), transparent 42%),
+    rgba(3, 6, 9, 0.34);
+}
+
+.dashboard-orion-card .orion-snapshot-stock::after {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 122, 26, 0.18), #ff7a1a 48%, rgba(255, 122, 26, 0.12));
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.2);
+}
+
+.dashboard-orion-card .orion-score-area {
+  align-items: stretch;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 16% 50%, rgba(255, 122, 26, 0.065), transparent 42%),
+    rgba(3, 6, 9, 0.46);
+}
+
+.dashboard-orion-card .orion-score-ring {
+  align-self: center;
+  filter: drop-shadow(0 0 10px rgba(255, 122, 26, 0.08));
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child {
+  padding: 7px 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child > strong,
+.dashboard-orion-card .orion-probability-grid > div > strong {
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: -0.15px;
+}
+
+.dashboard-orion-card .orion-probability-grid {
+  border-color: rgba(255, 122, 26, 0.08);
+  background: rgba(255, 122, 26, 0.07);
+}
+
+.dashboard-orion-card .orion-probability-grid > div {
+  position: relative;
+  min-height: 48px;
+  padding: 9px 10px 9px 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.014), transparent),
+    rgba(5, 8, 12, 0.93);
+}
+
+.dashboard-orion-card .orion-probability-grid > div::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 1px;
+  background: rgba(255, 122, 26, 0.34);
+  box-shadow: 0 0 8px rgba(255, 122, 26, 0.12);
+}
+
+.dashboard-orion-card .orion-risk-row,
+.dashboard-orion-card .orion-setup-summary {
+  border-color: rgba(255, 255, 255, 0.055);
+  background: rgba(4, 7, 10, 0.42);
+}
+
+.dashboard-orion-card .dashboard-primary-action {
+  border-color: rgba(255, 122, 26, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 122, 26, 0.12), rgba(255, 122, 26, 0.06)),
+    rgba(5, 8, 12, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 0 0 1px rgba(255, 122, 26, 0.025);
+}
+
+.dashboard-orion-card .dashboard-primary-action:hover,
+.dashboard-orion-card .dashboard-primary-action:focus-visible {
+  border-color: rgba(255, 122, 26, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 0 22px rgba(255, 122, 26, 0.08);
+}
+
+@media (max-width: 560px) {
+  .dashboard-orion-card .orion-score-area {
+    padding: 9px;
+  }
+
+  .dashboard-orion-card .orion-score-ring {
+    justify-self: center;
+  }
+}
