@@ -13,6 +13,8 @@ on:
     # Each primary slot has a fixed +10 minute recovery opportunity. Both scheduled
     # modes use the same score-blind idempotency guard, so delayed primary delivery
     # cannot create a duplicate after recovery has already produced valid evidence.
+    # 2026-09-14: semantic no-op edit to force schedule registration refresh after
+    # a repository-wide scheduled-delivery gap. Decision cadence is unchanged.
     # EDT primary/recovery slots.
     - cron: "45 10 * * 1-5"
     - cron: "55 10 * * 1-5"
