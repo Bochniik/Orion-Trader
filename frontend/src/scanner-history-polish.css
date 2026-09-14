@@ -1,0 +1,160 @@
+/* Historical scanner snapshot polish — presentation only. */
+.scanner-last-known {
+  position: relative;
+  overflow: hidden;
+  margin-top: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.022), transparent 38%),
+    rgba(255, 255, 255, 0.008);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.012);
+}
+
+.scanner-last-known::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, transparent 8%, rgba(255, 122, 26, 0.38), transparent 92%);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.scanner-last-known > summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 38px 10px 15px;
+  color: rgba(255, 214, 184, 0.76);
+  font-size: 10px;
+  font-weight: 680;
+  line-height: 1.3;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.scanner-last-known > summary::-webkit-details-marker {
+  display: none;
+}
+
+.scanner-last-known > summary::before {
+  content: "ARCHIVE";
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 122, 26, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 122, 26, 0.035);
+  color: rgba(255, 164, 96, 0.62);
+  font-size: 7px;
+  font-weight: 720;
+  letter-spacing: 0.11em;
+}
+
+.scanner-last-known > summary::after {
+  content: "+";
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.012);
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 14px;
+  font-weight: 400;
+  transform: translateY(-50%);
+}
+
+.scanner-last-known > summary:hover {
+  background: rgba(255, 122, 26, 0.018);
+  color: rgba(255, 224, 202, 0.88);
+}
+
+.scanner-last-known[open] > summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.008);
+}
+
+.scanner-last-known[open] > summary::after {
+  content: "−";
+  color: rgba(255, 178, 120, 0.72);
+}
+
+.scanner-last-known > .scanner-candidate-grid {
+  gap: 9px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 42%),
+    rgba(0, 0, 0, 0.045);
+}
+
+/* Keep archived opportunities clearly subordinate to the live/current result set. */
+.scanner-last-known .scanner-candidate-card {
+  border-color: rgba(255, 255, 255, 0.045);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.004)),
+    var(--core-panel);
+  box-shadow: none;
+  opacity: 0.78;
+}
+
+.scanner-last-known .scanner-candidate-card::before {
+  opacity: 0.2;
+}
+
+.scanner-last-known .scanner-candidate-card:hover {
+  transform: none;
+  border-color: rgba(255, 122, 26, 0.09);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.016), rgba(255, 255, 255, 0.005)),
+    var(--core-panel);
+  box-shadow: none;
+  opacity: 0.94;
+}
+
+.scanner-last-known .scanner-freshness {
+  border-color: rgba(255, 122, 26, 0.09);
+  background: rgba(255, 122, 26, 0.025);
+}
+
+.scanner-last-known .scanner-candidate-actions .core-text-button {
+  opacity: 0.82;
+}
+
+.scanner-last-known:focus-within {
+  border-color: rgba(255, 122, 26, 0.13);
+}
+
+@media (max-width: 640px) {
+  .scanner-last-known > summary {
+    min-height: 40px;
+    padding-left: 12px;
+    font-size: 9px;
+  }
+
+  .scanner-last-known > summary::before {
+    min-height: 18px;
+    padding-inline: 5px;
+  }
+
+  .scanner-last-known > .scanner-candidate-grid {
+    padding: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanner-last-known > summary {
+    transition: none;
+  }
+}
