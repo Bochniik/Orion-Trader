@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Recover recent regular-hours prediction artifacts
+      - name: Recover and authenticate recent regular-hours prediction artifacts
         shell: bash
         run: |
           set -euo pipefail
@@ -36,9 +36,9 @@ jobs:
           RECOVERED=0
 
           gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
-            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at] | @tsv' > /tmp/orion-artifacts.tsv
+            --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at,(.workflow_run.id // ""),(.workflow_run.head_sha // "")] | @tsv' > /tmp/orion-artifacts.tsv
 
-          while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT; do
+          while IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME CREATED_AT ARTIFACT_RUN_ID ARTIFACT_HEAD_SHA; do
             if [[ "$ARTIFACT_NAME" != regular-hours-v3-1-shadow-* ]]; then
               continue
             fi
@@ -46,15 +46,45 @@ jobs:
             if [ "$CREATED_EPOCH" -lt "$CUTOFF_EPOCH" ]; then
               continue
             fi
+            RUN_ID="${ARTIFACT_NAME##*-}"
+            if ! [[ "$RUN_ID" =~ ^[0-9]+$ ]]; then
+              echo "Malformed regular-hours artifact run id: $ARTIFACT_NAME" >&2
+              exit 3
+            fi
+            if [ "$ARTIFACT_RUN_ID" != "$RUN_ID" ]; then
+              echo "Regular-hours artifact producing run mismatch: artifact=$ARTIFACT_NAME metadata_run=$ARTIFACT_RUN_ID" >&2
+              exit 5
+            fi
+
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" > "/tmp/regular-hours-run-${RUN_ID}.json"
+            RUN_HEAD_SHA=$(jq -r '.head_sha // ""' "/tmp/regular-hours-run-${RUN_ID}.json")
+            if [ "${ARTIFACT_HEAD_SHA,,}" != "${RUN_HEAD_SHA,,}" ]; then
+              echo "Regular-hours artifact head SHA does not match producing run metadata: $ARTIFACT_NAME" >&2
+              exit 5
+            fi
+            RUN_EVENT=$(jq -r '.event // ""' "/tmp/regular-hours-run-${RUN_ID}.json")
+            if [ "$RUN_EVENT" != "schedule" ]; then
+              echo "Skipping non-forward regular-hours artifact: $ARTIFACT_NAME event=$RUN_EVENT"
+              continue
+            fi
 
             DEST=".regular-hours-health-inputs/${ARTIFACT_ID}"
             mkdir -p "$DEST"
             gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "/tmp/regular-hours-${ARTIFACT_ID}.zip"
             unzip -q -o "/tmp/regular-hours-${ARTIFACT_ID}.zip" -d "$DEST"
+            PREDICTION="$DEST/prediction-${RUN_ID}.json"
+            if [ ! -f "$PREDICTION" ]; then
+              echo "Expected regular-hours prediction payload missing from artifact $ARTIFACT_NAME" >&2
+              exit 4
+            fi
+            python scripts/validate_regular_hours_v3_1_artifact_origin.py \
+              --prediction "$PREDICTION" \
+              --artifact-name "$ARTIFACT_NAME" \
+              --run-metadata "/tmp/regular-hours-run-${RUN_ID}.json"
             RECOVERED=$((RECOVERED + 1))
           done < /tmp/orion-artifacts.tsv
 
-          echo "Recovered ${RECOVERED} regular-hours artifacts from the trailing 30 days."
+          echo "Recovered ${RECOVERED} authenticated scheduled regular-hours artifacts from the trailing 30 days."
 
       - name: Build score-blind collection health report
         shell: bash
