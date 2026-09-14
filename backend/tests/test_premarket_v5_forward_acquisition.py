@@ -59,12 +59,13 @@ def _attested_payload(
     snapshot: str,
     *,
     start_lag_minutes: float = 2.0,
+    collection_duration_minutes: float = 5.0,
     event_name: str = "schedule",
 ) -> dict:
     payload = _base_payload(day, snapshot)
     as_of = datetime.fromisoformat(payload["as_of_utc"])
     started = as_of + timedelta(minutes=start_lag_minutes)
-    completed = started + timedelta(minutes=5)
+    completed = started + timedelta(minutes=collection_duration_minutes)
     return attestation.finalize_payload(
         payload,
         collection_started_at=started,
@@ -96,6 +97,11 @@ def test_scheduled_timely_artifact_is_forward_eligible_and_bound_to_payload():
     assert payload["acquisition_provenance"]["forward_eligible"] is True
     assert payload["acquisition_provenance"]["eligibility_reason"] == "scheduled_forward_window"
     assert projection["decision_grade_complete"] is True
+    assert projection["horizon_forward_eligible"] == {
+        "premarket_5m": False,
+        "premarket_15m": True,
+        "premarket_30m": True,
+    }
     assert projection["collection_start_lag_minutes"] == 4.0
 
 
@@ -125,10 +131,52 @@ def test_tampering_after_attestation_fails_closed():
         readiness.validate_acquisition(payload)
 
 
+def test_horizon_eligibility_excludes_targets_observable_before_collection_completed():
+    payload = _attested_payload(
+        date(2026, 9, 11),
+        "mid",
+        start_lag_minutes=2.0,
+        collection_duration_minutes=10.0,
+    )
+
+    projection = readiness.validate_acquisition(payload)
+
+    assert projection["forward_eligible"] is True
+    assert projection["horizon_forward_eligible"] == {
+        "premarket_5m": False,
+        "premarket_15m": True,
+        "premarket_30m": True,
+    }
+    assert projection["decision_grade_complete_by_horizon"] == {
+        "premarket_5m": False,
+        "premarket_15m": True,
+        "premarket_30m": True,
+    }
+    assert projection["decision_grade_complete"] is False
+
+
+def test_horizon_eligibility_requires_collection_to_finish_strictly_before_target():
+    payload = _attested_payload(
+        date(2026, 9, 11),
+        "mid",
+        start_lag_minutes=2.0,
+        collection_duration_minutes=13.0,
+    )
+
+    projection = readiness.validate_acquisition(payload)
+
+    assert projection["forward_eligible"] is True
+    assert projection["horizon_forward_eligible"] == {
+        "premarket_5m": False,
+        "premarket_15m": False,
+        "premarket_30m": True,
+    }
+
+
 def test_forward_readiness_requires_55_decision_grade_sessions_for_every_snapshot():
     days = _trading_days(date(2026, 1, 2), health.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT)
     payloads = [
-        _attested_payload(day, snapshot)
+        _attested_payload(day, snapshot, start_lag_minutes=0.0, collection_duration_minutes=1.0)
         for day in days
         for snapshot in health.SNAPSHOT_CLOCKS
     ]
@@ -161,10 +209,47 @@ def test_forward_readiness_requires_55_decision_grade_sessions_for_every_snapsho
     assert report["forward_acquisition"]["ineligible_reason_counts"] == {"collection_started_too_late": 1}
 
 
+def test_forward_readiness_blocks_score_inspection_when_short_horizon_is_not_prospective():
+    days = _trading_days(date(2026, 1, 2), health.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT)
+    payloads = [
+        _attested_payload(day, snapshot, start_lag_minutes=0.0, collection_duration_minutes=1.0)
+        for day in days
+        for snapshot in health.SNAPSHOT_CLOCKS
+    ]
+    last_mid = next(
+        payload
+        for payload in payloads
+        if payload["as_of_et"].startswith(days[-1].isoformat())
+        and payload["as_of_et"][11:16] == "08:00"
+    )
+    recovery = _attested_payload(
+        days[-1],
+        "mid",
+        start_lag_minutes=2.0,
+        collection_duration_minutes=10.0,
+    )
+    payloads[payloads.index(last_mid)] = recovery
+
+    report = readiness.build_forward_readiness_report(payloads)
+    mid = report["readiness"]["per_snapshot"]["mid"]
+
+    assert report["readiness"]["ready_for_issue_3_score_inspection"] is False
+    assert mid["per_horizon"]["premarket_5m"] == {
+        "prospective_decision_grade_complete_distinct_session_count": 54,
+        "required_prospective_decision_grade_complete_distinct_session_count": 55,
+        "remaining_prospective_decision_grade_complete_distinct_session_count": 1,
+        "ready": False,
+    }
+    assert mid["per_horizon"]["premarket_15m"]["ready"] is True
+    assert mid["per_horizon"]["premarket_30m"]["ready"] is True
+    assert report["forward_acquisition"]["horizon_forward_eligible_artifact_counts"]["premarket_5m"] == 164
+    assert report["forward_acquisition"]["horizon_forward_eligible_artifact_counts"]["premarket_15m"] == 165
+
+
 def test_forward_readiness_becomes_true_only_with_full_scheduled_forward_geometry():
     days = _trading_days(date(2026, 1, 2), health.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT)
     payloads = [
-        _attested_payload(day, snapshot)
+        _attested_payload(day, snapshot, start_lag_minutes=0.0, collection_duration_minutes=1.0)
         for day in days
         for snapshot in health.SNAPSHOT_CLOCKS
     ]
@@ -175,10 +260,20 @@ def test_forward_readiness_becomes_true_only_with_full_scheduled_forward_geometr
     assert report["readiness"]["ready_for_issue_3_score_inspection"] is True
     assert report["forward_acquisition"]["forward_ineligible_artifact_count"] == 0
     assert all(row["decision_grade_complete_distinct_session_count"] == 55 for row in report["readiness"]["per_snapshot"].values())
+    for snapshot in report["readiness"]["per_snapshot"].values():
+        assert all(
+            horizon["prospective_decision_grade_complete_distinct_session_count"] == 55
+            for horizon in snapshot["per_horizon"].values()
+        )
 
 
 def test_forward_readiness_stays_score_blind():
-    payload = _attested_payload(date(2026, 9, 11), "early")
+    payload = _attested_payload(
+        date(2026, 9, 11),
+        "early",
+        start_lag_minutes=0.0,
+        collection_duration_minutes=1.0,
+    )
     baseline = readiness.build_forward_readiness_report([payload])
     altered = deepcopy(payload)
     altered.pop("acquisition_provenance")
@@ -188,8 +283,8 @@ def test_forward_readiness_stays_score_blind():
     as_of = datetime.fromisoformat(altered["as_of_utc"])
     altered = attestation.finalize_payload(
         altered,
-        collection_started_at=as_of + timedelta(minutes=2),
-        collection_completed_at=as_of + timedelta(minutes=7),
+        collection_started_at=as_of,
+        collection_completed_at=as_of + timedelta(minutes=1),
         event_name="schedule",
         run_id="123456",
         run_attempt=1,
@@ -200,3 +295,4 @@ def test_forward_readiness_stays_score_blind():
     assert changed["readiness"] == baseline["readiness"]
     assert changed["forward_acquisition"]["artifact_count"] == baseline["forward_acquisition"]["artifact_count"]
     assert changed["forward_acquisition"]["forward_eligible_artifact_count"] == baseline["forward_acquisition"]["forward_eligible_artifact_count"]
+    assert changed["forward_acquisition"]["horizon_forward_eligible_artifact_counts"] == baseline["forward_acquisition"]["horizon_forward_eligible_artifact_counts"]
