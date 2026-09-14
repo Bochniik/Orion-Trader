@@ -1,0 +1,91 @@
+/* Scanner opportunities header polish — presentation only.
+   Reuses existing result count/state text from ScannerStateView. */
+
+.scanner-section-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 4px 0 10px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.028), transparent 40%),
+    rgba(255, 255, 255, 0.008);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.014);
+}
+
+.scanner-section-label::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, rgba(255, 122, 26, 0.72), transparent);
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.12);
+  pointer-events: none;
+}
+
+.scanner-section-label h3 {
+  min-width: 0;
+  margin: 0;
+  color: rgba(248, 250, 252, 0.91);
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 1.35;
+  letter-spacing: 0.015em;
+}
+
+.scanner-section-label span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 122, 26, 0.13);
+  border-radius: 999px;
+  background: rgba(255, 122, 26, 0.038);
+  color: rgba(255, 201, 160, 0.76);
+  font-size: 9px;
+  font-weight: 640;
+  line-height: 1;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.scanner-section-label span::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #ff8a36;
+  box-shadow: 0 0 9px rgba(255, 122, 26, 0.34);
+}
+
+.scanner-section-label + .scanner-candidate-grid {
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .scanner-section-label {
+    align-items: flex-start;
+    gap: 9px;
+    padding: 9px 10px 9px 13px;
+  }
+
+  .scanner-section-label h3 {
+    font-size: 11px;
+  }
+
+  .scanner-section-label span {
+    min-height: 22px;
+    padding: 4px 7px;
+    font-size: 8px;
+  }
+}
