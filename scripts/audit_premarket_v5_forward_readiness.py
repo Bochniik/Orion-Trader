@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
-import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -19,7 +18,12 @@ import scripts.audit_premarket_v5_collection_health as health
 import scripts.finalize_premarket_v5_forward_artifact as attestation
 
 
-REPORT_CONTRACT = "orion-premarket-v5-forward-readiness-v1"
+REPORT_CONTRACT = "orion-premarket-v5-forward-readiness-v2"
+HORIZON_MINUTES = {
+    "premarket_5m": 5,
+    "premarket_15m": 15,
+    "premarket_30m": 30,
+}
 
 
 class ForwardReadinessError(ValueError):
@@ -40,6 +44,26 @@ def _canonical_payload_sha256(payload: dict[str, Any]) -> str:
     material = {key: value for key, value in payload.items() if key != "acquisition_provenance"}
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _horizon_forward_eligibility(
+    *,
+    as_of: datetime,
+    completed: datetime,
+    globally_forward_eligible: bool,
+) -> dict[str, bool]:
+    missing = set(health.SUPPORTED_HORIZONS) - set(HORIZON_MINUTES)
+    if missing:
+        raise ForwardReadinessError(
+            f"missing horizon timing policy for: {','.join(sorted(missing))}"
+        )
+    return {
+        horizon: bool(
+            globally_forward_eligible
+            and completed < as_of + timedelta(minutes=HORIZON_MINUTES[horizon])
+        )
+        for horizon in health.SUPPORTED_HORIZONS
+    }
 
 
 def validate_acquisition(payload: dict[str, Any]) -> dict[str, Any]:
@@ -86,14 +110,28 @@ def validate_acquisition(payload: dict[str, Any]) -> dict[str, Any]:
         raise ForwardReadinessError("eligibility_reason does not match acquisition policy")
 
     projection = health._validate_projection(payload)
+    horizon_forward_eligible = _horizon_forward_eligibility(
+        as_of=as_of,
+        completed=completed,
+        globally_forward_eligible=expected_eligible,
+    )
+    decision_grade_complete_by_horizon = {
+        horizon: bool(projection["complete"] and eligible)
+        for horizon, eligible in horizon_forward_eligible.items()
+    }
     return {
         "session": projection["session"],
         "snapshot": projection["snapshot"],
         "forecast_complete": bool(projection["complete"]),
         "forward_eligible": expected_eligible,
-        "decision_grade_complete": bool(projection["complete"] and expected_eligible),
+        "horizon_forward_eligible": horizon_forward_eligible,
+        "decision_grade_complete_by_horizon": decision_grade_complete_by_horizon,
+        "decision_grade_complete": bool(
+            projection["complete"] and all(horizon_forward_eligible.values())
+        ),
         "eligibility_reason": expected_reason,
         "collection_start_lag_minutes": round(lag, 6),
+        "collection_completed_at_utc": completed.isoformat(),
         "github_run_id": None if run_id is None else str(run_id),
         "github_run_attempt": run_attempt,
     }
@@ -116,6 +154,10 @@ def build_forward_readiness_report(payloads: Iterable[dict[str, Any]]) -> dict[s
         raise ForwardReadinessError(f"duplicate session/snapshot acquisition evidence: {','.join(sorted(duplicate_keys))}")
 
     reason_counts = Counter(row["eligibility_reason"] for row in projections if not row["forward_eligible"])
+    horizon_eligible_counts = {
+        horizon: sum(1 for row in projections if row["horizon_forward_eligible"][horizon])
+        for horizon in health.SUPPORTED_HORIZONS
+    }
     per_snapshot: dict[str, dict[str, Any]] = {}
     for snapshot in health.SNAPSHOT_CLOCKS:
         rows = [row for row in projections if row["snapshot"] == snapshot]
@@ -123,13 +165,31 @@ def build_forward_readiness_report(payloads: Iterable[dict[str, Any]]) -> dict[s
         operational_complete = len({row["session"] for row in rows if row["forecast_complete"]})
         decision_complete = len({row["session"] for row in rows if row["decision_grade_complete"]})
         remaining = max(0, health.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT - decision_complete)
+        per_horizon: dict[str, dict[str, Any]] = {}
+        for horizon in health.SUPPORTED_HORIZONS:
+            horizon_complete = len({
+                row["session"]
+                for row in rows
+                if row["decision_grade_complete_by_horizon"][horizon]
+            })
+            horizon_remaining = max(
+                0,
+                health.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT - horizon_complete,
+            )
+            per_horizon[horizon] = {
+                "prospective_decision_grade_complete_distinct_session_count": horizon_complete,
+                "required_prospective_decision_grade_complete_distinct_session_count": health.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
+                "remaining_prospective_decision_grade_complete_distinct_session_count": horizon_remaining,
+                "ready": horizon_remaining == 0,
+            }
         per_snapshot[snapshot] = {
             "distinct_session_count": distinct,
             "operational_complete_distinct_session_count": operational_complete,
             "decision_grade_complete_distinct_session_count": decision_complete,
             "required_decision_grade_complete_distinct_session_count": health.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
             "remaining_decision_grade_complete_distinct_session_count": remaining,
-            "ready": remaining == 0,
+            "per_horizon": per_horizon,
+            "ready": all(row["ready"] for row in per_horizon.values()),
         }
 
     ready = all(row["ready"] for row in per_snapshot.values())
@@ -142,12 +202,15 @@ def build_forward_readiness_report(payloads: Iterable[dict[str, Any]]) -> dict[s
             "required_event_name": "schedule",
             "max_early_skew_minutes": attestation.MAX_EARLY_SKEW_MINUTES,
             "max_start_lag_minutes": attestation.MAX_START_LAG_MINUTES,
+            "horizon_prospective_rule": "collection_completed_at_utc < as_of_utc + horizon",
+            "horizon_minutes": dict(HORIZON_MINUTES),
         },
         "operational_collection_health": operational,
         "forward_acquisition": {
             "artifact_count": len(projections),
             "forward_eligible_artifact_count": sum(1 for row in projections if row["forward_eligible"]),
             "forward_ineligible_artifact_count": sum(1 for row in projections if not row["forward_eligible"]),
+            "horizon_forward_eligible_artifact_counts": horizon_eligible_counts,
             "ineligible_reason_counts": dict(sorted(reason_counts.items())),
             "projection_sha256": _projection_sha256(projections),
         },

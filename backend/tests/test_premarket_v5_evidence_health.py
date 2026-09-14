@@ -61,7 +61,7 @@ def _payload(day: date, snapshot: str, run_id: str, *, complete: bool = True, la
     return attestation.finalize_payload(
         payload,
         collection_started_at=as_of + timedelta(minutes=lag),
-        collection_completed_at=as_of + timedelta(minutes=lag + 5),
+        collection_completed_at=as_of + timedelta(minutes=lag + 2),
         event_name="schedule",
         run_id=run_id,
         run_attempt=1,
@@ -281,7 +281,7 @@ def test_score_changes_do_not_change_evidence_health_classification():
     changed = attestation.finalize_payload(
         changed,
         collection_started_at=as_of + timedelta(minutes=2),
-        collection_completed_at=as_of + timedelta(minutes=7),
+        collection_completed_at=as_of + timedelta(minutes=4),
         event_name="schedule",
         run_id="3",
         run_attempt=1,
