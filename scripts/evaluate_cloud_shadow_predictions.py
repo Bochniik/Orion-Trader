@@ -115,8 +115,47 @@ def _lineage_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _acquisition_provenance_from_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
+    provenance = payload.get("acquisition_provenance")
+    return dict(provenance) if isinstance(provenance, dict) else None
+
+
+def horizon_forward_eligible(
+    forecast: dict[str, Any],
+    *,
+    target_time: datetime | None = None,
+) -> bool:
+    """Return whether an attested forecast still existed before its own target.
+
+    Older historical/offline fixtures predate acquisition attestation and retain
+    their previous evaluator behavior. Once acquisition provenance is present,
+    however, the evaluator fails closed: the artifact must be globally marked
+    forward-eligible and its prediction-producing collection must have completed
+    strictly before the specific horizon target. This prevents delayed/recovery
+    workflow runs from scoring outcomes that were already observable.
+    """
+    provenance = forecast.get("acquisition_provenance")
+    if provenance is None:
+        return True
+    if not isinstance(provenance, dict) or provenance.get("forward_eligible") is not True:
+        return False
+
+    completed_at = provenance.get("collection_completed_at_utc")
+    if not completed_at:
+        return False
+    try:
+        completed = parse_iso(str(completed_at))
+        if target_time is None:
+            prediction_time = parse_iso(str(forecast["prediction_time"]))
+            target_time = prediction_time + timedelta(minutes=horizon_minutes(str(forecast["horizon"])))
+    except (KeyError, TypeError, ValueError):
+        return False
+    return completed < target_time
+
+
 def iter_forecasts(payload: dict[str, Any], source_file: str) -> Iterable[dict[str, Any]]:
     lineage = _lineage_from_payload(payload)
+    acquisition_provenance = _acquisition_provenance_from_payload(payload)
 
     if isinstance(payload.get("predictions"), list):
         for symbol_row in payload["predictions"]:
@@ -139,6 +178,7 @@ def iter_forecasts(payload: dict[str, Any], source_file: str) -> Iterable[dict[s
                     "probability_up": p,
                     "direction": row.get("raw_direction") or row.get("direction"),
                     "lineage": lineage,
+                    "acquisition_provenance": acquisition_provenance,
                     "reliability_profile_source": None,
                     "profile_validated_for_symbol": None,
                 }
@@ -179,6 +219,7 @@ def iter_forecasts(payload: dict[str, Any], source_file: str) -> Iterable[dict[s
                     "probability_up": p,
                     "direction": row.get("direction"),
                     "lineage": lineage,
+                    "acquisition_provenance": acquisition_provenance,
                     "reliability_profile_source": symbol_row.get("reliability_profile_source"),
                     "profile_validated_for_symbol": symbol_row.get("profile_validated_for_symbol"),
                 }
@@ -212,7 +253,7 @@ def settle_forecast(forecast: dict[str, Any], bars: pd.DataFrame, cutoff: dateti
     prediction_time = parse_iso(str(forecast["prediction_time"]))
     minutes = horizon_minutes(str(forecast["horizon"]))
     target_time = prediction_time + timedelta(minutes=minutes)
-    if target_time > cutoff:
+    if target_time > cutoff or not horizon_forward_eligible(forecast, target_time=target_time):
         return None
 
     symbol_bars = bars.loc[bars["ticker"] == forecast["symbol"]]
@@ -336,7 +377,7 @@ def main() -> int:
     for forecast in forecasts:
         prediction_time = parse_iso(str(forecast["prediction_time"]))
         target_time = prediction_time + timedelta(minutes=horizon_minutes(str(forecast["horizon"])))
-        if target_time <= cutoff:
+        if target_time <= cutoff and horizon_forward_eligible(forecast, target_time=target_time):
             mature.append(forecast)
             record = settle_forecast(forecast, bars, cutoff)
             if record is not None:
@@ -353,6 +394,8 @@ def main() -> int:
             "suppressed_regular_hours_probabilities": "excluded",
             "regular_hours_timestamp_provenance": "requires symbol-level as_of and source_timestamp_aligned=true; artifact created_at_utc is never a source-data cutoff fallback",
             "future_prediction_rows": "excluded until horizon fully elapses",
+            "attested_forward_acquisition": "when acquisition provenance is present, forward_eligible must be true and collection must complete strictly before that horizon target; already-observable horizons are excluded rather than scored",
+            "legacy_unattested_inputs": "retain historical/offline evaluator behavior for compatibility and are not proof of decision-grade forward acquisition",
             "premarket_regimes_et": "early <07:00; mid 07:00-08:59; late 09:00-09:29",
         },
         "summary": summarize(settled, len(mature)),
