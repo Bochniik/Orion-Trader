@@ -1,5 +1,6 @@
 /* Presentation-only polish for the compact legacy analysis snapshot. */
 .analysis-snapshot-card {
+  position: relative;
   overflow: hidden;
   border-color: rgba(255, 255, 255, 0.075);
   background:
@@ -7,6 +8,16 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 35%),
     #090c11;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 20px 45px rgba(0, 0, 0, 0.18);
+}
+
+.analysis-snapshot-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255, 148, 71, 0.82), rgba(255, 122, 26, 0.12) 62%, transparent);
+  box-shadow: 0 0 18px rgba(255, 122, 26, 0.2);
+  pointer-events: none;
 }
 
 .analysis-snapshot-titlebar,
@@ -49,6 +60,17 @@
   background: rgba(255, 122, 26, 0.045);
   font-size: 0.67rem;
   font-weight: 700;
+  letter-spacing: 0.035em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 0 18px rgba(255, 122, 26, 0.035);
+}
+
+.analysis-snapshot-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 148, 71, 0.9);
+  box-shadow: 0 0 9px rgba(255, 122, 26, 0.52);
 }
 
 .analysis-snapshot-hero {
@@ -62,23 +84,27 @@
 .analysis-snapshot-symbol-row { gap: 10px; margin-top: 6px; }
 .analysis-snapshot-symbol-row h2 {
   margin: 0;
+  color: rgba(250, 251, 252, 0.96);
   font-size: clamp(1.8rem, 3vw, 2.55rem);
   line-height: 1;
   letter-spacing: -0.045em;
+  text-shadow: 0 0 22px rgba(255, 255, 255, 0.035);
 }
 .analysis-snapshot-price {
   margin: 8px 0 0;
   color: rgba(239, 242, 247, 0.82);
   font-size: 1rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
 }
 
 .analysis-snapshot-confidence-head { justify-content: space-between; gap: 12px; }
 .analysis-snapshot-confidence-head strong {
   color: rgba(248, 249, 251, 0.94);
   font-size: 0.92rem;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
 }
 .analysis-snapshot-confidence-track {
   overflow: hidden;
@@ -100,18 +126,54 @@
 .analysis-snapshot-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.015);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent),
+    rgba(255, 255, 255, 0.01);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
 }
-.analysis-snapshot-metrics > div { padding: 14px 15px; min-width: 0; }
+.analysis-snapshot-metrics > div {
+  position: relative;
+  min-width: 0;
+  padding: 13px 15px 14px;
+  transition: background 150ms ease;
+}
 .analysis-snapshot-metrics > div + div { border-left: 1px solid rgba(255, 255, 255, 0.055); }
+.analysis-snapshot-metrics > div::after {
+  content: "";
+  position: absolute;
+  right: 15px;
+  bottom: 10px;
+  width: 16px;
+  height: 1px;
+  background: rgba(255, 122, 26, 0.18);
+  opacity: 0;
+  transform: scaleX(0.65);
+  transform-origin: right;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.analysis-snapshot-metrics > div:hover {
+  background: rgba(255, 122, 26, 0.025);
+}
+.analysis-snapshot-metrics > div:hover::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
 .analysis-snapshot-metrics strong {
   display: block;
   margin-top: 7px;
+  overflow: hidden;
   color: rgba(248, 249, 251, 0.94);
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
+  font-size: clamp(0.96rem, 1.4vw, 1.08rem);
+  font-weight: 720;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
 }
 
 .analysis-snapshot-rationale { padding-top: 19px; }
@@ -119,6 +181,7 @@
 .analysis-snapshot-section-heading small {
   color: rgba(194, 201, 212, 0.44);
   font-size: 0.68rem;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 .analysis-snapshot-rationale ol {
   display: grid;
@@ -180,8 +243,11 @@
   .analysis-snapshot-status { display: none; }
   .analysis-snapshot-metrics { grid-template-columns: 1fr; }
   .analysis-snapshot-metrics > div + div { border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.055); }
+  .analysis-snapshot-metrics > div { padding: 12px 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .analysis-snapshot-confidence-track i { transition: none; }
+  .analysis-snapshot-confidence-track i,
+  .analysis-snapshot-metrics > div,
+  .analysis-snapshot-metrics > div::after { transition: none; }
 }
