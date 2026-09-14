@@ -69,6 +69,110 @@
   background: rgba(255, 142, 45, 0.045);
 }
 
+/* Bind the active research command bar to the returned analysis context.
+   The horizon value is already produced by AnalyzeView; this only improves hierarchy. */
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) {
+  border-color: rgba(255, 148, 71, 0.12);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.075), transparent 25%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.008)),
+    rgba(7, 10, 15, 0.975);
+  box-shadow:
+    inset 2px 0 0 rgba(255, 135, 51, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.028),
+    0 16px 38px rgba(0, 0, 0, 0.2),
+    0 0 24px rgba(255, 122, 26, 0.025);
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context):focus-within {
+  border-color: rgba(255, 148, 71, 0.2);
+  box-shadow:
+    inset 2px 0 0 rgba(255, 148, 71, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 18px 42px rgba(0, 0, 0, 0.24),
+    0 0 28px rgba(255, 122, 26, 0.045);
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-context {
+  border-color: rgba(255, 148, 71, 0.14);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.09), transparent 72%),
+    rgba(255, 255, 255, 0.018);
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-ticker::before {
+  content: "ACTIVE · ";
+  color: rgba(255, 148, 71, 0.54);
+  font-size: 0.57rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.analyze-result-horizon {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  margin: -5px 0 10px;
+  padding: 7px 11px 7px 13px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.055), transparent 38%),
+    rgba(255, 255, 255, 0.012);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+.analyze-result-horizon::before {
+  content: "";
+  position: absolute;
+  inset: 7px auto 7px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(255, 140, 57, 0.82);
+  box-shadow: 0 0 12px rgba(255, 122, 26, 0.28);
+}
+
+.analyze-result-horizon > span {
+  color: rgba(190, 197, 208, 0.46);
+  font-size: 0.59rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.analyze-result-horizon > strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 148, 71, 0.18);
+  border-radius: 999px;
+  color: rgba(255, 211, 178, 0.92);
+  background: rgba(255, 122, 26, 0.07);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.085em;
+  white-space: nowrap;
+}
+
+.analyze-result-horizon > small {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(190, 197, 208, 0.46);
+  font-size: 0.66rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analyze-result-horizon + .analysis-overview {
+  margin-top: 0;
+}
+
 @media (max-width: 1180px) and (min-width: 841px) {
   .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) {
     grid-template-columns: auto minmax(0, 1fr);
@@ -91,6 +195,16 @@
   .analyze-sticky-context {
     width: fit-content;
   }
+
+  .analyze-result-horizon {
+    grid-template-columns: auto auto;
+  }
+
+  .analyze-result-horizon > small {
+    grid-column: 1 / -1;
+    overflow: visible;
+    white-space: normal;
+  }
 }
 
 @media (max-width: 540px) {
@@ -101,5 +215,20 @@
 
   .analyze-sticky-ticker {
     font-size: 0.72rem;
+  }
+
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-ticker::before {
+    content: "";
+  }
+
+  .analyze-result-horizon {
+    grid-template-columns: 1fr auto;
+    padding: 7px 9px 7px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) {
+    transition: none;
   }
 }
