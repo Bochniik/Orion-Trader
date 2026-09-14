@@ -156,6 +156,129 @@
   line-height: 1.4;
 }
 
+/* Candidate interaction polish — presentation and accessibility only.
+   Preserves the existing Analyze/Save handlers and scanner data flow. */
+.scanner-candidate-card {
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease,
+    transform 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .scanner-candidate-card:hover {
+    border-color: rgba(255, 132, 46, 0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.018),
+      0 12px 30px rgba(0, 0, 0, 0.2),
+      0 0 22px rgba(255, 122, 26, 0.035);
+    transform: translateY(-1px);
+  }
+}
+
+.scanner-candidate-card:focus-within {
+  border-color: rgba(255, 145, 66, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 0 0 1px rgba(255, 122, 26, 0.045),
+    0 0 24px rgba(255, 122, 26, 0.045);
+}
+
+.scanner-candidate-card .scanner-candidate-actions {
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.scanner-candidate-card .scanner-candidate-actions .core-text-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.014);
+  color: rgba(224, 229, 235, 0.66);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.scanner-candidate-card .scanner-candidate-actions .core-text-button:last-child {
+  border-color: rgba(255, 122, 26, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 139, 54, 0.12), rgba(255, 112, 20, 0.055)),
+    rgba(255, 122, 26, 0.025);
+  color: rgba(255, 215, 183, 0.94);
+  box-shadow: inset 0 1px 0 rgba(255, 218, 190, 0.06);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .scanner-candidate-card .scanner-candidate-actions .core-text-button:not(:disabled):hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.035);
+    color: rgba(245, 247, 250, 0.88);
+    transform: translateY(-1px);
+  }
+
+  .scanner-candidate-card .scanner-candidate-actions .core-text-button:last-child:not(:disabled):hover {
+    border-color: rgba(255, 139, 54, 0.42);
+    background:
+      linear-gradient(180deg, rgba(255, 145, 66, 0.18), rgba(255, 112, 20, 0.075)),
+      rgba(255, 122, 26, 0.035);
+    color: #fff2e8;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 232, 214, 0.09),
+      0 0 16px rgba(255, 122, 26, 0.08);
+  }
+}
+
+.scanner-candidate-card .scanner-candidate-actions .core-text-button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.scanner-candidate-card .scanner-candidate-actions .core-text-button:focus-visible {
+  outline: 2px solid rgba(255, 151, 77, 0.78);
+  outline-offset: 2px;
+  border-color: rgba(255, 151, 77, 0.44);
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.08);
+}
+
+.scanner-candidate-card .scanner-candidate-actions .core-text-button:disabled {
+  cursor: default;
+  opacity: 0.48;
+  box-shadow: none;
+}
+
+.scanner-candidate-card .scanner-candidate-actions svg {
+  flex: 0 0 auto;
+  transition: transform 140ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .scanner-candidate-card .scanner-candidate-actions .core-text-button:last-child:not(:disabled):hover svg {
+    transform: translate(1px, -1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanner-candidate-card,
+  .scanner-candidate-card .scanner-candidate-actions .core-text-button,
+  .scanner-candidate-card .scanner-candidate-actions svg {
+    transition: none;
+  }
+
+  .scanner-candidate-card:hover,
+  .scanner-candidate-card .scanner-candidate-actions .core-text-button:hover,
+  .scanner-candidate-card .scanner-candidate-actions .core-text-button:active {
+    transform: none;
+  }
+}
+
 @media (max-width: 640px) {
   .scanner-section-label {
     align-items: flex-start;
@@ -180,5 +303,10 @@
 
   .scanner-candidate-card .scanner-candidate-why {
     padding: 9px 10px 9px 12px;
+  }
+
+  .scanner-candidate-card .scanner-candidate-actions .core-text-button {
+    min-height: 38px;
+    justify-content: center;
   }
 }
