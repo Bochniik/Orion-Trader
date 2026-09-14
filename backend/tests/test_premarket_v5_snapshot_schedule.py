@@ -21,47 +21,64 @@ def test_registered_cadence_is_fixed_to_three_regimes():
         "mid": module.time(8, 0),
         "late": module.time(9, 15),
     }
+    assert module.RECOVERY_DELAY.total_seconds() == 600
 
 
-def test_summer_edt_activates_only_matching_utc_slots():
+def test_summer_edt_activates_primary_and_matching_recovery_slots():
     now = datetime(2026, 9, 11, 12, 30, tzinfo=timezone.utc)
 
     early = module.resolve_snapshot(schedule_cron="45 10 * * 1-5", now=now)
+    early_recovery = module.resolve_snapshot(schedule_cron="55 10 * * 1-5", now=now)
     mid = module.resolve_snapshot(schedule_cron="0 12 * * 1-5", now=now)
+    mid_recovery = module.resolve_snapshot(schedule_cron="10 12 * * 1-5", now=now)
     late = module.resolve_snapshot(schedule_cron="15 13 * * 1-5", now=now)
-    duplicate_early = module.resolve_snapshot(schedule_cron="45 11 * * 1-5", now=now)
+    late_recovery = module.resolve_snapshot(schedule_cron="25 13 * * 1-5", now=now)
+    inactive_early = module.resolve_snapshot(schedule_cron="45 11 * * 1-5", now=now)
+    inactive_early_recovery = module.resolve_snapshot(schedule_cron="55 11 * * 1-5", now=now)
 
-    assert early.active is True and early.as_of_et.hour == 6 and early.as_of_et.minute == 45
-    assert mid.active is True and mid.as_of_et.hour == 8 and mid.as_of_et.minute == 0
-    assert late.active is True and late.as_of_et.hour == 9 and late.as_of_et.minute == 15
-    assert duplicate_early.active is False
-    assert duplicate_early.reason == "inactive_dst_slot"
+    assert early.active is True and early.mode == "primary"
+    assert early_recovery.active is True and early_recovery.mode == "recovery"
+    assert early_recovery.as_of_utc == early.as_of_utc
+    assert mid.active is True and mid_recovery.active is True
+    assert mid_recovery.as_of_utc == mid.as_of_utc
+    assert late.active is True and late_recovery.active is True
+    assert late_recovery.as_of_utc == late.as_of_utc
+    assert inactive_early.active is False
+    assert inactive_early.reason == "inactive_dst_slot"
+    assert inactive_early_recovery.active is False
+    assert inactive_early_recovery.reason == "inactive_dst_slot"
 
 
-def test_winter_est_activates_only_matching_utc_slots():
+def test_winter_est_activates_primary_and_matching_recovery_slots():
     now = datetime(2026, 1, 12, 13, 30, tzinfo=timezone.utc)
 
     early = module.resolve_snapshot(schedule_cron="45 11 * * 1-5", now=now)
+    early_recovery = module.resolve_snapshot(schedule_cron="55 11 * * 1-5", now=now)
     mid = module.resolve_snapshot(schedule_cron="0 13 * * 1-5", now=now)
+    mid_recovery = module.resolve_snapshot(schedule_cron="10 13 * * 1-5", now=now)
     late = module.resolve_snapshot(schedule_cron="15 14 * * 1-5", now=now)
-    duplicate_mid = module.resolve_snapshot(schedule_cron="0 12 * * 1-5", now=now)
+    late_recovery = module.resolve_snapshot(schedule_cron="25 14 * * 1-5", now=now)
+    inactive_mid = module.resolve_snapshot(schedule_cron="0 12 * * 1-5", now=now)
+    inactive_mid_recovery = module.resolve_snapshot(schedule_cron="10 12 * * 1-5", now=now)
 
-    assert early.active is True and early.as_of_et.hour == 6 and early.as_of_et.minute == 45
-    assert mid.active is True and mid.as_of_et.hour == 8 and mid.as_of_et.minute == 0
-    assert late.active is True and late.as_of_et.hour == 9 and late.as_of_et.minute == 15
-    assert duplicate_mid.active is False
-    assert duplicate_mid.reason == "inactive_dst_slot"
+    assert early.active is True and early_recovery.active is True
+    assert early_recovery.as_of_utc == early.as_of_utc
+    assert mid.active is True and mid_recovery.active is True
+    assert mid_recovery.as_of_utc == mid.as_of_utc
+    assert late.active is True and late_recovery.active is True
+    assert late_recovery.as_of_utc == late.as_of_utc
+    assert inactive_mid.active is False
+    assert inactive_mid_recovery.active is False
 
 
 def test_market_holiday_is_not_counted_as_registered_forward_session():
-    # Labor Day 2026 is Monday 2026-09-07. The UTC cron still fires, but the
-    # resolver must fail closed before setup/data collection.
     now = datetime(2026, 9, 7, 12, 30, tzinfo=timezone.utc)
-    result = module.resolve_snapshot(schedule_cron="0 12 * * 1-5", now=now)
+    result = module.resolve_snapshot(schedule_cron="10 12 * * 1-5", now=now)
 
     assert result.active is False
     assert result.reason == "market_holiday"
     assert result.snapshot == "mid"
+    assert result.mode == "recovery"
 
 
 def test_good_friday_is_rejected_even_though_it_is_a_weekday():
@@ -79,6 +96,7 @@ def test_manual_dispatch_preserves_late_snapshot_default():
     )
     assert result.active is True
     assert result.snapshot == "late"
+    assert result.mode == "manual"
     assert result.as_of_et.hour == 9 and result.as_of_et.minute == 15
 
 

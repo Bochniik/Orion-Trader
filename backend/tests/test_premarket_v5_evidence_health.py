@@ -85,6 +85,23 @@ def _run(day: date, snapshot: str, run_id: str, *, conclusion: str = "success") 
     }
 
 
+def _recovery_run(day: date, snapshot: str, run_id: str) -> dict:
+    reference = datetime.combine(day, datetime.min.time(), tzinfo=resolver.NY).astimezone(timezone.utc)
+    target, _ = resolver._target_for_local_day(snapshot, reference=reference)
+    recovery_target = target + resolver.RECOVERY_DELAY
+    cron = f"{recovery_target.minute} {recovery_target.hour} * * 1-5"
+    assert resolver.RECOVERY_CRON_SLOTS[cron] == snapshot
+    return {
+        "id": run_id,
+        "event": "schedule",
+        "display_title": f"{delivery.RUN_NAME_PREFIX}{cron}",
+        "created_at": recovery_target.isoformat(),
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1,
+    }
+
+
 def _as_of(day: date) -> datetime:
     reference = datetime.combine(day, datetime.min.time(), tzinfo=resolver.NY).astimezone(timezone.utc)
     target, _ = resolver._target_for_local_day("late", reference=reference)
@@ -102,12 +119,39 @@ def test_healthy_mature_slots_are_decision_grade_but_cohort_remains_young():
     assert report["score_blind"] is True
     assert report["metrics_exposed"] is False
     assert report["summary"]["status_counts"]["decision_grade_complete"] == 3
+    assert report["summary"]["recovered_transport_count"] == 0
     assert report["summary"]["all_mature_slots_decision_grade_complete"] is True
     assert report["summary"]["historically_gap_free"] is True
     assert report["summary"]["structurally_clean"] is True
     assert report["summary"]["ready_for_issue_3_score_inspection"] is False
     assert report["summary"]["historical_incident_layers"] == []
     assert report["summary"]["blocking_layers"] == ["cohort_maturity"]
+
+
+def test_recovery_can_preserve_decision_grade_evidence_without_erasing_primary_delivery_incident():
+    day = date(2026, 9, 14)
+    runs = [
+        _recovery_run(day, "early", "101"),
+        _run(day, "mid", "2"),
+        _run(day, "late", "3"),
+    ]
+    payloads = [
+        _payload(day, "early", "101", lag=12.0),
+        _payload(day, "mid", "2"),
+        _payload(day, "late", "3"),
+    ]
+
+    report = evidence.build_evidence_health_report(runs, payloads, start_date=day, as_of=_as_of(day))
+
+    assert report["summary"]["status_counts"]["decision_grade_complete"] == 3
+    assert report["summary"]["recovered_transport_count"] == 1
+    assert report["summary"]["unmatched_artifact_count"] == 0
+    assert report["summary"]["historically_gap_free"] is False
+    assert report["summary"]["structurally_clean"] is True
+    assert "delivery" in report["summary"]["historical_incident_layers"]
+    early = next(row for row in report["evidence_rows"] if row["snapshot"] == "early")
+    assert early["recovered_transport"] is True
+    assert early["github_run_id"] == "101"
 
 
 def test_missing_failed_and_missing_artifact_are_attributed_to_incident_layers():

@@ -8,6 +8,8 @@ on:
       - "scripts/run_premarket_v5_decision_preflight.py"
       - "scripts/collect_alpaca_extended_history.py"
       - "scripts/resolve_early_premarket_observation.py"
+      - "scripts/resolve_premarket_v5_snapshot.py"
+      - "scripts/guard_premarket_v5_recovery.py"
       - "scripts/collect_premarket_v5_actions_evidence.py"
       - "scripts/audit_premarket_v5_schedule_delivery.py"
       - "scripts/audit_premarket_v5_collection_health.py"
@@ -63,6 +65,8 @@ jobs:
             scripts/run_premarket_v5_decision_preflight.py \
             scripts/collect_alpaca_extended_history.py \
             scripts/resolve_early_premarket_observation.py \
+            scripts/resolve_premarket_v5_snapshot.py \
+            scripts/guard_premarket_v5_recovery.py \
             scripts/collect_premarket_v5_actions_evidence.py \
             scripts/audit_premarket_v5_schedule_delivery.py \
             scripts/audit_premarket_v5_collection_health.py \
@@ -92,6 +96,7 @@ jobs:
             backend/tests/test_premarket_v5_evidence_health.py \
             backend/tests/test_premarket_v5_forward_acquisition.py \
             backend/tests/test_premarket_v5_snapshot_schedule.py \
+            backend/tests/test_premarket_v5_recovery_guard.py \
             backend/tests/test_premarket_training_dataset_lineage.py \
             backend/tests/test_premarket_validation_report_lineage.py \
             backend/tests/test_premarket_v5_evidence_pipeline.py \
