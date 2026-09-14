@@ -113,7 +113,11 @@ def _opportunity_summary(deliveries: list[dict[str, Any]]) -> dict[str, dict[str
             for row in rows
             if row["delivered"] and horizon in row["effective_eligible_horizons"]
         ]
-        lost = [row for row in rows if row not in effective]
+        lost = [
+            row
+            for row in rows
+            if not (row["delivered"] and horizon in row["effective_eligible_horizons"])
+        ]
         summary[horizon] = {
             "expected_opportunity_count": len(rows),
             "effective_delivery_count": len(effective),
