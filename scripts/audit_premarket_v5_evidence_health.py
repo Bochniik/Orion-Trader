@@ -149,7 +149,12 @@ def build_evidence_health_report(
     # permanently poison a cohort that later reaches the preregistered count of
     # complete, forward-eligible sessions. Structural provenance ambiguity still
     # fails closed because it can make the accepted evidence population unclear.
+    historically_gap_free = all_mature_slots_decision_grade
     structurally_clean = duplicate_count == 0 and not unmatched
+    # Preserve the v1 field's composite meaning for compatibility. In v2 it is
+    # diagnostic only; score-inspection readiness is cohort maturity plus the
+    # explicit structural-integrity gate below.
+    operationally_clean = historically_gap_free and structurally_clean
     cohort_mature = forward_report["readiness"]["ready_for_issue_3_score_inspection"]
     ready_for_score_inspection = bool(cohort_mature and structurally_clean)
 
@@ -199,10 +204,8 @@ def build_evidence_health_report(
             "duplicate_delivery_count": duplicate_count,
             "unmatched_artifact_count": len(unmatched),
             "all_mature_slots_decision_grade_complete": all_mature_slots_decision_grade,
-            "historically_gap_free": all_mature_slots_decision_grade,
-            # Retained for v1 consumers; in v2 this remains the historical
-            # gap-free diagnostic and is no longer the score-inspection gate.
-            "operationally_clean": all_mature_slots_decision_grade,
+            "historically_gap_free": historically_gap_free,
+            "operationally_clean": operationally_clean,
             "structurally_clean": structurally_clean,
             "ready_for_issue_3_score_inspection": ready_for_score_inspection,
             "historical_incident_layers": historical_incident_layers,
