@@ -186,6 +186,61 @@
   color: #f3f5f7;
 }
 
+/* Research flow pass: make the existing Analyze sections read as one terminal
+   workflow without altering section content, order or data bindings. */
+.analyze-view .analyze-section-heading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  margin: 0 0 11px;
+  padding: 0 0 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.analyze-view .analyze-section-heading::before {
+  content: "";
+  position: absolute;
+  inset: 3px auto 13px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 159, 88, 0.9), rgba(255, 122, 26, 0.2));
+  box-shadow: 0 0 12px rgba(255, 122, 26, 0.18);
+  pointer-events: none;
+}
+
+.analyze-view .analyze-section-heading h2,
+.analyze-view .analyze-section-heading h3 {
+  margin: 0;
+  color: #edf0f3;
+  font-weight: 720;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+}
+
+.analyze-view .analyze-section-heading > span,
+.analyze-view .analyze-section-heading > small {
+  flex: 0 0 auto;
+  color: #737d88;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.analyze-view .analysis-overview,
+.analyze-view .analysis-market-grid,
+.analyze-view .analysis-insight-grid,
+.analyze-view .analysis-news-panel {
+  scroll-margin-top: 92px;
+}
+
+.analyze-view .analysis-insight-grid {
+  gap: 12px;
+}
+
 @media (max-width: 720px) {
   .analysis-insight dl > div {
     grid-template-columns: minmax(0, 1fr) minmax(96px, 44%);
@@ -201,12 +256,28 @@
     min-height: 0;
     padding-block: 9px;
   }
+
+  .analyze-view .analyze-section-heading {
+    align-items: flex-start;
+    min-height: 38px;
+    padding-left: 10px;
+  }
+
+  .analyze-view .analyze-section-heading > span,
+  .analyze-view .analyze-section-heading > small {
+    max-width: 46%;
+    text-align: right;
+  }
 }
 
 @media (max-width: 520px) {
   .analysis-insight dl > div {
     margin-inline: -6px;
     padding-inline: 6px;
+  }
+
+  .analyze-view .analyze-section-heading {
+    gap: 8px;
   }
 }
 
