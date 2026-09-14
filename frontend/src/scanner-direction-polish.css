@@ -1,0 +1,117 @@
+/* Scanner direction-state polish — presentation only.
+   Uses existing direction/decision class names from ScannerCandidateCard. */
+
+.scanner-candidate-card.bullish,
+.scanner-candidate-card.up,
+.scanner-candidate-card.buy,
+.scanner-candidate-card.long {
+  border-color: rgba(97, 216, 155, 0.09);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(97, 216, 155, 0.045), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006)),
+    var(--core-panel);
+}
+
+.scanner-candidate-card.bullish::before,
+.scanner-candidate-card.up::before,
+.scanner-candidate-card.buy::before,
+.scanner-candidate-card.long::before {
+  background: linear-gradient(180deg, transparent 8%, rgba(97, 216, 155, 0.82), transparent 92%);
+  opacity: 0.62;
+}
+
+.scanner-direction.bullish,
+.scanner-direction.up,
+.scanner-direction.buy,
+.scanner-direction.long {
+  border-color: rgba(97, 216, 155, 0.2);
+  background: rgba(97, 216, 155, 0.07);
+  color: #8ee8b9;
+  box-shadow: 0 0 14px rgba(97, 216, 155, 0.05);
+}
+
+.scanner-candidate-card.bearish,
+.scanner-candidate-card.down,
+.scanner-candidate-card.sell,
+.scanner-candidate-card.short {
+  border-color: rgba(255, 116, 116, 0.09);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 116, 116, 0.04), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006)),
+    var(--core-panel);
+}
+
+.scanner-candidate-card.bearish::before,
+.scanner-candidate-card.down::before,
+.scanner-candidate-card.sell::before,
+.scanner-candidate-card.short::before {
+  background: linear-gradient(180deg, transparent 8%, rgba(255, 116, 116, 0.78), transparent 92%);
+  opacity: 0.58;
+}
+
+.scanner-direction.bearish,
+.scanner-direction.down,
+.scanner-direction.sell,
+.scanner-direction.short {
+  border-color: rgba(255, 116, 116, 0.2);
+  background: rgba(255, 116, 116, 0.07);
+  color: #ff9b9b;
+  box-shadow: 0 0 14px rgba(255, 116, 116, 0.045);
+}
+
+.scanner-candidate-card.neutral,
+.scanner-candidate-card.wait,
+.scanner-candidate-card.no-trade,
+.scanner-candidate-card.no_trade {
+  border-color: rgba(255, 255, 255, 0.055);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(148, 163, 184, 0.03), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.014), rgba(255, 255, 255, 0.004)),
+    var(--core-panel);
+}
+
+.scanner-candidate-card.neutral::before,
+.scanner-candidate-card.wait::before,
+.scanner-candidate-card.no-trade::before,
+.scanner-candidate-card.no_trade::before {
+  background: linear-gradient(180deg, transparent 8%, rgba(148, 163, 184, 0.46), transparent 92%);
+  opacity: 0.38;
+}
+
+.scanner-direction.neutral,
+.scanner-direction.wait,
+.scanner-direction.no-trade,
+.scanner-direction.no_trade {
+  border-color: rgba(148, 163, 184, 0.14);
+  background: rgba(148, 163, 184, 0.045);
+  color: rgba(203, 213, 225, 0.72);
+}
+
+.scanner-decision.no-trade {
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: rgba(148, 163, 184, 0.025);
+}
+
+.scanner-decision.no-trade strong {
+  color: rgba(203, 213, 225, 0.76);
+}
+
+.scanner-decision.no-trade small {
+  color: rgba(148, 163, 184, 0.58);
+}
+
+.scanner-candidate-card.bullish:hover,
+.scanner-candidate-card.up:hover,
+.scanner-candidate-card.buy:hover,
+.scanner-candidate-card.long:hover {
+  border-color: rgba(97, 216, 155, 0.18);
+}
+
+.scanner-candidate-card.bearish:hover,
+.scanner-candidate-card.down:hover,
+.scanner-candidate-card.sell:hover,
+.scanner-candidate-card.short:hover {
+  border-color: rgba(255, 116, 116, 0.18);
+}
