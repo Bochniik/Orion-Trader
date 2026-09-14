@@ -18,7 +18,7 @@ import scripts.audit_premarket_v5_schedule_delivery as delivery
 import scripts.audit_premarket_v5_collection_health as collection_health
 
 
-REPORT_CONTRACT = "orion-premarket-v5-evidence-health-v1"
+REPORT_CONTRACT = "orion-premarket-v5-evidence-health-v2"
 STATUS_ORDER = (
     "missing_delivery",
     "workflow_unsuccessful",
@@ -145,21 +145,32 @@ def build_evidence_health_report(
     all_mature_slots_decision_grade = bool(evidence_rows) and all(
         row["status"] == "decision_grade_complete" for row in evidence_rows
     )
-    operationally_clean = all_mature_slots_decision_grade and duplicate_count == 0 and not unmatched
+    # Historical transport/acquisition incidents are measured, but they do not
+    # permanently poison a cohort that later reaches the preregistered count of
+    # complete, forward-eligible sessions. Structural provenance ambiguity still
+    # fails closed because it can make the accepted evidence population unclear.
+    historically_gap_free = all_mature_slots_decision_grade
+    structurally_clean = duplicate_count == 0 and not unmatched
+    # Preserve the v1 field's composite meaning for compatibility. In v2 it is
+    # diagnostic only; score-inspection readiness is cohort maturity plus the
+    # explicit structural-integrity gate below.
+    operationally_clean = historically_gap_free and structurally_clean
     cohort_mature = forward_report["readiness"]["ready_for_issue_3_score_inspection"]
-    ready_for_score_inspection = bool(cohort_mature and operationally_clean)
+    ready_for_score_inspection = bool(cohort_mature and structurally_clean)
+
+    historical_incident_layers: list[str] = []
+    if status_counts["missing_delivery"]:
+        historical_incident_layers.append("delivery")
+    if status_counts["workflow_unsuccessful"]:
+        historical_incident_layers.append("workflow_execution")
+    if status_counts["artifact_missing_after_success"]:
+        historical_incident_layers.append("artifact_persistence")
+    if status_counts["forecast_incomplete"]:
+        historical_incident_layers.append("forecast_completeness")
+    if status_counts["acquisition_ineligible"]:
+        historical_incident_layers.append("acquisition_eligibility")
 
     blocking_layers: list[str] = []
-    if status_counts["missing_delivery"]:
-        blocking_layers.append("delivery")
-    if status_counts["workflow_unsuccessful"]:
-        blocking_layers.append("workflow_execution")
-    if status_counts["artifact_missing_after_success"]:
-        blocking_layers.append("artifact_persistence")
-    if status_counts["forecast_incomplete"]:
-        blocking_layers.append("forecast_completeness")
-    if status_counts["acquisition_ineligible"]:
-        blocking_layers.append("acquisition_eligibility")
     if duplicate_count:
         blocking_layers.append("duplicate_delivery")
     if unmatched:
@@ -193,8 +204,11 @@ def build_evidence_health_report(
             "duplicate_delivery_count": duplicate_count,
             "unmatched_artifact_count": len(unmatched),
             "all_mature_slots_decision_grade_complete": all_mature_slots_decision_grade,
+            "historically_gap_free": historically_gap_free,
             "operationally_clean": operationally_clean,
+            "structurally_clean": structurally_clean,
             "ready_for_issue_3_score_inspection": ready_for_score_inspection,
+            "historical_incident_layers": historical_incident_layers,
             "blocking_layers": blocking_layers,
         },
         "per_snapshot": per_snapshot,
