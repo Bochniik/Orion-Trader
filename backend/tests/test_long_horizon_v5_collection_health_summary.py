@@ -84,7 +84,7 @@ def test_summary_aggregates_only_score_blind_forward_collection_health():
         ]
     )
 
-    assert result["contract"] == "orion-long-horizon-v5-collection-health-v3"
+    assert result["contract"] == "orion-long-horizon-v5-collection-health-v4"
     assert result["score_blind"] is True
     assert result["population"] == "forward_eligible_only"
     assert result["input_run_count"] == 2
@@ -92,11 +92,28 @@ def test_summary_aggregates_only_score_blind_forward_collection_health():
     assert result["ignored_non_forward_run_count"] == 0
     assert result["complete_run_count"] == 1
     assert result["status_counts"] == {"completed": 1, "degraded": 1}
-    assert result["coverage"] == {
-        "expected_pair_count": 8,
-        "observed_pair_count": 7,
-        "observed_pair_rate": 0.875,
+    assert result["coverage"]["expected_pair_count"] == 8
+    assert result["coverage"]["observed_pair_count"] == 7
+    assert result["coverage"]["observed_pair_rate"] == 0.875
+    assert result["coverage"]["by_horizon"] == {
+        "3h": {
+            "eligible_run_count": 2,
+            "complete_run_count": 2,
+            "expected_pair_count": 4,
+            "observed_pair_count": 4,
+            "missing_pair_count": 0,
+            "observed_pair_rate": 1.0,
+        },
+        "5h": {
+            "eligible_run_count": 2,
+            "complete_run_count": 1,
+            "expected_pair_count": 4,
+            "observed_pair_count": 3,
+            "missing_pair_count": 1,
+            "observed_pair_rate": 0.75,
+        },
     }
+    assert result["critical_5h"] == result["coverage"]["by_horizon"]["5h"]
     assert result["failure_reason_counts"] == {
         "prediction_bar_not_closed": 2,
         "stale_prediction_timestamp": 1,
@@ -108,6 +125,33 @@ def test_summary_aggregates_only_score_blind_forward_collection_health():
     rendered = str(result)
     assert "0.999999" not in rendered
     assert "0.000001" not in rendered
+
+
+def test_horizon_breakdown_exposes_critical_5h_loss_hidden_by_aggregate_coverage():
+    payloads = [
+        _payload(status="completed", horizons=["3h"], symbols=["AAPL", "MSFT"])
+        for _ in range(9)
+    ]
+    payloads.append(
+        _payload(
+            status="degraded",
+            horizons=["3h", "5h"],
+            symbols=["AAPL", "MSFT"],
+            missing=[
+                {"symbol": "AAPL", "horizon": "5h"},
+                {"symbol": "MSFT", "horizon": "5h"},
+            ],
+        )
+    )
+
+    result = health.summarize_payloads(payloads)
+
+    assert result["coverage"]["observed_pair_rate"] == pytest.approx(20 / 22, abs=1e-6)
+    assert result["coverage"]["by_horizon"]["3h"]["observed_pair_rate"] == 1.0
+    assert result["critical_5h"]["eligible_run_count"] == 1
+    assert result["critical_5h"]["expected_pair_count"] == 2
+    assert result["critical_5h"]["observed_pair_count"] == 0
+    assert result["critical_5h"]["observed_pair_rate"] == 0.0
 
 
 def test_non_forward_runs_are_counted_but_excluded_before_projection_validation():
@@ -127,13 +171,22 @@ def test_non_forward_runs_are_counted_but_excluded_before_projection_validation(
     assert result["ignored_non_forward_run_count"] == 1
     assert result["complete_run_count"] == 1
     assert result["status_counts"] == {"completed": 1}
-    assert result["coverage"] == {
-        "expected_pair_count": 4,
-        "observed_pair_count": 4,
-        "observed_pair_rate": 1.0,
-    }
+    assert result["coverage"]["expected_pair_count"] == 4
+    assert result["coverage"]["observed_pair_count"] == 4
+    assert result["coverage"]["observed_pair_rate"] == 1.0
+    assert result["coverage"]["by_horizon"]["3h"]["observed_pair_rate"] == 1.0
+    assert result["coverage"]["by_horizon"]["5h"]["observed_pair_rate"] == 1.0
     assert result["failure_reason_counts"] == {}
     assert result["affected_symbols_by_reason"] == {}
+
+
+def test_zero_eligible_horizon_keeps_horizon_rates_null():
+    result = health.summarize_payloads([_payload(status="skipped")])
+
+    assert result["coverage"]["observed_pair_rate"] is None
+    assert result["coverage"]["by_horizon"]["3h"]["observed_pair_rate"] is None
+    assert result["critical_5h"]["observed_pair_rate"] is None
+    assert result["critical_5h"]["eligible_run_count"] == 0
 
 
 def test_dynamic_failure_details_are_not_preserved():
