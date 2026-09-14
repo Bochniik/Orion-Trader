@@ -107,6 +107,35 @@ def clip_raw_history_as_of(raw_path: Path, *, as_of: datetime) -> int:
     return int(len(causal))
 
 
+def refresh_clipped_collection_manifest(raw_path: Path, *, as_of: datetime, row_count: int) -> Path:
+    """Re-attest a collector manifest after the runner causally clips raw.csv.
+
+    The collector attests the downloaded file before this runner removes bars that
+    arrived after the frozen prediction timestamp. Preserve that source attestation
+    under ``source_collection`` and make the top-level hash/row_count describe the
+    exact clipped CSV consumed by downstream dataset construction.
+    """
+    manifest_path = raw_path.with_suffix(raw_path.suffix + ".manifest.json")
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Collection manifest missing: {manifest_path}")
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    source_collection = payload.get("source_collection")
+    if not isinstance(source_collection, dict):
+        source_collection = {
+            "csv_sha256": payload.get("csv_sha256"),
+            "row_count": payload.get("row_count"),
+        }
+    payload["source_collection"] = source_collection
+    payload["causal_transform"] = {
+        "type": "clip_at_or_before_as_of",
+        "as_of_utc": as_of.astimezone(timezone.utc).isoformat(),
+    }
+    payload["row_count"] = int(row_count)
+    payload["csv_sha256"] = file_sha256(raw_path)
+    manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return manifest_path
+
+
 def collect_and_train(*, symbols: list[str], as_of: datetime, raw_path: Path, dataset_path: Path, model_path: Path, lookback_days: int, feed: str) -> None:
     require_credentials()
     local_day = as_of.astimezone(NY).date()
@@ -123,7 +152,8 @@ def collect_and_train(*, symbols: list[str], as_of: datetime, raw_path: Path, da
     # GitHub scheduled jobs can start late. Always clip the downloaded history to
     # the frozen prediction timestamp before dataset construction so a delayed
     # recovery cannot train on bars that were unavailable at prediction time.
-    clip_raw_history_as_of(raw_path, as_of=as_of)
+    clipped_rows = clip_raw_history_as_of(raw_path, as_of=as_of)
+    refresh_clipped_collection_manifest(raw_path, as_of=as_of, row_count=clipped_rows)
     run_checked([
         sys.executable,
         str(SCRIPTS / "build_premarket_training_dataset_v2.py"),
