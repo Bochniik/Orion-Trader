@@ -39,8 +39,35 @@
   box-shadow: 0 0 18px rgba(255, 122, 26, 0.3);
 }
 
+.analyze-view > .core-empty::after,
+.analyze-view > .core-error::after {
+  position: absolute;
+  top: 17px;
+  right: 20px;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 148, 71, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 167, 102, 0.62);
+  background: rgba(255, 122, 26, 0.035);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.analyze-view > .core-empty::after {
+  content: "ANALYSIS READY";
+}
+
+.analyze-view > .core-error::after {
+  content: "REQUEST ERROR";
+  border-color: rgba(255, 128, 96, 0.18);
+  color: rgba(255, 151, 128, 0.72);
+  background: rgba(255, 104, 78, 0.04);
+}
+
 .analyze-view > .core-empty h2,
 .analyze-view > .core-error h2 {
+  max-width: min(72%, 720px);
   margin: 12px 0 0;
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   letter-spacing: -0.025em;
@@ -56,7 +83,29 @@
 
 .analyze-view > .core-empty .core-button,
 .analyze-view > .core-error .core-button {
+  min-height: 36px;
   margin-top: 18px;
+  border-color: rgba(255, 148, 71, 0.18);
+  background: linear-gradient(180deg, rgba(255, 132, 43, 0.14), rgba(255, 122, 26, 0.06));
+  box-shadow: 0 0 18px rgba(255, 122, 26, 0.045);
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.analyze-view > .core-empty .core-button:hover,
+.analyze-view > .core-error .core-button:hover {
+  border-color: rgba(255, 148, 71, 0.32);
+  background: linear-gradient(180deg, rgba(255, 132, 43, 0.2), rgba(255, 122, 26, 0.09));
+  box-shadow: 0 0 24px rgba(255, 122, 26, 0.08);
+  transform: translateY(-1px);
+}
+
+.analyze-view > .core-empty .core-button:focus-visible,
+.analyze-view > .core-error .core-button:focus-visible {
+  outline: none;
+  border-color: rgba(255, 164, 92, 0.6);
+  box-shadow:
+    0 0 0 3px rgba(255, 122, 26, 0.1),
+    0 0 24px rgba(255, 122, 26, 0.08);
 }
 
 .analyze-view > .core-empty .core-loading-dot {
@@ -84,10 +133,25 @@
 }
 
 .analyze-view > p[role="status"] {
-  padding: 14px 18px 14px 22px;
+  min-height: 50px;
+  padding: 14px 18px 14px 46px;
+  display: flex;
+  align-items: center;
   color: rgba(213, 218, 226, 0.68);
   font-size: 0.82rem;
   letter-spacing: 0.01em;
+}
+
+.analyze-view > p[role="status"]::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid rgba(255, 148, 71, 0.18);
+  border-top-color: rgba(255, 148, 71, 0.8);
+  border-radius: 50%;
+  animation: analysis-status-spin 760ms linear infinite;
 }
 
 .analyze-chart-panel > p {
@@ -117,11 +181,29 @@
   }
 }
 
+@keyframes analysis-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 640px) {
   .analyze-view > .core-empty,
   .analyze-view > .core-error {
     min-height: 190px;
-    padding: 24px 20px;
+    padding: 50px 20px 24px;
+  }
+
+  .analyze-view > .core-empty::after,
+  .analyze-view > .core-error::after {
+    top: 17px;
+    right: auto;
+    left: 20px;
+  }
+
+  .analyze-view > .core-empty h2,
+  .analyze-view > .core-error h2 {
+    max-width: 100%;
   }
 
   .analyze-view > .core-empty .core-button,
@@ -135,7 +217,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .analyze-view > .core-empty .core-loading-dot {
+  .analyze-view > .core-empty .core-loading-dot,
+  .analyze-view > p[role="status"]::after {
     animation: none;
+  }
+
+  .analyze-view > .core-empty .core-button,
+  .analyze-view > .core-error .core-button {
+    transition: none;
   }
 }
