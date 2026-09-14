@@ -89,7 +89,7 @@ def test_normalize_run_keeps_score_blind_delivery_and_commit_identity():
 def test_cross_host_redirect_strips_github_bearer_token():
     request = urllib.request.Request(
         "https://api.github.com/repos/o/r/actions/artifacts/1/zip",
-        headers={"Authorization": "Bearer secret", "Accept": "application/octet-stream"},
+        headers={"Authorization": "Bearer secret", "Accept": "application/vnd.github+json"},
     )
     redirected = actions._SafeRedirectHandler().redirect_request(
         request,
@@ -101,7 +101,47 @@ def test_cross_host_redirect_strips_github_bearer_token():
     )
     assert redirected is not None
     assert redirected.get_header("Authorization") is None
-    assert redirected.get_header("Accept") == "application/octet-stream"
+    assert redirected.get_header("Accept") == "application/vnd.github+json"
+
+
+class _BytesResponse:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self) -> bytes:
+        return self.payload
+
+
+class _RecordingOpener:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+        self.request = None
+        self.timeout = None
+
+    def open(self, request, timeout):
+        self.request = request
+        self.timeout = timeout
+        return _BytesResponse(self.payload)
+
+
+def test_download_artifact_uses_github_json_media_type_for_redirect_endpoint():
+    client = actions.GitHubActionsClient(repository="o/r", token="secret")
+    opener = _RecordingOpener(b"PK\x03\x04fixture")
+    client._opener = opener
+
+    assert client.download_artifact(42) == b"PK\x03\x04fixture"
+    assert opener.request is not None
+    assert opener.timeout == 30
+    assert opener.request.full_url == "https://api.github.com/repos/o/r/actions/artifacts/42/zip"
+    assert opener.request.get_header("Accept") == "application/vnd.github+json"
+    assert opener.request.get_header("Authorization") == "Bearer secret"
+    assert opener.request.get_header("X-github-api-version") == actions.API_VERSION
 
 
 def test_select_shadow_artifact_ignores_expired_wrong_run_and_rejects_ambiguity():
