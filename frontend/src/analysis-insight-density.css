@@ -153,6 +153,39 @@
   line-height: 1.55;
 }
 
+/* Terminal table pass: make existing fundamentals/technical rows easier to
+   scan without changing their data, order, or semantics. */
+.analysis-insight dl > div {
+  position: relative;
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: 7px;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.analysis-insight dl > div:hover {
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.032), rgba(255, 255, 255, 0.008) 72%);
+  border-bottom-color: rgba(255, 148, 71, 0.09);
+}
+
+.analysis-insight dt {
+  line-height: 1.35;
+}
+
+.analysis-insight dd {
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+}
+
+.analysis-insight dl > div:hover dt {
+  color: #89939e;
+}
+
+.analysis-insight dl > div:hover dd {
+  color: #f3f5f7;
+}
+
 @media (max-width: 720px) {
   .analysis-insight dl > div {
     grid-template-columns: minmax(0, 1fr) minmax(96px, 44%);
@@ -170,9 +203,17 @@
   }
 }
 
+@media (max-width: 520px) {
+  .analysis-insight dl > div {
+    margin-inline: -6px;
+    padding-inline: 6px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .analysis-reasons li,
-  .analysis-risks li {
+  .analysis-risks li,
+  .analysis-insight dl > div {
     transition: none;
   }
 }
