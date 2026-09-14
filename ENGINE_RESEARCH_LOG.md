@@ -149,3 +149,24 @@ Focused regression tests cover EDT and EST regime boundaries, horizon-specific r
 ### Next logical engine step
 
 Continue accumulating genuine point-in-time Premarket V5 observations and use these regime/horizon cells only once sample size is sufficient. The current scheduled 09:15 ET cloud-shadow anchor naturally populates the `late` regime; do not infer early/mid performance from it. If broader regime coverage is desired, first pre-register a collection cadence and API-budget/data-quality policy, then collect new forward observations without reusing their outcomes to tune the cadence.
+
+## 2026-09-14 — Repository scheduler delivery incident audit
+
+The live forward-evidence path is currently blocked by GitHub scheduled-event delivery rather than by Orion's market-data or model code.
+
+Evidence:
+- PR #110 (`3bdf07175fbc54ba1afd712e50dec3771c5ac284`) added a minimal `Scheduler delivery canary` with no secrets, market-data calls, model code or evidence logic and refreshed the Premarket V5 / Regular-hours V3.1 cron registrations without changing their decision cadence.
+- The canary was present on the default `main` branch before its 15:17 UTC slot on 2026-09-14, but GitHub created no scheduled run.
+- Repository scheduled-run history still ends on 2026-09-12 while push/PR-triggered activity continues to execute, independently isolating the failure to schedule delivery.
+- Premarket V5 remains registered for frozen 06:45 / 08:00 / 09:15 ET decision timestamps (with score-blind +10 minute recovery transport); Regular-hours V3.1 remains registered hourly through its New York session gate.
+- Multiple contemporaneous GitHub Community reports from 2026-09-08 through 2026-09-10 describe the same failure mode across unrelated repositories: normal push/workflow-dispatch execution works while `schedule` events create no runs.
+
+Decision:
+- Do not alter model weights, probabilities, calibration, risk policy, decision timestamps or evidence semantics to compensate for a transport-level outage.
+- Do not silently backfill missed snapshots as decision-grade point-in-time evidence; that would weaken the frozen forward-validation contract.
+- Keep the independent canary as the liveness probe. Resume decision-grade collection only when genuinely delivered scheduled runs return.
+- A separate external scheduler or credential-bearing fallback is an operational architecture change and requires explicit approval before implementation.
+
+### Next logical engine step
+
+Continue checking the canary and market workflows independently. Once schedule delivery resumes, verify one complete Premarket and Regular-hours session end-to-end, including immutable evidence artifacts and settlement intake, before restarting model-development work that depends on new forward evidence.
