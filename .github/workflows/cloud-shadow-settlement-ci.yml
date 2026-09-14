@@ -7,6 +7,7 @@ on:
       - "scripts/accumulate_cloud_shadow_evidence.py"
       - "scripts/collect_cloud_shadow_outcome_bars.py"
       - "backend/tests/test_cloud_shadow_settlement_evaluator.py"
+      - "backend/tests/test_cloud_shadow_horizon_forward_guard.py"
       - "backend/tests/test_cloud_shadow_evidence_ledger.py"
       - "backend/tests/test_cloud_shadow_outcome_collector.py"
       - "backend/tests/test_regular_hours_timestamp_provenance.py"
@@ -41,6 +42,7 @@ jobs:
       - name: Run focused settlement and evidence tests
         run: |
           python -m pytest -q backend/tests/test_cloud_shadow_settlement_evaluator.py
+          python -m pytest -q backend/tests/test_cloud_shadow_horizon_forward_guard.py
           python -m pytest -q backend/tests/test_cloud_shadow_evidence_ledger.py
           python -m pytest -q backend/tests/test_cloud_shadow_outcome_collector.py
           python -m pytest -q backend/tests/test_regular_hours_timestamp_provenance.py
