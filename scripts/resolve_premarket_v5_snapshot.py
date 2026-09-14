@@ -17,31 +17,35 @@ from scripts.nyse_session_calendar import is_nyse_trading_day
 NY = ZoneInfo("America/New_York")
 RECOVERY_DELAY = timedelta(minutes=10)
 
-# Pre-registered forward collection cadence. These clocks are intentionally fixed
-# before collecting their outcomes and must not be moved in response to model scores.
+# Frozen decision timestamps. They remain unchanged by recovery transport.
 SNAPSHOT_CLOCKS: dict[str, time] = {
     "early": time(6, 45),
     "mid": time(8, 0),
     "late": time(9, 15),
 }
 
-# GitHub Actions schedules are UTC. Both EDT and EST primary slots are declared,
-# together with a fixed +10 minute recovery slot. Recovery preserves the original
-# as-of timestamp and is allowed to collect only after the score-blind idempotency
-# guard proves that no successful evidence artifact already exists for the session.
-REGISTERED_CRON_SLOTS: dict[str, tuple[str, str]] = {
-    "45 10 * * 1-5": ("early", "primary"),
-    "55 10 * * 1-5": ("early", "recovery"),
-    "45 11 * * 1-5": ("early", "primary"),
-    "55 11 * * 1-5": ("early", "recovery"),
-    "0 12 * * 1-5": ("mid", "primary"),
-    "10 12 * * 1-5": ("mid", "recovery"),
-    "0 13 * * 1-5": ("mid", "primary"),
-    "10 13 * * 1-5": ("mid", "recovery"),
-    "15 13 * * 1-5": ("late", "primary"),
-    "25 13 * * 1-5": ("late", "recovery"),
-    "15 14 * * 1-5": ("late", "primary"),
-    "25 14 * * 1-5": ("late", "recovery"),
+# Compatibility and research contract: these are the original primary transport
+# slots only. Delivery/evidence audits intentionally use this mapping to preserve
+# the frozen expected cadence and keep recovery separate from primary delivery.
+REGISTERED_CRON_SLOTS: dict[str, str] = {
+    "45 10 * * 1-5": "early",
+    "45 11 * * 1-5": "early",
+    "0 12 * * 1-5": "mid",
+    "0 13 * * 1-5": "mid",
+    "15 13 * * 1-5": "late",
+    "15 14 * * 1-5": "late",
+}
+
+# Fixed +10 minute score-blind recovery transport. A recovery run preserves the
+# original decision timestamp and may emit evidence only when the idempotency guard
+# proves no successful same-session/same-snapshot evidence artifact already exists.
+RECOVERY_CRON_SLOTS: dict[str, str] = {
+    "55 10 * * 1-5": "early",
+    "55 11 * * 1-5": "early",
+    "10 12 * * 1-5": "mid",
+    "10 13 * * 1-5": "mid",
+    "25 13 * * 1-5": "late",
+    "25 14 * * 1-5": "late",
 }
 
 
@@ -81,10 +85,14 @@ def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None) 
     reference = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
 
     if schedule_cron:
-        registration = REGISTERED_CRON_SLOTS.get(schedule_cron)
-        if registration is None:
+        if schedule_cron in REGISTERED_CRON_SLOTS:
+            snapshot = REGISTERED_CRON_SLOTS[schedule_cron]
+            mode = "primary"
+        elif schedule_cron in RECOVERY_CRON_SLOTS:
+            snapshot = RECOVERY_CRON_SLOTS[schedule_cron]
+            mode = "recovery"
+        else:
             raise ValueError(f"Unregistered Premarket V5 schedule: {schedule_cron}")
-        snapshot, mode = registration
     else:
         # workflow_dispatch preserves the historical 09:15 ET behavior and never
         # masquerades as the scheduled recovery path.
