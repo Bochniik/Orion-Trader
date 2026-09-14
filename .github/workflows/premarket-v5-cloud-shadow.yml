@@ -9,17 +9,27 @@ on:
         required: false
         default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
   schedule:
-    # Pre-registered forward cadence: 06:45 (early), 08:00 (mid), 09:15 (late) ET.
-    # Both EDT and EST UTC slots are declared. The resolver activates exactly one
-    # slot per snapshot/session and fails closed for the inactive DST duplicate.
+    # Frozen decision timestamps remain 06:45 / 08:00 / 09:15 ET.
+    # Each primary slot has a fixed +10 minute recovery opportunity. The recovery
+    # preserves the original as-of timestamp and collects only when the score-blind
+    # guard proves that no successful same-session evidence artifact already exists.
+    # EDT primary/recovery slots.
     - cron: "45 10 * * 1-5"
-    - cron: "45 11 * * 1-5"
+    - cron: "55 10 * * 1-5"
     - cron: "0 12 * * 1-5"
-    - cron: "0 13 * * 1-5"
+    - cron: "10 12 * * 1-5"
     - cron: "15 13 * * 1-5"
+    - cron: "25 13 * * 1-5"
+    # EST primary/recovery slots.
+    - cron: "45 11 * * 1-5"
+    - cron: "55 11 * * 1-5"
+    - cron: "0 13 * * 1-5"
+    - cron: "10 13 * * 1-5"
     - cron: "15 14 * * 1-5"
+    - cron: "25 14 * * 1-5"
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -52,6 +62,7 @@ jobs:
         run: |
           echo "Skipping inactive Premarket V5 schedule slot: ${{ steps.target.outputs.reason }}"
           echo "Snapshot: ${{ steps.target.outputs.snapshot }}"
+          echo "Mode: ${{ steps.target.outputs.mode }}"
           echo "Registered target: ${{ steps.target.outputs.as_of_et }}"
 
       - uses: actions/setup-python@v5
@@ -61,12 +72,32 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
+      - name: Guard recovery against duplicate decision-grade evidence
+        id: claim
+        if: steps.target.outputs.active == 'true' && steps.target.outputs.mode == 'recovery'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/guard_premarket_v5_recovery.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --session "${{ steps.target.outputs.session }}" \
+            --snapshot "${{ steps.target.outputs.snapshot }}" \
+            --current-run-id "$GITHUB_RUN_ID" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Report idempotent recovery skip
+        if: steps.target.outputs.active == 'true' && steps.target.outputs.mode == 'recovery' && steps.claim.outputs.collect_allowed != 'true'
+        run: |
+          echo "Recovery collection skipped: ${{ steps.claim.outputs.reason }}"
+          echo "Existing run: ${{ steps.claim.outputs.blocking_run_id }}"
+          echo "Existing artifact: ${{ steps.claim.outputs.blocking_artifact }}"
+
       - name: Install backend dependencies
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && (steps.target.outputs.mode != 'recovery' || steps.claim.outputs.collect_allowed == 'true')
         run: python -m pip install -r backend/requirements.txt
 
       - name: Verify cloud credentials are configured
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && (steps.target.outputs.mode != 'recovery' || steps.claim.outputs.collect_allowed == 'true')
         shell: bash
         run: |
           if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
@@ -75,7 +106,7 @@ jobs:
           fi
 
       - name: Run and attest premarket v5 shadow prediction
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && (steps.target.outputs.mode != 'recovery' || steps.claim.outputs.collect_allowed == 'true')
         shell: bash
         run: |
           SYMBOLS="${{ github.event.inputs.symbols }}"
@@ -84,7 +115,7 @@ jobs:
           fi
           OUTPUT="backend/data/cloud_shadow/premarket_v5/prediction-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}.json"
           COLLECTION_STARTED_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          echo "Collecting ${{ steps.target.outputs.snapshot }} Premarket V5 snapshot at ${{ steps.target.outputs.as_of_et }}"
+          echo "Collecting ${{ steps.target.outputs.snapshot }} Premarket V5 ${{ steps.target.outputs.mode }} snapshot for ${{ steps.target.outputs.as_of_et }}"
           python scripts/run_premarket_v5_cloud_shadow.py \
             --symbols $SYMBOLS \
             --as-of "${{ steps.target.outputs.as_of }}" \
@@ -102,7 +133,7 @@ jobs:
             --github-head-sha "$GITHUB_SHA"
 
       - name: Upload immutable shadow evidence
-        if: always() && steps.target.outputs.active == 'true'
+        if: always() && steps.target.outputs.active == 'true' && (steps.target.outputs.mode != 'recovery' || steps.claim.outputs.collect_allowed == 'true')
         uses: actions/upload-artifact@v4
         with:
           name: premarket-v5-shadow-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}
