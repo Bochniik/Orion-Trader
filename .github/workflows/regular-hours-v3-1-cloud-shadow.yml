@@ -39,16 +39,28 @@ jobs:
             --event-name "${{ github.event_name }}" \
             --scheduled-cron "${{ github.event.schedule }}" \
             --output backend/data/cloud_shadow/regular_hours_v3_1/schedule-delivery-${{ github.run_id }}.json
-      - name: Run regular-hours V3.1 shadow prediction
+      - name: Run and attest regular-hours V3.1 shadow prediction
         shell: bash
         run: |
+          set -euo pipefail
           SYMBOLS="${{ github.event.inputs.symbols }}"
           if [ -z "$SYMBOLS" ]; then
             SYMBOLS="AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
           fi
+          OUTPUT="backend/data/cloud_shadow/regular_hours_v3_1/prediction-${{ github.run_id }}.json"
+          COLLECTION_STARTED_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           python scripts/run_regular_hours_v3_1_cloud_shadow.py \
             --symbols $SYMBOLS \
-            --output backend/data/cloud_shadow/regular_hours_v3_1/prediction-${{ github.run_id }}.json
+            --output "$OUTPUT"
+          COLLECTION_COMPLETED_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          python scripts/finalize_regular_hours_v3_1_forward_artifact.py \
+            --input "$OUTPUT" \
+            --collection-started-at "$COLLECTION_STARTED_AT_UTC" \
+            --collection-completed-at "$COLLECTION_COMPLETED_AT_UTC" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --github-head-sha "$GITHUB_SHA"
       - name: Upload immutable shadow evidence and delivery diagnostics
         if: always()
         uses: actions/upload-artifact@v4

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 from typing import Any, Iterable
 
 from scripts.audit_regular_hours_collection_health import (
@@ -11,9 +12,12 @@ from scripts.audit_regular_hours_collection_health import (
     build_health_report,
 )
 
-REPORT_CONTRACT = "orion-regular-hours-collection-health-v4"
+REPORT_CONTRACT = "orion-regular-hours-collection-health-v5"
 FORWARD_PROTOCOL_ID = "regular-hours-v3-1-forward-validation-2026-09-12"
 MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION = 30
+PROVENANCE_SCHEMA = "regular-hours-v3-1-acquisition-provenance-v1"
+SHA40_RE = re.compile(r"^[0-9a-f]{40}$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _session_is_complete(row: dict[str, Any]) -> bool:
@@ -32,6 +36,35 @@ def _session_is_complete(row: dict[str, Any]) -> bool:
         and isinstance(lineages, list)
         and len(lineages) == 1
     )
+
+
+def _validate_acquisition_provenance(payload: dict[str, Any]) -> bool | None:
+    provenance = payload.get("acquisition_provenance")
+    if provenance is None:
+        return None
+    if not isinstance(provenance, dict):
+        raise CollectionHealthError("acquisition_provenance must be an object")
+    if provenance.get("schema") != PROVENANCE_SCHEMA:
+        raise CollectionHealthError("unexpected acquisition_provenance schema")
+    event_name = str(provenance.get("event_name") or "")
+    if event_name not in {"schedule", "workflow_dispatch"}:
+        raise CollectionHealthError("acquisition_provenance.event_name is invalid")
+    if int(provenance.get("workflow_run_id") or 0) <= 0:
+        raise CollectionHealthError("acquisition_provenance.workflow_run_id must be positive")
+    if int(provenance.get("run_attempt") or 0) <= 0:
+        raise CollectionHealthError("acquisition_provenance.run_attempt must be positive")
+    head_sha = str(provenance.get("github_head_sha") or "").lower()
+    if not SHA40_RE.fullmatch(head_sha):
+        raise CollectionHealthError("acquisition_provenance.github_head_sha must be a Git SHA")
+    source_sha = str(provenance.get("source_payload_sha256") or "").lower()
+    if not SHA256_RE.fullmatch(source_sha):
+        raise CollectionHealthError("acquisition_provenance.source_payload_sha256 must be SHA-256")
+    forward_eligible = provenance.get("forward_eligible")
+    if not isinstance(forward_eligible, bool):
+        raise CollectionHealthError("acquisition_provenance.forward_eligible must be boolean")
+    if forward_eligible and event_name != "schedule":
+        raise CollectionHealthError("only scheduled artifacts can be forward_eligible")
+    return forward_eligible
 
 
 def add_session_completeness(report: dict[str, Any]) -> dict[str, Any]:
@@ -57,8 +90,7 @@ def add_session_completeness(report: dict[str, Any]) -> dict[str, Any]:
     cohort_sessions = [
         session
         for session in complete_sessions
-        if active_lineage
-        and by_session[session].get("predictive_lineages") == [active_lineage]
+        if active_lineage and by_session[session].get("predictive_lineages") == [active_lineage]
     ]
     cohort_count = len(cohort_sessions)
     remaining = max(0, MIN_COMPLETE_SESSIONS_FOR_SCORE_INSPECTION - cohort_count)
@@ -84,13 +116,32 @@ def add_session_completeness(report: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_completeness_report(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
-    return add_session_completeness(build_health_report(payloads))
+    all_payloads = list(payloads)
+    eligible: list[dict[str, Any]] = []
+    non_forward = 0
+    unattested = 0
+    for payload in all_payloads:
+        state = _validate_acquisition_provenance(payload)
+        if state is True:
+            eligible.append(payload)
+        elif state is False:
+            non_forward += 1
+        else:
+            unattested += 1
+
+    report = add_session_completeness(build_health_report(eligible))
+    report["recovered_artifact_count"] = len(all_payloads)
+    report["forward_eligible_artifact_count"] = len(eligible)
+    report["non_forward_artifact_count"] = non_forward
+    report["unattested_legacy_artifact_count"] = unattested
+    report["forward_population_requires_attestation"] = True
+    return report
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Audit complete regular-hours V3.1 standard sessions and apply the "
+            "Audit attested regular-hours V3.1 forward sessions and apply the "
             "pre-registered score-inspection gate without reading predictive scores."
         )
     )
