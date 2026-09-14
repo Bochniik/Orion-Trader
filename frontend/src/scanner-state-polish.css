@@ -85,14 +85,67 @@
   box-shadow: inset 2px 0 0 rgba(255, 122, 26, 0.5);
 }
 
+/* Compact scanner telemetry: presentation only; values remain backend-owned. */
 .scanner-progress {
-  border: 1px solid rgba(255, 255, 255, 0.055);
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  margin: 10px 0 14px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.012);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.028), transparent 34%),
+    rgba(255, 255, 255, 0.01);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.018),
+    0 10px 26px rgba(0, 0, 0, 0.08);
+}
+
+.scanner-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, transparent 10%, rgba(255, 122, 26, 0.68), transparent 90%);
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .scanner-progress span {
+  position: relative;
+  min-width: 0;
+  padding: 9px 14px 9px 16px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.35;
+  letter-spacing: 0.025em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.scanner-progress span + span {
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.scanner-progress span::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 122, 26, 0.5);
+  box-shadow: 0 0 8px rgba(255, 122, 26, 0.22);
+  transform: translateY(-50%);
+}
+
+.scanner-progress span:last-child {
+  color: rgba(255, 201, 160, 0.72);
 }
 
 .scanner-section-label {
@@ -300,14 +353,25 @@
   50% { opacity: 1; transform: scale(1); }
 }
 
+@media (max-width: 760px) {
+  .scanner-progress {
+    grid-template-columns: 1fr;
+  }
+
+  .scanner-progress span + span {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.045);
+  }
+}
+
 @media (max-width: 640px) {
   .scanner-empty {
     min-height: 124px;
     padding: 18px;
   }
 
-  .scanner-progress {
-    gap: 6px;
+  .scanner-progress span {
+    padding: 8px 12px 8px 15px;
   }
 
   .scanner-candidate-card {
