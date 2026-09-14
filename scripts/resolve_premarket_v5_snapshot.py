@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-from datetime import datetime, time, timezone
+from datetime import datetime, time, timedelta, timezone
 import json
 from pathlib import Path
 import sys
@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 from scripts.nyse_session_calendar import is_nyse_trading_day
 
 NY = ZoneInfo("America/New_York")
+RECOVERY_DELAY = timedelta(minutes=10)
 
 # Pre-registered forward collection cadence. These clocks are intentionally fixed
 # before collecting their outcomes and must not be moved in response to model scores.
@@ -24,16 +25,23 @@ SNAPSHOT_CLOCKS: dict[str, time] = {
     "late": time(9, 15),
 }
 
-# GitHub Actions schedules are UTC. Both EDT and EST slots are declared so the
-# workflow remains DST-safe; this resolver makes exactly one slot active per
-# snapshot/session and fails closed for the inactive duplicate.
-REGISTERED_CRON_SLOTS: dict[str, str] = {
-    "45 10 * * 1-5": "early",
-    "45 11 * * 1-5": "early",
-    "0 12 * * 1-5": "mid",
-    "0 13 * * 1-5": "mid",
-    "15 13 * * 1-5": "late",
-    "15 14 * * 1-5": "late",
+# GitHub Actions schedules are UTC. Both EDT and EST primary slots are declared,
+# together with a fixed +10 minute recovery slot. Recovery preserves the original
+# as-of timestamp and is allowed to collect only after the score-blind idempotency
+# guard proves that no successful evidence artifact already exists for the session.
+REGISTERED_CRON_SLOTS: dict[str, tuple[str, str]] = {
+    "45 10 * * 1-5": ("early", "primary"),
+    "55 10 * * 1-5": ("early", "recovery"),
+    "45 11 * * 1-5": ("early", "primary"),
+    "55 11 * * 1-5": ("early", "recovery"),
+    "0 12 * * 1-5": ("mid", "primary"),
+    "10 12 * * 1-5": ("mid", "recovery"),
+    "0 13 * * 1-5": ("mid", "primary"),
+    "10 13 * * 1-5": ("mid", "recovery"),
+    "15 13 * * 1-5": ("late", "primary"),
+    "25 13 * * 1-5": ("late", "recovery"),
+    "15 14 * * 1-5": ("late", "primary"),
+    "25 14 * * 1-5": ("late", "recovery"),
 }
 
 
@@ -42,6 +50,7 @@ class SnapshotResolution:
     active: bool
     reason: str
     snapshot: str
+    mode: str
     as_of_utc: datetime
     as_of_et: datetime
 
@@ -72,26 +81,32 @@ def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None) 
     reference = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
 
     if schedule_cron:
-        snapshot = REGISTERED_CRON_SLOTS.get(schedule_cron)
-        if snapshot is None:
+        registration = REGISTERED_CRON_SLOTS.get(schedule_cron)
+        if registration is None:
             raise ValueError(f"Unregistered Premarket V5 schedule: {schedule_cron}")
+        snapshot, mode = registration
     else:
-        # workflow_dispatch preserves the historical 09:15 ET behavior.
-        snapshot = "late"
+        # workflow_dispatch preserves the historical 09:15 ET behavior and never
+        # masquerades as the scheduled recovery path.
+        snapshot, mode = "late", "manual"
 
     target_utc, target_et = _target_for_local_day(snapshot, reference=reference)
 
     if target_et.weekday() >= 5:
-        return SnapshotResolution(False, "weekend", snapshot, target_utc, target_et)
+        return SnapshotResolution(False, "weekend", snapshot, mode, target_utc, target_et)
     if not is_nyse_trading_day(target_et.date()):
-        return SnapshotResolution(False, "market_holiday", snapshot, target_utc, target_et)
+        return SnapshotResolution(False, "market_holiday", snapshot, mode, target_utc, target_et)
 
     if schedule_cron:
+        scheduled_target_utc = target_utc + (RECOVERY_DELAY if mode == "recovery" else timedelta(0))
         cron_hour, cron_minute = _cron_clock(schedule_cron)
-        if (target_utc.hour, target_utc.minute) != (cron_hour, cron_minute):
-            return SnapshotResolution(False, "inactive_dst_slot", snapshot, target_utc, target_et)
+        if (scheduled_target_utc.hour, scheduled_target_utc.minute) != (cron_hour, cron_minute):
+            return SnapshotResolution(False, "inactive_dst_slot", snapshot, mode, target_utc, target_et)
 
-    return SnapshotResolution(True, "registered_snapshot", snapshot, target_utc, target_et)
+    reason = "registered_recovery" if mode == "recovery" else "registered_snapshot"
+    if mode == "manual":
+        reason = "manual_dispatch"
+    return SnapshotResolution(True, reason, snapshot, mode, target_utc, target_et)
 
 
 def _write_github_output(path: Path, resolution: SnapshotResolution) -> None:
@@ -100,6 +115,8 @@ def _write_github_output(path: Path, resolution: SnapshotResolution) -> None:
         handle.write(f"active={'true' if resolution.active else 'false'}\n")
         handle.write(f"reason={resolution.reason}\n")
         handle.write(f"snapshot={resolution.snapshot}\n")
+        handle.write(f"mode={resolution.mode}\n")
+        handle.write(f"session={resolution.as_of_et.date().isoformat()}\n")
         handle.write(f"as_of={resolution.as_of_utc.isoformat()}\n")
         handle.write(f"as_of_et={resolution.as_of_et.isoformat()}\n")
 
@@ -122,6 +139,8 @@ def main() -> int:
         "active": resolution.active,
         "reason": resolution.reason,
         "snapshot": resolution.snapshot,
+        "mode": resolution.mode,
+        "session": resolution.as_of_et.date().isoformat(),
         "as_of_utc": resolution.as_of_utc.isoformat(),
         "as_of_et": resolution.as_of_et.isoformat(),
     }
