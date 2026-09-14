@@ -61,7 +61,7 @@ def _payload(day: date, snapshot: str, run_id: str, *, complete: bool = True, la
     return attestation.finalize_payload(
         payload,
         collection_started_at=as_of + timedelta(minutes=lag),
-        collection_completed_at=as_of + timedelta(minutes=lag + 5),
+        collection_completed_at=as_of + timedelta(minutes=lag + 2),
         event_name="schedule",
         run_id=run_id,
         run_attempt=1,
