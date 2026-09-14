@@ -98,16 +98,19 @@ def test_healthy_mature_slots_are_decision_grade_but_cohort_remains_young():
 
     report = evidence.build_evidence_health_report(runs, payloads, start_date=day, as_of=_as_of(day))
 
+    assert report["contract"] == "orion-premarket-v5-evidence-health-v2"
     assert report["score_blind"] is True
     assert report["metrics_exposed"] is False
     assert report["summary"]["status_counts"]["decision_grade_complete"] == 3
     assert report["summary"]["all_mature_slots_decision_grade_complete"] is True
-    assert report["summary"]["operationally_clean"] is True
+    assert report["summary"]["historically_gap_free"] is True
+    assert report["summary"]["structurally_clean"] is True
     assert report["summary"]["ready_for_issue_3_score_inspection"] is False
+    assert report["summary"]["historical_incident_layers"] == []
     assert report["summary"]["blocking_layers"] == ["cohort_maturity"]
 
 
-def test_missing_failed_and_missing_artifact_are_attributed_to_distinct_layers():
+def test_missing_failed_and_missing_artifact_are_attributed_to_incident_layers():
     day = date(2026, 9, 11)
     runs = [
         _run(day, "mid", "2", conclusion="failure"),
@@ -119,11 +122,12 @@ def test_missing_failed_and_missing_artifact_are_attributed_to_distinct_layers()
     assert counts["missing_delivery"] == 1
     assert counts["workflow_unsuccessful"] == 1
     assert counts["artifact_missing_after_success"] == 1
-    assert report["summary"]["blocking_layers"][:3] == [
+    assert report["summary"]["historical_incident_layers"][:3] == [
         "delivery",
         "workflow_execution",
         "artifact_persistence",
     ]
+    assert report["summary"]["blocking_layers"] == ["cohort_maturity"]
 
 
 def test_forecast_and_acquisition_failures_are_separated():
@@ -141,8 +145,41 @@ def test_forecast_and_acquisition_failures_are_separated():
     assert counts["forecast_incomplete"] == 1
     assert counts["acquisition_ineligible"] == 1
     assert counts["decision_grade_complete"] == 1
-    assert "forecast_completeness" in report["summary"]["blocking_layers"]
-    assert "acquisition_eligibility" in report["summary"]["blocking_layers"]
+    assert "forecast_completeness" in report["summary"]["historical_incident_layers"]
+    assert "acquisition_eligibility" in report["summary"]["historical_incident_layers"]
+    assert report["summary"]["blocking_layers"] == ["cohort_maturity"]
+
+
+def test_historical_transport_incident_does_not_permanently_poison_mature_cohort(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(health, "REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT", 1)
+    first = date(2026, 9, 10)
+    second = date(2026, 9, 11)
+    runs = [
+        _run(first, "early", "1", conclusion="failure"),
+        _run(first, "mid", "2"),
+        _run(first, "late", "3"),
+        _run(second, "early", "4"),
+        _run(second, "mid", "5"),
+        _run(second, "late", "6"),
+    ]
+    payloads = [
+        _payload(first, "mid", "2"),
+        _payload(first, "late", "3"),
+        _payload(second, "early", "4"),
+        _payload(second, "mid", "5"),
+        _payload(second, "late", "6"),
+    ]
+
+    report = evidence.build_evidence_health_report(runs, payloads, start_date=first, as_of=_as_of(second))
+
+    assert report["forward_readiness"]["readiness"]["ready_for_issue_3_score_inspection"] is True
+    assert report["summary"]["status_counts"]["workflow_unsuccessful"] == 1
+    assert report["summary"]["historically_gap_free"] is False
+    assert report["summary"]["operationally_clean"] is False
+    assert report["summary"]["structurally_clean"] is True
+    assert report["summary"]["historical_incident_layers"] == ["workflow_execution"]
+    assert report["summary"]["blocking_layers"] == []
+    assert report["summary"]["ready_for_issue_3_score_inspection"] is True
 
 
 def test_score_inspection_fails_closed_when_mature_artifact_is_unmatched(monkeypatch: pytest.MonkeyPatch):
@@ -160,8 +197,8 @@ def test_score_inspection_fails_closed_when_mature_artifact_is_unmatched(monkeyp
     assert report["forward_readiness"]["readiness"]["ready_for_issue_3_score_inspection"] is True
     assert report["summary"]["unmatched_artifact_count"] == 1
     assert report["summary"]["operationally_clean"] is False
+    assert report["summary"]["structurally_clean"] is False
     assert report["summary"]["ready_for_issue_3_score_inspection"] is False
-    assert "artifact_persistence" in report["summary"]["blocking_layers"]
     assert "unmatched_artifact" in report["summary"]["blocking_layers"]
     assert "cohort_maturity" not in report["summary"]["blocking_layers"]
 
@@ -182,6 +219,7 @@ def test_score_inspection_fails_closed_on_duplicate_delivery(monkeypatch: pytest
     assert report["forward_readiness"]["readiness"]["ready_for_issue_3_score_inspection"] is True
     assert report["summary"]["duplicate_delivery_count"] == 1
     assert report["summary"]["operationally_clean"] is False
+    assert report["summary"]["structurally_clean"] is False
     assert report["summary"]["ready_for_issue_3_score_inspection"] is False
     assert "duplicate_delivery" in report["summary"]["blocking_layers"]
 
