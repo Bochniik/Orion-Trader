@@ -45,7 +45,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .long-shadow/predictions .long-shadow/prior .long-shadow/recovered
-          CUTOFF_EPOCH=$(date -u -d '35 days ago' +%s)
+          : > .long-shadow/recovered-run-ids.txt
+          CUTOFF_ISO=$(date -u -d '35 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          CUTOFF_EPOCH=$(date -u -d "$CUTOFF_ISO" +%s)
           COUNT=0
           LEDGER_FOUND=0
           gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
@@ -131,11 +133,30 @@ jobs:
                 --artifact-name "$ARTIFACT_NAME" \
                 --run-metadata "/tmp/long-run-${RUN_ID}.json"
               cp "$PREDICTION" ".long-shadow/predictions/prediction-${RUN_ID}.json"
+              printf '%s\n' "$RUN_ID" >> .long-shadow/recovered-run-ids.txt
               COUNT=$((COUNT + 1))
             fi
           done < /tmp/long-shadow-artifacts.tsv
           echo "prediction_artifacts=$COUNT" >> "$GITHUB_OUTPUT"
           echo "ledger_found=$LEDGER_FOUND" >> "$GITHUB_OUTPUT"
+          echo "cutoff_iso=$CUTOFF_ISO" >> "$GITHUB_OUTPUT"
+      - name: Build scheduled run recovery health
+        if: steps.recover.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backend/data/cloud_shadow/long_horizon_v5/health
+          gh api --paginate --slurp -X GET \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/long-horizon-v5-cloud-shadow.yml/runs" \
+            -f event=schedule \
+            -f per_page=100 \
+            -f created=">=${{ steps.recover.outputs.cutoff_iso }}" \
+            | jq '[.[].workflow_runs[]]' > /tmp/long-shadow-scheduled-runs.json
+          python scripts/summarize_long_horizon_v5_run_recovery_health.py \
+            --runs /tmp/long-shadow-scheduled-runs.json \
+            --recovered-run-ids .long-shadow/recovered-run-ids.txt \
+            --cutoff "${{ steps.recover.outputs.cutoff_iso }}" \
+            --output backend/data/cloud_shadow/long_horizon_v5/health/run-recovery-health-${{ github.run_id }}.json
       - name: Build aggregate score-blind collection health
         if: steps.recover.outputs.prediction_artifacts != '0'
         shell: bash
@@ -211,6 +232,14 @@ jobs:
           path: backend/data/cloud_shadow/long_horizon_v5/
           if-no-files-found: warn
           retention-days: 45
+      - name: Upload scheduled run recovery health
+        if: steps.recover.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-horizon-v5-run-recovery-health-${{ github.run_id }}
+          path: backend/data/cloud_shadow/long_horizon_v5/health/run-recovery-health-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Upload aggregate score-blind collection health
         if: steps.recover.outputs.prediction_artifacts != '0'
         uses: actions/upload-artifact@v4
