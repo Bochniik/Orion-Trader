@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 CONTRACT = "orion-long-horizon-v5-paired-shadow-v1"
-SUMMARY_CONTRACT = "orion-long-horizon-v5-collection-health-v3"
+SUMMARY_CONTRACT = "orion-long-horizon-v5-collection-health-v4"
 SUPPORTED_STATUSES = {"completed", "degraded", "skipped"}
 SUPPORTED_HORIZONS = {"3h", "5h"}
 
@@ -122,14 +122,18 @@ def _validated_forward_projection(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("skipped run cannot expect prediction pairs")
 
     normalized_failures: dict[str, Any] = {}
+    requested_symbols = set(normalized_symbols)
     for symbol, reason in failures.items():
         normalized_symbol = str(symbol).strip().upper()
-        if normalized_symbol not in set(normalized_symbols):
+        if normalized_symbol not in requested_symbols:
             raise ValueError("failures contains a symbol outside symbols_requested")
         normalized_failures[normalized_symbol] = reason
 
     return {
         "status": status,
+        "symbols": normalized_symbols,
+        "eligible_horizons": normalized_horizons,
+        "missing_pairs": missing_pairs,
         "expected_pair_count": expected,
         "observed_pair_count": observed,
         "complete": complete,
@@ -137,10 +141,30 @@ def _validated_forward_projection(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _empty_horizon_health() -> dict[str, int]:
+    return {
+        "eligible_run_count": 0,
+        "complete_run_count": 0,
+        "expected_pair_count": 0,
+        "observed_pair_count": 0,
+        "missing_pair_count": 0,
+    }
+
+
+def _render_horizon_health(values: dict[str, int]) -> dict[str, Any]:
+    expected = values["expected_pair_count"]
+    rate = None if expected == 0 else round(values["observed_pair_count"] / expected, 6)
+    return {
+        **values,
+        "observed_pair_rate": rate,
+    }
+
+
 def summarize_payloads(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
     status_counts: Counter[str] = Counter()
     reason_counts: Counter[str] = Counter()
     symbols_by_reason: dict[str, set[str]] = defaultdict(set)
+    horizon_health = {horizon: _empty_horizon_health() for horizon in sorted(SUPPORTED_HORIZONS)}
     input_run_count = 0
     forward_eligible_runs = 0
     ignored_non_forward_runs = 0
@@ -162,6 +186,21 @@ def summarize_payloads(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
         if projection["complete"]:
             complete_runs += 1
 
+        missing_pairs = set(projection["missing_pairs"])
+        for horizon in projection["eligible_horizons"]:
+            values = horizon_health[horizon]
+            horizon_expected = len(projection["symbols"])
+            horizon_missing = sum(
+                1 for symbol in projection["symbols"] if (symbol, horizon) in missing_pairs
+            )
+            horizon_observed = horizon_expected - horizon_missing
+            values["eligible_run_count"] += 1
+            values["expected_pair_count"] += horizon_expected
+            values["observed_pair_count"] += horizon_observed
+            values["missing_pair_count"] += horizon_missing
+            if horizon_missing == 0:
+                values["complete_run_count"] += 1
+
         for symbol, reason in projection["failures"].items():
             category = _reason_category(reason)
             reason_counts[category] += 1
@@ -170,6 +209,11 @@ def summarize_payloads(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
     coverage_rate = None
     if expected_pairs > 0:
         coverage_rate = round(observed_pairs / expected_pairs, 6)
+
+    by_horizon = {
+        horizon: _render_horizon_health(horizon_health[horizon])
+        for horizon in sorted(horizon_health)
+    }
 
     return {
         "contract": SUMMARY_CONTRACT,
@@ -184,7 +228,9 @@ def summarize_payloads(payloads: Iterable[dict[str, Any]]) -> dict[str, Any]:
             "expected_pair_count": expected_pairs,
             "observed_pair_count": observed_pairs,
             "observed_pair_rate": coverage_rate,
+            "by_horizon": by_horizon,
         },
+        "critical_5h": dict(by_horizon["5h"]),
         "failure_reason_counts": dict(sorted(reason_counts.items())),
         "affected_symbols_by_reason": {
             reason: sorted(symbols_by_reason[reason]) for reason in sorted(symbols_by_reason)
