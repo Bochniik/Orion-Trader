@@ -140,7 +140,7 @@ jobs:
           echo "prediction_artifacts=$COUNT" >> "$GITHUB_OUTPUT"
           echo "ledger_found=$LEDGER_FOUND" >> "$GITHUB_OUTPUT"
           echo "cutoff_iso=$CUTOFF_ISO" >> "$GITHUB_OUTPUT"
-      - name: Build scheduled run recovery health
+      - name: Build scheduled workflow delivery health
         if: steps.recover.outcome == 'success'
         shell: bash
         run: |
@@ -152,6 +152,16 @@ jobs:
             -f per_page=100 \
             -f created=">=${{ steps.recover.outputs.cutoff_iso }}" \
             | jq '[.[].workflow_runs[]]' > /tmp/long-shadow-scheduled-runs.json
+          python scripts/audit_long_horizon_v5_schedule_delivery.py \
+            --runs /tmp/long-shadow-scheduled-runs.json \
+            --start "${{ steps.recover.outputs.cutoff_iso }}" \
+            --as-of "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --output backend/data/cloud_shadow/long_horizon_v5/health/schedule-delivery-health-${{ github.run_id }}.json
+      - name: Build scheduled run recovery health
+        if: steps.recover.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
           python scripts/summarize_long_horizon_v5_run_recovery_health.py \
             --runs /tmp/long-shadow-scheduled-runs.json \
             --recovered-run-ids .long-shadow/recovered-run-ids.txt \
@@ -232,6 +242,14 @@ jobs:
           path: backend/data/cloud_shadow/long_horizon_v5/
           if-no-files-found: warn
           retention-days: 45
+      - name: Upload scheduled workflow delivery health
+        if: steps.recover.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: long-horizon-v5-schedule-delivery-health-${{ github.run_id }}
+          path: backend/data/cloud_shadow/long_horizon_v5/health/schedule-delivery-health-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Upload scheduled run recovery health
         if: steps.recover.outcome == 'success'
         uses: actions/upload-artifact@v4
