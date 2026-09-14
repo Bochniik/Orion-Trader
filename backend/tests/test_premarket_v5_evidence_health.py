@@ -92,7 +92,7 @@ def _as_of(day: date) -> datetime:
 
 
 def test_healthy_mature_slots_are_decision_grade_but_cohort_remains_young():
-    day = date(2026, 9, 11)
+    day = date(2026, 9, 14)
     runs = [_run(day, snapshot, str(index)) for index, snapshot in enumerate(resolver.SNAPSHOT_CLOCKS, start=1)]
     payloads = [_payload(day, snapshot, str(index)) for index, snapshot in enumerate(resolver.SNAPSHOT_CLOCKS, start=1)]
 
@@ -111,7 +111,7 @@ def test_healthy_mature_slots_are_decision_grade_but_cohort_remains_young():
 
 
 def test_missing_failed_and_missing_artifact_are_attributed_to_incident_layers():
-    day = date(2026, 9, 11)
+    day = date(2026, 9, 14)
     runs = [
         _run(day, "mid", "2", conclusion="failure"),
         _run(day, "late", "3"),
@@ -131,7 +131,7 @@ def test_missing_failed_and_missing_artifact_are_attributed_to_incident_layers()
 
 
 def test_forecast_and_acquisition_failures_are_separated():
-    day = date(2026, 9, 11)
+    day = date(2026, 9, 14)
     runs = [_run(day, "early", "1"), _run(day, "mid", "2"), _run(day, "late", "3")]
     payloads = [
         _payload(day, "early", "1", complete=False),
@@ -152,8 +152,8 @@ def test_forecast_and_acquisition_failures_are_separated():
 
 def test_historical_transport_incident_does_not_permanently_poison_mature_cohort(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(health, "REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT", 1)
-    first = date(2026, 9, 10)
-    second = date(2026, 9, 11)
+    first = date(2026, 9, 14)
+    second = date(2026, 9, 15)
     runs = [
         _run(first, "early", "1", conclusion="failure"),
         _run(first, "mid", "2"),
@@ -184,7 +184,7 @@ def test_historical_transport_incident_does_not_permanently_poison_mature_cohort
 
 def test_score_inspection_fails_closed_when_mature_artifact_is_unmatched(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(health, "REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT", 1)
-    day = date(2026, 9, 11)
+    day = date(2026, 9, 14)
     runs = [_run(day, "early", "1"), _run(day, "mid", "2"), _run(day, "late", "3")]
     payloads = [
         _payload(day, "early", "1"),
@@ -205,7 +205,7 @@ def test_score_inspection_fails_closed_when_mature_artifact_is_unmatched(monkeyp
 
 def test_score_inspection_fails_closed_on_duplicate_delivery(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(health, "REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT", 1)
-    day = date(2026, 9, 11)
+    day = date(2026, 9, 14)
     runs = [
         _run(day, "early", "1"),
         _run(day, "early", "11"),
@@ -225,7 +225,7 @@ def test_score_inspection_fails_closed_on_duplicate_delivery(monkeypatch: pytest
 
 
 def test_score_changes_do_not_change_evidence_health_classification():
-    day = date(2026, 9, 11)
+    day = date(2026, 9, 14)
     runs = [_run(day, "late", "3")]
     baseline_payload = _payload(day, "late", "3")
     changed = deepcopy(baseline_payload)
