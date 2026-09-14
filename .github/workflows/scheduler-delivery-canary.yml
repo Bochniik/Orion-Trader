@@ -1,0 +1,54 @@
+name: Scheduler delivery canary
+run-name: Scheduler canary ${{ github.event_name }} ${{ github.event.schedule || 'manual' }}
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Lightweight repository-level liveness probe. It intentionally does not touch
+    # market data, model state, secrets, or decision-grade evidence.
+    - cron: "17 10-21 * * 1-5"
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Record scheduler delivery evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p scheduler-canary
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          payload = {
+              "schema_version": 1,
+              "purpose": "repository_schedule_delivery_canary",
+              "observed_at_utc": datetime.now(timezone.utc).isoformat(),
+              "event_name": os.environ["GITHUB_EVENT_NAME"],
+              "scheduled_cron": os.environ.get("SCHEDULE_CRON", ""),
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "head_sha": os.environ["GITHUB_SHA"],
+          }
+          output = Path("scheduler-canary") / f"delivery-{payload['run_id']}.json"
+          output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(output)
+          PY
+        env:
+          SCHEDULE_CRON: ${{ github.event.schedule }}
+
+      - name: Upload immutable canary evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduler-delivery-canary-${{ github.run_id }}
+          path: scheduler-canary/*.json
+          if-no-files-found: error
+          retention-days: 7
