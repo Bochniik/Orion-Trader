@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - "scripts/summarize_long_horizon_v5_collection_health.py"
+      - "scripts/summarize_long_horizon_v5_run_recovery_health.py"
       - "backend/tests/test_long_horizon_v5_collection_health_summary.py"
+      - "backend/tests/test_long_horizon_v5_run_recovery_health.py"
       - ".github/workflows/long-horizon-v5-evidence-cycle.yml"
       - ".github/workflows/long-horizon-v5-collection-health-ci.yml"
       - "docs/research/LONG_HORIZON_V5_COLLECTION_HEALTH_SUMMARY.md"
@@ -30,13 +32,22 @@ jobs:
       - name: Compile collection health components
         run: |
           python -m py_compile scripts/summarize_long_horizon_v5_collection_health.py
+          python -m py_compile scripts/summarize_long_horizon_v5_run_recovery_health.py
           python -m py_compile backend/tests/test_long_horizon_v5_collection_health_summary.py
+          python -m py_compile backend/tests/test_long_horizon_v5_run_recovery_health.py
       - name: Verify scheduled evidence-cycle health wiring
         run: |
           python - <<'PY'
           from pathlib import Path
 
           workflow = Path('.github/workflows/long-horizon-v5-evidence-cycle.yml').read_text(encoding='utf-8')
+          assert 'Build scheduled run recovery health' in workflow
+          assert 'summarize_long_horizon_v5_run_recovery_health.py' in workflow
+          assert 'actions/workflows/long-horizon-v5-cloud-shadow.yml/runs' in workflow
+          assert 'event=schedule' in workflow
+          assert 'recovered-run-ids.txt' in workflow
+          assert 'run-recovery-health-' in workflow
+          assert 'long-horizon-v5-run-recovery-health-' in workflow
           assert 'Build aggregate score-blind collection health' in workflow
           assert 'summarize_long_horizon_v5_collection_health.py' in workflow
           assert 'find .long-shadow/predictions' in workflow
@@ -44,11 +55,15 @@ jobs:
           assert 'long-horizon-v5-collection-health-' in workflow
           assert 'github.run_id' in workflow
           assert 'if-no-files-found: error' in workflow
+          recovery = workflow.index('Build scheduled run recovery health')
           build = workflow.index('Build aggregate score-blind collection health')
           settle = workflow.index('Settle mature paired predictions')
+          assert recovery < settle
           assert build < settle
           PY
       - name: Run collection health regressions
         run: |
           cd backend
-          python -m pytest -q tests/test_long_horizon_v5_collection_health_summary.py
+          python -m pytest -q \
+            tests/test_long_horizon_v5_collection_health_summary.py \
+            tests/test_long_horizon_v5_run_recovery_health.py
