@@ -23,7 +23,7 @@ The trading-session check uses `scripts/nyse_session_calendar.py`, a determinist
 
 ## Score-blind contract
 
-The generated report uses contract `orion-premarket-v5-collection-health-v2` and always declares:
+The collection report uses contract `orion-premarket-v5-collection-health-v2` and always declares:
 
 - `score_blind: true`
 - `metrics_exposed: false`
@@ -50,6 +50,19 @@ The report exposes, per snapshot:
 
 The overall readiness flag becomes true only when all three snapshot regimes satisfy the same frozen complete-session geometry. The gate remains score-blind: completeness depends only on the presence of the preregistered symbol-horizon observations, not on probabilities, realized outcomes, proper scores, accuracy, calibration or whether a forecast was favorable. Reaching readiness authorizes metric inspection for Issue #3; it does not imply model skill, acceptable calibration, or promotion eligibility.
 
+## Evidence-health incident semantics
+
+The integrated evidence-health report uses `orion-premarket-v5-evidence-health-v2`. It separates two concepts that must not be conflated:
+
+- **historical operational incidents**: missing schedule delivery, unsuccessful workflow execution, missing artifact after a successful run, incomplete forecasts, or acquisition-ineligible artifacts;
+- **structural evidence ambiguity**: duplicate scheduled delivery or a prediction artifact that cannot be matched unambiguously to the authenticated scheduled run population.
+
+Historical operational incidents remain permanently visible in `status_counts`, `evidence_rows`, and `historical_incident_layers`. They are never erased or converted into successful observations, and they never contribute to the 55-complete-session minimum. However, an old operational miss no longer permanently poisons a cohort that later accumulates the full preregistered **55 complete, forward-eligible distinct sessions per snapshot**. This keeps the readiness gate consistent with the registered 40/10/5 count-based geometry instead of silently changing it into a stricter “zero operational incidents ever” rule.
+
+Structural ambiguity remains fail-closed. `duplicate_delivery` and `unmatched_artifact` remain in `blocking_layers`, and `ready_for_issue_3_score_inspection` cannot become true until those conditions are resolved. The report exposes `historically_gap_free` as an operational diagnostic and `structurally_clean` as the provenance-integrity gate. The legacy `operationally_clean` field is retained as the historical gap-free diagnostic for existing consumers; it is not the v2 readiness predicate.
+
+This change does not inspect or expose scores, authorize promotion, alter the frozen cadence or universe, modify model coefficients/features/thresholds/calibration, change risk policy, or enable order submission. It only prevents a historical infrastructure incident from redefining the preregistered sample-size policy after the fact.
+
 ## Evidence durability
 
 Issue #3 requires at least 55 distinct sessions for the existing 40-session train + 10-session calibration + 5-session test walk-forward geometry. Eleven complete weeks contain exactly 55 weekdays, so a 30-day artifact window can never preserve the minimum forward sample long enough for that evaluation.
@@ -70,6 +83,6 @@ The snapshot resolver applies the same NYSE-session gate before dependency insta
 
 Collection health is not model evidence. A coverage fraction of 1.0 means only that the intended forward observations were captured for the preregistered cadence and universe. It does not imply predictive skill and cannot promote Premarket V5.
 
-Likewise, `ready_for_issue_3_score_inspection=true` means only that each preregistered snapshot has reached 55 complete NYSE sessions under the frozen walk-forward geometry. It is a permission to open the score-bearing evaluation, not a favorable model verdict.
+Likewise, `ready_for_issue_3_score_inspection=true` means only that each preregistered snapshot has reached 55 complete NYSE sessions under the frozen walk-forward geometry and the accepted evidence population is structurally unambiguous. It is a permission to open the score-bearing evaluation, not a favorable model verdict.
 
 The next logical step is to accumulate untouched early/mid/late artifacts and run this audit before opening any proper-score dashboard or settlement summary. Operational gaps may be investigated through score-blind coverage and unavailable-data reasons, but model outputs must remain hidden while deciding whether the sample is mature. Only after all three snapshot regimes reach 55 complete sessions should Issue #3 inspect Brier score, log loss, calibration, directional accuracy and fold/session stability. No outcome-driven cadence, universe or completeness-rule change is permitted under the existing pre-registration.
