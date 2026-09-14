@@ -136,6 +136,63 @@
   border-color: rgba(255, 122, 26, 0.13);
 }
 
+/* A completed live scan with no candidates is a healthy state, not missing data. */
+.scanner-progress + .scanner-empty {
+  position: relative;
+  min-height: 150px;
+  margin-top: 12px;
+  padding: 28px 24px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 122, 26, 0.055), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.004));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+.scanner-progress + .scanner-empty::before {
+  content: "LIVE SCAN CLEAR";
+  position: absolute;
+  top: 11px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 122, 26, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 122, 26, 0.04);
+  color: rgba(255, 176, 116, 0.72);
+  font-size: 7px;
+  font-weight: 740;
+  letter-spacing: 0.11em;
+}
+
+.scanner-progress + .scanner-empty > svg {
+  color: rgba(255, 150, 72, 0.72);
+  filter: drop-shadow(0 0 12px rgba(255, 122, 26, 0.12));
+}
+
+.scanner-progress + .scanner-empty h3 {
+  color: rgba(255, 244, 236, 0.9);
+  letter-spacing: -0.015em;
+}
+
+.scanner-progress + .scanner-empty p {
+  max-width: 520px;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+/* When history exists below an empty live result, reinforce the current/archive boundary. */
+.scanner-progress + .scanner-empty + .scanner-last-known {
+  margin-top: 18px;
+  border-color: rgba(255, 122, 26, 0.07);
+}
+
+.scanner-progress + .scanner-empty + .scanner-last-known > summary {
+  color: rgba(255, 205, 168, 0.65);
+}
+
 @media (max-width: 640px) {
   .scanner-last-known > summary {
     min-height: 40px;
@@ -150,6 +207,11 @@
 
   .scanner-last-known > .scanner-candidate-grid {
     padding: 9px;
+  }
+
+  .scanner-progress + .scanner-empty {
+    min-height: 138px;
+    padding: 27px 16px 20px;
   }
 }
 
