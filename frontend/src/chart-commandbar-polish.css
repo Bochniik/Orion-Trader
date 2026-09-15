@@ -1,0 +1,118 @@
+/* Compact market-terminal command bar layered over the existing CandleChart controls. */
+.analyze-chart-panel .chart-toolbar {
+  position: relative;
+  gap: 10px;
+  padding: 6px;
+  border: 1px solid rgba(148, 163, 184, .1);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(10, 15, 23, .82), rgba(4, 8, 14, .88));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .025);
+}
+.analyze-chart-panel .chart-toolbar::before {
+  content: "TIMEFRAME";
+  flex: 0 0 auto;
+  margin: 0 2px 0 4px;
+  color: #5f6d80;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+.analyze-chart-panel .range-buttons {
+  flex: 0 1 auto;
+  padding: 2px;
+  border-color: rgba(148, 163, 184, .08);
+  background: rgba(1, 4, 9, .58);
+}
+.analyze-chart-panel .range-btn {
+  min-width: 34px;
+  min-height: 26px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 10px;
+}
+.analyze-chart-panel .chart-time-controls {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.analyze-chart-panel .chart-time-controls::before {
+  content: "CLOCK";
+  margin: 0 3px 0 5px;
+  color: #5f6d80;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+.analyze-chart-panel .chart-time-controls button {
+  min-height: 26px;
+  padding: 5px 8px;
+  border-color: rgba(148, 163, 184, .09);
+  border-radius: 7px;
+  background: rgba(3, 7, 13, .62);
+  font-size: 9px;
+}
+.analyze-chart-panel .chart-time-controls button.active {
+  border-color: rgba(249, 115, 22, .3);
+  color: #ffd6bb;
+  background: rgba(249, 115, 22, .075);
+}
+.analyze-chart-panel .chart-interval-note {
+  min-height: 26px;
+  margin-left: 3px;
+  padding: 0 7px 0 9px;
+  border-left-color: rgba(249, 115, 22, .18);
+  color: #8795a8;
+  font-size: 9px;
+  letter-spacing: .035em;
+}
+.analyze-chart-panel .indicator-toolbar {
+  position: relative;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 0 2px 0 58px;
+}
+.analyze-chart-panel .indicator-toolbar::before {
+  content: "LAYERS";
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #5f6d80;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+.analyze-chart-panel .indicator-toggle {
+  min-height: 26px;
+  padding: 5px 8px;
+  border-color: rgba(148, 163, 184, .09);
+  border-radius: 7px;
+  background: rgba(3, 7, 13, .52);
+  font-size: 9px;
+}
+.analyze-chart-panel .indicator-toggle.active {
+  border-color: color-mix(in srgb, var(--indicator-color, #64748b) 28%, transparent);
+  background: linear-gradient(180deg, rgba(17, 24, 39, .84), rgba(8, 13, 21, .84));
+}
+.analyze-chart-panel .indicator-toggle i {
+  width: 5px;
+  height: 5px;
+  flex-basis: 5px;
+}
+@media (max-width: 1180px) {
+  .analyze-chart-panel .chart-toolbar { align-items: stretch; }
+  .analyze-chart-panel .chart-toolbar::before { display: none; }
+  .analyze-chart-panel .chart-time-controls { justify-content: flex-start; }
+}
+@media (max-width: 720px) {
+  .analyze-chart-panel .chart-toolbar { padding: 5px; }
+  .analyze-chart-panel .chart-time-controls::before { display: none; }
+  .analyze-chart-panel .chart-time-controls button { flex: 1 1 auto; }
+  .analyze-chart-panel .chart-interval-note { flex: 1 0 100%; margin-left: 0; padding-left: 2px; }
+  .analyze-chart-panel .indicator-toolbar { padding-left: 2px; }
+  .analyze-chart-panel .indicator-toolbar::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analyze-chart-panel .chart-toolbar,
+  .analyze-chart-panel .indicator-toolbar { scroll-behavior: auto; }
+}
