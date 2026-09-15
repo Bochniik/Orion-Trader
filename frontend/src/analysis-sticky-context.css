@@ -15,270 +15,67 @@
   padding: 0 9px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
-    rgba(3, 6, 10, 0.52);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)), rgba(3, 6, 10, 0.52);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
-.analyze-sticky-context::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 139, 55, 0.92);
-  box-shadow: 0 0 10px rgba(255, 122, 26, 0.46);
-}
+.analyze-sticky-context::before { content: ""; flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 139, 55, 0.92); box-shadow: 0 0 10px rgba(255, 122, 26, 0.46); }
+.analyze-sticky-ticker { color: rgba(249, 250, 252, 0.94); font-size: 0.78rem; font-weight: 850; letter-spacing: 0.075em; font-variant-numeric: tabular-nums; }
+.analyze-sticky-decision { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border: 1px solid rgba(255, 148, 71, 0.17); border-radius: 999px; color: rgba(255, 190, 142, 0.86); background: rgba(255, 122, 26, 0.065); font-size: 0.58rem; font-weight: 850; letter-spacing: 0.08em; line-height: 1; white-space: nowrap; }
+.analyze-sticky-decision.buy, .analyze-sticky-decision.bullish, .analyze-sticky-decision.long { border-color: rgba(91, 210, 153, 0.2); color: rgba(159, 237, 199, 0.9); background: rgba(65, 183, 126, 0.07); }
+.analyze-sticky-decision.sell, .analyze-sticky-decision.bearish, .analyze-sticky-decision.short { border-color: rgba(255, 104, 104, 0.2); color: rgba(255, 166, 166, 0.9); background: rgba(223, 72, 72, 0.07); }
+.analyze-sticky-decision.wait, .analyze-sticky-decision.hold, .analyze-sticky-decision.neutral { border-color: rgba(255, 171, 92, 0.18); color: rgba(232, 205, 177, 0.76); background: rgba(255, 142, 45, 0.045); }
 
-.analyze-sticky-ticker {
-  color: rgba(249, 250, 252, 0.94);
-  font-size: 0.78rem;
-  font-weight: 850;
-  letter-spacing: 0.075em;
-  font-variant-numeric: tabular-nums;
-}
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) { border-color: rgba(255, 148, 71, 0.12); background: linear-gradient(90deg, rgba(255, 122, 26, 0.075), transparent 25%), linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.008)), rgba(7, 10, 15, 0.975); box-shadow: inset 2px 0 0 rgba(255, 135, 51, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.028), 0 16px 38px rgba(0, 0, 0, 0.2), 0 0 24px rgba(255, 122, 26, 0.025); }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context):focus-within { border-color: rgba(255, 148, 71, 0.2); box-shadow: inset 2px 0 0 rgba(255, 148, 71, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 18px 42px rgba(0, 0, 0, 0.24), 0 0 28px rgba(255, 122, 26, 0.045); }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-context { border-color: rgba(255, 148, 71, 0.14); background: linear-gradient(90deg, rgba(255, 122, 26, 0.09), transparent 72%), rgba(255, 255, 255, 0.018); }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-ticker::before { content: "ACTIVE · "; color: rgba(255, 148, 71, 0.54); font-size: 0.57rem; font-weight: 800; letter-spacing: 0.1em; }
 
-.analyze-sticky-decision {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 0 7px;
-  border: 1px solid rgba(255, 148, 71, 0.17);
-  border-radius: 999px;
-  color: rgba(255, 190, 142, 0.86);
-  background: rgba(255, 122, 26, 0.065);
-  font-size: 0.58rem;
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  white-space: nowrap;
-}
+.analyze-result-horizon { position: relative; display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 9px; min-height: 38px; margin: -5px 0 10px; padding: 7px 11px 7px 13px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.065); border-radius: 9px; background: linear-gradient(90deg, rgba(255, 122, 26, 0.055), transparent 38%), rgba(255, 255, 255, 0.012); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018); }
+.analyze-result-horizon::before { content: ""; position: absolute; inset: 7px auto 7px 0; width: 2px; border-radius: 999px; background: rgba(255, 140, 57, 0.82); box-shadow: 0 0 12px rgba(255, 122, 26, 0.28); }
+.analyze-result-horizon > span { color: rgba(190, 197, 208, 0.46); font-size: 0.59rem; font-weight: 800; letter-spacing: 0.12em; white-space: nowrap; }
+.analyze-result-horizon > strong { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border: 1px solid rgba(255, 148, 71, 0.18); border-radius: 999px; color: rgba(255, 211, 178, 0.92); background: rgba(255, 122, 26, 0.07); font-size: 0.62rem; font-weight: 850; letter-spacing: 0.085em; white-space: nowrap; }
+.analyze-result-horizon > small { min-width: 0; overflow: hidden; color: rgba(190, 197, 208, 0.46); font-size: 0.66rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.analyze-result-horizon + .analysis-overview { margin-top: 0; }
 
-.analyze-sticky-decision.buy,
-.analyze-sticky-decision.bullish,
-.analyze-sticky-decision.long {
-  border-color: rgba(91, 210, 153, 0.2);
-  color: rgba(159, 237, 199, 0.9);
-  background: rgba(65, 183, 126, 0.07);
-}
-
-.analyze-sticky-decision.sell,
-.analyze-sticky-decision.bearish,
-.analyze-sticky-decision.short {
-  border-color: rgba(255, 104, 104, 0.2);
-  color: rgba(255, 166, 166, 0.9);
-  background: rgba(223, 72, 72, 0.07);
-}
-
-.analyze-sticky-decision.wait,
-.analyze-sticky-decision.hold,
-.analyze-sticky-decision.neutral {
-  border-color: rgba(255, 171, 92, 0.18);
-  color: rgba(232, 205, 177, 0.76);
-  background: rgba(255, 142, 45, 0.045);
-}
-
-/* Bind the active research command bar to the returned analysis context.
-   The horizon value is already produced by AnalyzeView; this only improves hierarchy. */
-.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) {
-  border-color: rgba(255, 148, 71, 0.12);
-  background:
-    linear-gradient(90deg, rgba(255, 122, 26, 0.075), transparent 25%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.008)),
-    rgba(7, 10, 15, 0.975);
-  box-shadow:
-    inset 2px 0 0 rgba(255, 135, 51, 0.72),
-    inset 0 1px 0 rgba(255, 255, 255, 0.028),
-    0 16px 38px rgba(0, 0, 0, 0.2),
-    0 0 24px rgba(255, 122, 26, 0.025);
-}
-
-.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context):focus-within {
-  border-color: rgba(255, 148, 71, 0.2);
-  box-shadow:
-    inset 2px 0 0 rgba(255, 148, 71, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 18px 42px rgba(0, 0, 0, 0.24),
-    0 0 28px rgba(255, 122, 26, 0.045);
-}
-
-.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-context {
-  border-color: rgba(255, 148, 71, 0.14);
-  background:
-    linear-gradient(90deg, rgba(255, 122, 26, 0.09), transparent 72%),
-    rgba(255, 255, 255, 0.018);
-}
-
-.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-ticker::before {
-  content: "ACTIVE · ";
-  color: rgba(255, 148, 71, 0.54);
-  font-size: 0.57rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
-.analyze-result-horizon {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-  min-height: 38px;
-  margin: -5px 0 10px;
-  padding: 7px 11px 7px 13px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.065);
-  border-radius: 9px;
-  background:
-    linear-gradient(90deg, rgba(255, 122, 26, 0.055), transparent 38%),
-    rgba(255, 255, 255, 0.012);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
-}
-
-.analyze-result-horizon::before {
-  content: "";
-  position: absolute;
-  inset: 7px auto 7px 0;
-  width: 2px;
-  border-radius: 999px;
-  background: rgba(255, 140, 57, 0.82);
-  box-shadow: 0 0 12px rgba(255, 122, 26, 0.28);
-}
-
-.analyze-result-horizon > span {
-  color: rgba(190, 197, 208, 0.46);
-  font-size: 0.59rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-}
-
-.analyze-result-horizon > strong {
-  display: inline-flex;
-  align-items: center;
-  min-height: 22px;
-  padding: 0 8px;
-  border: 1px solid rgba(255, 148, 71, 0.18);
-  border-radius: 999px;
-  color: rgba(255, 211, 178, 0.92);
-  background: rgba(255, 122, 26, 0.07);
-  font-size: 0.62rem;
-  font-weight: 850;
-  letter-spacing: 0.085em;
-  white-space: nowrap;
-}
-
-.analyze-result-horizon > small {
-  min-width: 0;
-  overflow: hidden;
-  color: rgba(190, 197, 208, 0.46);
-  font-size: 0.66rem;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.analyze-result-horizon + .analysis-overview {
-  margin-top: 0;
-}
-
-/* Keep a ticker change visually anchored while the existing analysis request resolves.
-   This is presentation-only: AnalyzeView already clears superseded data before each run. */
-.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"] {
+/* Unified research lifecycle surfaces: loading, cancellation and errors share one terminal hierarchy. */
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"],
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) ~ .core-error[role="alert"] {
   position: relative;
   overflow: hidden;
   border-color: rgba(255, 148, 71, 0.12);
-  background:
-    linear-gradient(90deg, rgba(255, 122, 26, 0.065), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006)),
-    rgba(5, 8, 12, 0.94);
-  box-shadow:
-    inset 2px 0 0 rgba(255, 139, 55, 0.62),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02),
-    0 18px 44px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.065), transparent 42%), linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006)), rgba(5, 8, 12, 0.94);
+  box-shadow: inset 2px 0 0 rgba(255, 139, 55, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 18px 44px rgba(0, 0, 0, 0.2);
 }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"]::before { content: "RESEARCH CONTEXT UPDATING"; display: block; margin-bottom: 8px; color: rgba(255, 151, 78, 0.58); font-size: 0.58rem; font-weight: 850; letter-spacing: 0.13em; }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"] h2 { color: rgba(249, 250, 252, 0.96); font-variant-numeric: tabular-nums; }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"] .core-loading-dot { box-shadow: 0 0 14px rgba(255, 122, 26, 0.48); }
 
-.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"]::before {
-  content: "RESEARCH CONTEXT UPDATING";
-  display: block;
-  margin-bottom: 8px;
-  color: rgba(255, 151, 78, 0.58);
-  font-size: 0.58rem;
-  font-weight: 850;
-  letter-spacing: 0.13em;
-}
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) ~ .core-error[role="alert"] { padding-left: 18px; border-color: rgba(255, 111, 111, 0.15); background: linear-gradient(90deg, rgba(212, 67, 67, 0.075), transparent 42%), rgba(5, 8, 12, 0.94); box-shadow: inset 2px 0 0 rgba(236, 91, 91, 0.68), inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 18px 44px rgba(0, 0, 0, 0.2); }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) ~ .core-error[role="alert"]::before { content: "RESEARCH CONTEXT DEGRADED"; display: block; margin-bottom: 7px; color: rgba(255, 139, 139, 0.62); font-size: 0.58rem; font-weight: 850; letter-spacing: 0.13em; }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) ~ .core-error[role="alert"] h2 { margin-top: 0; color: rgba(250, 250, 252, 0.96); }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) ~ .core-error[role="alert"] .core-button { box-shadow: 0 0 18px rgba(255, 122, 26, 0.06); }
 
-.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"] h2 {
-  color: rgba(249, 250, 252, 0.96);
-  font-variant-numeric: tabular-nums;
-}
-
-.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"] .core-loading-dot {
-  box-shadow: 0 0 14px rgba(255, 122, 26, 0.48);
-}
+/* Cancel is intentionally a quiet status, not an error. The existing plain status node is styled without changing job semantics. */
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + p[role="status"] { position: relative; margin: 0 0 12px; padding: 12px 14px 12px 18px; border: 1px solid rgba(255, 255, 255, 0.065); border-radius: 9px; color: rgba(202, 208, 217, 0.7); background: linear-gradient(90deg, rgba(255, 122, 26, 0.035), transparent 45%), rgba(5, 8, 12, 0.78); box-shadow: inset 2px 0 0 rgba(255, 139, 55, 0.36); font-size: 0.75rem; }
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + p[role="status"]::before { content: "RESEARCH PAUSED · "; color: rgba(255, 155, 84, 0.58); font-size: 0.58rem; font-weight: 850; letter-spacing: 0.11em; }
 
 @media (max-width: 1180px) and (min-width: 841px) {
-  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) > p {
-    display: none;
-  }
-
-  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-horizon-tabs {
-    justify-self: end;
-  }
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) { grid-template-columns: auto minmax(0, 1fr); }
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) > p { display: none; }
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-horizon-tabs { justify-self: end; }
 }
-
 @media (max-width: 840px) {
-  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) {
-    grid-template-columns: 1fr;
-  }
-
-  .analyze-sticky-context {
-    width: fit-content;
-  }
-
-  .analyze-result-horizon {
-    grid-template-columns: auto auto;
-  }
-
-  .analyze-result-horizon > small {
-    grid-column: 1 / -1;
-    overflow: visible;
-    white-space: normal;
-  }
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) { grid-template-columns: 1fr; }
+  .analyze-sticky-context { width: fit-content; }
+  .analyze-result-horizon { grid-template-columns: auto auto; }
+  .analyze-result-horizon > small { grid-column: 1 / -1; overflow: visible; white-space: normal; }
 }
-
 @media (max-width: 540px) {
-  .analyze-sticky-context {
-    min-height: 30px;
-    padding: 0 7px;
-  }
-
-  .analyze-sticky-context::before {
-    width: 5px;
-    height: 5px;
-  }
-
-  .analyze-sticky-ticker {
-    font-size: 0.72rem;
-  }
-
-  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-ticker::before {
-    content: "";
-  }
-
-  .analyze-result-horizon {
-    grid-template-columns: 1fr auto;
-    padding: 7px 9px 7px 12px;
-  }
+  .analyze-sticky-context { min-height: 30px; padding: 0 7px; }
+  .analyze-sticky-context::before { width: 5px; height: 5px; }
+  .analyze-sticky-ticker { font-size: 0.72rem; }
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-ticker::before { content: ""; }
+  .analyze-result-horizon { grid-template-columns: 1fr auto; padding: 7px 9px 7px 12px; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) {
-    transition: none;
-  }
-}
+@media (prefers-reduced-motion: reduce) { .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) { transition: none; } }
