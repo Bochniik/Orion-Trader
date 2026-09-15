@@ -1,0 +1,174 @@
+/* Today scanner density layer.
+   Presentation-only refinement over existing scanner payloads and actions. */
+
+.scanner-surface {
+  border-top: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.scanner-surface-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 20px;
+}
+
+.scanner-surface-heading > div:first-child {
+  max-width: 760px;
+}
+
+.scanner-progress {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  color: #69747e;
+  font-size: 9px;
+  letter-spacing: 0.015em;
+}
+
+.scanner-section-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scanner-section-label h3 {
+  margin: 0;
+  color: #dce2e7;
+  font-size: 11px;
+  font-weight: 620;
+  letter-spacing: 0.015em;
+}
+
+.scanner-section-label span {
+  color: #626d77;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.scanner-candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.scanner-candidate-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.scanner-candidate-heading {
+  min-height: 42px;
+}
+
+.scanner-candidate-heading > div:first-child {
+  min-width: 0;
+}
+
+.scanner-candidate-heading > div:first-child > p {
+  overflow: hidden;
+  max-width: 34ch;
+  margin-top: 3px;
+  color: #68737d;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scanner-candidate-primary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.scanner-candidate-primary span {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 5px;
+  color: #606b75;
+  font-size: 8px;
+  letter-spacing: 0.035em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.scanner-candidate-primary strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.scanner-candidate-why {
+  min-height: 42px;
+  color: #929ca5;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.scanner-candidate-why strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #68737d;
+  font-size: 8px;
+  font-weight: 620;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.scanner-decision {
+  margin-top: auto;
+}
+
+.scanner-candidate-actions {
+  justify-content: flex-end;
+}
+
+.scanner-last-known {
+  margin-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.scanner-last-known > summary {
+  padding: 11px 2px;
+  color: #6f7a84;
+  font-size: 9px;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 1540px) {
+  .scanner-candidate-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .scanner-candidate-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .scanner-surface-heading {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 10px;
+  }
+
+  .scanner-status {
+    justify-self: start;
+  }
+
+  .scanner-candidate-primary {
+    grid-template-columns: 1fr;
+  }
+
+  .scanner-candidate-primary > div {
+    padding: 7px 0;
+  }
+
+  .scanner-candidate-primary > div:not(:last-child)::after {
+    inset: auto 0 0;
+    width: auto;
+    height: 1px;
+  }
+}
