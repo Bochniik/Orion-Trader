@@ -9,6 +9,8 @@ on:
       - "scripts/test_regular_hours_schedule_reconciliation.py"
       - "scripts/audit_regular_hours_slot_evidence_health.py"
       - "scripts/test_regular_hours_slot_evidence_health.py"
+      - "scripts/build_regular_hours_operational_acceptance.py"
+      - "scripts/test_regular_hours_operational_acceptance.py"
       - ".github/workflows/regular-hours-schedule-audit-ci.yml"
   workflow_dispatch:
 
@@ -25,7 +27,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile audit scripts
-        run: python -m py_compile scripts/audit_regular_hours_schedule_delivery.py scripts/test_regular_hours_schedule_delivery_audit.py scripts/reconcile_regular_hours_schedule_delivery.py scripts/test_regular_hours_schedule_reconciliation.py scripts/audit_regular_hours_slot_evidence_health.py scripts/test_regular_hours_slot_evidence_health.py
+        run: python -m py_compile scripts/audit_regular_hours_schedule_delivery.py scripts/test_regular_hours_schedule_delivery_audit.py scripts/reconcile_regular_hours_schedule_delivery.py scripts/test_regular_hours_schedule_reconciliation.py scripts/audit_regular_hours_slot_evidence_health.py scripts/test_regular_hours_slot_evidence_health.py scripts/build_regular_hours_operational_acceptance.py scripts/test_regular_hours_operational_acceptance.py
       - name: Run schedule audit regression tests
         working-directory: scripts
-        run: python -m unittest -v test_regular_hours_schedule_delivery_audit.py test_regular_hours_schedule_reconciliation.py test_regular_hours_slot_evidence_health.py
+        run: python -m unittest -v test_regular_hours_schedule_delivery_audit.py test_regular_hours_schedule_reconciliation.py test_regular_hours_slot_evidence_health.py test_regular_hours_operational_acceptance.py
