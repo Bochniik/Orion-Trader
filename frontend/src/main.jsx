@@ -4,6 +4,7 @@ import "./styles.css";
 import "./motion.css";
 import "./shell-polish.css";
 import "./navigation-polish.css";
+import "./core-shell-density-polish.css";
 import "./data-panels.css";
 import "./news-polish.css";
 import "./news-state-polish.css";
