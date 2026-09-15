@@ -74,6 +74,93 @@
   text-transform: uppercase;
 }
 
+/* Analyze: bind crosshair OHLC and period context into one dense market-data rail. */
+.analyze-chart-panel .chart-inspector,
+.analyze-chart-panel .chart-period-summary {
+  border-color: rgba(148, 163, 184, .1);
+  border-radius: 9px;
+  background: rgba(148, 163, 184, .065);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .018);
+}
+
+.analyze-chart-panel .chart-inspector {
+  position: relative;
+  grid-template-columns: minmax(142px, 1.25fr) repeat(7, minmax(78px, 1fr));
+  margin-bottom: 1px;
+  border-bottom-color: rgba(148, 163, 184, .06);
+  border-radius: 9px 9px 0 0;
+}
+
+.analyze-chart-panel .chart-inspector::after {
+  content: "CROSSHAIR";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  color: #465568;
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  pointer-events: none;
+}
+
+.analyze-chart-panel .chart-inspector > div {
+  gap: 3px;
+  padding: 7px 9px;
+  background: linear-gradient(180deg, rgba(7, 12, 20, .97), rgba(4, 8, 14, .97));
+}
+
+.analyze-chart-panel .chart-inspector > div:first-child {
+  padding-left: 12px;
+  background: linear-gradient(90deg, rgba(249, 115, 22, .065), rgba(7, 12, 20, .97) 54%);
+}
+
+.analyze-chart-panel .chart-inspector span,
+.analyze-chart-panel .chart-period-summary > span {
+  font-size: 7.5px;
+  letter-spacing: .08em;
+}
+
+.analyze-chart-panel .chart-inspector strong {
+  font-size: 10px;
+}
+
+.analyze-chart-panel .chart-period-summary {
+  grid-template-columns: minmax(128px, 1.25fr) repeat(6, minmax(76px, 1fr));
+  margin-top: 0;
+  border-top: 0;
+  border-radius: 0 0 9px 9px;
+}
+
+.analyze-chart-panel .chart-period-summary > span {
+  gap: 3px;
+  padding: 7px 9px;
+  background: linear-gradient(180deg, rgba(5, 9, 16, .95), rgba(3, 7, 12, .97));
+}
+
+.analyze-chart-panel .chart-period-summary > span:first-child {
+  padding-left: 12px;
+  background: linear-gradient(90deg, rgba(249, 115, 22, .045), rgba(5, 9, 16, .95) 62%);
+}
+
+.analyze-chart-panel .chart-period-summary strong {
+  font-size: 10px;
+}
+
+@media (max-width: 1100px) {
+  .analyze-chart-panel .chart-inspector {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .analyze-chart-panel .chart-inspector > div:first-child {
+    grid-column: span 2;
+  }
+
+  .analyze-chart-panel .chart-period-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .chart-period-summary {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -82,18 +169,31 @@
   .chart-period-summary > span:first-child {
     grid-column: span 2;
   }
+
+  .analyze-chart-panel .chart-period-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
-  .chart-period-summary {
+  .chart-period-summary,
+  .analyze-chart-panel .chart-period-summary,
+  .analyze-chart-panel .chart-inspector {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .chart-period-summary > span:first-child {
+  .chart-period-summary > span:first-child,
+  .analyze-chart-panel .chart-inspector > div:first-child {
     grid-column: 1 / -1;
   }
 
-  .chart-period-summary > span {
-    padding: 8px 9px;
+  .chart-period-summary > span,
+  .analyze-chart-panel .chart-period-summary > span,
+  .analyze-chart-panel .chart-inspector > div {
+    padding: 7px 8px;
+  }
+
+  .analyze-chart-panel .chart-inspector::after {
+    display: none;
   }
 }
