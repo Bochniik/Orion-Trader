@@ -117,6 +117,85 @@
 }
 .chart-live-paused strong { color: #cbd5e1; }
 
+/* Analyze: make feed health part of the plotting surface instead of a detached notice. */
+.analyze-chart-panel .chart-box {
+  border-color: rgba(148, 163, 184, .095);
+  border-radius: 10px;
+  background: #02050a;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .015), inset 0 0 54px rgba(0, 0, 0, .2), 0 10px 28px rgba(0, 0, 0, .16);
+}
+
+.analyze-chart-panel .chart-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .012), transparent 14%, transparent 86%, rgba(0, 0, 0, .08));
+}
+
+.analyze-chart-panel .chart-status,
+.analyze-chart-panel .chart-live-message {
+  min-height: 32px;
+  margin: -1px 0 0;
+  padding: 6px 10px;
+  border-radius: 0 0 9px 9px;
+  border-color: rgba(148, 163, 184, .085);
+  background: linear-gradient(90deg, rgba(5, 10, 17, .98), rgba(3, 7, 12, .98));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .015);
+}
+
+.analyze-chart-panel .chart-status::after,
+.analyze-chart-panel .chart-live-message::after {
+  width: 2px;
+}
+
+.analyze-chart-panel .chart-status-indicator,
+.analyze-chart-panel .chart-live-indicator {
+  width: 6px;
+  height: 6px;
+  flex-basis: 6px;
+}
+
+.analyze-chart-panel .chart-status strong,
+.analyze-chart-panel .chart-live-message strong {
+  font-size: 8px;
+  letter-spacing: .085em;
+  text-transform: uppercase;
+}
+
+.analyze-chart-panel .chart-status > div,
+.analyze-chart-panel .chart-live-message > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+}
+
+.analyze-chart-panel .chart-status > div > span,
+.analyze-chart-panel .chart-live-message > div > span {
+  flex: 1 1 auto;
+  color: #647286;
+  font-size: 9px;
+  text-align: right;
+}
+
+.analyze-chart-panel .chart-live-message {
+  border-color: rgba(52, 211, 153, .1);
+  background: linear-gradient(90deg, rgba(52, 211, 153, .035), rgba(3, 7, 12, .98) 34%);
+}
+
+.analyze-chart-panel .chart-live-stale {
+  border-color: rgba(251, 191, 36, .11);
+  background: linear-gradient(90deg, rgba(120, 53, 15, .055), rgba(3, 7, 12, .98) 34%);
+}
+
+.analyze-chart-panel .chart-live-paused {
+  border-color: rgba(148, 163, 184, .09);
+  background: linear-gradient(90deg, rgba(71, 85, 105, .05), rgba(3, 7, 12, .98) 34%);
+}
+
 @keyframes chart-state-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 720px) {
@@ -124,6 +203,14 @@
   .chart-live-message { align-items: flex-start; }
   .chart-status > div > span,
   .chart-live-message > div > span { white-space: normal; }
+
+  .analyze-chart-panel .chart-status > div,
+  .analyze-chart-panel .chart-live-message > div {
+    display: grid;
+    gap: 2px;
+  }
+  .analyze-chart-panel .chart-status > div > span,
+  .analyze-chart-panel .chart-live-message > div > span { text-align: left; }
 }
 
 @media (prefers-reduced-motion: reduce) {
