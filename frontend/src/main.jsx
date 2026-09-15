@@ -20,6 +20,7 @@ import "./analysis-insight-density.css";
 import "./analysis-insight-rail.css";
 import "./analysis-actionable-context.css";
 import "./analysis-responsive.css";
+import "./analysis-vertical-rhythm.css";
 import "./analysis-state-polish.css";
 import "./analysis-commandbar.css";
 import "./analysis-interaction-polish.css";
