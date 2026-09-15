@@ -92,6 +92,12 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
   const items = Array.isArray(news) ? news : [];
   const hasItems = items.length > 0;
   const backgroundRefreshing = loading && hasItems;
+  const publisherCount = new Set(items.map((item) => item?.publisher).filter(Boolean)).size;
+  const newestPublishedAt = items.reduce((latest, item) => {
+    const date = newsDate(item?.published_at);
+    if (!date) return latest;
+    return !latest || date > latest ? date : latest;
+  }, null);
 
   return (
     <section className="card news-card news-card--terminal" aria-busy={loading ? "true" : "false"}>
@@ -106,6 +112,17 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
           <p className="news-subtitle" aria-live="polite" aria-atomic="true">
             Recent headlines and catalysts for {ticker}{backgroundRefreshing ? " · Updating feed…" : ""}
           </p>
+          {hasItems && (
+            <div className="news-feed-telemetry" aria-label="News feed summary">
+              <span>{items.length} headline{items.length === 1 ? "" : "s"}</span>
+              <span>{publisherCount || "—"} source{publisherCount === 1 ? "" : "s"}</span>
+              {newestPublishedAt && (
+                <span title={formatExactNewsDate(newestPublishedAt)}>
+                  Latest · {formatNewsDate(newestPublishedAt)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <button
