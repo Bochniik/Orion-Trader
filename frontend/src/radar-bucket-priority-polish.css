@@ -1,0 +1,86 @@
+/* Opportunity Radar bucket priority — presentation only; backend order and ranking stay unchanged. */
+
+.core-radar-grid .core-radar-card {
+  position: relative;
+  isolation: isolate;
+}
+
+.core-radar-grid .core-radar-card::before {
+  content: "";
+  position: absolute;
+  inset: 9px auto 9px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  transition: background 150ms ease, box-shadow 150ms ease;
+  pointer-events: none;
+}
+
+.core-radar-grid .core-radar-card[open]::before {
+  background: linear-gradient(180deg, rgba(255, 164, 96, 0.86), rgba(255, 122, 26, 0.2));
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.16);
+}
+
+.core-radar-grid .core-radar-card > summary strong {
+  color: #dce2e7;
+  font-size: 11px;
+  font-weight: 680;
+  letter-spacing: 0.01em;
+}
+
+.core-radar-grid .core-radar-card[open] > summary strong {
+  color: #f0f3f5;
+}
+
+/* The two buckets already opened by the component are the initial scan anchors. */
+.core-radar-grid .core-radar-card:nth-child(1),
+.core-radar-grid .core-radar-card:nth-child(3) {
+  border-color: rgba(255, 122, 26, 0.12);
+  background:
+    linear-gradient(135deg, rgba(255, 122, 26, 0.025), transparent 42%),
+    rgba(8, 11, 14, 0.62);
+}
+
+.core-radar-grid .core-radar-card:nth-child(1) > summary strong,
+.core-radar-grid .core-radar-card:nth-child(3) > summary strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.core-radar-grid .core-radar-card:nth-child(1) > summary strong::before,
+.core-radar-grid .core-radar-card:nth-child(3) > summary strong::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #ff8a38;
+  box-shadow: 0 0 9px rgba(255, 122, 26, 0.36);
+}
+
+.core-radar-card li .core-text-button {
+  border-radius: 5px;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.core-radar-card li .core-text-button:hover {
+  background: rgba(255, 122, 26, 0.035);
+}
+
+.core-radar-card li .core-text-button:active {
+  background: rgba(255, 122, 26, 0.07);
+}
+
+@media (max-width: 760px) {
+  .core-radar-grid .core-radar-card > summary strong {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-radar-grid .core-radar-card::before,
+  .core-radar-card li .core-text-button {
+    transition: none;
+  }
+}
