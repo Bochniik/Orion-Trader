@@ -183,6 +183,41 @@
   margin-top: 0;
 }
 
+/* Keep a ticker change visually anchored while the existing analysis request resolves.
+   This is presentation-only: AnalyzeView already clears superseded data before each run. */
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"] {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(255, 148, 71, 0.12);
+  background:
+    linear-gradient(90deg, rgba(255, 122, 26, 0.065), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006)),
+    rgba(5, 8, 12, 0.94);
+  box-shadow:
+    inset 2px 0 0 rgba(255, 139, 55, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 18px 44px rgba(0, 0, 0, 0.2);
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"]::before {
+  content: "RESEARCH CONTEXT UPDATING";
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255, 151, 78, 0.58);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"] h2 {
+  color: rgba(249, 250, 252, 0.96);
+  font-variant-numeric: tabular-nums;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"] .core-loading-dot {
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.48);
+}
+
 @media (max-width: 1180px) and (min-width: 841px) {
   .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) {
     grid-template-columns: auto minmax(0, 1fr);
