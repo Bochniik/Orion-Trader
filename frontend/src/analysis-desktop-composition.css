@@ -1,0 +1,49 @@
+/* OrionTrader Analyze desktop composition
+   Presentation only: improves horizontal use of the existing Analyze surfaces. */
+
+@media (min-width: 1180px) {
+  .analyze-view {
+    --analyze-primary-column: minmax(0, 1.62fr);
+    --analyze-context-column: minmax(320px, 0.88fr);
+  }
+
+  .analyze-view .analysis-market-grid {
+    display: grid;
+    grid-template-columns: var(--analyze-primary-column) var(--analyze-context-column);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .analyze-view .analyze-chart-panel {
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-news-panel {
+    min-width: 0;
+    align-self: stretch;
+  }
+
+  .analyze-view .analysis-insight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 1500px) {
+  .analyze-view {
+    --analyze-primary-column: minmax(0, 1.72fr);
+    --analyze-context-column: minmax(350px, 0.82fr);
+  }
+
+  .analyze-view .analysis-market-grid {
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1320px) {
+  .analyze-view {
+    --analyze-primary-column: minmax(0, 1.48fr);
+    --analyze-context-column: minmax(300px, 0.92fr);
+  }
+}
