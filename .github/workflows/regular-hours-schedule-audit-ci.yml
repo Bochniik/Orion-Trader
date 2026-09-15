@@ -5,6 +5,8 @@ on:
     paths:
       - "scripts/audit_regular_hours_schedule_delivery.py"
       - "scripts/test_regular_hours_schedule_delivery_audit.py"
+      - "scripts/reconcile_regular_hours_schedule_delivery.py"
+      - "scripts/test_regular_hours_schedule_reconciliation.py"
       - ".github/workflows/regular-hours-schedule-audit-ci.yml"
   workflow_dispatch:
 
@@ -21,7 +23,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile audit scripts
-        run: python -m py_compile scripts/audit_regular_hours_schedule_delivery.py scripts/test_regular_hours_schedule_delivery_audit.py
+        run: python -m py_compile scripts/audit_regular_hours_schedule_delivery.py scripts/test_regular_hours_schedule_delivery_audit.py scripts/reconcile_regular_hours_schedule_delivery.py scripts/test_regular_hours_schedule_reconciliation.py
       - name: Run schedule audit regression tests
         working-directory: scripts
-        run: python -m unittest -v test_regular_hours_schedule_delivery_audit.py
+        run: python -m unittest -v test_regular_hours_schedule_delivery_audit.py test_regular_hours_schedule_reconciliation.py
