@@ -1,0 +1,26 @@
+name: Market acquisition scheduler CI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/market-acquisition-scheduler.yml"
+      - ".github/workflows/premarket-v5-cloud-shadow.yml"
+      - ".github/workflows/regular-hours-v3-1-cloud-shadow.yml"
+      - ".github/workflows/market-acquisition-scheduler-ci.yml"
+      - "scripts/test_market_acquisition_scheduler_contract.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify centralized scheduler contract
+        run: python scripts/test_market_acquisition_scheduler_contract.py
