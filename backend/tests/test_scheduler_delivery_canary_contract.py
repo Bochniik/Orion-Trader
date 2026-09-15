@@ -23,6 +23,7 @@ def test_scheduler_canary_is_lightweight_and_score_blind():
 
 
 def test_market_workflow_cadence_contracts_remain_registered():
+    scheduler = _read(".github/workflows/market-acquisition-scheduler.yml")
     premarket = _read(".github/workflows/premarket-v5-cloud-shadow.yml")
     regular = _read(".github/workflows/regular-hours-v3-1-cloud-shadow.yml")
 
@@ -41,6 +42,10 @@ def test_market_workflow_cadence_contracts_remain_registered():
         'cron: "25 14 * * 1-5"',
     }
     for cron in expected_premarket_crons:
-        assert cron in premarket
+        assert scheduler.count(cron) == 1
 
-    assert 'cron: "35 13-21 * * 1-5"' in regular
+    assert scheduler.count('cron: "35 13-21 * * 1-5"') == 1
+    assert "workflow_call:" in premarket
+    assert "workflow_call:" in regular
+    assert "  schedule:" not in premarket
+    assert "  schedule:" not in regular
