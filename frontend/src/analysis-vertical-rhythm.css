@@ -1,0 +1,50 @@
+/* OrionTrader Analyze vertical rhythm
+   Presentation only: compresses the existing intelligence stack without changing data or behavior. */
+
+.analyze-view {
+  --analyze-section-gap: 12px;
+  --analyze-surface-gap: 10px;
+}
+
+.analyze-view .analyze-result,
+.analyze-view .analyze-result-content,
+.analyze-view .analysis-result,
+.analyze-view .analysis-result-content {
+  gap: var(--analyze-section-gap);
+}
+
+.analyze-view .analysis-market-grid,
+.analyze-view .analysis-insight-grid {
+  margin-block: 0;
+}
+
+.analyze-view .analysis-market-grid {
+  gap: var(--analyze-section-gap);
+}
+
+.analyze-view .analysis-insight-grid {
+  gap: var(--analyze-surface-gap);
+}
+
+.analyze-view .analyze-section-heading {
+  margin-bottom: 8px;
+}
+
+.analyze-view .analyze-chart-panel,
+.analyze-view .analyze-news-panel,
+.analyze-view .analysis-insight {
+  min-width: 0;
+}
+
+@media (min-width: 1101px) {
+  .analyze-view .analysis-market-grid {
+    align-items: start;
+  }
+}
+
+@media (max-width: 860px) {
+  .analyze-view {
+    --analyze-section-gap: 10px;
+    --analyze-surface-gap: 8px;
+  }
+}
