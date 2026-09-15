@@ -4,14 +4,42 @@ import argparse
 from datetime import date
 import json
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
 
 from audit_regular_hours_collection_health import CollectionHealthError, _validate_projection
 from audit_regular_hours_slot_evidence_health import build_slot_evidence_report
 from reconcile_regular_hours_schedule_delivery import reconcile_day
 
-CONTRACT = "orion-regular-hours-operational-acceptance-v1"
+CONTRACT = "orion-regular-hours-operational-acceptance-v2"
 EXPECTED_ARTIFACT_PREFIX = "regular-hours-v3-1-shadow-"
+EXPECTED_PROVENANCE_SCHEMA = "regular-hours-v3-1-acquisition-provenance-v1"
+
+
+def _validate_acquisition_provenance(payload: dict[str, Any], *, run_id: str, run: dict[str, Any]) -> None:
+    provenance = payload.get("acquisition_provenance")
+    if not isinstance(provenance, dict):
+        raise CollectionHealthError("artifact acquisition_provenance is required")
+    if provenance.get("schema") != EXPECTED_PROVENANCE_SCHEMA:
+        raise CollectionHealthError("artifact acquisition_provenance schema is invalid")
+    if str(provenance.get("workflow_run_id") or "") != run_id:
+        raise CollectionHealthError("artifact acquisition_provenance workflow_run_id does not match owning workflow run")
+    if provenance.get("event_name") != "schedule":
+        raise CollectionHealthError("artifact acquisition_provenance event_name must be schedule")
+    if provenance.get("forward_eligible") is not True:
+        raise CollectionHealthError("artifact acquisition_provenance must be forward_eligible")
+
+    if run.get("run_attempt") is not None:
+        try:
+            payload_attempt = int(provenance.get("run_attempt"))
+            run_attempt = int(run["run_attempt"])
+        except (TypeError, ValueError) as exc:
+            raise CollectionHealthError("artifact acquisition_provenance run_attempt is invalid") from exc
+        if payload_attempt != run_attempt:
+            raise CollectionHealthError("artifact acquisition_provenance run_attempt does not match owning workflow run")
+
+    if run.get("head_sha") is not None:
+        if str(provenance.get("github_head_sha") or "").lower() != str(run["head_sha"]).lower():
+            raise CollectionHealthError("artifact acquisition_provenance github_head_sha does not match owning workflow run")
 
 
 def build_evidence_by_run_id(
@@ -52,10 +80,7 @@ def build_evidence_by_run_id(
             else:
                 try:
                     projection = _validate_projection(payload)
-                    provenance = payload.get("provenance") or {}
-                    payload_run_id = str(provenance.get("github_run_id") or "")
-                    if payload_run_id != run_id:
-                        raise CollectionHealthError("artifact provenance github_run_id does not match owning workflow run")
+                    _validate_acquisition_provenance(payload, run_id=run_id, run=run)
                     record["artifact_valid"] = True
                     record["artifact_projection"] = projection
                 except (CollectionHealthError, TypeError, ValueError) as exc:
@@ -87,7 +112,7 @@ def build_operational_acceptance_report(
         "counts": slot_report["counts"],
         "slots": slot_report["slots"],
         "unmatched_scheduled_runs": reconciliation["unmatched_scheduled_runs"],
-        "warning": "A slot is accepted only after unique schedule reconciliation, successful run completion, expected non-expired artifact presence, collection-health validation, and matching run provenance.",
+        "warning": "A slot is accepted only after unique schedule reconciliation, successful run completion, expected non-expired artifact presence, collection-health validation, and matching acquisition provenance.",
     }
 
 
