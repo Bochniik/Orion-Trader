@@ -29,6 +29,7 @@ import "./watchlist-polish.css";
 import "./quote-polish.css";
 import "./stock-workspace.css";
 import "./scanner-polish.css";
+import "./scanner-density-polish.css";
 import "./radar-ranking-polish.css";
 import "./radar-bucket-priority-polish.css";
 import "./dashboard-polish.css";
