@@ -1,0 +1,117 @@
+.core-positions .watchlist-card {
+  border-color: rgba(255, 255, 255, 0.065);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(255, 139, 40, 0.055), transparent 28%),
+    rgba(8, 9, 11, 0.94);
+}
+
+.core-position-list > button {
+  position: relative;
+  overflow: hidden;
+  min-height: 42px;
+  border-color: rgba(255, 255, 255, 0.05);
+  background: linear-gradient(90deg, rgba(255, 139, 40, 0.018), transparent 34%), rgba(255, 255, 255, 0.014);
+}
+
+.core-position-list > button::before {
+  content: "";
+  position: absolute;
+  inset: 7px auto 7px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: #ff8b28;
+  opacity: 0;
+  box-shadow: 0 0 14px rgba(255, 139, 40, 0.42);
+  transition: opacity 150ms ease;
+}
+
+.core-position-list > button:hover::before,
+.core-position-list > button:focus-visible::before {
+  opacity: 1;
+}
+
+.core-position-list > button:hover,
+.core-position-list > button:focus-visible {
+  border-color: rgba(255, 139, 40, 0.24);
+  background: linear-gradient(90deg, rgba(255, 139, 40, 0.06), transparent 40%), rgba(255, 255, 255, 0.022);
+  transform: translateY(-1px);
+}
+
+.core-position-list > button:focus-visible {
+  outline: 2px solid rgba(255, 139, 40, 0.48);
+  outline-offset: 2px;
+}
+
+.core-position-list strong,
+.core-position-list > button span:last-child,
+.core-monitoring li small {
+  font-variant-numeric: tabular-nums;
+}
+
+.core-position-list strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+}
+
+.core-position-list > button span:nth-child(2) {
+  overflow: hidden;
+  color: rgba(226, 230, 236, 0.56);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.core-position-list > button span:last-child {
+  justify-self: end;
+  color: #ff9b43;
+  font-size: 0.72rem;
+  font-weight: 780;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.core-monitoring li {
+  min-height: 40px;
+  padding-block: 7px;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.core-monitoring li:hover {
+  border-color: rgba(255, 139, 40, 0.14);
+  background: rgba(255, 139, 40, 0.025);
+}
+
+.core-monitoring li .core-text-button {
+  font-weight: 780;
+  letter-spacing: 0.04em;
+}
+
+.core-section-label {
+  margin-bottom: 10px;
+}
+
+.core-section-label span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+}
+
+@media (min-width: 1180px) {
+  .core-position-list {
+    gap: 6px;
+  }
+
+  .core-position-list > button {
+    grid-template-columns: minmax(82px, 0.62fr) minmax(140px, 1.25fr) auto;
+    padding: 8px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-position-list > button,
+  .core-position-list > button::before,
+  .core-monitoring li {
+    transition: none;
+  }
+}
