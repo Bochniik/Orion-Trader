@@ -33,6 +33,7 @@ function marketSessionLabel(result) {
 
 export default function OpportunityCard({ decision, onAnalyze, onSave, saved = false, now, analysis = false }) {
   const [clock, setClock] = useState(Date.now());
+  const [analyzeSelected, setAnalyzeSelected] = useState(false);
   const explanation = useAsyncTask();
   const monitoring = useAsyncTask();
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 10000); return () => clearInterval(timer); }, []);
@@ -41,7 +42,13 @@ export default function OpportunityCard({ decision, onAnalyze, onSave, saved = f
   const evidence = result.evidence?.strategy_analysis;
   const label = analysis ? result.decision : result.direction;
   const marketSession = marketSessionLabel(result);
-  return <article className={`opportunity-card ${result.direction.toLowerCase()}`} aria-label={`${result.ticker} analysis`}>
+
+  function analyzeTicker() {
+    setAnalyzeSelected(true);
+    onAnalyze?.(result.ticker);
+  }
+
+  return <article className={`opportunity-card ${result.direction.toLowerCase()}${analyzeSelected ? " is-selected" : ""}`} aria-label={`${result.ticker} analysis`}>
     <header className="opportunity-heading">
       <div><div className="opportunity-symbol"><h2>{result.ticker}</h2><span className={`decision-pill ${result.direction.toLowerCase()}`}>{label}</span></div>
         <p>{result.company_name || "Company name unavailable"}</p></div>
@@ -85,7 +92,7 @@ export default function OpportunityCard({ decision, onAnalyze, onSave, saved = f
       <div className="opportunity-actions">
         {result.actionable && result.decision_id && <button type="button" className="core-text-button" disabled={monitoring.busy || Boolean(monitoring.data)} onClick={() => monitoring.run(() => saveCorePlan(result.decision_id))}>{monitoring.data ? "Plan saved" : monitoring.busy ? "Saving…" : "Save plan to monitor"}</button>}
         {onSave && <button type="button" className="core-text-button" disabled={saved} onClick={() => onSave(result.ticker)}><BookmarkPlus size={15} />{saved ? "Saved" : "Save stock"}</button>}
-        {onAnalyze && <button type="button" className="core-text-button" onClick={() => onAnalyze(result.ticker)}>Analyze <ArrowUpRight size={15} /></button>}
+        {onAnalyze && <button type="button" className="core-text-button" aria-pressed={analyzeSelected} onClick={analyzeTicker}>{analyzeSelected ? "Selected → Analyze" : "Analyze"} <ArrowUpRight size={15} /></button>}
       </div>
     </footer>
     {monitoring.error && <p role="alert" className="core-warning">{monitoring.error}</p>}
