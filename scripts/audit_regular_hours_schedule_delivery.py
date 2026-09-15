@@ -12,7 +12,7 @@ NY = ZoneInfo("America/New_York")
 REGULAR_OPEN = time(9, 30)
 LAST_PREDICTION_CUTOFF = time(15, 30)
 DEFAULT_CRON = "35 13-21 * * 1-5"
-CONTRACT = "orion-regular-hours-schedule-delivery-v1"
+CONTRACT = "orion-regular-hours-schedule-delivery-v2"
 ON_TIME_MINUTES = 20.0
 SEVERE_DELAY_MINUTES = 60.0
 
@@ -53,6 +53,12 @@ def _github_weekday(moment: datetime) -> int:
 
 
 def expected_slot_utc(observed_at: datetime, cron: str = DEFAULT_CRON) -> datetime:
+    """Return the latest cron slot at or before ``observed_at``.
+
+    GitHub's scheduled-event payload exposes the cron expression, but not an
+    occurrence timestamp. This helper therefore returns an *inferred* slot;
+    callers must not treat it as proof of which occurrence produced the run.
+    """
     if observed_at.tzinfo is None:
         observed_at = observed_at.replace(tzinfo=timezone.utc)
     current = observed_at.astimezone(timezone.utc).replace(second=0, microsecond=0)
@@ -97,7 +103,10 @@ def build_audit(
                 "mode": "manual_dispatch",
                 "scheduled_cron": scheduled_cron,
                 "expected_slot_utc": None,
+                "expected_slot_resolution": "not_applicable",
+                "expected_slot_exact": None,
                 "delivery_delay_minutes": None,
+                "delivery_delay_semantics": "not_applicable",
                 "delivery_class": "not_applicable",
                 "expected_slot_in_regular_window": None,
                 "missed_regular_window": False,
@@ -106,13 +115,13 @@ def build_audit(
         return base
 
     slot = expected_slot_utc(observed, scheduled_cron)
-    delay_minutes = max(0.0, (observed - slot).total_seconds() / 60.0)
-    if delay_minutes <= ON_TIME_MINUTES:
-        delivery_class = "on_time"
-    elif delay_minutes <= SEVERE_DELAY_MINUTES:
-        delivery_class = "delayed"
+    minimum_delay_minutes = max(0.0, (observed - slot).total_seconds() / 60.0)
+    if minimum_delay_minutes <= ON_TIME_MINUTES:
+        delivery_class = "inferred_on_time"
+    elif minimum_delay_minutes <= SEVERE_DELAY_MINUTES:
+        delivery_class = "inferred_delayed"
     else:
-        delivery_class = "severely_delayed"
+        delivery_class = "inferred_severely_delayed"
 
     expected_in_window = _in_regular_window(slot)
     observed_in_window = _in_regular_window(observed)
@@ -122,12 +131,22 @@ def build_audit(
             "scheduled_cron": scheduled_cron,
             "expected_slot_utc": slot.isoformat(),
             "expected_slot_et": slot.astimezone(NY).isoformat(),
-            "delivery_delay_minutes": round(delay_minutes, 3),
+            "expected_slot_resolution": "latest_matching_cron_before_observed",
+            "expected_slot_exact": False,
+            "delivery_delay_minutes": round(minimum_delay_minutes, 3),
+            "delivery_delay_semantics": "minimum_delay_from_latest_matching_slot_not_exact_occurrence_delay",
             "delivery_class": delivery_class,
+            "delivery_class_inferred": True,
             "on_time_threshold_minutes": ON_TIME_MINUTES,
             "severe_delay_threshold_minutes": SEVERE_DELAY_MINUTES,
             "expected_slot_in_regular_window": expected_in_window,
             "missed_regular_window": bool(expected_in_window and not observed_in_window),
+            "missed_regular_window_inferred": True,
+            "warning": (
+                "GitHub schedule events provide the cron expression but not an exact occurrence timestamp; "
+                "slot attribution is inferred. Reconcile expected slots against the full run history before "
+                "declaring an occurrence delivered or missing."
+            ),
         }
     )
     return base
