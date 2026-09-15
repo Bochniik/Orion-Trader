@@ -1,0 +1,79 @@
+/* OrionTrader shell density polish
+   Presentation-only refinement for a denser market-intelligence workspace. */
+
+@media (min-width: 1080px) {
+  .core-shell {
+    grid-template-columns: 204px minmax(0, 1fr);
+  }
+
+  .core-sidebar {
+    width: 204px;
+    padding: 18px 11px 13px;
+  }
+
+  .core-brand {
+    gap: 9px;
+    padding: 4px 7px 18px;
+  }
+
+  .core-brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .core-brand-copy strong {
+    font-size: 14px;
+    letter-spacing: -0.2px;
+  }
+
+  .core-brand-copy small {
+    font-size: 6.5px;
+    letter-spacing: 1.25px;
+  }
+
+  .core-sidebar nav {
+    gap: 3px;
+  }
+
+  .core-sidebar nav button,
+  .core-sidebar nav a {
+    min-height: 38px;
+    border-radius: 8px;
+  }
+
+  .core-sidebar-bottom {
+    gap: 8px;
+  }
+
+  .core-sidebar-status,
+  .core-sidebar-settings {
+    border-radius: 8px;
+  }
+
+  .core-sidebar-status {
+    padding: 9px 8px;
+  }
+
+  .core-sidebar-settings {
+    min-height: 38px;
+    padding-inline: 9px;
+  }
+
+  .core-topbar {
+    min-height: 54px;
+  }
+
+  .core-main {
+    width: min(100%, 1720px);
+  }
+}
+
+@media (min-width: 1500px) {
+  .core-shell {
+    grid-template-columns: 212px minmax(0, 1fr);
+  }
+
+  .core-sidebar {
+    width: 212px;
+  }
+}
