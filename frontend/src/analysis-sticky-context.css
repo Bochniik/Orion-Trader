@@ -38,6 +38,18 @@
 .analyze-result-horizon > small { min-width: 0; overflow: hidden; color: rgba(190, 197, 208, 0.46); font-size: 0.66rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .analyze-result-horizon + .analysis-overview { margin-top: 0; }
 
+/* Treat chart + catalysts as one market-intelligence workspace while retaining their existing data flows. */
+.analysis-market-grid { align-items: stretch; gap: 12px; }
+.analysis-market-grid > .analyze-chart-panel,
+.analysis-market-grid > .analyze-news-panel { position: relative; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.065); border-radius: 11px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.005)), rgba(4, 7, 11, 0.88); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018), 0 18px 42px rgba(0, 0, 0, 0.16); }
+.analysis-market-grid > .analyze-chart-panel::before,
+.analysis-market-grid > .analyze-news-panel::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: linear-gradient(180deg, rgba(255, 145, 65, 0.7), rgba(255, 122, 26, 0.08) 48%, transparent 88%); box-shadow: 0 0 16px rgba(255, 122, 26, 0.12); pointer-events: none; }
+.analysis-market-grid .analyze-section-heading { min-height: 56px; margin: 0; padding: 11px 13px 10px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.055); background: linear-gradient(90deg, rgba(255, 122, 26, 0.045), transparent 34%); }
+.analysis-market-grid .analyze-section-heading h2 { margin-top: 2px; font-size: 0.98rem; letter-spacing: -0.015em; }
+.analysis-market-grid .analyze-section-heading > span { display: inline-flex; align-items: center; min-height: 21px; padding: 0 7px; border: 1px solid rgba(255, 148, 71, 0.12); border-radius: 999px; color: rgba(210, 215, 223, 0.52); background: rgba(255, 122, 26, 0.035); font-size: 0.58rem; font-weight: 750; letter-spacing: 0.055em; white-space: nowrap; }
+.analysis-market-grid .analyze-chart-panel > :not(.analyze-section-heading) { margin-left: 12px; margin-right: 12px; }
+.analysis-market-grid .analyze-news-panel > :not(.analyze-section-heading) { margin-left: 12px; margin-right: 12px; }
+
 /* Unified research lifecycle surfaces: loading, cancellation and errors share one terminal hierarchy. */
 .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .core-empty[role="status"],
 .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) ~ .core-error[role="alert"] {
@@ -70,6 +82,7 @@
   .analyze-sticky-context { width: fit-content; }
   .analyze-result-horizon { grid-template-columns: auto auto; }
   .analyze-result-horizon > small { grid-column: 1 / -1; overflow: visible; white-space: normal; }
+  .analysis-market-grid { gap: 10px; }
 }
 @media (max-width: 540px) {
   .analyze-sticky-context { min-height: 30px; padding: 0 7px; }
@@ -77,5 +90,7 @@
   .analyze-sticky-ticker { font-size: 0.72rem; }
   .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) .analyze-sticky-ticker::before { content: ""; }
   .analyze-result-horizon { grid-template-columns: 1fr auto; padding: 7px 9px 7px 12px; }
+  .analysis-market-grid .analyze-section-heading { padding-left: 12px; padding-right: 10px; }
+  .analysis-market-grid .analyze-section-heading > span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) { transition: none; } }
