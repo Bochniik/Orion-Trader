@@ -17,6 +17,7 @@ import "./analysis-snapshot.css";
 import "./analysis-decision-hierarchy.css";
 import "./analysis-evidence-rail.css";
 import "./analysis-insight-density.css";
+import "./analysis-insight-rail.css";
 import "./analysis-responsive.css";
 import "./analysis-state-polish.css";
 import "./analysis-commandbar.css";
