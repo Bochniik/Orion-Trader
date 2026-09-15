@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 const CATEGORIES = [
   ["biggest_gainers", "Biggest gainers", "change_percent", "%"],
   ["biggest_losers", "Biggest losers", "change_percent", "%"],
@@ -19,15 +21,22 @@ function value(row, field, suffix) {
 }
 
 export default function OpportunityRadar({ radar, prime = [], onAnalyze, soundAlerts = false, onSoundAlertsChange }) {
+  const [selectedTicker, setSelectedTicker] = useState("");
   if (!radar || !Object.keys(radar).length) return null;
   const activeBuckets = CATEGORIES.reduce((count, [id]) => count + ((radar[id] || []).length > 0 ? 1 : 0), 0);
   const surfacedRows = CATEGORIES.reduce((count, [id]) => count + Math.min((radar[id] || []).length, 5), 0);
+
+  function analyzeTicker(ticker) {
+    setSelectedTicker(ticker);
+    onAnalyze?.(ticker);
+  }
+
   return <section className="core-radar" aria-label="Opportunity Radar">
-    <div className="core-section-label"><div><h2>Opportunity Radar</h2><p>Current discovery buckets from the fetched market universe.</p></div><div className="core-radar-heading-actions"><label className="core-auto-refresh"><input type="checkbox" checked={soundAlerts} onChange={event => onSoundAlertsChange?.(event.target.checked)} />Sound alerts</label><span>{activeBuckets}/{CATEGORIES.length} active</span><span>{surfacedRows} signals</span><span>Liquidity-ranked evidence</span></div></div>
-    {prime.length > 0 && <section className="core-prime" aria-label="Orion Prime"><div><strong>ORION PRIME</strong><span>Exceptional setup detected · {prime[0].ticker} · {prime[0].direction} · {prime[0].directional_confidence}% directional probability</span></div><button type="button" className="core-button" onClick={() => onAnalyze(prime[0].ticker)}>Review</button><small>Requires Tier A liquidity, strong model agreement, supportive regime, positive post-cost edge and no blockers. Alerts are cooldown-protected.</small></section>}
+    <div className="core-section-label"><div><h2>Opportunity Radar</h2><p>Current discovery buckets from the fetched market universe.</p></div><div className="core-radar-heading-actions"><label className="core-auto-refresh"><input type="checkbox" checked={soundAlerts} onChange={event => onSoundAlertsChange?.(event.target.checked)} />Sound alerts</label><span>{activeBuckets}/{CATEGORIES.length} active</span><span>{surfacedRows} signals</span><span>Liquidity-ranked evidence</span>{selectedTicker && <span className="core-radar-selection" role="status">Selected · {selectedTicker} → Analyze</span>}</div></div>
+    {prime.length > 0 && <section className="core-prime" aria-label="Orion Prime"><div><strong>ORION PRIME</strong><span>Exceptional setup detected · {prime[0].ticker} · {prime[0].direction} · {prime[0].directional_confidence}% directional probability</span></div><button type="button" className="core-button" onClick={() => analyzeTicker(prime[0].ticker)}>Review</button><small>Requires Tier A liquidity, strong model agreement, supportive regime, positive post-cost edge and no blockers. Alerts are cooldown-protected.</small></section>}
     <div className="core-radar-grid">{CATEGORIES.map(([id, title, field, suffix]) => {
       const rows = radar[id] || [];
-      return <details key={id} className="core-radar-card" open={id === "biggest_gainers" || id === "most_active"}><summary><strong>{title}</strong><span>{rows.length}</span></summary>{rows.length ? <ul>{rows.slice(0, 5).map(row => <li key={`${id}-${row.ticker}`}><button type="button" className="core-text-button" onClick={() => onAnalyze(row.ticker)}>{row.ticker}</button><span>{value(row, field, suffix)}</span><small>Tier {row.liquidity_tier || "—"} · {row.liquidity_score ?? "—"}/100</small></li>)}</ul> : <p>No current evidence.</p>}</details>;
+      return <details key={id} className="core-radar-card" open={id === "biggest_gainers" || id === "most_active"}><summary><strong>{title}</strong><span>{rows.length}</span></summary>{rows.length ? <ul>{rows.slice(0, 5).map(row => <li key={`${id}-${row.ticker}`} className={selectedTicker === row.ticker ? "is-selected" : undefined}><button type="button" className="core-text-button" aria-pressed={selectedTicker === row.ticker} onClick={() => analyzeTicker(row.ticker)}>{row.ticker}</button><span>{value(row, field, suffix)}</span><small>Tier {row.liquidity_tier || "—"} · {row.liquidity_score ?? "—"}/100</small></li>)}</ul> : <p>No current evidence.</p>}</details>;
     })}</div>
     <p className="core-muted">{radar.semantics}</p>
   </section>;
