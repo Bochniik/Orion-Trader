@@ -17,9 +17,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 22px;
   background: linear-gradient(180deg, rgba(25, 25, 28, 0.96), rgba(14, 14, 16, 0.98));
-  box-shadow:
-    0 24px 70px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   text-align: center;
 }
 
@@ -32,35 +30,10 @@
   box-shadow: 0 0 22px rgba(255, 126, 31, 0.3);
 }
 
-.orion-system-state-mark {
-  display: inline-flex;
-  margin-bottom: 22px;
-  filter: drop-shadow(0 0 20px rgba(255, 126, 31, 0.2));
-}
-
-.orion-system-state-eyebrow {
-  margin: 0 0 8px;
-  color: #f28b33;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.orion-system-state-card h1 {
-  margin: 0;
-  font-size: clamp(1.45rem, 4vw, 1.9rem);
-  line-height: 1.15;
-  letter-spacing: -0.025em;
-}
-
-.orion-system-state-copy {
-  max-width: 360px;
-  margin: 12px auto 0;
-  color: rgba(232, 232, 236, 0.67);
-  font-size: 0.94rem;
-  line-height: 1.6;
-}
+.orion-system-state-mark { display: inline-flex; margin-bottom: 22px; filter: drop-shadow(0 0 20px rgba(255, 126, 31, 0.2)); }
+.orion-system-state-eyebrow { margin: 0 0 8px; color: #f28b33; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+.orion-system-state-card h1 { margin: 0; font-size: clamp(1.45rem, 4vw, 1.9rem); line-height: 1.15; letter-spacing: -0.025em; }
+.orion-system-state-copy { max-width: 360px; margin: 12px auto 0; color: rgba(232, 232, 236, 0.67); font-size: 0.94rem; line-height: 1.6; }
 
 .orion-system-state-progress {
   position: relative;
@@ -96,46 +69,71 @@
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
-.orion-system-state-action:hover {
-  border-color: rgba(242, 139, 51, 0.82);
-  background: linear-gradient(180deg, rgba(242, 139, 51, 0.25), rgba(242, 139, 51, 0.12));
-  box-shadow: 0 0 22px rgba(242, 139, 51, 0.12);
-  transform: translateY(-1px);
+.orion-system-state-action:hover { border-color: rgba(242, 139, 51, 0.82); background: linear-gradient(180deg, rgba(242, 139, 51, 0.25), rgba(242, 139, 51, 0.12)); box-shadow: 0 0 22px rgba(242, 139, 51, 0.12); transform: translateY(-1px); }
+.orion-system-state-action:focus-visible { outline: 2px solid #f28b33; outline-offset: 3px; }
+.orion-system-state-action:active { transform: translateY(0); }
+
+/* Shared workspace states — one terminal language across Today, Analyze and My Stocks. */
+.core-empty,
+.core-error,
+.scanner-empty {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 58%), rgba(6, 9, 13, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
 }
 
-.orion-system-state-action:focus-visible {
-  outline: 2px solid #f28b33;
-  outline-offset: 3px;
+.core-empty::before,
+.core-error::before,
+.scanner-empty::before {
+  content: "";
+  position: absolute;
+  inset: 14px auto 14px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(255, 122, 26, 0.32);
+  box-shadow: 0 0 12px rgba(255, 122, 26, 0.12);
 }
 
-.orion-system-state-action:active {
-  transform: translateY(0);
+.core-empty,
+.scanner-empty { padding: 24px 26px; }
+.core-error { padding: 15px 18px; border-color: rgba(255, 122, 26, 0.15); background: linear-gradient(90deg, rgba(255, 122, 26, 0.045), transparent 66%), rgba(6, 9, 13, 0.76); }
+.core-empty svg,
+.scanner-empty svg { color: #737d87; filter: drop-shadow(0 0 10px rgba(255, 122, 26, 0.08)); }
+.core-empty h2,
+.core-empty h3,
+.core-error h3,
+.scanner-empty h3 { color: #e8ecef; letter-spacing: -0.015em; }
+.core-empty p,
+.core-error p,
+.scanner-empty p { color: #78838e; line-height: 1.55; }
+
+.core-warning {
+  border: 1px solid rgba(255, 122, 26, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.055), rgba(255, 122, 26, 0.015));
+  color: #c79a78;
+  box-shadow: inset 2px 0 0 rgba(255, 122, 26, 0.34);
 }
 
-@keyframes orion-system-loading {
-  0% { transform: translateX(-115%); }
-  55% { transform: translateX(105%); }
-  100% { transform: translateX(260%); }
+.core-loading-dot {
+  box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.34);
+  animation: orion-state-pulse 1.65s ease-out infinite;
 }
+
+@keyframes orion-system-loading { 0% { transform: translateX(-115%); } 55% { transform: translateX(105%); } 100% { transform: translateX(260%); } }
+@keyframes orion-state-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.32); } 70%, 100% { box-shadow: 0 0 0 7px rgba(255, 122, 26, 0); } }
 
 @media (max-width: 560px) {
-  .orion-system-state {
-    padding: 18px;
-  }
-
-  .orion-system-state-card {
-    padding: 28px 22px;
-    border-radius: 18px;
-  }
+  .orion-system-state { padding: 18px; }
+  .orion-system-state-card { padding: 28px 22px; border-radius: 18px; }
+  .core-empty, .scanner-empty { padding: 20px 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .orion-system-state-progress::after {
-    width: 68%;
-    animation: none;
-  }
-
-  .orion-system-state-action {
-    transition: none;
-  }
+  .orion-system-state-progress::after { width: 68%; animation: none; }
+  .orion-system-state-action { transition: none; }
+  .core-loading-dot { animation: none; }
 }
