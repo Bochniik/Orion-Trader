@@ -10,6 +10,7 @@ import "./notification-polish.css";
 import "./data-panels.css";
 import "./news-polish.css";
 import "./news-state-polish.css";
+import "./news-refresh-feedback.css";
 import "./chart-polish.css";
 import "./chart-commandbar-polish.css";
 import "./chart-period-summary-polish.css";
