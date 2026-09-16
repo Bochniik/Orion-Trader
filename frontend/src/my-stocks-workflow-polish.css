@@ -69,6 +69,13 @@
   font-weight: 780;
   letter-spacing: 0.035em;
   text-transform: uppercase;
+  transition: color 150ms ease, transform 150ms ease;
+}
+
+.core-position-list > button:hover span:last-child,
+.core-position-list > button:focus-visible span:last-child {
+  color: #ffb36f;
+  transform: translateX(2px);
 }
 
 .core-monitoring li {
@@ -77,14 +84,34 @@
   transition: border-color 150ms ease, background 150ms ease;
 }
 
-.core-monitoring li:hover {
+.core-monitoring li:hover,
+.core-monitoring li:focus-within {
   border-color: rgba(255, 139, 40, 0.14);
   background: rgba(255, 139, 40, 0.025);
 }
 
 .core-monitoring li .core-text-button {
+  position: relative;
   font-weight: 780;
   letter-spacing: 0.04em;
+}
+
+.core-monitoring li .core-text-button::after {
+  content: "  →";
+  color: rgba(255, 155, 67, 0.72);
+  opacity: 0;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.core-monitoring li:hover .core-text-button::after,
+.core-monitoring li:focus-within .core-text-button::after {
+  opacity: 1;
+}
+
+.core-monitoring li .core-text-button:focus-visible {
+  outline: 2px solid rgba(255, 139, 40, 0.44);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .core-section-label {
@@ -111,7 +138,9 @@
 @media (prefers-reduced-motion: reduce) {
   .core-position-list > button,
   .core-position-list > button::before,
-  .core-monitoring li {
+  .core-position-list > button span:last-child,
+  .core-monitoring li,
+  .core-monitoring li .core-text-button::after {
     transition: none;
   }
 }
