@@ -1,0 +1,30 @@
+name: Regular-hours collector validation
+
+on:
+  pull_request:
+    paths:
+      - "scripts/collect_regular_hours_v3_1_actions_evidence.py"
+      - "scripts/test_collect_regular_hours_v3_1_actions_evidence.py"
+      - ".github/workflows/regular-hours-collector-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/collect_regular_hours_v3_1_actions_evidence.py"
+      - "scripts/test_collect_regular_hours_v3_1_actions_evidence.py"
+      - ".github/workflows/regular-hours-collector-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  collector-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile collector
+        run: python -m py_compile scripts/collect_regular_hours_v3_1_actions_evidence.py
+      - name: Run collector regression tests
+        run: python -m unittest scripts.test_collect_regular_hours_v3_1_actions_evidence -v
