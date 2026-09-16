@@ -1,0 +1,91 @@
+/* Compact Analyze request feedback. Presentation only; engine behavior is unchanged. */
+
+.analyze-view > .core-empty {
+  min-height: 0;
+  padding: 16px 18px 16px 20px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "dot title action"
+    "dot progress action"
+    "dot meta action";
+  column-gap: 14px;
+  row-gap: 2px;
+  align-items: center;
+}
+
+.analyze-view > .core-empty::after {
+  content: "ANALYSIS RUNNING";
+  top: 12px;
+  right: 14px;
+  opacity: 0.78;
+}
+
+.analyze-view > .core-empty .core-loading-dot {
+  grid-area: dot;
+  align-self: center;
+}
+
+.analyze-view > .core-empty h2 {
+  grid-area: title;
+  max-width: calc(100% - 150px);
+  margin: 0;
+  font-size: 0.92rem;
+  letter-spacing: -0.01em;
+}
+
+.analyze-view > .core-empty p {
+  max-width: none;
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.analyze-view > .core-empty p:not(.core-muted) {
+  grid-area: progress;
+  color: rgba(230, 234, 240, 0.72);
+}
+
+.analyze-view > .core-empty .core-muted {
+  grid-area: meta;
+  color: rgba(177, 185, 198, 0.48);
+  font-size: 0.68rem;
+}
+
+.analyze-view > .core-empty .core-button {
+  grid-area: action;
+  min-height: 32px;
+  margin: 0;
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .analyze-view > .core-empty {
+    padding: 42px 16px 16px;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "dot title"
+      "dot progress"
+      "meta meta"
+      "action action";
+    column-gap: 12px;
+    row-gap: 5px;
+  }
+
+  .analyze-view > .core-empty::after {
+    top: 12px;
+    right: auto;
+    left: 16px;
+  }
+
+  .analyze-view > .core-empty h2 {
+    max-width: 100%;
+  }
+
+  .analyze-view > .core-empty .core-button {
+    width: auto;
+    justify-self: start;
+    margin-top: 5px;
+  }
+}
