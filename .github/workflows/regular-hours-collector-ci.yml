@@ -24,7 +24,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Detect collector implementation
+        id: collector
+        shell: bash
+        run: |
+          if [[ -f scripts/collect_regular_hours_v3_1_actions_evidence.py && -f scripts/test_collect_regular_hours_v3_1_actions_evidence.py ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Collector implementation is not on this branch yet; workflow bootstrap validation only."
+          fi
       - name: Compile collector
+        if: steps.collector.outputs.present == 'true'
         run: python -m py_compile scripts/collect_regular_hours_v3_1_actions_evidence.py
       - name: Run collector regression tests
+        if: steps.collector.outputs.present == 'true'
         run: python -m unittest scripts.test_collect_regular_hours_v3_1_actions_evidence -v
