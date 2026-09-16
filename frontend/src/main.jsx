@@ -6,6 +6,7 @@ import "./shell-polish.css";
 import "./navigation-polish.css";
 import "./core-shell-density-polish.css";
 import "./responsive-shell-density.css";
+import "./notification-polish.css";
 import "./data-panels.css";
 import "./news-polish.css";
 import "./news-state-polish.css";
