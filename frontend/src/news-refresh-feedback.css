@@ -1,0 +1,49 @@
+/* Non-blocking news refresh feedback.
+   Presentation only: aria-busy is already driven by the existing news request state. */
+
+.analyze-news-panel .news-card--terminal[aria-busy="true"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.analyze-news-panel .news-card--terminal[aria-busy="true"]::before {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 0;
+  width: 34%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 148, 71, 0.95), transparent);
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.34);
+  animation: orion-news-refresh-track 1.15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.analyze-news-panel .news-card--terminal[aria-busy="true"] .news-list--terminal {
+  opacity: 0.82;
+  transition: opacity 160ms ease;
+}
+
+.analyze-news-panel .news-card--terminal[aria-busy="true"] .news-item--terminal {
+  pointer-events: none;
+}
+
+@keyframes orion-news-refresh-track {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(325%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-news-panel .news-card--terminal[aria-busy="true"]::before {
+    left: 0;
+    width: 100%;
+    animation: none;
+    background: rgba(255, 148, 71, 0.72);
+  }
+
+  .analyze-news-panel .news-card--terminal[aria-busy="true"] .news-list--terminal {
+    transition: none;
+  }
+}
