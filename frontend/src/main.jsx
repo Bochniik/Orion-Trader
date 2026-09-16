@@ -51,6 +51,7 @@ import "./my-stocks-journal-polish.css";
 import "./data-connections-polish.css";
 import "./auth-polish.css";
 import "./system-states.css";
+import "./table-density-polish.css";
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import AuthPanel from "./components/AuthPanel";
 import OrionMark from "./components/OrionMark";
