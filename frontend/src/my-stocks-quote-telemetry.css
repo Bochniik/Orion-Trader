@@ -1,0 +1,101 @@
+.core-view .watchlist-card {
+  border-color: rgba(255, 255, 255, 0.065);
+  background:
+    radial-gradient(circle at 88% -12%, rgba(255, 139, 40, 0.055), transparent 30%),
+    rgba(8, 9, 11, 0.94);
+}
+
+.core-view .watchlist-header {
+  min-height: 38px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.core-view .watchlist-refresh {
+  color: rgba(218, 223, 231, 0.48);
+  font-size: 0.68rem;
+  font-weight: 680;
+  letter-spacing: 0.035em;
+}
+
+.core-view .watchlist-row {
+  min-height: 43px;
+  border-color: rgba(255, 255, 255, 0.045);
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.core-view .watchlist-row:not(.watchlist-row-head):hover,
+.core-view .watchlist-row.is-selected {
+  border-color: rgba(255, 139, 40, 0.17);
+  background: linear-gradient(90deg, rgba(255, 139, 40, 0.045), transparent 38%), rgba(255, 255, 255, 0.012);
+}
+
+.core-view .watchlist-row.is-selected {
+  box-shadow: inset 2px 0 0 #ff8b28, inset 10px 0 20px rgba(255, 139, 40, 0.025);
+}
+
+.core-view .watchlist-row-head {
+  min-height: 30px;
+  color: rgba(207, 212, 221, 0.42);
+  font-size: 0.62rem;
+  font-weight: 760;
+  letter-spacing: 0.085em;
+  text-transform: uppercase;
+}
+
+.core-view .watch-symbol,
+.core-view .watch-price,
+.core-view .watch-change,
+.core-view .watch-volume {
+  font-variant-numeric: tabular-nums;
+}
+
+.core-view .watch-symbol {
+  font-weight: 820;
+  letter-spacing: 0.045em;
+}
+
+.core-view .watch-price {
+  color: rgba(248, 249, 251, 0.94);
+  font-size: 0.86rem;
+  font-weight: 790;
+}
+
+.core-view .watch-change {
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.core-view .watch-volume {
+  color: rgba(214, 219, 227, 0.56);
+  font-size: 0.74rem;
+}
+
+.core-view .watch-symbol:focus-visible,
+.core-view .watch-price:focus-visible,
+.core-view .watch-change:focus-visible,
+.core-view .watch-volume:focus-visible,
+.core-view .remove-btn:focus-visible {
+  outline: 2px solid rgba(255, 139, 40, 0.48);
+  outline-offset: 2px;
+}
+
+.core-view .watch-unavailable {
+  color: rgba(255, 157, 157, 0.72);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+@media (min-width: 1180px) {
+  .core-view .watchlist-row {
+    grid-template-columns: minmax(150px, 1.15fr) minmax(100px, 0.8fr) minmax(100px, 0.78fr) minmax(90px, 0.72fr) auto;
+    padding-block: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-view .watchlist-row {
+    transition: none;
+  }
+}
