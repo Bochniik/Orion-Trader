@@ -47,6 +47,7 @@ import "./my-stocks-watchlist-state.css";
 import "./my-stocks-workflow-polish.css";
 import "./my-stocks-quote-telemetry.css";
 import "./my-stocks-account-positions-polish.css";
+import "./my-stocks-journal-polish.css";
 import "./data-connections-polish.css";
 import "./auth-polish.css";
 import "./system-states.css";
