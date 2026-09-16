@@ -1,0 +1,134 @@
+.analyze-view .analysis-market-grid {
+  align-items: start;
+}
+
+.analyze-view .analyze-chart-panel {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(148, 163, 184, 0.14);
+  background:
+    radial-gradient(circle at 82% 0%, rgba(249, 115, 22, 0.055), transparent 28%),
+    linear-gradient(180deg, rgba(8, 12, 18, 0.98), rgba(3, 6, 10, 0.99));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 18px 48px rgba(0, 0, 0, 0.18);
+}
+
+.analyze-view .analyze-chart-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.8), rgba(249, 115, 22, 0.08) 42%, transparent 72%);
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.16);
+}
+
+.analyze-view .analyze-chart-panel .analyze-section-heading {
+  margin-bottom: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.analyze-view .analyze-chart-panel .analyze-section-heading > span {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.72);
+}
+
+.analyze-view .analyze-chart-panel .advanced-chart {
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.analyze-view .analyze-chart-panel .chart-toolbar {
+  gap: 10px 16px;
+  padding: 10px 0 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.analyze-view .analyze-chart-panel .range-buttons,
+.analyze-view .analyze-chart-panel .chart-time-controls,
+.analyze-view .analyze-chart-panel .indicator-toolbar {
+  gap: 4px;
+}
+
+.analyze-view .analyze-chart-panel .range-btn,
+.analyze-view .analyze-chart-panel .chart-time-controls button,
+.analyze-view .analyze-chart-panel .indicator-toggle {
+  min-height: 28px;
+  border-radius: 6px;
+  font-size: 10px;
+  letter-spacing: 0.035em;
+}
+
+.analyze-view .analyze-chart-panel .range-btn.active,
+.analyze-view .analyze-chart-panel .chart-time-controls button.active {
+  border-color: rgba(249, 115, 22, 0.42);
+  background: rgba(249, 115, 22, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.05), 0 0 16px rgba(249, 115, 22, 0.06);
+}
+
+.analyze-view .analyze-chart-panel .indicator-toolbar {
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
+}
+
+.analyze-view .analyze-chart-panel .chart-inspector,
+.analyze-view .analyze-chart-panel .chart-period-summary {
+  font-variant-numeric: tabular-nums;
+}
+
+.analyze-view .analyze-chart-panel .chart-inspector {
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
+  background: transparent;
+}
+
+.analyze-view .analyze-chart-panel .chart-inspector > div {
+  min-width: 0;
+}
+
+.analyze-view .analyze-chart-panel .chart-inspector span {
+  font-size: 9px;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.analyze-view .analyze-chart-panel .chart-inspector strong {
+  font-size: 11px;
+}
+
+.analyze-view .analyze-chart-panel .chart-period-summary {
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
+  background: transparent;
+}
+
+.analyze-view .analyze-chart-panel .chart-interval-note {
+  white-space: nowrap;
+  color: rgba(148, 163, 184, 0.68);
+}
+
+@media (max-width: 900px) {
+  .analyze-view .analyze-chart-panel .chart-toolbar {
+    align-items: flex-start;
+  }
+
+  .analyze-view .analyze-chart-panel .chart-time-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view .analyze-chart-panel .range-btn,
+  .analyze-view .analyze-chart-panel .chart-time-controls button,
+  .analyze-view .analyze-chart-panel .indicator-toggle {
+    transition: none !important;
+  }
+}
