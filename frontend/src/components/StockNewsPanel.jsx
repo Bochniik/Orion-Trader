@@ -98,6 +98,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
     if (!date) return latest;
     return !latest || date > latest ? date : latest;
   }, null);
+  const seenImages = new Set();
 
   return (
     <section className="card news-card news-card--terminal" aria-busy={loading ? "true" : "false"}>
@@ -179,7 +180,9 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
       {hasItems && (
         <div className="news-list news-list--terminal">
           {items.map((item, index) => {
-            const image = newsImage(item);
+            const sourceImage = newsImage(item);
+            const image = sourceImage && !seenImages.has(sourceImage) ? sourceImage : "";
+            if (sourceImage) seenImages.add(sourceImage);
             const freshness = newsFreshness(item.published_at);
             const isLead = index === 0;
             return (
