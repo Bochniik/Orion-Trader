@@ -36,6 +36,12 @@ export default function CoreApp({ user, onLogout }) {
   useEffect(() => () => { mounted.current = false; }, []);
 
   useEffect(() => {
+    if (!notice || notice.tone === "error") return undefined;
+    const timeout = window.setTimeout(() => setNotice((current) => current === notice ? null : current), 4200);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  useEffect(() => {
     let current = true;
     const revision = watchRevision.current;
     getWatchlist().then((data) => {
