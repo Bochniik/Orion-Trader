@@ -26,6 +26,7 @@ import "./analysis-desktop-composition.css";
 import "./analysis-state-polish.css";
 import "./analysis-commandbar.css";
 import "./analysis-interaction-polish.css";
+import "./analyze-chart-cohesion.css";
 import "./watchlist-polish.css";
 import "./quote-polish.css";
 import "./stock-workspace.css";
@@ -73,18 +74,13 @@ function Root() {
         <OrionMark size={54} className="orion-system-state-mark" />
         <p className="orion-system-state-eyebrow">Market intelligence workspace</p>
         <h1>Preparing OrionTrader</h1>
-        <p className="orion-system-state-copy">Restoring your secure session and preparing the workspace.</p>
-        <div className="orion-system-state-progress" aria-hidden="true" />
+        <p>Checking your secure session and workspace.</p>
+        <div className="orion-system-state-progress" aria-hidden="true"><span /></div>
       </section>
     </main>
   );
-  if (!session) return <AuthPanel onAuthenticated={setSession} />;
-  return <>{error && <p className="core-warning" role="alert">{error}</p>}<CoreApp key={session.user.id} user={session.user} onLogout={logout} /></>;
+  if (!session?.authenticated) return <AuthPanel onAuthenticated={setSession} />;
+  return <><CoreApp user={session.user} onLogout={logout} />{error && <div className="toast error" role="alert">{error}</div>}</>;
 }
 
-createRoot(document.getElementById("root")).render(
-  <AppErrorBoundary>
-    <Root />
-  </AppErrorBoundary>
-);
-if ("serviceWorker" in navigator && import.meta.env.PROD) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+createRoot(document.getElementById("root")).render(<AppErrorBoundary><Root /></AppErrorBoundary>);
