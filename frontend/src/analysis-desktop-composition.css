@@ -1,5 +1,79 @@
-/* OrionTrader Analyze desktop composition
-   Presentation only: improves horizontal use of the existing Analyze surfaces. */
+/* OrionTrader Analyze responsive composition
+   Presentation only: keeps chart, news and insight surfaces coherent across notebook,
+   tablet and wide desktop widths without changing any market-data or analysis logic. */
+
+.analyze-view .analysis-market-grid,
+.analyze-view .analysis-insight-grid {
+  min-width: 0;
+}
+
+.analyze-view .analyze-chart-panel,
+.analyze-view .analyze-news-panel {
+  min-width: 0;
+}
+
+@media (min-width: 760px) and (max-width: 1179px) {
+  .analyze-view .analysis-market-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .analyze-view .analyze-chart-panel {
+    order: 1;
+  }
+
+  .analyze-view .analyze-news-panel {
+    order: 2;
+  }
+
+  .analyze-view .analyze-news-panel > .news-card--terminal {
+    min-height: 0;
+  }
+
+  .analyze-view .analyze-news-panel .news-list--terminal {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .analyze-view .analyze-news-panel .news-item--terminal {
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-news-panel .news-item--lead {
+    grid-column: 1 / -1;
+  }
+
+  .analyze-view .analysis-insight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 759px) {
+  .analyze-view .analysis-market-grid,
+  .analyze-view .analysis-insight-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .analyze-view .analyze-section-heading {
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .analyze-view .analyze-section-heading > span {
+    font-size: 11px;
+  }
+
+  .analyze-view .analyze-news-panel .news-media {
+    width: 72px;
+  }
+}
 
 @media (min-width: 1180px) {
   .analyze-view {
