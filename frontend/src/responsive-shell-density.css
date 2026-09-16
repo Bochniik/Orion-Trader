@@ -90,6 +90,15 @@
   .core-main {
     padding: 26px clamp(16px, 2vw, 28px) 48px;
   }
+
+  .core-bottom {
+    padding-inline: 18px;
+  }
+
+  .core-footer-left,
+  .core-footer-right {
+    gap: 8px;
+  }
 }
 
 @media (min-width: 900px) and (max-width: 1040px) {
@@ -104,6 +113,11 @@
   .core-market-status {
     max-width: 88px;
     line-height: 1.25;
+  }
+
+  .core-footer-separator,
+  .core-footer-left > span:nth-of-type(4) {
+    display: none;
   }
 }
 
@@ -188,6 +202,16 @@
   .core-main {
     padding: 22px 14px 42px;
   }
+
+  .core-bottom {
+    padding-inline: 12px;
+  }
+
+  .core-footer-separator,
+  .core-footer-left > span:nth-of-type(4),
+  .core-footer-right > span:first-child {
+    display: none;
+  }
 }
 
 @media (max-width: 759px) {
@@ -201,6 +225,37 @@
 
   .core-command-search kbd {
     display: none;
+  }
+
+  .core-bottom {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .core-footer-left {
+    min-width: 0;
+  }
+
+  .core-footer-left > span:nth-of-type(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .core-footer-separator,
+  .core-footer-left > span:nth-of-type(4),
+  .core-footer-right > span:first-child {
+    display: none;
+  }
+}
+
+@media (max-width: 479px) {
+  .core-footer-left > span:nth-of-type(2) {
+    display: none;
+  }
+
+  .core-footer-dot {
+    margin-right: 0;
   }
 }
 
