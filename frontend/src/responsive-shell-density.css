@@ -1,0 +1,158 @@
+/* OrionTrader responsive shell density
+   Presentation only: preserves workspace width on notebooks/tablets without changing navigation behavior. */
+
+@media (min-width: 900px) and (max-width: 1279px) {
+  .core-shell {
+    grid-template-columns: 184px minmax(0, 1fr);
+  }
+
+  .core-sidebar {
+    width: 184px;
+    padding-inline: 10px;
+  }
+
+  .core-brand {
+    gap: 8px;
+    padding-inline: 7px;
+  }
+
+  .core-brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .core-brand-copy strong {
+    font-size: 13px;
+  }
+
+  .core-brand-copy small {
+    font-size: 6px;
+    letter-spacing: 1.05px;
+  }
+
+  .core-nav button {
+    gap: 9px;
+    padding: 10px 9px;
+    font-size: 11px;
+  }
+
+  .core-nav-section-label {
+    padding-inline: 9px;
+  }
+
+  .core-sidebar-status,
+  .core-sidebar-settings {
+    padding-inline: 8px;
+  }
+
+  .core-sidebar-status {
+    gap: 8px;
+  }
+
+  .core-status-indicator {
+    width: 27px;
+    height: 27px;
+  }
+
+  .core-sidebar-status strong {
+    font-size: 9px;
+  }
+
+  .core-sidebar-status small {
+    font-size: 8px;
+  }
+
+  .core-topbar {
+    padding-inline: 18px;
+  }
+
+  .core-main {
+    padding: 26px clamp(16px, 2vw, 28px) 48px;
+  }
+}
+
+@media (min-width: 760px) and (max-width: 899px) {
+  .core-shell {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .core-sidebar {
+    width: 76px;
+    padding: 18px 9px 13px;
+  }
+
+  .core-brand {
+    justify-content: center;
+    padding: 4px 0 20px;
+  }
+
+  .core-brand-copy,
+  .core-nav-section-label,
+  .core-nav button > span,
+  .core-sidebar-status > span:last-child,
+  .core-sidebar-settings > span {
+    display: none;
+  }
+
+  .core-nav {
+    gap: 6px;
+  }
+
+  .core-nav button,
+  .core-sidebar-settings {
+    justify-content: center;
+    gap: 0;
+    min-height: 44px;
+    padding: 10px;
+  }
+
+  .core-nav button.active::before {
+    top: 9px;
+    bottom: 9px;
+  }
+
+  .core-sidebar-status {
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  .core-status-indicator {
+    width: 31px;
+    height: 31px;
+  }
+
+  .core-topbar {
+    gap: 12px;
+    padding-inline: 14px;
+  }
+
+  .core-command-search {
+    width: min(430px, 58vw);
+  }
+
+  .core-market-status {
+    display: none;
+  }
+
+  .core-main {
+    padding: 22px 14px 42px;
+  }
+}
+
+@media (max-width: 759px) {
+  .core-main {
+    padding-inline: 12px;
+  }
+
+  .core-topbar {
+    padding-inline: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-sidebar,
+  .core-nav button,
+  .core-sidebar-settings {
+    transition: none;
+  }
+}
