@@ -54,6 +54,18 @@ function newsImage(item) {
   return item?.thumbnail || item?.image_url || item?.image || item?.media?.thumbnail || "";
 }
 
+function newsImageIdentity(image) {
+  const value = String(image || "").trim();
+  if (!value) return "";
+
+  try {
+    const url = new URL(value);
+    return `${url.origin}${url.pathname}`.toLowerCase();
+  } catch {
+    return value.split("#", 1)[0].split("?", 1)[0].toLowerCase();
+  }
+}
+
 function newsLabel(item) {
   return item?.category || item?.type || "Market news";
 }
@@ -181,8 +193,9 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
         <div className="news-list news-list--terminal">
           {items.map((item, index) => {
             const sourceImage = newsImage(item);
-            const image = sourceImage && !seenImages.has(sourceImage) ? sourceImage : "";
-            if (sourceImage) seenImages.add(sourceImage);
+            const imageIdentity = newsImageIdentity(sourceImage);
+            const image = sourceImage && !seenImages.has(imageIdentity) ? sourceImage : "";
+            if (imageIdentity) seenImages.add(imageIdentity);
             const freshness = newsFreshness(item.published_at);
             const isLead = index === 0;
             return (
