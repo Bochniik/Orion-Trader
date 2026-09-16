@@ -198,13 +198,15 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
             if (imageIdentity) seenImages.add(imageIdentity);
             const freshness = newsFreshness(item.published_at);
             const isLead = index === 0;
+            const publisher = item.publisher || "Unknown source";
             return (
               <a
                 className={`news-item news-item--terminal${isLead ? " news-item--lead" : ""}`}
                 key={`${item.title}-${item.link}`}
                 href={item.link}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
+                aria-label={`Open ${item.title || "news article"} from ${publisher} in a new tab`}
               >
                 <NewsMedia image={image} ticker={ticker} />
 
@@ -212,7 +214,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                   {isLead && <span className="news-lead-label">Latest headline</span>}
                   <div className="news-meta-row">
                     {freshness && <span className="news-kind">{freshness}</span>}
-                    <strong>{item.publisher || "Unknown source"}</strong>
+                    <strong>{publisher}</strong>
                     <span aria-hidden="true">•</span>
                     <time dateTime={newsDate(item.published_at)?.toISOString()} title={formatExactNewsDate(item.published_at)}>
                       {formatNewsDate(item.published_at)}
