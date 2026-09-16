@@ -63,11 +63,47 @@
   }
 
   .core-topbar {
+    gap: 12px;
     padding-inline: 18px;
+  }
+
+  .core-command-search {
+    width: min(470px, 48vw);
+    padding-block: 8px;
+  }
+
+  .core-command-search > span {
+    font-size: 10px;
+  }
+
+  .core-market-status {
+    margin-right: 2px;
+    font-size: 8px;
+    letter-spacing: 0.35px;
+  }
+
+  .core-topbar-icon {
+    width: 32px;
+    height: 32px;
   }
 
   .core-main {
     padding: 26px clamp(16px, 2vw, 28px) 48px;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1040px) {
+  .core-command-search {
+    width: min(360px, 43vw);
+  }
+
+  .core-command-search kbd {
+    display: none;
+  }
+
+  .core-market-status {
+    max-width: 88px;
+    line-height: 1.25;
   }
 }
 
@@ -122,16 +158,31 @@
   }
 
   .core-topbar {
-    gap: 12px;
-    padding-inline: 14px;
+    gap: 10px;
+    padding-inline: 12px;
   }
 
   .core-command-search {
-    width: min(430px, 58vw);
+    width: min(390px, calc(100vw - 190px));
+    padding: 8px 10px;
   }
 
+  .core-command-search > span {
+    font-size: 10px;
+  }
+
+  .core-command-search kbd,
   .core-market-status {
     display: none;
+  }
+
+  .core-topbar-actions {
+    gap: 4px;
+  }
+
+  .core-topbar-icon {
+    width: 32px;
+    height: 32px;
   }
 
   .core-main {
@@ -147,12 +198,18 @@
   .core-topbar {
     padding-inline: 12px;
   }
+
+  .core-command-search kbd {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .core-sidebar,
   .core-nav button,
-  .core-sidebar-settings {
+  .core-sidebar-settings,
+  .core-command-search,
+  .core-topbar-icon {
     transition: none;
   }
 }
