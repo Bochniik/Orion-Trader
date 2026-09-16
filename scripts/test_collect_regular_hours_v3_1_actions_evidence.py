@@ -1,5 +1,5 @@
 import io, json, zipfile
-from collect_regular_hours_v3_1_actions_evidence import ActionsEvidenceError, WORKFLOW_FILE, prediction_payload_from_zip, select_artifact
+from scripts.collect_regular_hours_v3_1_actions_evidence import ActionsEvidenceError, WORKFLOW_FILE, prediction_payload_from_zip, select_artifact
 
 SHA = "a" * 40
 
