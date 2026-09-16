@@ -1,247 +1,42 @@
 /* Data Connections — market-terminal polish */
 
-.core-dialog.core-shell {
-  position: relative;
-  width: min(620px, calc(100vw - 28px));
-  padding: 0;
-  overflow: hidden auto;
-  border-color: rgba(255, 255, 255, 0.11);
-  background:
-    radial-gradient(circle at 86% 0%, rgba(255, 122, 26, 0.09), transparent 18rem),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 32%),
-    #090d12;
-  box-shadow:
-    0 32px 90px rgba(0, 0, 0, 0.62),
-    0 0 0 1px rgba(255, 122, 26, 0.025) inset;
-}
+.core-dialog.core-shell { position: relative; width: min(620px, calc(100vw - 28px)); padding: 0; overflow: hidden auto; border-color: rgba(255,255,255,.11); background: radial-gradient(circle at 86% 0%, rgba(255,122,26,.09), transparent 18rem), linear-gradient(180deg, rgba(255,255,255,.018), transparent 32%), #090d12; box-shadow: 0 32px 90px rgba(0,0,0,.62), 0 0 0 1px rgba(255,122,26,.025) inset; }
+.core-dialog.core-shell::before { content:""; position:sticky; display:block; top:0; z-index:2; height:1px; margin-bottom:-1px; background:linear-gradient(90deg,transparent,rgba(255,122,26,.7),transparent 68%); box-shadow:0 0 18px rgba(255,122,26,.2); }
+.core-dialog.core-shell > * { margin-left:26px; margin-right:26px; }
+.core-dialog.core-shell > .core-dialog-heading { position:sticky; top:0; z-index:3; margin:0; padding:22px 26px 17px; border-bottom:1px solid var(--core-line); background:rgba(9,13,18,.92); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+.core-dialog-heading h2 { letter-spacing:-.35px; }
+.core-dialog-heading h2::after { content:"CONNECTIONS"; display:inline-block; margin-left:10px; vertical-align:3px; color:#5e6873; font-size:7px; font-weight:760; letter-spacing:1.45px; }
+.core-dialog.core-shell > .core-dialog-heading + p { margin-top:20px; margin-bottom:14px; padding:12px 14px; border:1px solid rgba(255,122,26,.12); border-radius:8px; background:rgba(255,122,26,.035); color:#a5afb9; }
 
-.core-dialog.core-shell::before {
-  content: "";
-  position: sticky;
-  display: block;
-  top: 0;
-  z-index: 2;
-  height: 1px;
-  margin-bottom: -1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 122, 26, 0.7), transparent 68%);
-  box-shadow: 0 0 18px rgba(255, 122, 26, 0.2);
-}
+.core-connection-status { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:11px; margin-top:0; margin-bottom:18px; padding:11px 13px; border:1px solid rgba(255,255,255,.075); border-radius:9px; background:rgba(2,5,9,.48); }
+.core-connection-dot { width:8px; height:8px; border-radius:50%; background:#59616b; box-shadow:0 0 0 3px rgba(255,255,255,.025); }
+.core-connection-dot.online { background:var(--core-green); box-shadow:0 0 11px rgba(97,216,155,.62); }
+.core-connection-dot.checking { background:#ff9a45; box-shadow:0 0 11px rgba(255,122,26,.5); }
+.core-connection-copy { display:flex; min-width:0; flex-direction:column; gap:2px; }
+.core-connection-copy strong { overflow:hidden; color:#e5e9ed; font-size:11px; font-weight:700; letter-spacing:.1px; text-overflow:ellipsis; white-space:nowrap; }
+.core-connection-copy small { color:#66727d; font-size:8px; font-weight:620; letter-spacing:.55px; text-transform:uppercase; }
+.core-connection-badge { padding:4px 7px; border:1px solid rgba(255,255,255,.07); border-radius:999px; color:#707b86; background:rgba(255,255,255,.025); font-size:7px; font-weight:780; letter-spacing:.75px; text-transform:uppercase; }
+.core-connection-badge.online { border-color:rgba(97,216,155,.15); color:#8fe1b7; background:rgba(97,216,155,.045); }
+.core-connection-badge.checking { border-color:rgba(255,122,26,.17); color:#ffab68; background:rgba(255,122,26,.045); }
+.core-connection-progress { margin-top:10px; margin-bottom:14px; padding:10px 12px; border:1px solid rgba(255,122,26,.11); border-radius:8px; color:#9da7b1; background:rgba(255,122,26,.025); font-size:9px; }
 
-.core-dialog.core-shell > * {
-  margin-left: 26px;
-  margin-right: 26px;
-}
+.core-dialog.core-shell label { margin-top:18px; color:#8e99a4; font-size:9px; font-weight:660; letter-spacing:.55px; text-transform:uppercase; }
+.core-dialog.core-shell input,.core-dialog.core-shell select { min-height:40px; padding:10px 12px; border-color:rgba(255,255,255,.095); background:rgba(3,6,10,.66); color:#e8ebee; transition:border-color .15s ease,background .15s ease,box-shadow .15s ease; }
+.core-dialog.core-shell input:hover,.core-dialog.core-shell select:hover { border-color:rgba(255,255,255,.16); }
+.core-dialog.core-shell input:focus,.core-dialog.core-shell select:focus { border-color:rgba(255,122,26,.44); background:#080c11; box-shadow:0 0 0 3px rgba(255,122,26,.06); outline:none; }
+.core-dialog.core-shell select { cursor:pointer; }
+.core-dialog.core-shell .core-muted { margin-top:8px; margin-bottom:14px; color:#6f7a86; font-size:9px; line-height:1.7; }
+.core-dialog.core-shell form { margin-top:14px; margin-bottom:14px; padding:17px 18px 18px; border:1px solid var(--core-line); border-radius:10px; background:linear-gradient(180deg,rgba(255,255,255,.016),transparent),rgba(255,255,255,.008); }
+.core-dialog.core-shell form label:first-child { margin-top:0; }
+.core-dialog.core-shell form .core-button { width:100%; justify-content:center; min-height:38px; margin-top:18px; box-shadow:0 8px 24px rgba(255,122,26,.09); }
+.core-dialog.core-shell .core-connected { position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; margin-bottom:14px; padding:10px 10px 10px 36px; border:1px solid rgba(97,216,155,.15); border-radius:9px; background:rgba(97,216,155,.035); color:#8fe1b7; font-size:9px; font-weight:660; letter-spacing:.2px; }
+.core-dialog.core-shell .core-connected::before { content:""; position:absolute; left:15px; top:50%; width:7px; height:7px; border-radius:50%; background:var(--core-green); box-shadow:0 0 10px rgba(97,216,155,.68); transform:translateY(-50%); }
+.core-dialog.core-shell .core-connected .core-button.secondary { flex:0 0 auto; min-height:30px; padding:6px 10px; border-color:rgba(255,255,255,.08); background:rgba(255,255,255,.025); font-size:9px; }
+.core-dialog.core-shell .core-warning { margin-top:12px; margin-bottom:12px; padding:10px 12px; border:1px solid rgba(255,116,116,.16); border-radius:8px; background:rgba(255,116,116,.04); }
+.core-dialog.core-shell > label[for="portfolio-source"] { margin-top:22px; padding-top:19px; border-top:1px solid var(--core-line); }
+.core-dialog.core-shell .core-account { margin:24px 0 0; padding:16px 26px 20px; border-top:1px solid var(--core-line); background:rgba(255,255,255,.01); color:#727e89; font-size:10px; }
+.core-dialog.core-shell .core-account span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.core-dialog.core-shell .core-text-button { flex:0 0 auto; }
 
-.core-dialog.core-shell > .core-dialog-heading {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  margin: 0;
-  padding: 22px 26px 17px;
-  border-bottom: 1px solid var(--core-line);
-  background: rgba(9, 13, 18, 0.92);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-.core-dialog-heading h2 {
-  letter-spacing: -0.35px;
-}
-
-.core-dialog-heading h2::after {
-  content: "CONNECTIONS";
-  display: inline-block;
-  margin-left: 10px;
-  vertical-align: 3px;
-  color: #5e6873;
-  font-size: 7px;
-  font-weight: 760;
-  letter-spacing: 1.45px;
-}
-
-.core-dialog.core-shell > .core-dialog-heading + p {
-  margin-top: 20px;
-  margin-bottom: 20px;
-  padding: 12px 14px;
-  border: 1px solid rgba(255, 122, 26, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 122, 26, 0.035);
-  color: #a5afb9;
-}
-
-.core-dialog.core-shell label {
-  margin-top: 18px;
-  color: #8e99a4;
-  font-size: 9px;
-  font-weight: 660;
-  letter-spacing: 0.55px;
-  text-transform: uppercase;
-}
-
-.core-dialog.core-shell input,
-.core-dialog.core-shell select {
-  min-height: 40px;
-  padding: 10px 12px;
-  border-color: rgba(255, 255, 255, 0.095);
-  background: rgba(3, 6, 10, 0.66);
-  color: #e8ebee;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.core-dialog.core-shell input:hover,
-.core-dialog.core-shell select:hover {
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
-.core-dialog.core-shell input:focus,
-.core-dialog.core-shell select:focus {
-  border-color: rgba(255, 122, 26, 0.44);
-  background: #080c11;
-  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.06);
-  outline: none;
-}
-
-.core-dialog.core-shell select {
-  cursor: pointer;
-}
-
-.core-dialog.core-shell .core-muted {
-  margin-top: 8px;
-  margin-bottom: 14px;
-  color: #6f7a86;
-  font-size: 9px;
-  line-height: 1.7;
-}
-
-.core-dialog.core-shell form {
-  margin-top: 14px;
-  margin-bottom: 14px;
-  padding: 17px 18px 18px;
-  border: 1px solid var(--core-line);
-  border-radius: 10px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.016), transparent),
-    rgba(255, 255, 255, 0.008);
-}
-
-.core-dialog.core-shell form label:first-child {
-  margin-top: 0;
-}
-
-.core-dialog.core-shell form .core-button {
-  width: 100%;
-  justify-content: center;
-  min-height: 38px;
-  margin-top: 18px;
-  box-shadow: 0 8px 24px rgba(255, 122, 26, 0.09);
-}
-
-.core-dialog.core-shell .core-connected {
-  position: relative;
-  margin-top: 14px;
-  margin-bottom: 14px;
-  padding: 13px 14px 13px 38px;
-  border: 1px solid rgba(97, 216, 155, 0.15);
-  border-radius: 9px;
-  background: rgba(97, 216, 155, 0.035);
-  color: #8fe1b7;
-  font-size: 10px;
-  font-weight: 660;
-  letter-spacing: 0.25px;
-}
-
-.core-dialog.core-shell .core-connected::before {
-  content: "";
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--core-green);
-  box-shadow: 0 0 10px rgba(97, 216, 155, 0.68);
-  transform: translateY(-50%);
-}
-
-.core-dialog.core-shell .core-connected .core-button.secondary {
-  min-height: 30px;
-  padding: 6px 10px;
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.025);
-  font-size: 9px;
-}
-
-.core-dialog.core-shell .core-warning {
-  margin-top: 12px;
-  margin-bottom: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 116, 116, 0.16);
-  border-radius: 8px;
-  background: rgba(255, 116, 116, 0.04);
-}
-
-.core-dialog.core-shell > label[for="portfolio-source"] {
-  margin-top: 22px;
-  padding-top: 19px;
-  border-top: 1px solid var(--core-line);
-}
-
-.core-dialog.core-shell .core-account {
-  margin: 24px 0 0;
-  padding: 16px 26px 20px;
-  border-top: 1px solid var(--core-line);
-  background: rgba(255, 255, 255, 0.01);
-  color: #727e89;
-  font-size: 10px;
-}
-
-.core-dialog.core-shell .core-account span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.core-dialog.core-shell .core-text-button {
-  flex: 0 0 auto;
-}
-
-@media (max-width: 620px) {
-  .core-dialog.core-shell {
-    width: min(100vw - 16px, 620px);
-    max-height: calc(100dvh - 16px);
-  }
-
-  .core-dialog.core-shell > * {
-    margin-left: 18px;
-    margin-right: 18px;
-  }
-
-  .core-dialog.core-shell > .core-dialog-heading {
-    padding: 18px;
-  }
-
-  .core-dialog-heading h2::after {
-    display: none;
-  }
-
-  .core-dialog.core-shell form {
-    padding: 15px;
-  }
-
-  .core-dialog.core-shell .core-account {
-    margin-left: 0;
-    margin-right: 0;
-    padding: 15px 18px 17px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .core-dialog.core-shell input,
-  .core-dialog.core-shell select {
-    transition: none;
-  }
-}
+@media (max-width:620px) { .core-dialog.core-shell { width:min(100vw - 16px,620px); max-height:calc(100dvh - 16px); } .core-dialog.core-shell > * { margin-left:18px; margin-right:18px; } .core-dialog.core-shell > .core-dialog-heading { padding:18px; } .core-dialog-heading h2::after { display:none; } .core-dialog.core-shell form { padding:15px; } .core-dialog.core-shell .core-account { margin-left:0; margin-right:0; padding:15px 18px 17px; } .core-connection-status { grid-template-columns:auto minmax(0,1fr); } .core-connection-badge { grid-column:2; justify-self:start; } .core-dialog.core-shell .core-connected { align-items:flex-start; flex-direction:column; } }
+@media (prefers-reduced-motion:reduce) { .core-dialog.core-shell input,.core-dialog.core-shell select { transition:none; } }
