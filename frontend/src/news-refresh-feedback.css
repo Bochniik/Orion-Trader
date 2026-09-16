@@ -22,12 +22,14 @@
 }
 
 .analyze-news-panel .news-card--terminal[aria-busy="true"] .news-list--terminal {
-  opacity: 0.82;
+  opacity: 0.88;
   transition: opacity 160ms ease;
 }
 
+/* Background refresh must stay genuinely non-blocking: users can continue
+   opening the currently visible stories while fresh data is in flight. */
 .analyze-news-panel .news-card--terminal[aria-busy="true"] .news-item--terminal {
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 @keyframes orion-news-refresh-track {
