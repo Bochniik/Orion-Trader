@@ -12,6 +12,11 @@ _MIN_RETENTION_BY_PREFIX = {
     "long-horizon-v5-paired-shadow-": timedelta(days=45),
     "long-horizon-v5-evidence-ledger-": timedelta(days=90),
 }
+# GitHub computes artifact expiry independently from the artifact creation timestamp.
+# A configured N-day retention can therefore appear a few seconds shorter than N
+# days even though the Actions retention contract is satisfied. Keep the guard
+# strict against materially short retention while tolerating only boundary skew.
+_RETENTION_TIMESTAMP_SKEW = timedelta(minutes=5)
 _RECOVERY_IDENTITY_PREFIXES = tuple(_MIN_RETENTION_BY_PREFIX)
 
 
@@ -84,12 +89,14 @@ def sort_artifact_rows(lines: Iterable[str]) -> list[str]:
         if expires_at <= created_at:
             raise ValueError(f"Artifact expires_at must be after created_at: {artifact_name}")
 
-        if expires_at - created_at < minimum_retention:
-            actual_days = (expires_at - created_at).total_seconds() / 86400.0
+        observed_retention = expires_at - created_at
+        if observed_retention + _RETENTION_TIMESTAMP_SKEW < minimum_retention:
+            actual_days = observed_retention.total_seconds() / 86400.0
             required_days = int(minimum_retention.total_seconds() // 86400)
             raise ValueError(
                 f"Artifact retention shorter than required: {artifact_name} "
-                f"actual_days={actual_days:.3f} required_days={required_days}"
+                f"actual_days={actual_days:.6f} required_days={required_days} "
+                f"allowed_timestamp_skew_seconds={int(_RETENTION_TIMESTAMP_SKEW.total_seconds())}"
             )
 
         recovery_identity = _recovery_identity(artifact_name, workflow_run_id)
