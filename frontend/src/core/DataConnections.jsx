@@ -20,15 +20,22 @@ export default function DataConnections({ onClose, onChanged, user, onLogout }) 
   }
   const data = workspace.data;
   const connected = provider === "alpaca" ? data?.alpaca?.connected : data?.trading212_demo?.connected;
+  const providerLabel = provider === "alpaca" ? "Alpaca Paper" : "Trading 212 Demo";
+  const providerRole = provider === "alpaca" ? "Market research feed" : "Portfolio snapshot";
   return <dialog ref={dialog} className="core-dialog core-shell" onCancel={onClose} aria-labelledby="data-title">
     <div className="core-dialog-heading"><h2 id="data-title">Data & account</h2><button className="core-icon-button" type="button" aria-label="Close data settings" onClick={onClose}><X size={20} /></button></div>
     <p>Analysis assistant only. These connections provide research data and account snapshots; there are no order controls here.</p>
-    {workspace.error && <p role="alert">{workspace.error}</p>}
+    {workspace.error && <p className="core-warning" role="alert">{workspace.error}</p>}
+    <div className="core-connection-status" aria-live="polite">
+      <span className={`core-connection-dot ${workspace.busy ? "checking" : connected ? "online" : "offline"}`} aria-hidden="true" />
+      <span className="core-connection-copy"><strong>{providerLabel}</strong><small>{providerRole}</small></span>
+      <span className={`core-connection-badge ${workspace.busy ? "checking" : connected ? "online" : "offline"}`}>{workspace.busy ? "Checking" : connected ? "Connected" : "Not connected"}</span>
+    </div>
     <label htmlFor="data-provider">Connection</label><select id="data-provider" value={provider} onChange={event => { setProvider(event.target.value); setKey(""); setSecret(""); setError(""); }}>
       <option value="alpaca">Alpaca Paper · market research data</option><option value="trading212_demo">Trading 212 Demo · portfolio data</option>
     </select>
     <p className="core-muted">{provider === "alpaca" ? "Current scanner inputs use IEX snapshots. Coverage is limited; this is not consolidated depth or guaranteed real-time pricing." : "Demo portfolio only. Trading 212 does not supply the Live Edge model feed."}</p>
-    {workspace.busy ? <p role="status">Checking connection…</p> : connected ? <div className="core-connected"><span>Connected</span><button type="button" className="core-button secondary" disabled={busy} onClick={() => mutate(provider === "alpaca" ? disconnectAlpaca : disconnectTrading212Demo)}>Disconnect</button></div> : <form onSubmit={event => { event.preventDefault(); mutate(() => provider === "alpaca" ? connectAlpaca(key, secret) : connectTrading212Demo(key, secret)); }}>
+    {workspace.busy ? <p className="core-connection-progress" role="status">Checking connection…</p> : connected ? <div className="core-connected"><span>Connection available to OrionTrader</span><button type="button" className="core-button secondary" disabled={busy} onClick={() => mutate(provider === "alpaca" ? disconnectAlpaca : disconnectTrading212Demo)}>Disconnect</button></div> : <form onSubmit={event => { event.preventDefault(); mutate(() => provider === "alpaca" ? connectAlpaca(key, secret) : connectTrading212Demo(key, secret)); }}>
       <label htmlFor="data-key">{provider === "alpaca" ? "Paper API key" : "Demo API key"}</label><input id="data-key" type="password" value={key} autoComplete="off" required onChange={event => setKey(event.target.value)} />
       <label htmlFor="data-secret">Secret key</label><input id="data-secret" type="password" value={secret} autoComplete="off" required onChange={event => setSecret(event.target.value)} />
       <button className="core-button" type="submit" disabled={busy}>{busy ? "Connecting…" : "Connect data"}</button>
