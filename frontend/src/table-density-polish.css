@@ -1,0 +1,78 @@
+/* Shared market-data table density polish.
+   Presentation-only: table data, ordering, scoring and backend semantics are unchanged. */
+
+.table-scroll {
+  position: relative;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 145, 52, 0.24) rgba(255, 255, 255, 0.025);
+}
+
+.table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.table-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+.table-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 145, 52, 0.24);
+  background-clip: padding-box;
+}
+
+.table-scroll table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 9px 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+  background: rgba(12, 13, 15, 0.96);
+  color: rgba(190, 195, 203, 0.6);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.34);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.085em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.table-scroll tbody td {
+  padding: 9px 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  color: rgba(226, 229, 234, 0.82);
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.table-scroll tbody tr:last-child td { border-bottom-color: transparent; }
+.table-scroll tbody tr { transition: background 120ms ease, box-shadow 120ms ease; }
+.table-scroll tbody tr:hover,
+.table-scroll tbody tr:focus-within {
+  background: linear-gradient(90deg, rgba(255, 132, 25, 0.055), rgba(255, 132, 25, 0.012) 44%, transparent 78%);
+  box-shadow: inset 2px 0 rgba(255, 148, 53, 0.42);
+}
+
+.table-scroll tbody tr:focus-within td { color: rgba(247, 238, 230, 0.94); }
+.table-scroll td button,
+.table-scroll td a { position: relative; z-index: 1; }
+.table-scroll td button:focus-visible,
+.table-scroll td a:focus-visible {
+  outline: 1px solid rgba(255, 158, 68, 0.68);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .table-scroll thead th,
+  .table-scroll tbody td { padding: 8px 9px; }
+  .table-scroll thead th { font-size: 8.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-scroll tbody tr { transition: none; }
+}
