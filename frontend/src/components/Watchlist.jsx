@@ -10,6 +10,7 @@ function formatPrice(value) {
 }
 function formatPercent(value) { if (value === null || value === undefined) return "..."; const sign = Number(value) > 0 ? "+" : ""; return `${sign}${Number(value).toFixed(2)}%`; }
 function formatVolume(value) { if (value === null || value === undefined) return "..."; return Number(value).toLocaleString(undefined, { notation: "compact" }); }
+function formatRefreshTime(value) { return value ? new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(value) : "—"; }
 function quoteState(quote, loading) {
   if (quote?.error) return { label: "OFFLINE", tone: "#ff9292", border: "rgba(255, 105, 105, 0.18)", background: "rgba(255, 79, 79, 0.06)" };
   if (quote?.stale) return { label: "LAST", tone: "#ffad68", border: "rgba(255, 155, 71, 0.22)", background: "rgba(255, 139, 42, 0.08)" };
@@ -23,15 +24,19 @@ export default function Watchlist({ watchlist, onSelectStock, onRemoveStock }) {
   const [error, setError] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState("");
   const [removingSymbol, setRemovingSymbol] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
     async function loadWatchlistQuotes() {
-      if (!watchlist.length) { setQuotes({}); return; }
+      if (!watchlist.length) { setQuotes({}); setLastUpdatedAt(null); return; }
       try {
         setLoading(true); setError("");
         const results = await Promise.all(watchlist.map(async (symbol) => { try { return [symbol, await getQuote(symbol)]; } catch { return [symbol, { ticker: symbol, error: true }]; } }));
-        if (isMounted) setQuotes((previousQuotes) => Object.fromEntries(results.map(([symbol, quote]) => { const previousQuote = previousQuotes[symbol]; if (quote?.error && previousQuote && !previousQuote.error) return [symbol, { ...previousQuote, stale: true }]; return [symbol, quote?.error ? quote : { ...quote, stale: false }]; })));
+        if (isMounted) {
+          setQuotes((previousQuotes) => Object.fromEntries(results.map(([symbol, quote]) => { const previousQuote = previousQuotes[symbol]; if (quote?.error && previousQuote && !previousQuote.error) return [symbol, { ...previousQuote, stale: true }]; return [symbol, quote?.error ? quote : { ...quote, stale: false }]; })));
+          setLastUpdatedAt(new Date());
+        }
       } catch (err) { if (isMounted) setError(err.message || "Could not refresh watchlist"); }
       finally { if (isMounted) setLoading(false); }
     }
@@ -50,9 +55,11 @@ export default function Watchlist({ watchlist, onSelectStock, onRemoveStock }) {
     finally { setRemovingSymbol(""); }
   }
   const hasStaleQuotes = watchlist.some((symbol) => quotes[symbol]?.stale);
+  const liveQuoteCount = watchlist.filter((symbol) => quotes[symbol] && !quotes[symbol].error && !quotes[symbol].stale).length;
+  const quoteHealthLabel = loading && !lastUpdatedAt ? "SYNCING" : hasStaleQuotes ? "DEGRADED" : liveQuoteCount === watchlist.length && watchlist.length ? "LIVE" : "PARTIAL";
 
   return <section className="card watchlist-card" aria-busy={Boolean(removingSymbol)}>
-    <div className="watchlist-header"><div className="card-title"><Search size={20} />Watchlist</div><div className="watchlist-refresh" aria-live="polite"><RefreshCw size={15} className={loading ? "spin" : ""} /><span>{removingSymbol ? `Removing ${removingSymbol}…` : selectedSymbol ? `Selected · ${selectedSymbol} → Analyze` : loading ? "Refreshing" : hasStaleQuotes ? "Using last quote" : "30s refresh"}</span></div></div>
+    <div className="watchlist-header"><div className="card-title"><Search size={20} />Watchlist</div><div className="watchlist-refresh" aria-live="polite" title={lastUpdatedAt ? `Last quote refresh ${formatRefreshTime(lastUpdatedAt)}` : "Waiting for first quote refresh"}><RefreshCw size={15} className={loading ? "spin" : ""} /><span>{removingSymbol ? `Removing ${removingSymbol}…` : selectedSymbol ? `Selected · ${selectedSymbol} → Analyze` : `${quoteHealthLabel} · ${liveQuoteCount}/${watchlist.length || 0} · ${formatRefreshTime(lastUpdatedAt)}`}</span></div></div>
     {error && <p className="watchlist-error" role="alert">{error}</p>}
     {!watchlist.length ? <div className="watchlist-empty" role="status"><span className="watchlist-empty-icon" aria-hidden="true"><Search size={18} /></span><div><strong>No stocks on your watchlist</strong><p>Search for a ticker and save it to keep live price, change and volume in view.</p></div></div> : <div className="watchlist-table">
       <div className="watchlist-row watchlist-row-head"><span>Ticker</span><span>Price</span><span>Change</span><span>Volume</span><span></span></div>
