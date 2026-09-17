@@ -2,109 +2,35 @@
    Presentation-only refinement over existing decision, risk and insight data. */
 
 .analysis-overview {
-  background:
-    radial-gradient(circle at 68% 0%, rgba(255, 122, 26, 0.045), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent 42%),
-    rgba(8, 9, 11, 0.82);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 18px 44px rgba(0, 0, 0, 0.16);
+  background: radial-gradient(circle at 68% 0%, rgba(255, 122, 26, 0.045), transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent 42%), rgba(8, 9, 11, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 18px 44px rgba(0, 0, 0, 0.16);
 }
+.analysis-overview .analysis-metric, .analysis-overview .analysis-risk-metric { border-color: rgba(255, 255, 255, 0.06); }
+.analysis-overview .analysis-metric strong, .analysis-overview .analysis-risk-metric strong, .analysis-score-ring strong { font-variant-numeric: tabular-nums; }
+.analysis-overview .analysis-metric small, .analysis-overview .analysis-risk-metric small { color: rgba(210, 210, 210, 0.52); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.075em; text-transform: uppercase; }
+.analysis-overview .analysis-metric { min-width: 0; background: linear-gradient(180deg, rgba(255, 255, 255, 0.016), transparent 72%), rgba(255, 255, 255, 0.006); }
+.analysis-overview .analysis-metric:hover, .analysis-overview .analysis-risk-metric:hover { border-color: rgba(255, 148, 71, 0.13); }
+.analysis-insight-grid { align-items: stretch; }
+.analysis-insight { min-height: 100%; border-color: rgba(255, 255, 255, 0.058); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018); }
+.analysis-insight h3::after { content: ""; width: 28px; height: 1px; margin-left: auto; background: linear-gradient(90deg, rgba(255, 148, 71, 0.5), transparent); }
+.analysis-insight dl > div:first-child { padding-top: 6px; }
+.analysis-insight dt { color: rgba(174, 181, 191, 0.56); }
+.analysis-insight dd { color: rgba(238, 241, 244, 0.92); }
+.analysis-reasons li, .analysis-risks li { transition: border-color 150ms ease, background 150ms ease; }
+.analysis-reasons li:hover, .analysis-risks li:hover { border-color: rgba(255, 148, 71, 0.1); background: rgba(255, 148, 71, 0.018); }
+.analysis-reasons li > span { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 0 12px rgba(255, 122, 26, 0.045); }
+.analysis-risks li svg { opacity: 0.86; }
 
-.analysis-overview .analysis-metric,
-.analysis-overview .analysis-risk-metric {
-  border-color: rgba(255, 255, 255, 0.06);
-}
+.analysis-technical-context { position: relative; overflow: hidden; }
+.analysis-technical-context::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 1px; background: linear-gradient(180deg, rgba(249, 115, 22, 0.58), rgba(249, 115, 22, 0.08) 58%, transparent); }
+.analysis-technical-context dd { font-variant-numeric: tabular-nums; }
+.analysis-chart-link { width: 100%; margin-top: 10px; padding: 9px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid rgba(249, 115, 22, 0.16); border-radius: 7px; background: linear-gradient(90deg, rgba(249, 115, 22, 0.07), rgba(249, 115, 22, 0.018)); color: rgba(245, 247, 250, 0.9); cursor: pointer; text-align: left; transition: border-color 150ms ease, background 150ms ease, transform 150ms ease; }
+.analysis-chart-link span { font-size: 0.7rem; font-weight: 760; letter-spacing: 0.045em; text-transform: uppercase; }
+.analysis-chart-link small { color: rgba(249, 145, 75, 0.76); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.035em; white-space: nowrap; }
+.analysis-chart-link:hover, .analysis-chart-link:focus-visible { border-color: rgba(249, 115, 22, 0.34); background: linear-gradient(90deg, rgba(249, 115, 22, 0.105), rgba(249, 115, 22, 0.028)); outline: none; }
+.analysis-chart-link:focus-visible { box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12); }
+.analysis-chart-link:active { transform: translateY(1px); }
+#analysis-price-action { scroll-margin-top: 92px; }
 
-.analysis-overview .analysis-metric strong,
-.analysis-overview .analysis-risk-metric strong,
-.analysis-score-ring strong {
-  font-variant-numeric: tabular-nums;
-}
-
-.analysis-overview .analysis-metric small,
-.analysis-overview .analysis-risk-metric small {
-  color: rgba(210, 210, 210, 0.52);
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
-}
-
-.analysis-overview .analysis-metric {
-  min-width: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.016), transparent 72%),
-    rgba(255, 255, 255, 0.006);
-}
-
-.analysis-overview .analysis-metric:hover,
-.analysis-overview .analysis-risk-metric:hover {
-  border-color: rgba(255, 148, 71, 0.13);
-}
-
-.analysis-insight-grid {
-  align-items: stretch;
-}
-
-.analysis-insight {
-  min-height: 100%;
-  border-color: rgba(255, 255, 255, 0.058);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
-}
-
-.analysis-insight h3::after {
-  content: "";
-  width: 28px;
-  height: 1px;
-  margin-left: auto;
-  background: linear-gradient(90deg, rgba(255, 148, 71, 0.5), transparent);
-}
-
-.analysis-insight dl > div:first-child {
-  padding-top: 6px;
-}
-
-.analysis-insight dt {
-  color: rgba(174, 181, 191, 0.56);
-}
-
-.analysis-insight dd {
-  color: rgba(238, 241, 244, 0.92);
-}
-
-.analysis-reasons li,
-.analysis-risks li {
-  transition: border-color 150ms ease, background 150ms ease;
-}
-
-.analysis-reasons li:hover,
-.analysis-risks li:hover {
-  border-color: rgba(255, 148, 71, 0.1);
-  background: rgba(255, 148, 71, 0.018);
-}
-
-.analysis-reasons li > span {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 0 12px rgba(255, 122, 26, 0.045);
-}
-
-.analysis-risks li svg {
-  opacity: 0.86;
-}
-
-@media (max-width: 720px) {
-  .analysis-overview {
-    border-radius: 12px;
-  }
-
-  .analysis-insight h3::after {
-    width: 20px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .analysis-reasons li,
-  .analysis-risks li {
-    transition: none;
-  }
-}
+@media (max-width: 720px) { .analysis-overview { border-radius: 12px; } .analysis-insight h3::after { width: 20px; } .analysis-chart-link { padding: 8px 9px; } }
+@media (prefers-reduced-motion: reduce) { .analysis-reasons li, .analysis-risks li, .analysis-chart-link { transition: none; } }
