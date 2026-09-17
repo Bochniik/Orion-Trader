@@ -24,7 +24,15 @@
 .analyze-news-panel .news-item--lead { overflow: hidden; border-color: rgba(255, 122, 26, 0.15); background: linear-gradient(90deg, rgba(255, 122, 26, 0.052), transparent 52%), rgba(255, 255, 255, 0.012); box-shadow: inset 2px 0 0 rgba(255, 122, 26, 0.54), inset 0 1px 0 rgba(255, 255, 255, 0.02); }
 .analyze-news-panel .news-item--lead::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 0 50%, rgba(255, 122, 26, 0.055), transparent 44%); }
 .analyze-news-panel .news-media { flex: 0 0 auto; overflow: hidden; isolation: isolate; border-color: rgba(255, 255, 255, 0.07); background: radial-gradient(circle at 50% 35%, rgba(255, 122, 26, 0.07), transparent 58%), #090c11; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02); }
-.analyze-news-panel .news-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(0.86) contrast(1.04) brightness(0.9); transform: scale(1.001); transition: filter 180ms ease, transform 220ms ease; }
+.analyze-news-panel .news-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(0.86) contrast(1.04) brightness(0.9); transform: scale(1.001); transition: filter 180ms ease, transform 220ms ease, opacity 180ms ease; }
+.analyze-news-panel .news-media--loading img { opacity: 0; }
+.analyze-news-panel .news-media--ready img { opacity: 1; }
+.analyze-news-panel .news-media-fallback { position: absolute; inset: 0; z-index: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: rgba(174, 181, 191, 0.42); background: radial-gradient(circle at 50% 42%, rgba(255, 122, 26, 0.045), transparent 52%), linear-gradient(145deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.004)); font-size: 0.56rem; font-weight: 720; letter-spacing: 0.08em; text-transform: uppercase; }
+.analyze-news-panel .news-media--loading .news-media-fallback { color: transparent; background: linear-gradient(105deg, rgba(255, 255, 255, 0.018) 28%, rgba(255, 255, 255, 0.055) 42%, rgba(255, 122, 26, 0.04) 50%, rgba(255, 255, 255, 0.018) 64%); background-size: 220% 100%; animation: news-media-shimmer 1.25s ease-in-out infinite; }
+.analyze-news-panel .news-media--loading .news-media-fallback svg { opacity: 0; }
+.analyze-news-panel .news-media--fallback .news-media-fallback, .analyze-news-panel .news-media--error .news-media-fallback { color: rgba(174, 181, 191, 0.42); }
+.analyze-news-panel .news-media-loading { position: absolute; right: 7px; bottom: 7px; z-index: 2; width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 148, 71, 0.72); box-shadow: 0 0 8px rgba(255, 122, 26, 0.32); }
+@keyframes news-media-shimmer { from { background-position: 100% 0; } to { background-position: -120% 0; } }
 .analyze-news-panel .news-item--terminal:hover .news-media img, .analyze-news-panel .news-item--terminal:focus-visible .news-media img { filter: saturate(0.98) contrast(1.04) brightness(0.96); transform: scale(1.025); }
 .analyze-news-panel .news-media::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025), inset 0 -22px 28px rgba(0, 0, 0, 0.14); }
 .analyze-news-panel .news-item--lead .news-media { border-color: rgba(255, 122, 26, 0.12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 8px 22px rgba(0, 0, 0, 0.16); }
@@ -70,4 +78,5 @@
 @media (prefers-reduced-motion: reduce) {
   .analyze-news-panel .news-item--terminal, .analyze-news-panel .news-link-icon, .analyze-news-panel .news-refresh-btn, .analyze-news-panel .news-media img { transition: none; }
   .analyze-news-panel .news-item--terminal:hover, .analyze-news-panel .news-item--terminal:focus-visible, .analyze-news-panel .news-item--terminal:hover .news-link-icon, .analyze-news-panel .news-item--terminal:focus-visible .news-link-icon, .analyze-news-panel .news-item--terminal:hover .news-media img, .analyze-news-panel .news-item--terminal:focus-visible .news-media img { transform: none; }
+  .analyze-news-panel .news-media--loading .news-media-fallback { animation: none; background-position: 50% 0; }
 }
