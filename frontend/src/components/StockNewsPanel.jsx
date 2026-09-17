@@ -83,9 +83,8 @@ function safeArticleLink(link) {
   return /^https?:\/\//i.test(value) ? value : "";
 }
 
-function NewsMedia({ image, ticker }) {
+function NewsMedia({ image }) {
   const [state, setState] = useState(image ? "loading" : "fallback");
-  const fallbackLabel = String(ticker || "OR").slice(0, 2);
 
   useEffect(() => {
     setState(image ? "loading" : "fallback");
@@ -94,7 +93,8 @@ function NewsMedia({ image, ticker }) {
   return (
     <div className={`news-media news-media--${state}`} aria-hidden="true">
       <div className="news-media-fallback">
-        <span>{fallbackLabel}</span>
+        <Newspaper size={18} strokeWidth={1.6} />
+        <span>No media</span>
       </div>
       {image && state !== "error" && (
         <img
@@ -230,7 +230,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                       "aria-label": `${item.title || "News article"} from ${publisher}. Article link unavailable.`,
                     })}
               >
-                <NewsMedia image={image} ticker={ticker} />
+                <NewsMedia image={image} />
 
                 <div className="news-copy">
                   {isLead && <span className="news-lead-label">Latest headline</span>}
