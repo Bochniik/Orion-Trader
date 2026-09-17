@@ -142,6 +142,7 @@ export default function AnalysisOverview({ analysis }) {
     <>
       <article className="analysis-overview" aria-label={`${metric.ticker} Orion summary`}>
         <div className="analysis-company">
+          <p className="core-eyebrow">ORION DECISION SNAPSHOT</p>
           <div className="analysis-symbol-row">
             <h2>{metric.ticker}</h2>
             <span className={`decision-pill ${direction.toLowerCase()}`}>{direction}</span>
