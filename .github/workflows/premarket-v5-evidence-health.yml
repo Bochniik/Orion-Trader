@@ -23,6 +23,9 @@ jobs:
       # The forward workflow became decision-grade after the 2026-09-11 session;
       # Monday 2026-09-14 is therefore the first eligible collection session.
       EVIDENCE_START_DATE: "2026-09-14"
+      # Scripts import sibling modules through the scripts.* package namespace.
+      # Executing a file by path otherwise puts only scripts/ on sys.path in CI.
+      PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +37,9 @@ jobs:
 
       - name: Install backend dependencies
         run: python -m pip install -r backend/requirements.txt
+
+      - name: Verify evidence-health script entrypoint imports
+        run: python scripts/audit_premarket_v5_horizon_evidence_health.py --help >/dev/null
 
       - name: Collect scheduled runs and immutable prediction artifacts
         run: |
