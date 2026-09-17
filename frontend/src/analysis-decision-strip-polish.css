@@ -1,0 +1,67 @@
+/* Compact decision-strip polish.
+   Presentation only: groups existing Orion decision outputs without changing data or scoring. */
+
+.analysis-overview {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 18px 42px rgba(0, 0, 0, 0.1);
+}
+
+.analysis-overview .analysis-company,
+.analysis-overview .analysis-score-block,
+.analysis-overview .analysis-metric.adjusted-score,
+.analysis-overview .analysis-metric.probability-up,
+.analysis-overview .analysis-metric.probability-down {
+  min-width: 0;
+}
+
+.analysis-overview .analysis-company {
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.018), transparent 72%);
+}
+
+.analysis-overview .analysis-score-block {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 122, 26, 0.075), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.014), transparent 72%);
+}
+
+.analysis-overview .analysis-metric.adjusted-score,
+.analysis-overview .analysis-metric.probability-up,
+.analysis-overview .analysis-metric.probability-down {
+  border-left-color: rgba(255, 255, 255, 0.045);
+}
+
+.analysis-overview .analysis-metric strong,
+.analysis-overview .analysis-score-ring strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-overview .analysis-metric small {
+  color: rgba(180, 186, 194, 0.58);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.analysis-overview .decision-pill {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 18px rgba(255, 122, 26, 0.055);
+}
+
+.analysis-overview .analysis-probability-meter {
+  margin-top: 8px;
+}
+
+@media (max-width: 820px) {
+  .analysis-overview .analysis-company {
+    background: linear-gradient(180deg, rgba(255, 122, 26, 0.018), transparent 76%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analysis-overview .analysis-probability-meter i {
+    transition: none;
+  }
+}
