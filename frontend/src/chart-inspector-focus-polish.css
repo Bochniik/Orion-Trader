@@ -1,0 +1,85 @@
+/* Final presentation pass for the Analyze chart evidence header.
+   This only reshapes existing CandleChart state; no market calculations live here. */
+.analyze-chart-panel .chart-inspector {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.analyze-chart-panel .chart-inspector::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(249, 115, 22, .82), rgba(249, 115, 22, .08));
+  box-shadow: 0 0 14px rgba(249, 115, 22, .18);
+  pointer-events: none;
+}
+
+.analyze-chart-panel .chart-inspector > div {
+  position: relative;
+  min-height: 43px;
+  align-content: center;
+}
+
+.analyze-chart-panel .chart-inspector > div + div::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 1px;
+  background: rgba(148, 163, 184, .065);
+  pointer-events: none;
+}
+
+.analyze-chart-panel .chart-inspector > div:first-child strong {
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 720;
+}
+
+.analyze-chart-panel .chart-inspector > div:nth-child(5) {
+  background: linear-gradient(180deg, rgba(12, 18, 28, .98), rgba(5, 10, 17, .98));
+}
+
+.analyze-chart-panel .chart-inspector > div:nth-child(5) strong {
+  color: #f1f5f9;
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.analyze-chart-panel .chart-inspector > div:nth-child(6) strong.green,
+.analyze-chart-panel .chart-inspector > div:nth-child(6) strong.red {
+  font-size: 10.5px;
+  font-weight: 820;
+}
+
+.analyze-chart-panel .chart-period-summary > span:first-child {
+  position: relative;
+}
+
+.analyze-chart-panel .chart-period-summary > span:first-child::after {
+  content: "ACTIVE RANGE";
+  width: max-content;
+  margin-top: 1px;
+  color: #8b5b3b;
+  font-size: 6.5px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+
+.analyze-chart-panel .chart-period-summary > span:nth-child(2) strong {
+  font-weight: 820;
+}
+
+@media (max-width: 1100px) {
+  .analyze-chart-panel .chart-inspector > div + div::before { inset-block: 7px; }
+}
+
+@media (max-width: 560px) {
+  .analyze-chart-panel .chart-inspector > div { min-height: 40px; }
+  .analyze-chart-panel .chart-inspector > div:nth-child(odd)::before { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-chart-panel .chart-inspector::before { box-shadow: none; }
+}
