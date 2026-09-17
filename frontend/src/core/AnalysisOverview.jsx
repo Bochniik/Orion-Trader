@@ -138,6 +138,10 @@ export default function AnalysisOverview({ analysis }) {
     ? "UNAVAILABLE"
     : metric.manipulation < 33 ? "LOW" : metric.manipulation < 66 ? "MEDIUM" : "HIGH";
 
+  function focusPriceAction() {
+    document.getElementById("analysis-price-action")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <>
       <article className="analysis-overview" aria-label={`${metric.ticker} Orion summary`}>
@@ -216,7 +220,7 @@ export default function AnalysisOverview({ analysis }) {
           ) : <p>Reasoning is unavailable for this snapshot.</p>}
         </section>
 
-        <section className="analysis-insight">
+        <section className="analysis-insight analysis-technical-context">
           <h3><BarChart3 size={17} /> Technical context</h3>
           <dl>
             <div><dt>Price</dt><dd>{money(firstValue(metric.price, technical?.price))}</dd></div>
@@ -225,6 +229,9 @@ export default function AnalysisOverview({ analysis }) {
             <div><dt>Key support</dt><dd>{money(technical?.support)}</dd></div>
             <div><dt>Key resistance</dt><dd>{money(technical?.resistance)}</dd></div>
           </dl>
+          <button className="analysis-chart-link" type="button" onClick={focusPriceAction}>
+            <span>Inspect price action</span><small>Open chart evidence ↓</small>
+          </button>
         </section>
 
         <section className="analysis-insight">
