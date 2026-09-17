@@ -70,6 +70,11 @@ function newsLabel(item) {
   return item?.category || item?.type || "Market news";
 }
 
+function safeArticleLink(link) {
+  const value = String(link || "").trim();
+  return /^https?:\/\//i.test(value) ? value : "";
+}
+
 function NewsMedia({ image, ticker }) {
   const [state, setState] = useState(image ? "loading" : "fallback");
   const fallbackLabel = String(ticker || "OR").slice(0, 2);
@@ -199,14 +204,22 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
             const freshness = newsFreshness(item.published_at);
             const isLead = index === 0;
             const publisher = item.publisher || "Unknown source";
+            const articleLink = safeArticleLink(item.link);
+            const Article = articleLink ? "a" : "div";
             return (
-              <a
-                className={`news-item news-item--terminal${isLead ? " news-item--lead" : ""}`}
+              <Article
+                className={`news-item news-item--terminal${isLead ? " news-item--lead" : ""}${articleLink ? "" : " news-item--unavailable"}`}
                 key={`${item.title}-${item.link}`}
-                href={item.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Open ${item.title || "news article"} from ${publisher} in a new tab`}
+                {...(articleLink
+                  ? {
+                      href: articleLink,
+                      target: "_blank",
+                      rel: "noopener noreferrer",
+                      "aria-label": `Open ${item.title || "news article"} from ${publisher} in a new tab`,
+                    }
+                  : {
+                      "aria-label": `${item.title || "News article"} from ${publisher}. Article link unavailable.`,
+                    })}
               >
                 <NewsMedia image={image} ticker={ticker} />
 
@@ -225,10 +238,12 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                   <h3>{item.title}</h3>
                 </div>
 
-                <span className="news-link-icon" aria-hidden="true">
-                  <ExternalLink size={16} />
-                </span>
-              </a>
+                {articleLink && (
+                  <span className="news-link-icon" aria-hidden="true">
+                    <ExternalLink size={16} />
+                  </span>
+                )}
+              </Article>
             );
           })}
         </div>
