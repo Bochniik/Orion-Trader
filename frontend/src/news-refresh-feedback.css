@@ -32,6 +32,28 @@
   pointer-events: auto;
 }
 
+/* Keep article context useful without letting long provider summaries turn the
+   terminal feed into a wall of text. */
+.analyze-news-panel .news-summary {
+  display: -webkit-box;
+  margin: 6px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.45;
+}
+
+/* A provider can occasionally omit a usable article URL. Keep the story
+   readable, but remove link-like affordances so the card does not feel broken. */
+.analyze-news-panel .news-item--unavailable {
+  cursor: default;
+}
+
+.analyze-news-panel .news-item--unavailable:hover {
+  transform: none;
+}
+
 /* Keep dense terminal cards keyboard-friendly without adding permanent chrome. */
 .analyze-news-panel .news-item--terminal:focus-visible {
   position: relative;
