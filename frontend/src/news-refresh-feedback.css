@@ -32,6 +32,28 @@
   pointer-events: auto;
 }
 
+/* Give the newest catalyst a restrained terminal-style hierarchy without
+   making the rest of the feed visually noisy. */
+.analyze-news-panel .news-item--lead {
+  position: relative;
+  background: linear-gradient(110deg, rgba(255, 122, 26, 0.055), transparent 48%);
+}
+
+.analyze-news-panel .news-item--lead::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(255, 148, 71, 0.72);
+  box-shadow: 0 0 10px rgba(255, 122, 26, 0.2);
+  pointer-events: none;
+}
+
+.analyze-news-panel .news-item--lead h3 {
+  letter-spacing: -0.012em;
+}
+
 /* Keep article context useful without letting long provider summaries turn the
    terminal feed into a wall of text. */
 .analyze-news-panel .news-summary {
@@ -68,6 +90,22 @@
 @keyframes orion-news-refresh-track {
   from { transform: translateX(-110%); }
   to { transform: translateX(325%); }
+}
+
+@media (max-width: 720px) {
+  .analyze-news-panel .news-feed-telemetry {
+    gap: 6px 10px;
+    flex-wrap: wrap;
+  }
+
+  .analyze-news-panel .news-summary {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .analyze-news-panel .news-item--lead::before {
+    inset-block: 8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
