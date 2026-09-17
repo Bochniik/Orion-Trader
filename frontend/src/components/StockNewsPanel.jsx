@@ -70,6 +70,14 @@ function newsLabel(item) {
   return item?.category || item?.type || "Market news";
 }
 
+function newsSummary(item) {
+  const value = String(item?.summary || item?.description || item?.snippet || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!value || value === String(item?.title || "").trim()) return "";
+  return value.length > 180 ? `${value.slice(0, 177).trimEnd()}…` : value;
+}
+
 function safeArticleLink(link) {
   const value = String(link || "").trim();
   return /^https?:\/\//i.test(value) ? value : "";
@@ -204,6 +212,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
             const freshness = newsFreshness(item.published_at);
             const isLead = index === 0;
             const publisher = item.publisher || "Unknown source";
+            const summary = newsSummary(item);
             const articleLink = safeArticleLink(item.link);
             const Article = articleLink ? "a" : "div";
             return (
@@ -236,6 +245,7 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                     <span>{newsLabel(item)}</span>
                   </div>
                   <h3>{item.title}</h3>
+                  {summary && <p className="muted-text news-summary">{summary}</p>}
                 </div>
 
                 {articleLink && (
