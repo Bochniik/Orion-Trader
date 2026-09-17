@@ -137,11 +137,36 @@
 
 @media (min-width: 1180px) and (max-width: 1320px) {
   .analyze-view {
-    --analyze-primary-column: minmax(0, 1.48fr);
-    --analyze-context-column: minmax(300px, 0.92fr);
+    --analyze-primary-column: minmax(0, 1.58fr);
+    --analyze-context-column: minmax(310px, 0.86fr);
+  }
+
+  .analyze-view .analysis-market-grid {
+    gap: 10px;
+  }
+
+  .analyze-view .analyze-section-heading {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .analyze-view .analyze-section-heading > span {
+    max-width: 150px;
+    text-align: right;
+    line-height: 1.3;
   }
 
   .analyze-view .analyze-news-panel .news-media {
-    width: 76px;
+    width: 72px;
+  }
+
+  .analyze-view .analyze-news-panel .news-feed-telemetry {
+    gap: 6px 10px;
+    flex-wrap: wrap;
+  }
+
+  .analyze-view .analyze-news-panel .news-summary {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
   }
 }
