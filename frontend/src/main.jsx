@@ -19,6 +19,7 @@ import "./analysis-polish.css";
 import "./analysis-news-context.css";
 import "./analysis-snapshot.css";
 import "./analysis-decision-hierarchy.css";
+import "./analysis-decision-strip-polish.css";
 import "./analysis-evidence-rail.css";
 import "./analysis-insight-density.css";
 import "./analysis-insight-rail.css";
