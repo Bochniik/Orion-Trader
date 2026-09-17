@@ -99,6 +99,46 @@
   height: 5px;
   flex-basis: 5px;
 }
+
+/* Keep dense chart controls legible without making the whole toolbar visually loud. */
+.analyze-chart-panel .range-btn,
+.analyze-chart-panel .chart-time-controls button,
+.analyze-chart-panel .indicator-toggle {
+  position: relative;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+@media (hover: hover) {
+  .analyze-chart-panel .range-btn:not(.active):hover,
+  .analyze-chart-panel .chart-time-controls button:not(.active):hover,
+  .analyze-chart-panel .indicator-toggle:not(.active):hover {
+    border-color: rgba(148, 163, 184, .18);
+    color: #c5ceda;
+    background: rgba(17, 24, 39, .62);
+  }
+}
+.analyze-chart-panel .range-btn:focus-visible,
+.analyze-chart-panel .chart-time-controls button:focus-visible,
+.analyze-chart-panel .indicator-toggle:focus-visible {
+  outline: 2px solid rgba(249, 115, 22, .72);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, .08);
+}
+.analyze-chart-panel .range-btn.active {
+  color: #ffe2cf;
+  text-shadow: 0 0 12px rgba(249, 115, 22, .18);
+}
+.analyze-chart-panel .range-btn.active::after {
+  content: "";
+  position: absolute;
+  left: 28%;
+  right: 28%;
+  bottom: 2px;
+  height: 1px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, .9);
+  box-shadow: 0 0 8px rgba(249, 115, 22, .45);
+}
+
 @media (max-width: 1180px) {
   .analyze-chart-panel .chart-toolbar { align-items: stretch; }
   .analyze-chart-panel .chart-toolbar::before { display: none; }
@@ -115,4 +155,7 @@
 @media (prefers-reduced-motion: reduce) {
   .analyze-chart-panel .chart-toolbar,
   .analyze-chart-panel .indicator-toolbar { scroll-behavior: auto; }
+  .analyze-chart-panel .range-btn,
+  .analyze-chart-panel .chart-time-controls button,
+  .analyze-chart-panel .indicator-toggle { transition: none; }
 }
