@@ -1,0 +1,98 @@
+/* Analysis terminal hierarchy polish
+   Presentation only: reinforces scan order across existing Orion analysis output. */
+
+.analysis-overview {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 122, 26, 0.045), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent 62%);
+}
+
+.analysis-overview::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255, 148, 71, 0.78), rgba(255, 122, 26, 0.06) 72%, transparent);
+  box-shadow: 0 0 18px rgba(255, 122, 26, 0.12);
+  pointer-events: none;
+}
+
+.analysis-company {
+  position: relative;
+  z-index: 1;
+}
+
+.analysis-company h1,
+.analysis-company h2 {
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.analysis-company p {
+  max-width: 64ch;
+  color: rgba(225, 225, 225, 0.64);
+  line-height: 1.5;
+}
+
+.analysis-score-block {
+  position: relative;
+  z-index: 1;
+}
+
+.analysis-insight-grid {
+  align-items: stretch;
+}
+
+.analysis-insight h3 {
+  color: rgba(248, 248, 248, 0.92);
+  font-size: 0.82rem;
+  font-weight: 760;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.analysis-reasons li,
+.analysis-risks li {
+  color: rgba(231, 231, 231, 0.76);
+}
+
+.analysis-reasons li:first-child {
+  border-color: rgba(255, 148, 71, 0.11);
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.04), rgba(255, 255, 255, 0.01));
+}
+
+.analysis-data-note {
+  font-size: 0.78rem;
+}
+
+@media (prefers-contrast: more) {
+  .analysis-overview {
+    border-color: rgba(255, 148, 71, 0.24);
+  }
+
+  .analysis-overview::after {
+    background: rgba(255, 148, 71, 0.95);
+  }
+
+  .analysis-company p,
+  .analysis-reasons li,
+  .analysis-risks li {
+    color: rgba(248, 248, 248, 0.88);
+  }
+
+  .analysis-insight h3 {
+    color: #fff;
+  }
+}
+
+@media (max-width: 540px) {
+  .analysis-overview::after {
+    width: 1px;
+  }
+
+  .analysis-company p {
+    line-height: 1.45;
+  }
+}
