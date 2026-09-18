@@ -1,0 +1,33 @@
+/* Keyboard focus language shared across the OrionTrader workspace. */
+:where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid rgba(249, 115, 22, 0.92);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.12), 0 0 18px rgba(249, 115, 22, 0.1);
+}
+
+:where(button, a, [role="button"]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+:where(input, select, textarea):focus-visible {
+  border-color: rgba(249, 115, 22, 0.58);
+}
+
+:where(.range-btn, .indicator-toggle, .chart-time-controls button, .workspace-nav button, .workspace-nav a):focus-visible {
+  position: relative;
+  z-index: 2;
+}
+
+@media (prefers-contrast: more) {
+  :where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+    outline-width: 3px;
+    outline-color: #fb923c;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+    transition: none !important;
+  }
+}
