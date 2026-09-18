@@ -52,6 +52,14 @@
 .analyze-news-panel .news-feed-telemetry { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 7px; }
 .analyze-news-panel .news-feed-telemetry > span { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 999px; color: rgba(190, 197, 208, 0.52); background: rgba(255, 255, 255, 0.012); font-size: 0.57rem; font-weight: 760; letter-spacing: 0.055em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .analyze-news-panel .news-feed-telemetry > span:last-child { border-color: rgba(255, 148, 71, 0.12); color: rgba(255, 181, 126, 0.72); background: rgba(255, 122, 26, 0.035); }
+.analyze-news-panel .news-feed-state { display: inline-flex; align-items: center; gap: 5px; min-height: 20px; margin-left: 8px; padding: 0 7px; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 999px; color: rgba(194, 201, 212, 0.6); background: rgba(255, 255, 255, 0.015); font-size: 0.55rem; font-weight: 820; letter-spacing: 0.09em; line-height: 1; }
+.analyze-news-panel .news-feed-state > span { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.analyze-news-panel .news-feed-state--ready { border-color: rgba(255, 148, 71, 0.14); color: rgba(255, 178, 118, 0.82); background: rgba(255, 122, 26, 0.04); }
+.analyze-news-panel .news-feed-state--sync { border-color: rgba(255, 148, 71, 0.16); color: rgba(255, 188, 138, 0.92); background: rgba(255, 122, 26, 0.055); }
+.analyze-news-panel .news-feed-state--sync > span { animation: news-feed-state-pulse 1.2s ease-in-out infinite; }
+.analyze-news-panel .news-feed-state--offline { border-color: rgba(255, 128, 96, 0.16); color: rgba(255, 151, 128, 0.8); background: rgba(255, 104, 78, 0.035); }
+.analyze-news-panel .news-feed-state--empty { color: rgba(194, 201, 212, 0.42); }
+@keyframes news-feed-state-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 
 /* Secondary research-surface pass: align news/supporting context with the chart and evidence workspaces while keeping the existing feed untouched. */
 .analyze-news-panel::before { content: ""; position: absolute; inset: 12px auto 12px 0; width: 2px; border-radius: 999px; background: linear-gradient(180deg, rgba(255, 148, 71, 0.64), rgba(255, 122, 26, 0.04) 72%); box-shadow: 0 0 14px rgba(255, 122, 26, 0.11); pointer-events: none; }
@@ -79,4 +87,5 @@
   .analyze-news-panel .news-item--terminal, .analyze-news-panel .news-link-icon, .analyze-news-panel .news-refresh-btn, .analyze-news-panel .news-media img { transition: none; }
   .analyze-news-panel .news-item--terminal:hover, .analyze-news-panel .news-item--terminal:focus-visible, .analyze-news-panel .news-item--terminal:hover .news-link-icon, .analyze-news-panel .news-item--terminal:focus-visible .news-link-icon, .analyze-news-panel .news-item--terminal:hover .news-media img, .analyze-news-panel .news-item--terminal:focus-visible .news-media img { transform: none; }
   .analyze-news-panel .news-media--loading .news-media-fallback { animation: none; background-position: 50% 0; }
+  .analyze-news-panel .news-feed-state--sync > span { animation: none; }
 }
