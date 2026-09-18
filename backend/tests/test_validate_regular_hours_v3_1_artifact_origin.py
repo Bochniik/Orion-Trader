@@ -25,12 +25,12 @@ def _payload() -> dict:
     }
 
 
-def _run() -> dict:
+def _run(path: str = ".github/workflows/regular-hours-v3-1-cloud-shadow.yml") -> dict:
     return {
         "id": RUN_ID,
         "run_attempt": 2,
         "head_sha": HEAD,
-        "path": ".github/workflows/regular-hours-v3-1-cloud-shadow.yml",
+        "path": path,
         "event": "schedule",
         "status": "completed",
         "conclusion": "success",
@@ -41,6 +41,13 @@ def test_accepts_exact_scheduled_origin() -> None:
     result = validate_origin(_payload(), f"regular-hours-v3-1-shadow-{RUN_ID}", _run())
     assert result["valid"] is True
     assert result["score_blind"] is True
+
+
+def test_accepts_scheduled_market_acquisition_caller_path() -> None:
+    path = ".github/workflows/market-acquisition-scheduler.yml"
+    result = validate_origin(_payload(), f"regular-hours-v3-1-shadow-{RUN_ID}", _run(path))
+    assert result["valid"] is True
+    assert result["workflow_path"] == path
 
 
 @pytest.mark.parametrize(

@@ -8,7 +8,17 @@ from typing import Any
 
 ARTIFACT_RE = re.compile(r"^regular-hours-v3-1-shadow-(\d+)$")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-EXPECTED_WORKFLOW_PATH = ".github/workflows/regular-hours-v3-1-cloud-shadow.yml"
+# Scheduled production evidence is emitted by the reusable cloud-shadow workflow,
+# but GitHub reports the top-level caller as the run path for workflow_call runs.
+EXPECTED_WORKFLOW_PATHS = frozenset(
+    {
+        ".github/workflows/market-acquisition-scheduler.yml",
+        # Retain authentication for historical artifacts created before the
+        # scheduler was consolidated. The event= schedule guard below remains
+        # mandatory, so workflow_dispatch/workflow_call artifacts cannot pass.
+        ".github/workflows/regular-hours-v3-1-cloud-shadow.yml",
+    }
+)
 EXPECTED_PROVENANCE_SCHEMA = "regular-hours-v3-1-acquisition-provenance-v1"
 
 
@@ -24,7 +34,8 @@ def validate_origin(payload: dict[str, Any], artifact_name: str, run: dict[str, 
         raise ValueError("GitHub run metadata is missing a valid run id/attempt") from None
     if artifact_run_id != run_id:
         raise ValueError("Artifact run id does not match GitHub run metadata")
-    if run.get("path") != EXPECTED_WORKFLOW_PATH:
+    workflow_path = str(run.get("path") or "")
+    if workflow_path not in EXPECTED_WORKFLOW_PATHS:
         raise ValueError("Artifact originated from unexpected workflow path")
     if run.get("event") != "schedule":
         raise ValueError("Artifact is not genuine scheduled forward evidence")
@@ -54,7 +65,7 @@ def validate_origin(payload: dict[str, Any], artifact_name: str, run: dict[str, 
         "workflow_run_id": run_id,
         "run_attempt": run_attempt,
         "github_head_sha": head_sha,
-        "workflow_path": EXPECTED_WORKFLOW_PATH,
+        "workflow_path": workflow_path,
         "score_blind": True,
     }
 
