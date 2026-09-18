@@ -1,0 +1,64 @@
+/* Accessibility and touch ergonomics for the existing chart controls. Presentation only. */
+.analyze-chart-panel .range-btn,
+.analyze-chart-panel .chart-time-controls button,
+.analyze-chart-panel .indicator-toggle {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Keep dense desktop controls while providing a reliable touch target on coarse pointers. */
+@media (pointer: coarse) {
+  .analyze-chart-panel .range-btn,
+  .analyze-chart-panel .chart-time-controls button,
+  .analyze-chart-panel .indicator-toggle {
+    min-height: 36px;
+  }
+
+  .analyze-chart-panel .range-btn {
+    min-width: 40px;
+    padding-inline: 10px;
+  }
+
+  .analyze-chart-panel .chart-time-controls button,
+  .analyze-chart-panel .indicator-toggle {
+    padding-inline: 10px;
+  }
+}
+
+/* Horizontal command rails should feel intentional on phones rather than clipped. */
+@media (max-width: 720px) {
+  .analyze-chart-panel .range-buttons,
+  .analyze-chart-panel .indicator-toolbar {
+    scroll-snap-type: x proximity;
+    overscroll-behavior-inline: contain;
+  }
+
+  .analyze-chart-panel .range-btn,
+  .analyze-chart-panel .indicator-toggle {
+    scroll-snap-align: start;
+  }
+
+  .analyze-chart-panel .range-buttons {
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  .analyze-chart-panel .indicator-toolbar {
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 18px), transparent 100%);
+  }
+}
+
+/* High-contrast users should not have to rely on the orange glow alone. */
+@media (prefers-contrast: more) {
+  .analyze-chart-panel .range-btn.active,
+  .analyze-chart-panel .chart-time-controls button.active,
+  .analyze-chart-panel .indicator-toggle.active {
+    border-color: currentColor;
+  }
+
+  .analyze-chart-panel .range-btn:focus-visible,
+  .analyze-chart-panel .chart-time-controls button:focus-visible,
+  .analyze-chart-panel .indicator-toggle:focus-visible {
+    outline-width: 3px;
+    outline-color: currentColor;
+  }
+}
