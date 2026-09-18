@@ -13,9 +13,7 @@
     radial-gradient(circle at 12% 0%, rgba(255, 122, 26, 0.09), transparent 22rem),
     linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.008)),
     #090c11;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 20px 48px rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 20px 48px rgba(0, 0, 0, 0.2);
 }
 
 .analyze-view > .core-empty,
@@ -28,8 +26,7 @@
   justify-content: center;
 }
 
-.analyze-view > .core-empty::before,
-.analyze-view > .core-error::before,
+.analyze-view > .analysis-request-state::before,
 .analyze-view > p[role="status"]::before {
   content: "";
   position: absolute;
@@ -39,27 +36,23 @@
   box-shadow: 0 0 18px rgba(255, 122, 26, 0.3);
 }
 
-.analyze-view > .core-empty::after,
-.analyze-view > .core-error::after {
+.analyze-view > .analysis-request-state::after {
   position: absolute;
   top: 17px;
   right: 20px;
   padding: 4px 7px;
   border: 1px solid rgba(255, 148, 71, 0.14);
   border-radius: 999px;
-  color: rgba(255, 167, 102, 0.62);
+  color: rgba(255, 167, 102, 0.72);
   background: rgba(255, 122, 26, 0.035);
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.12em;
 }
 
-.analyze-view > .core-empty::after {
-  content: "ANALYSIS READY";
-}
-
-.analyze-view > .core-error::after {
-  content: "REQUEST ERROR";
+.analyze-view > .analysis-request-running::after { content: "RUNNING"; }
+.analyze-view > .analysis-request-error::after {
+  content: "OFFLINE";
   border-color: rgba(255, 128, 96, 0.18);
   color: rgba(255, 151, 128, 0.72);
   background: rgba(255, 104, 78, 0.04);
@@ -103,9 +96,7 @@
 .analyze-view > .core-error .core-button:focus-visible {
   outline: none;
   border-color: rgba(255, 164, 92, 0.6);
-  box-shadow:
-    0 0 0 3px rgba(255, 122, 26, 0.1),
-    0 0 24px rgba(255, 122, 26, 0.08);
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.1), 0 0 24px rgba(255, 122, 26, 0.08);
 }
 
 .analyze-view > .core-empty .core-loading-dot {
@@ -113,18 +104,13 @@
   height: 10px;
   border-radius: 999px;
   background: #ff9447;
-  box-shadow:
-    0 0 0 5px rgba(255, 122, 26, 0.08),
-    0 0 18px rgba(255, 122, 26, 0.5);
+  box-shadow: 0 0 0 5px rgba(255, 122, 26, 0.08), 0 0 18px rgba(255, 122, 26, 0.5);
   animation: analysis-state-pulse 1.35s ease-in-out infinite;
 }
 
 .analyze-view > .core-error {
   border-color: rgba(255, 128, 96, 0.18);
-  background:
-    radial-gradient(circle at 10% 0%, rgba(255, 104, 78, 0.085), transparent 23rem),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.007)),
-    #090c11;
+  background: radial-gradient(circle at 10% 0%, rgba(255, 104, 78, 0.085), transparent 23rem), linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.007)), #090c11;
 }
 
 .analyze-view > .core-error::before {
@@ -154,15 +140,27 @@
   animation: analysis-status-spin 760ms linear infinite;
 }
 
+.analyze-view > .analysis-request-cancelled {
+  color: rgba(194, 201, 212, 0.62);
+  border-color: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.008)), #090c11;
+}
+.analyze-view > .analysis-request-cancelled::before { background: rgba(255, 255, 255, 0.16); box-shadow: none; }
+.analyze-view > .analysis-request-cancelled::after {
+  border: 0;
+  width: 8px;
+  height: 8px;
+  background: rgba(194, 201, 212, 0.4);
+  animation: none;
+}
+
 .analyze-chart-panel > p {
   min-height: 260px;
   margin: 0;
   display: grid;
   place-items: center;
   border: 1px dashed rgba(255, 255, 255, 0.07);
-  background:
-    radial-gradient(circle at 50% 45%, rgba(255, 122, 26, 0.045), transparent 13rem),
-    rgba(255, 255, 255, 0.012);
+  background: radial-gradient(circle at 50% 45%, rgba(255, 122, 26, 0.045), transparent 13rem), rgba(255, 255, 255, 0.012);
   color: rgba(194, 201, 212, 0.5);
   font-size: 0.75rem;
   font-weight: 700;
@@ -170,60 +168,18 @@
   text-transform: uppercase;
 }
 
-@keyframes analysis-state-pulse {
-  0%, 100% {
-    opacity: 0.6;
-    transform: scale(0.82);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes analysis-status-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+@keyframes analysis-state-pulse { 0%, 100% { opacity: 0.6; transform: scale(0.82); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes analysis-status-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 640px) {
-  .analyze-view > .core-empty,
-  .analyze-view > .core-error {
-    min-height: 190px;
-    padding: 50px 20px 24px;
-  }
-
-  .analyze-view > .core-empty::after,
-  .analyze-view > .core-error::after {
-    top: 17px;
-    right: auto;
-    left: 20px;
-  }
-
-  .analyze-view > .core-empty h2,
-  .analyze-view > .core-error h2 {
-    max-width: 100%;
-  }
-
-  .analyze-view > .core-empty .core-button,
-  .analyze-view > .core-error .core-button {
-    width: 100%;
-  }
-
-  .analyze-chart-panel > p {
-    min-height: 220px;
-  }
+  .analyze-view > .core-empty, .analyze-view > .core-error { min-height: 190px; padding: 50px 20px 24px; }
+  .analyze-view > .analysis-request-state::after { top: 17px; right: auto; left: 20px; }
+  .analyze-view > .core-empty h2, .analyze-view > .core-error h2 { max-width: 100%; }
+  .analyze-view > .core-empty .core-button, .analyze-view > .core-error .core-button { width: 100%; }
+  .analyze-chart-panel > p { min-height: 220px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .analyze-view > .core-empty .core-loading-dot,
-  .analyze-view > p[role="status"]::after {
-    animation: none;
-  }
-
-  .analyze-view > .core-empty .core-button,
-  .analyze-view > .core-error .core-button {
-    transition: none;
-  }
+  .analyze-view > .core-empty .core-loading-dot, .analyze-view > p[role="status"]::after { animation: none; }
+  .analyze-view > .core-empty .core-button, .analyze-view > .core-error .core-button { transition: none; }
 }
