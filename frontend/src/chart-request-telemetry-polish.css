@@ -16,6 +16,34 @@
   --history-state-color: #94a3b8;
 }
 
+/* CandleChart no longer renders a dedicated indicator node. Keep request health
+   scannable with a presentation-only state marker that does not affect data flow. */
+.analyze-chart-panel .chart-status > div::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  align-self: center;
+  border-radius: 999px;
+  background: var(--history-state-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--history-state-color) 7%, transparent),
+              0 0 10px color-mix(in srgb, var(--history-state-color) 18%, transparent);
+}
+
+.analyze-chart-panel .chart-status-loading > div::before {
+  box-sizing: border-box;
+  background: transparent;
+  border: 1.5px solid color-mix(in srgb, var(--history-state-color) 30%, transparent);
+  border-top-color: var(--history-state-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--history-state-color) 14%, transparent);
+  animation: chart-request-state-spin .9s linear infinite;
+}
+
+.analyze-chart-panel .chart-status-empty > div::before {
+  background: color-mix(in srgb, var(--history-state-color) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--history-state-color) 5%, transparent);
+}
+
 .analyze-chart-panel .chart-status > div::after {
   content: var(--history-state);
   flex: 0 0 auto;
@@ -35,10 +63,28 @@
   box-shadow: 0 0 12px color-mix(in srgb, var(--history-state-color) 10%, transparent);
 }
 
+@keyframes chart-request-state-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 720px) {
+  .analyze-chart-panel .chart-status > div::before {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+    margin-right: 4px;
+  }
+
   .analyze-chart-panel .chart-status > div::after {
     grid-row: 1 / span 2;
-    grid-column: 2;
+    grid-column: 3;
     align-self: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-chart-panel .chart-status-loading > div::before {
+    animation: none;
+    border-color: color-mix(in srgb, var(--history-state-color) 45%, transparent);
+    border-top-color: var(--history-state-color);
   }
 }
