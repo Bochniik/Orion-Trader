@@ -12,10 +12,10 @@ function formatPercent(value) { if (value === null || value === undefined) retur
 function formatVolume(value) { if (value === null || value === undefined) return "..."; return Number(value).toLocaleString(undefined, { notation: "compact" }); }
 function formatRefreshTime(value) { return value ? new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(value) : "—"; }
 function quoteState(quote, loading) {
-  if (quote?.error) return { label: "OFFLINE", tone: "#ff9292", border: "rgba(255, 105, 105, 0.18)", background: "rgba(255, 79, 79, 0.06)" };
-  if (quote?.stale) return { label: "LAST", tone: "#ffad68", border: "rgba(255, 155, 71, 0.22)", background: "rgba(255, 139, 42, 0.08)" };
-  if (quote) return { label: "LIVE", tone: "#71dda1", border: "rgba(113, 221, 161, 0.18)", background: "rgba(72, 192, 126, 0.06)" };
-  return { label: loading ? "SYNC" : "WAIT", tone: "rgba(205, 210, 220, 0.52)", border: "rgba(255, 255, 255, 0.08)", background: "rgba(255, 255, 255, 0.025)" };
+  if (quote?.error) return { label: "OFFLINE", tone: "offline" };
+  if (quote?.stale) return { label: "LAST", tone: "stale" };
+  if (quote) return { label: "LIVE", tone: "live" };
+  return { label: loading ? "SYNC" : "WAIT", tone: loading ? "sync" : "wait" };
 }
 
 export default function Watchlist({ watchlist, onSelectStock, onRemoveStock }) {
@@ -66,7 +66,7 @@ export default function Watchlist({ watchlist, onSelectStock, onRemoveStock }) {
       {watchlist.map((symbol) => {
         const quote = quotes[symbol], unavailable = Boolean(quote?.error), stale = Boolean(quote?.stale), changePercent = quote?.change_percent, isUp = Number(changePercent) >= 0, TrendIcon = isUp ? TrendingUp : TrendingDown, state = quoteState(quote, loading), selected = selectedSymbol === symbol, removing = removingSymbol === symbol;
         return <div className={`watchlist-row${unavailable ? " is-unavailable" : ""}${selected ? " is-selected" : ""}${removing ? " is-removing" : ""}`} key={symbol} title={stale ? `${symbol}: showing the last successful quote while live refresh is temporarily unavailable` : unavailable ? `${symbol}: live quote is temporarily unavailable` : undefined}>
-          <button className="watch-symbol" onClick={() => selectStock(symbol)} aria-pressed={selected} disabled={removing}>{symbol}<span aria-label={`${symbol} quote status: ${state.label.toLowerCase()}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, marginLeft: 7, padding: "2px 6px", border: `1px solid ${state.border}`, borderRadius: 999, background: state.background, color: state.tone, fontSize: 9, fontWeight: 760, letterSpacing: "0.05em", lineHeight: 1.35, verticalAlign: "middle" }}><span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", boxShadow: "0 0 8px currentColor" }} />{state.label}</span></button>
+          <button className="watch-symbol" onClick={() => selectStock(symbol)} aria-pressed={selected} disabled={removing}>{symbol}<span className={`watch-quote-state is-${state.tone}`} aria-label={`${symbol} quote status: ${state.label.toLowerCase()}`}><span className="watch-quote-state-dot" aria-hidden="true" />{state.label}</span></button>
           <button className="watch-price" onClick={() => selectStock(symbol)} aria-pressed={selected} disabled={removing}>{unavailable ? <span className="watch-unavailable">Unavailable</span> : formatPrice(quote?.price)}</button>
           <button className={isUp ? "watch-change positive" : "watch-change negative"} onClick={() => selectStock(symbol)} aria-pressed={selected} disabled={removing}>{quote && !unavailable && <TrendIcon size={15} />}{unavailable ? "—" : formatPercent(changePercent)}</button>
           <button className="watch-volume" onClick={() => selectStock(symbol)} aria-pressed={selected} disabled={removing}>{unavailable ? "—" : formatVolume(quote?.volume)}</button>
