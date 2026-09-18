@@ -1,77 +1,15 @@
-.chart-status-empty {
-  position: relative;
-  overflow: hidden;
-  border-color: rgba(148, 163, 184, .14);
-  background: linear-gradient(90deg, rgba(71, 85, 105, .07), rgba(7, 12, 20, .9) 44%);
-}
-
-.chart-status-empty::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 2px;
-  background: linear-gradient(180deg, rgba(148, 163, 184, .8), rgba(148, 163, 184, .08));
-  box-shadow: 0 0 12px rgba(148, 163, 184, .08);
-}
-
-.chart-status-empty::after {
-  background: linear-gradient(180deg, #94a3b8, rgba(148, 163, 184, .1));
-}
-
-.chart-status-empty .chart-status-indicator {
-  background: #94a3b8;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, .07);
-}
-
-.chart-status-empty strong {
-  color: #cbd5e1;
-}
-
-.chart-status-empty span {
-  color: #7f8da1;
-}
-
-.analyze-chart-panel .chart-status-empty {
-  border-color: rgba(148, 163, 184, .09);
-  background: linear-gradient(90deg, rgba(71, 85, 105, .05), rgba(3, 7, 12, .98) 34%);
-}
-
-/* EMPTY identity is rendered once by chart-request-telemetry-polish.css.
-   Keep this layer focused on the quieter no-history hierarchy. */
-
-/* Never let a previous ticker/range look current while the next request is unresolved. */
-.advanced-chart:has(.chart-status-loading) .chart-box {
-  opacity: .32;
-  filter: saturate(.55) contrast(.9);
-  transition: opacity 160ms ease, filter 160ms ease;
-}
-
-.advanced-chart:has(.chart-status-empty) .chart-box,
-.advanced-chart:has(.chart-status-error) .chart-box {
-  opacity: .14;
-  filter: saturate(.25) contrast(.82);
-}
-
-.advanced-chart:has(.chart-status-loading) .chart-inspector,
-.advanced-chart:has(.chart-status-loading) .chart-period-summary,
-.advanced-chart:has(.chart-status-empty) .chart-inspector,
-.advanced-chart:has(.chart-status-empty) .chart-period-summary,
-.advanced-chart:has(.chart-status-error) .chart-inspector,
-.advanced-chart:has(.chart-status-error) .chart-period-summary {
-  opacity: .34;
-  filter: saturate(.45);
-  pointer-events: none;
-}
-
-.advanced-chart:has(.chart-status-empty) .chart-inspector,
-.advanced-chart:has(.chart-status-empty) .chart-period-summary,
-.advanced-chart:has(.chart-status-error) .chart-inspector,
-.advanced-chart:has(.chart-status-error) .chart-period-summary {
-  opacity: .2;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .advanced-chart .chart-box {
-    transition: none;
-  }
-}
+.chart-status-empty { position: relative; overflow: hidden; border-color: rgba(148,163,184,.14); background: linear-gradient(90deg,rgba(71,85,105,.07),rgba(7,12,20,.9) 44%); }
+.chart-status-empty::before { content:""; position:absolute; inset:0 auto 0 0; width:2px; background:linear-gradient(180deg,rgba(148,163,184,.8),rgba(148,163,184,.08)); box-shadow:0 0 12px rgba(148,163,184,.08); }
+.chart-status-empty::after { background:linear-gradient(180deg,#94a3b8,rgba(148,163,184,.1)); }
+.chart-status-empty .chart-status-indicator { background:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.07); }
+.chart-status-empty strong { color:#cbd5e1; }
+.chart-status-empty span { color:#7f8da1; }
+.analyze-chart-panel .chart-status-empty { border-color:rgba(148,163,184,.09); background:linear-gradient(90deg,rgba(71,85,105,.05),rgba(3,7,12,.98) 34%); }
+.advanced-chart:has(.chart-status-loading) .chart-box { opacity:.32; filter:saturate(.55) contrast(.9); transition:opacity 160ms ease,filter 160ms ease; }
+.advanced-chart:has(.chart-status-empty) .chart-box,.advanced-chart:has(.chart-status-error) .chart-box { opacity:.14; filter:saturate(.25) contrast(.82); }
+.advanced-chart:has(.chart-status-loading) .chart-inspector,.advanced-chart:has(.chart-status-loading) .chart-period-summary,.advanced-chart:has(.chart-status-empty) .chart-inspector,.advanced-chart:has(.chart-status-empty) .chart-period-summary,.advanced-chart:has(.chart-status-error) .chart-inspector,.advanced-chart:has(.chart-status-error) .chart-period-summary { opacity:.34; filter:saturate(.45); pointer-events:none; }
+.advanced-chart:has(.chart-status-empty) .chart-inspector,.advanced-chart:has(.chart-status-empty) .chart-period-summary,.advanced-chart:has(.chart-status-error) .chart-inspector,.advanced-chart:has(.chart-status-error) .chart-period-summary { opacity:.2; }
+.advanced-chart:has(.chart-status-loading) .indicator-toolbar,.advanced-chart:has(.chart-status-loading) .chart-time-controls { opacity:.46; filter:saturate(.55); pointer-events:none; user-select:none; }
+.advanced-chart:has(.chart-status-loading) .range-btn:not(.active) { opacity:.72; }
+.advanced-chart:has(.chart-status-loading) .range-btn.active { cursor:progress; }
+@media (prefers-reduced-motion:reduce) { .advanced-chart .chart-box { transition:none; } }
