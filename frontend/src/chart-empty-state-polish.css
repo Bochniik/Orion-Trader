@@ -54,6 +54,43 @@
   vertical-align: 1px;
 }
 
+/* Never let a previous ticker/range look current while the next request is unresolved. */
+.advanced-chart:has(.chart-status-loading) .chart-box {
+  opacity: .32;
+  filter: saturate(.55) contrast(.9);
+  transition: opacity 160ms ease, filter 160ms ease;
+}
+
+.advanced-chart:has(.chart-status-empty) .chart-box,
+.advanced-chart:has(.chart-status-error) .chart-box {
+  opacity: .14;
+  filter: saturate(.25) contrast(.82);
+}
+
+.advanced-chart:has(.chart-status-loading) .chart-inspector,
+.advanced-chart:has(.chart-status-loading) .chart-period-summary,
+.advanced-chart:has(.chart-status-empty) .chart-inspector,
+.advanced-chart:has(.chart-status-empty) .chart-period-summary,
+.advanced-chart:has(.chart-status-error) .chart-inspector,
+.advanced-chart:has(.chart-status-error) .chart-period-summary {
+  opacity: .34;
+  filter: saturate(.45);
+  pointer-events: none;
+}
+
+.advanced-chart:has(.chart-status-empty) .chart-inspector,
+.advanced-chart:has(.chart-status-empty) .chart-period-summary,
+.advanced-chart:has(.chart-status-error) .chart-inspector,
+.advanced-chart:has(.chart-status-error) .chart-period-summary {
+  opacity: .2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .advanced-chart .chart-box {
+    transition: none;
+  }
+}
+
 @media (max-width: 720px) {
   .analyze-chart-panel .chart-status-empty strong::before {
     margin-right: 6px;
