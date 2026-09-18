@@ -20,6 +20,7 @@ import "./chart-live-telemetry-polish.css";
 import "./analysis-polish.css";
 import "./analysis-news-context.css";
 import "./analysis-snapshot.css";
+import "./analysis-provenance-polish.css";
 import "./analysis-decision-hierarchy.css";
 import "./analysis-decision-strip-polish.css";
 import "./analysis-evidence-rail.css";
