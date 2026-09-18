@@ -117,6 +117,8 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
   const items = Array.isArray(news) ? news : [];
   const hasItems = items.length > 0;
   const backgroundRefreshing = loading && hasItems;
+  const feedState = error ? "offline" : loading ? "sync" : hasItems ? "ready" : "empty";
+  const feedStateLabel = { offline: "OFFLINE", sync: "SYNC", ready: "READY", empty: "EMPTY" }[feedState];
   const publisherCount = new Set(items.map((item) => item?.publisher).filter(Boolean)).size;
   const newestPublishedAt = items.reduce((latest, item) => {
     const date = newsDate(item?.published_at);
@@ -134,6 +136,9 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
               <Newspaper size={18} />
             </span>
             Latest news
+            <span className={`news-feed-state news-feed-state--${feedState}`} aria-label={`News feed ${feedStateLabel.toLowerCase()}`}>
+              <span aria-hidden="true" />{feedStateLabel}
+            </span>
           </div>
           <p className="news-subtitle" aria-live="polite" aria-atomic="true">
             Recent headlines and catalysts for {ticker}{backgroundRefreshing ? " · Updating feed…" : ""}
