@@ -1,0 +1,38 @@
+/* Presentation-only telemetry for CandleChart history request state.
+   Reuses the existing loading/error state emitted by CandleChart. */
+.analyze-chart-panel .chart-status {
+  --history-state: "OFFLINE";
+  --history-state-color: #fb7185;
+}
+
+.analyze-chart-panel .chart-status-loading {
+  --history-state: "SYNC";
+  --history-state-color: #fb923c;
+}
+
+.analyze-chart-panel .chart-status > div::after {
+  content: var(--history-state);
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--history-state-color) 24%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--history-state-color) 6%, transparent);
+  color: var(--history-state-color);
+  font-size: 6.5px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  line-height: 1.2;
+}
+
+.analyze-chart-panel .chart-status-loading > div::after {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--history-state-color) 10%, transparent);
+}
+
+@media (max-width: 720px) {
+  .analyze-chart-panel .chart-status > div::after {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: center;
+  }
+}

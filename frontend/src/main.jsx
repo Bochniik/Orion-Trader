@@ -17,6 +17,7 @@ import "./chart-period-summary-polish.css";
 import "./chart-inspector-focus-polish.css";
 import "./chart-state-polish.css";
 import "./chart-live-telemetry-polish.css";
+import "./chart-request-telemetry-polish.css";
 import "./analysis-polish.css";
 import "./analysis-news-context.css";
 import "./analysis-snapshot.css";
