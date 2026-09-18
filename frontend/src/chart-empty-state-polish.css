@@ -36,23 +36,8 @@
   background: linear-gradient(90deg, rgba(71, 85, 105, .05), rgba(3, 7, 12, .98) 34%);
 }
 
-/* Keep an expected no-history response visually quieter than a transport/backend failure. */
-.analyze-chart-panel .chart-status-empty strong::before {
-  content: "EMPTY";
-  display: inline-flex;
-  align-items: center;
-  min-height: 17px;
-  margin-right: 8px;
-  padding: 0 6px;
-  border: 1px solid rgba(148, 163, 184, .13);
-  border-radius: 999px;
-  background: rgba(71, 85, 105, .09);
-  color: #94a3b8;
-  font-size: 7px;
-  font-weight: 900;
-  letter-spacing: .12em;
-  vertical-align: 1px;
-}
+/* EMPTY identity is rendered once by chart-request-telemetry-polish.css.
+   Keep this layer focused on the quieter no-history hierarchy. */
 
 /* Never let a previous ticker/range look current while the next request is unresolved. */
 .advanced-chart:has(.chart-status-loading) .chart-box {
@@ -88,11 +73,5 @@
 @media (prefers-reduced-motion: reduce) {
   .advanced-chart .chart-box {
     transition: none;
-  }
-}
-
-@media (max-width: 720px) {
-  .analyze-chart-panel .chart-status-empty strong::before {
-    margin-right: 6px;
   }
 }
