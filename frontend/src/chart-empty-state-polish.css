@@ -1,0 +1,22 @@
+.chart-status-empty {
+  border-color: rgba(148, 163, 184, .14);
+  background: linear-gradient(90deg, rgba(71, 85, 105, .07), rgba(7, 12, 20, .9) 44%);
+}
+
+.chart-status-empty::after {
+  background: linear-gradient(180deg, #94a3b8, rgba(148, 163, 184, .1));
+}
+
+.chart-status-empty .chart-status-indicator {
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, .07);
+}
+
+.chart-status-empty strong {
+  color: #cbd5e1;
+}
+
+.analyze-chart-panel .chart-status-empty {
+  border-color: rgba(148, 163, 184, .09);
+  background: linear-gradient(90deg, rgba(71, 85, 105, .05), rgba(3, 7, 12, .98) 34%);
+}
