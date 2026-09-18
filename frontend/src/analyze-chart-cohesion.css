@@ -1,6 +1,6 @@
 .analyze-view .analysis-market-grid {
   position: relative;
-  align-items: start;
+  align-items: stretch;
   margin-top: 18px;
   padding-top: 18px;
   border-top: 1px solid rgba(148, 163, 184, 0.08);
@@ -18,6 +18,23 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 14px;
+}
+
+.analyze-view .analysis-market-grid > .analyze-chart-panel,
+.analyze-view .analysis-market-grid > .analyze-news-panel {
+  min-width: 0;
+  height: 100%;
+}
+
+.analyze-view .analysis-market-grid > .analyze-chart-panel,
+.analyze-view .analysis-market-grid > .analyze-news-panel,
+.analyze-view .analysis-market-grid > .analyze-news-panel > .news-card--terminal {
+  display: flex;
+  flex-direction: column;
+}
+
+.analyze-view .analysis-market-grid > .analyze-news-panel > .news-card--terminal {
+  flex: 1 1 auto;
 }
 
 .analyze-view .analyze-chart-panel {
@@ -38,6 +55,12 @@
   pointer-events: none;
   background: linear-gradient(180deg, rgba(249, 115, 22, 0.8), rgba(249, 115, 22, 0.08) 42%, transparent 72%);
   box-shadow: 0 0 18px rgba(249, 115, 22, 0.16);
+}
+
+.analyze-view .analyze-chart-panel .analyze-section-heading,
+.analyze-view .analysis-market-grid > .analyze-news-panel > .analyze-section-heading {
+  min-height: 48px;
+  box-sizing: border-box;
 }
 
 .analyze-view .analyze-chart-panel .analyze-section-heading {
@@ -134,8 +157,14 @@
 
 @media (max-width: 900px) {
   .analyze-view .analysis-market-grid {
+    align-items: start;
     margin-top: 14px;
     padding-top: 16px;
+  }
+
+  .analyze-view .analysis-market-grid > .analyze-chart-panel,
+  .analyze-view .analysis-market-grid > .analyze-news-panel {
+    height: auto;
   }
 
   .analyze-view .analyze-chart-panel .chart-toolbar {
