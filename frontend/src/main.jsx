@@ -26,6 +26,7 @@ import "./news-terminal-density-polish.css";
 import "./analysis-snapshot.css";
 import "./analysis-provenance-polish.css";
 import "./analysis-decision-hierarchy.css";
+import "./analysis-terminal-hierarchy-polish.css";
 import "./analysis-decision-strip-polish.css";
 import "./analysis-evidence-rail.css";
 import "./analysis-insight-density.css";
