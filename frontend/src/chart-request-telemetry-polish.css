@@ -1,5 +1,5 @@
 /* Presentation-only telemetry for CandleChart history request state.
-   Reuses the existing loading/error state emitted by CandleChart. */
+   Reuses the existing loading/empty/error state emitted by CandleChart. */
 .analyze-chart-panel .chart-status {
   --history-state: "OFFLINE";
   --history-state-color: #fb7185;
@@ -8,6 +8,12 @@
 .analyze-chart-panel .chart-status-loading {
   --history-state: "SYNC";
   --history-state-color: #fb923c;
+}
+
+/* A successful candles request with no bars is not a transport/backend failure. */
+.analyze-chart-panel .chart-status-empty {
+  --history-state: "EMPTY";
+  --history-state-color: #94a3b8;
 }
 
 .analyze-chart-panel .chart-status > div::after {
