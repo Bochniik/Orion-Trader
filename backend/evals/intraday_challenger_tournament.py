@@ -14,7 +14,7 @@ import numpy as np
 _EVALS_DIR = str(Path(__file__).resolve().parent)
 if _EVALS_DIR not in sys.path:
     sys.path.insert(0, _EVALS_DIR)
-from adaptive_challenger_registry import assert_forward_evidence_eligible, validate_registration
+from adaptive_challenger_registry import assert_forward_evidence_eligible, register_candidate, validate_registration
 
 HORIZONS = ("30m", "1h", "3h", "5h")
 MIN_PAIRED_OBSERVATIONS = 80
