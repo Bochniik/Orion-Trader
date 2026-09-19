@@ -1,10 +1,10 @@
-import { getCurrentScannerState, getMarketIntelligence } from "../api/api";
+import { getCoreSession, getCurrentScannerState, getMarketIntelligence } from "../api/api";
 
 export const SCANNER_POLL_MS = 15000;
 
 // Only read cached backend state. Selection changes never initiate scan jobs.
 export function startMarketStatePolling(onUpdate, {
-  readers = { scanner: getCurrentScannerState, intelligence: getMarketIntelligence },
+  readers = { session: getCoreSession, scanner: getCurrentScannerState, intelligence: getMarketIntelligence },
   timers = globalThis, visible = () => document.visibilityState === "visible",
 } = {}) {
   let stopped = false;
@@ -18,7 +18,7 @@ export function startMarketStatePolling(onUpdate, {
       // Bound a hung read without overlapping requests or touching the scanner.
       const timeout = timers.setTimeout(() => controller.abort(), SCANNER_POLL_MS);
       Promise.resolve().then(() => reader({ signal: controller.signal })).then(value => {
-        if (!value || typeof value !== "object" || (key === "intelligence" && !value.categories)) {
+        if (!value || typeof value !== "object" || (key === "intelligence" && !value.categories) || (key === "session" && !value.mode)) {
           throw new Error("Invalid market-state response.");
         }
         if (!stopped) onUpdate(key, { value, error: "" });
