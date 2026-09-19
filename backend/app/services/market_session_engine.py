@@ -519,24 +519,21 @@ def compact_session_state(
     result: Dict[str, Any],
 ) -> Dict[str, Any]:
     return {
-        "mode": result.get(
-            "mode"
-        ),
-        "label": result.get(
-            "label"
-        ),
-        "status": result.get(
-            "status"
-        ),
-        "confirmation_required": result.get(
-            "confirmation_required"
-        ),
-        "day_setup_state": result.get(
-            "day_setup_state"
-        ),
-        "research_horizons": result.get(
-            "research_horizons"
-        ),
+        "session_state_version": result.get("session_state_version"),
+        "mode": result.get("mode"),
+        "label": result.get("label"),
+        "status": result.get("status"),
+        "verified": result.get("verified"),
+        "workflow_mode": result.get("workflow_mode"),
+        "ui_priority": result.get("ui_priority"),
+        "price_semantics": result.get("price_semantics"),
+        "next_open": result.get("next_open"),
+        "next_transition": result.get("next_transition"),
+        "next_transition_kind": result.get("next_transition_kind"),
+        "confirmation_required": result.get("confirmation_required"),
+        "day_setup_state": result.get("day_setup_state"),
+        "research_horizons": result.get("research_horizons"),
+        "allowed_workflows": result.get("allowed_workflows"),
     }
 
 
