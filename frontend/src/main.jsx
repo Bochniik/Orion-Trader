@@ -39,6 +39,7 @@ import "./analysis-state-polish.css";
 import "./analysis-pending-density.css";
 import "./analysis-commandbar.css";
 import "./analysis-interaction-polish.css";
+import "./analysis-workspace-orientation.css";
 import "./analyze-chart-cohesion.css";
 import "./watchlist-polish.css";
 import "./quote-polish.css";
