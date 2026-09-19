@@ -383,10 +383,55 @@ def classify_market_session(
             "UNAVAILABLE_WHILE_CLOSED"
         )
 
+    after_hours_end = datetime.combine(
+        local_now.date(),
+        AFTER_HOURS_END,
+        tzinfo=NEW_YORK,
+    )
+
+    if mode == "premarket":
+        next_transition = regular_open
+        next_transition_kind = "regular_open"
+        workflow_mode = "transition_research"
+        ui_priority = "prepare_for_open"
+        price_semantics = "extended_hours"
+    elif mode == "regular":
+        next_transition = regular_close
+        next_transition_kind = "regular_close"
+        workflow_mode = "live"
+        ui_priority = "live_market"
+        price_semantics = "live_regular"
+    elif mode == "after_hours":
+        next_transition = after_hours_end
+        next_transition_kind = "extended_hours_end"
+        workflow_mode = "transition_research"
+        ui_priority = "review_and_prepare"
+        price_semantics = "extended_hours"
+    else:
+        next_transition = _to_ny(next_open)
+        next_transition_kind = "next_regular_open" if next_transition else None
+        workflow_mode = "research"
+        ui_priority = "research_review_preparation"
+        price_semantics = "historical_or_delayed"
+
+    verified = bool(
+        is_open is True
+        or session is not None
+        or (
+            is_open is False
+            and next_open is not None
+        )
+    )
+
     return {
+        "session_state_version": "orion-session-state-v2",
         "mode": mode,
         "label": label,
         "status": status,
+        "verified": verified,
+        "workflow_mode": workflow_mode,
+        "ui_priority": ui_priority,
+        "price_semantics": price_semantics,
 
         "as_of": now.isoformat(),
         "as_of_new_york": (
@@ -417,6 +462,13 @@ def classify_market_session(
             else None
         ),
 
+        "next_transition": (
+            next_transition.isoformat()
+            if next_transition
+            else None
+        ),
+        "next_transition_kind": next_transition_kind,
+
         "calendar_verified": (
             session is not None
         ),
@@ -444,13 +496,21 @@ def classify_market_session(
             research_horizons
         ),
 
+        "allowed_workflows": {
+            "live_scanner": mode == "regular",
+            "premarket_engine": mode == "premarket",
+            "extended_hours_monitoring": mode in {"premarket", "after_hours"},
+            "settlement_and_evaluation": mode != "regular",
+            "research_lab": mode != "regular",
+            "next_session_preparation": mode != "regular",
+        },
+
         "warnings": warnings,
 
         "semantics": (
             "Premarket and after-hours outputs are research plans, not "
-            "regular-session confirmation. A high Orion Score during an "
-            "extended session must not be described as guaranteed or as "
-            "permission to trade."
+            "regular-session confirmation. Closed-session prices must be labelled "
+            "historical or delayed and must never be presented as live regular-session data."
         ),
     }
 
