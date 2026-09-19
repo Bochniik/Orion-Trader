@@ -94,6 +94,13 @@ export function getNews(ticker) {
   return request(`/news/${tickerPath(ticker)}`);
 }
 
+export function getOrionNewsInsights(ticker, articles) {
+  return jsonRequest("/orion-ai/news-insights", "POST", {
+    ticker: String(ticker || "").trim().toUpperCase(),
+    articles,
+  });
+}
+
 export function getPortfolio() {
   return request("/portfolio/active");
 }
