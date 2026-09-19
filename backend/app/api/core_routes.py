@@ -153,20 +153,52 @@ def _market_open(request):
 @router.post("/today")
 def today(request: Request):
     status = _readiness(request)
+    session = _market_session(request)
+
+    # Outside regular hours Today becomes a research/review workspace. Do not
+    # start the live scanner or manufacture current opportunities from old data.
+    if session.get("mode") != "regular":
+        return _session_research_overview(request, session, status)
+
     if not status["ready"]:
-        return {"status": "unavailable", "opportunities": [], "message": status["message"], "readiness": status}
-    session_open = _market_open(request)
-    if session_open is not True:
-        return {"status": "market_closed" if session_open is False else "unavailable", "opportunities": [], "message": "The regular session is closed. No current setups are shown." if session_open is False else "Market session status is unavailable. No current setups are shown.", "readiness": status}
+        return {
+            "status": "unavailable",
+            "market_session": "regular",
+            "session_state": session,
+            "opportunities": [],
+            "message": status["message"],
+            "readiness": status,
+        }
+
     try:
-        board = legacy.scan_live_edge(legacy.LiveEdgeScanRequest(candidate_count=16, horizons=status["horizons"], core_workflow=True), request)
+        board = legacy.scan_live_edge(
+            legacy.LiveEdgeScanRequest(
+                candidate_count=16,
+                horizons=status["horizons"],
+                core_workflow=True,
+            ),
+            request,
+        )
         checkpoint("Applying final decision gates")
         if board.get("errors"):
-            board["errors"] = ["Some provider evidence could not be evaluated. Scan coverage is incomplete."]
-        return {**today_from_board(board, market_open=_market_open(request)), "readiness": status}
+            board["errors"] = [
+                "Some provider evidence could not be evaluated. Scan coverage is incomplete."
+            ]
+        return {
+            **today_from_board(board, market_open=True),
+            "readiness": status,
+            "market_session": "regular",
+            "session_state": session,
+        }
     except Exception:
         logger.warning("Today scan failed; no opportunities published")
-        raise HTTPException(status_code=503, detail="The market scan could not finish. No results are being presented as current. Try again shortly.") from None
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "The market scan could not finish. No results are being presented "
+                "as current. Try again shortly."
+            ),
+        ) from None
 
 
 # ORION SESSION-AWARE ANALYSIS
