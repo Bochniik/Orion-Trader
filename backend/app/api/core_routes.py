@@ -170,53 +170,153 @@ def today(request: Request):
 
 
 # ORION SESSION-AWARE ANALYSIS
-_NEW_YORK = ZoneInfo("America/New_York")
-
-
-def _parse_timestamp(value):
-    if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-    if isinstance(value, str) and value:
-        try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
-        except ValueError:
-            return None
-    return None
 
 
 def _market_session(request):
-    """Return the verified research mode used by Dashboard and Analysis.
+    """Return the one authoritative Orion session-state contract.
 
-    Regular-session status comes from the broker clock. Premarket/after-hours are
-    derived only around that broker clock timestamp and next-open boundary; this
-    avoids treating weekends/holidays as extended-hours sessions.
+    Broker clock is authoritative for regular-open state. The broker calendar is
+    supplied to the shared session engine so early closes, weekends and holidays
+    are not inferred from weekday/hour rules. If calendar retrieval fails, the
+    shared engine degrades conservatively and records diagnostics.
     """
     try:
         user_id = legacy.request_user_id(request)
         clock = legacy.alpaca_broker.clock(user_id) or {}
+    except Exception as exc:
+        return {
+            "session_state_version": "orion-session-state-v2",
+            "mode": "unknown",
+            "label": "UNKNOWN",
+            "status": "session_unverified",
+            "verified": False,
+            "workflow_mode": "research",
+            "ui_priority": "diagnostics",
+            "price_semantics": "unknown",
+            "next_open": None,
+            "next_transition": None,
+            "next_transition_kind": None,
+            "allowed_workflows": {
+                "live_scanner": False,
+                "premarket_engine": False,
+                "extended_hours_monitoring": False,
+                "settlement_and_evaluation": True,
+                "research_lab": True,
+                "next_session_preparation": True,
+            },
+            "warnings": [f"Market clock unavailable: {type(exc).__name__}"],
+        }
+
+    raw_now = clock.get("timestamp")
+    try:
+        now = (
+            datetime.fromisoformat(str(raw_now).replace("Z", "+00:00"))
+            if raw_now
+            else datetime.now(timezone.utc)
+        )
+    except (TypeError, ValueError):
+        now = datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    now = now.astimezone(timezone.utc)
+
+    local_day = now.astimezone(
+        __import__("zoneinfo").ZoneInfo("America/New_York")
+    ).date().isoformat()
+
+    calendar_rows = []
+    calendar_warning = None
+    try:
+        calendar_rows = legacy.alpaca_broker.calendar(
+            user_id,
+            local_day,
+            local_day,
+        ) or []
+    except Exception as exc:
+        calendar_warning = (
+            "NYSE calendar verification unavailable: "
+            + type(exc).__name__
+        )
+
+    result = classify_market_session(
+        now=now,
+        clock=clock,
+        calendar_rows=calendar_rows,
+    )
+    if calendar_warning:
+        result.setdefault("warnings", []).append(calendar_warning)
+    result["source"] = {
+        "clock": "alpaca",
+        "calendar": "alpaca" if calendar_rows else "unavailable",
+    }
+    return result
+
+
+def _session_research_overview(request, session, readiness):
+    """Compose safe closed/transition dashboard facts from existing stores."""
+    watchlist_count = None
+    try:
+        watchlist_count = len(legacy.watchlist.get())
     except Exception:
-        return {"mode": "unknown", "verified": False, "clock": {}}
+        pass
 
-    if clock.get("is_open") is True:
-        return {"mode": "regular", "verified": True, "clock": clock}
+    quality = None
+    try:
+        ledger = EvidenceLedger(_store().path)
+        rows, total = ledger.quality_rows()
+        quality = quality_report(
+            rows,
+            total=total,
+            capture=ledger.capture_summary(),
+        )
+    except Exception:
+        quality = None
 
-    now = _parse_timestamp(clock.get("timestamp")) or datetime.now(timezone.utc)
-    next_open = _parse_timestamp(clock.get("next_open"))
-    local_now = now.astimezone(_NEW_YORK)
-    local_next_open = next_open.astimezone(_NEW_YORK) if next_open else None
-
-    same_day_open = bool(local_next_open and local_next_open.date() == local_now.date())
-    minutes = local_now.hour * 60 + local_now.minute
-
-    if same_day_open and 4 * 60 <= minutes < 9 * 60 + 30:
-        mode = "premarket"
-    elif 16 * 60 <= minutes < 20 * 60:
-        mode = "after_hours"
+    metrics = (quality or {}).get("forecast_metrics") or {}
+    mode = session.get("mode")
+    if mode == "premarket":
+        message = (
+            "Premarket research mode is active. Orion is preparing the regular "
+            "session and requires opening confirmation for day setups."
+        )
+    elif mode == "after_hours":
+        message = (
+            "After-hours review mode is active. Orion is prioritizing session "
+            "review, catalysts and preparation for the next regular session."
+        )
     else:
-        mode = "closed"
+        message = (
+            "The regular market is closed. Orion has switched to research, "
+            "review and next-session preparation."
+        )
 
-    return {"mode": mode, "verified": True, "clock": clock}
+    return {
+        "status": session.get("status") or "next_session_research",
+        "market_session": mode,
+        "session_state": session,
+        "opportunities": [],
+        "message": message,
+        "readiness": readiness,
+        "preparation": {
+            "mode": "research_review_preparation",
+            "watchlist_stocks": watchlist_count,
+            "predictions_settled": metrics.get("settled"),
+            "settled_distinct_sessions": metrics.get("distinct_sessions"),
+            "model_evaluation_status": (quality or {}).get("status"),
+            "model_evaluation_headline": (quality or {}).get("headline"),
+            "next_regular_open": session.get("next_open"),
+            "price_semantics": session.get("price_semantics"),
+            "data_note": (
+                "Review metrics are settled/historical evidence. Closed-market "
+                "prices are never labelled as live regular-session prices."
+            ),
+        },
+    }
 
+
+@router.get("/session")
+def core_session(request: Request):
+    return _market_session(request)
 
 def _reference_quote(ticker):
     try:
