@@ -11,6 +11,7 @@ import "./data-panels.css";
 import "./news-polish.css";
 import "./news-state-polish.css";
 import "./news-refresh-feedback.css";
+import "./news-catalyst-hierarchy.css";
 import "./chart-polish.css";
 import "./chart-commandbar-polish.css";
 import "./chart-interaction-accessibility.css";
