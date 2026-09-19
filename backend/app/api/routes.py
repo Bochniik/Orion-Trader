@@ -98,6 +98,7 @@ from app.services.orion_ai_service import (
     rank_horizon_opportunities,
     ask_about_horizon_board,
     explain_predictive_result,
+    analyze_news_items,
 )
 
 from app.services.premarket_data_adapter import PremarketDataAdapter
@@ -149,6 +150,19 @@ class OrionWatchlistActionRequest(BaseModel):
 class OrionIndicatorRequest(BaseModel):
     ticker: str = Field(min_length=1, max_length=15)
     indicator: str = Field(min_length=1, max_length=40)
+
+
+class OrionNewsArticleRequest(BaseModel):
+    article_id: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1, max_length=700)
+    summary: str = Field(default="", max_length=4_000)
+    publisher: str = Field(default="", max_length=200)
+    published_at: int | float | str | None = None
+
+
+class OrionNewsInsightRequest(BaseModel):
+    ticker: str = Field(min_length=1, max_length=15)
+    articles: list[OrionNewsArticleRequest] = Field(min_length=1, max_length=8)
 
 
 class TradeJournalRequest(BaseModel):
@@ -3757,6 +3771,18 @@ def ask_horizon_opportunities(request_body: HorizonBoardQuestionRequest):
         return {"answer": answer}
     except OrionAIUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/orion-ai/news-insights")
+def get_orion_news_insights(request_body: OrionNewsInsightRequest):
+    try:
+        return analyze_news_items(
+            request_body.ticker,
+            [article.model_dump() for article in request_body.articles],
+        )
+    except Exception as exc:
+        print("ORION NEWS INSIGHT ERROR:", repr(exc))
+        raise_orion_http_error(exc)
 
 
 @router.get("/orion-ai/analysis/{ticker}")
