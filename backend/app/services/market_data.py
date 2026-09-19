@@ -402,6 +402,14 @@ class MarketDataService:
             publisher = provider.get("displayName") or item.get("publisher")
             published_at = content.get("pubDate") or item.get("providerPublishTime")
             thumbnail = self._news_thumbnail_url(item, content)
+            summary = (
+                content.get("summary")
+                or content.get("description")
+                or item.get("summary")
+                or item.get("description")
+                or ""
+            )
+            summary = " ".join(str(summary).split()).strip()
 
             if isinstance(published_at, str):
                 try:
@@ -422,6 +430,8 @@ class MarketDataService:
                 }
                 if thumbnail:
                     article["thumbnail"] = thumbnail
+                if summary and summary != str(title).strip():
+                    article["summary"] = summary[:4_000]
                 articles.append(article)
 
         return {"ticker": clean_ticker, "news": articles}
