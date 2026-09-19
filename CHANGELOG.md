@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Orion 24/7 Intelligence
+
+- Added one authoritative session-state contract for regular, premarket, after-hours and closed research modes.
+- Core now uses the Alpaca clock plus NYSE calendar instead of a duplicate hard-coded session classifier; early closes, weekends and holidays degrade safely.
+- Added `GET /core/session` with workflow priority, next transition, next regular open, price semantics and allowed research workflows.
+- Today now switches to a research/review/preparation workspace outside regular hours instead of presenting an empty live-trading surface.
+- Closed-market UI shows next-session timing in the user's browser-local time, watchlist research queue and explicit live/extended/historical data semantics.
+- Added backend session-switching tests, frontend polling/dashboard regressions and a dedicated build/CI gate.
+- No production model, calibration, decision gate, risk rule or broker execution behavior changed.
+
 ## Unreleased — Orion news intelligence
 
 - Analyze the already-loaded Analyze-workspace news in one bounded Orion AI batch.
