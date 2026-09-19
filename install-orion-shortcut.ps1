@@ -13,6 +13,13 @@ if (-not (Test-Path $launcher)) {
 $shell = New-Object -ComObject WScript.Shell
 $desktop = $shell.SpecialFolders.Item("Desktop")
 $shortcutPath = Join-Path $desktop "OrionTrader.lnk"
+
+# Recreate the shortcut instead of editing it in place. Explorer can otherwise
+# keep the generic document icon cached from an older OrionTrader shortcut.
+if (Test-Path $shortcutPath) {
+    Remove-Item -LiteralPath $shortcutPath -Force
+}
+
 $shortcut = $shell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = $launcher
 $shortcut.WorkingDirectory = $root
@@ -22,6 +29,12 @@ if (Test-Path $icon) {
     $shortcut.IconLocation = "$icon,0"
 }
 $shortcut.Save()
+
+# Ask Explorer to refresh shell icons when Windows provides the cache refresh helper.
+$iconRefresh = Join-Path $env:WINDIR "System32\\ie4uinit.exe"
+if (Test-Path $iconRefresh) {
+    Start-Process -FilePath $iconRefresh -ArgumentList "-show" -WindowStyle Hidden -ErrorAction SilentlyContinue
+}
 
 Write-Host "OrionTrader desktop shortcut created:" -ForegroundColor Green
 Write-Host $shortcutPath
