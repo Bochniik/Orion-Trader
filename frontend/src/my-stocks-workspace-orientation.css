@@ -131,6 +131,47 @@
   font-size: 0.62rem;
 }
 
+.core-view:has(> .core-stocks-status) > .core-positions .core-position-list {
+  display: grid;
+  gap: 6px;
+}
+
+.core-view:has(> .core-stocks-status) > .core-positions .core-position-list button {
+  position: relative;
+  min-height: 44px;
+  border-color: rgba(255, 255, 255, 0.045);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.006));
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.core-view:has(> .core-stocks-status) > .core-positions .core-position-list button::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.core-view:has(> .core-stocks-status) > .core-positions .core-position-list button:hover,
+.core-view:has(> .core-stocks-status) > .core-positions .core-position-list button:focus-visible {
+  border-color: rgba(255, 139, 40, 0.18);
+  background: linear-gradient(90deg, rgba(255, 139, 40, 0.045), rgba(255, 255, 255, 0.008) 42%);
+  transform: translateX(1px);
+}
+
+.core-view:has(> .core-stocks-status) > .core-positions .core-position-list button:hover::before,
+.core-view:has(> .core-stocks-status) > .core-positions .core-position-list button:focus-visible::before {
+  background: var(--my-stocks-accent);
+  box-shadow: 0 0 10px rgba(255, 139, 40, 0.36);
+}
+
+.core-view:has(> .core-stocks-status) > .core-positions .core-position-list button > span:first-child {
+  font-weight: 760;
+  letter-spacing: 0.015em;
+}
+
 .core-view:has(> .core-stocks-status) > .core-positions .core-position-list button > span:last-child {
   color: rgba(255, 139, 40, 0.82);
   font-size: 0.62rem;
@@ -147,11 +188,17 @@
   .core-view:has(> .core-stocks-status) > .core-save-form::before {
     display: none;
   }
+
+  .core-view:has(> .core-stocks-status) > .core-positions .core-position-list button {
+    min-height: 42px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .core-view:has(> .core-stocks-status) > .core-monitoring,
-  .core-view:has(> .core-stocks-status) > .core-positions {
+  .core-view:has(> .core-stocks-status) > .core-positions,
+  .core-view:has(> .core-stocks-status) > .core-positions .core-position-list button,
+  .core-view:has(> .core-stocks-status) > .core-positions .core-position-list button::before {
     transition: none;
   }
 }
@@ -160,7 +207,8 @@
   .core-view:has(> .core-stocks-status) > .core-monitoring,
   .core-view:has(> .core-stocks-status) > .core-positions,
   .core-view:has(> .core-stocks-status) > .core-save-form,
-  .core-view:has(> .core-stocks-status) > .watchlist-card {
+  .core-view:has(> .core-stocks-status) > .watchlist-card,
+  .core-view:has(> .core-stocks-status) > .core-positions .core-position-list button {
     border-color: rgba(255, 255, 255, 0.2);
   }
 }
