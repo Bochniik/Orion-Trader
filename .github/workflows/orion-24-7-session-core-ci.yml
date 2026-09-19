@@ -1,0 +1,56 @@
+name: Orion 24/7 session core CI
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/services/market_session_engine.py"
+      - "backend/app/api/core_routes.py"
+      - "backend/tests/test_market_session_engine.py"
+      - "frontend/src/api/api.js"
+      - "frontend/src/core/marketStatePolling.js"
+      - "frontend/src/core/marketStatePolling.test.js"
+      - "frontend/src/core/TodayView.jsx"
+      - "frontend/src/core/Orion247Session.test.jsx"
+      - "frontend/src/dashboard-polish.css"
+      - "docs/ORION_24_7_INTELLIGENCE.md"
+      - ".github/workflows/orion-24-7-session-core-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  focused-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: |
+          python -m pip install -r backend/requirements.txt
+          python -m pip install pytest
+      - name: Compile session-aware backend
+        run: |
+          python -m py_compile backend/app/services/market_session_engine.py
+          python -m py_compile backend/app/api/core_routes.py
+      - name: Run backend session regressions
+        run: |
+          python -m pytest -q             backend/tests/test_market_session_engine.py             backend/tests/test_regular_hours_nyse_session_gate.py             backend/tests/test_core_milestone2.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend session regressions
+        working-directory: frontend
+        run: npm test -- src/core/marketStatePolling.test.js src/core/Orion247Session.test.jsx
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build

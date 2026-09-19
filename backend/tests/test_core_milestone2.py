@@ -286,7 +286,7 @@ def test_complete_selected_stock_job_reuses_model_and_persists_final_source_audi
     monkeypatch.setattr(api, "core_job_manager", CoreJobManager())
     monkeypatch.setattr(api.legacy, "autonomy_store", SimpleNamespace(database_path=path))
     monkeypatch.setattr(api.legacy.alpaca_broker, "status", lambda _: {"connected": True})
-    monkeypatch.setattr(api, "_market_open", lambda _: True)
+    monkeypatch.setattr(api, "_market_session", lambda _: {"mode": "regular", "verified": True})
     monkeypatch.setattr(api.legacy, "get_strategy_research", lambda *a, **k: {})
     monkeypatch.setattr(api.legacy.context_cache, "load", lambda *a: ([], {}))
     rank = {"symbol": "AAPL", "company_name": "Apple", "liquidity_tier": "A", "liquidity_score": 90, "metrics": {}, "quote_as_of": now.isoformat()}

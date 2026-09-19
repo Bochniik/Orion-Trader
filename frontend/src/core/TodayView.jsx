@@ -432,9 +432,83 @@ function errorText(error) {
   );
 }
 
+export function SessionResearchWorkspace({ session, watchlistCount = 0, onAnalyze }) {
+  const mode = String(session?.mode || "").toLowerCase();
+  if (!mode || mode === "regular") return null;
+
+  const title =
+    mode === "premarket"
+      ? "Opening preparation"
+      : mode === "after_hours"
+        ? "After-hours review"
+        : "Research & preparation";
+
+  const nextOpen = session?.next_open
+    ? new Date(session.next_open).toLocaleString([], {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Unavailable";
+
+  return (
+    <section className="orion-247-workspace" aria-label="Orion 24/7 research mode">
+      <header>
+        <div>
+          <p className="core-eyebrow">ORION 24/7 INTELLIGENCE</p>
+          <h2>{title}</h2>
+          <p>
+            {mode === "premarket"
+              ? "Review extended-hours evidence and prepare scenarios before the regular open."
+              : mode === "after_hours"
+                ? "Review the completed session, fresh catalysts and developing next-session setups."
+                : "The live scanner is paused. Orion is prioritizing research, settled evidence and next-session preparation."}
+          </p>
+        </div>
+        <MarketSessionBadge session={mode} status={session?.status} />
+      </header>
+
+      <div className="orion-247-grid">
+        <div>
+          <span>Next US regular session</span>
+          <strong>{nextOpen}</strong>
+          <small>Shown in your local browser time.</small>
+        </div>
+        <div>
+          <span>Watchlist research queue</span>
+          <strong>{watchlistCount}</strong>
+          <small>Saved stocks available for overnight review.</small>
+        </div>
+        <div>
+          <span>Evaluation window</span>
+          <strong>{session?.allowed_workflows?.settlement_and_evaluation ? "ACTIVE" : "PAUSED"}</strong>
+          <small>Uses settled/historical evidence only.</small>
+        </div>
+        <div>
+          <span>Displayed price semantics</span>
+          <strong>{String(session?.price_semantics || "unknown").replaceAll("_", " ").toUpperCase()}</strong>
+          <small>Closed-market prices are never labelled as live regular-session data.</small>
+        </div>
+      </div>
+
+      <div className="orion-247-actions">
+        <button type="button" className="core-button" onClick={() => onAnalyze?.()}>
+          Prepare next-session research <ArrowRight size={14} />
+        </button>
+        {session?.warnings?.length > 0 && (
+          <span className="core-muted">{session.warnings[0]}</span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+
 export default function TodayView(props) {
   const saved = Array.isArray(props.saved) ? props.saved : [];
-  const { scanner } = useMarketState(props.dataRevision);
+  const { scanner, session } = useMarketState(props.dataRevision);
   const quickAnalysis = useCoreJob();
   const [quickTicker, setQuickTicker] = useState(null);
 
@@ -455,6 +529,7 @@ export default function TodayView(props) {
   const analysisError = quickAnalysis.error;
 
   const marketState = scanner?.value || {};
+  const sessionState = session?.value || null;
   const scannerSession = marketState?.market_session || null;
   const resultSession =
     analysis?.session_mode || analysis?.market_session || analysis?.session || null;
@@ -473,6 +548,7 @@ export default function TodayView(props) {
             : null;
 
   const marketSession =
+    sessionState?.mode ||
     scannerSession ||
     statusSession ||
     resultSession ||
@@ -602,6 +678,11 @@ export default function TodayView(props) {
 
       <div className="dashboard-grid">
         <div className="dashboard-primary">
+          <SessionResearchWorkspace
+            session={sessionState}
+            watchlistCount={saved.length}
+            onAnalyze={props.onAnalyze}
+          />
           {isPremarket && (
             <PremarketResearchStrip
               research={premarketResearch}
