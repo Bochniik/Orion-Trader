@@ -67,6 +67,7 @@ export function getResearchSetupAnalytics(options = {}) { return request("/scann
 export function explainResearchSetup(id) { return request(`/scanner/opportunities/${encodeURIComponent(id)}/explain`, { method: "POST" }); }
 
 export function getCoreStatus(options = {}) { return request("/core/status", options); }
+export function getCoreSession(options = {}) { return request("/core/session", options); }
 export function startCoreJob(body) { return jsonRequest("/core/jobs", "POST", body); }
 export function getCoreJob(id, options = {}) { return request(`/core/jobs/${encodeURIComponent(id)}`, options); }
 export function cancelCoreJob(id) { return request(`/core/jobs/${encodeURIComponent(id)}`, { method: "DELETE" }); }
