@@ -1,0 +1,81 @@
+/* Analyze workspace orientation polish.
+   Presentation only: strengthens the relationship between page context, active ticker and research controls. */
+
+.analyze-view .analyze-page-heading {
+  position: relative;
+  margin-bottom: 14px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.analyze-view .analyze-page-heading::after {
+  content: "RESEARCH WORKSPACE";
+  position: absolute;
+  right: 0;
+  bottom: 14px;
+  color: rgba(178, 186, 198, 0.34);
+  font-size: 0.56rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+.analyze-view .core-search-wrap + .analyze-horizon-selector,
+.analyze-view .core-warning + .analyze-horizon-selector {
+  margin-top: 11px;
+}
+
+.analyze-view .analyze-horizon-selector:has(.analyze-sticky-context) {
+  position: sticky;
+  top: 10px;
+  z-index: 18;
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+}
+
+.analyze-view .analyze-sticky-context {
+  isolation: isolate;
+}
+
+.analyze-view .analyze-sticky-context::after {
+  content: "IN FOCUS";
+  margin-left: 2px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(181, 189, 201, 0.36);
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  white-space: nowrap;
+}
+
+.analyze-view .analyze-horizon-tabs button.active {
+  box-shadow: inset 0 -1px 0 rgba(255, 150, 78, 0.72), 0 0 16px rgba(255, 122, 26, 0.045);
+}
+
+.analyze-view .analyze-result-horizon {
+  margin-top: 2px;
+}
+
+@media (max-width: 840px) {
+  .analyze-view .analyze-page-heading::after { display: none; }
+  .analyze-view .analyze-horizon-selector:has(.analyze-sticky-context) { top: 6px; }
+}
+
+@media (max-width: 540px) {
+  .analyze-view .analyze-sticky-context::after { display: none; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .analyze-view .analyze-horizon-selector:has(.analyze-sticky-context) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #080b10;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analyze-page-heading { border-bottom-color: rgba(255, 255, 255, 0.14); }
+  .analyze-view .analyze-horizon-selector:has(.analyze-sticky-context) { border-color: rgba(255, 151, 78, 0.34); }
+  .analyze-view .analyze-sticky-context::after { color: rgba(225, 229, 235, 0.68); }
+}
