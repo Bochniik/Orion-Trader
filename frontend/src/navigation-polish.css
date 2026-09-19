@@ -29,36 +29,17 @@
 .core-brand {
   position: relative;
   border-radius: 10px;
-  transition:
-    background 160ms ease,
-    transform 160ms ease;
+  transition: background 160ms ease, transform 160ms ease;
 }
-
-.core-brand:hover {
-  background: rgba(255, 255, 255, 0.018);
-}
-
-.core-brand:active {
-  transform: translateY(1px);
-}
-
-.core-brand-mark {
-  transition:
-    filter 180ms ease,
-    transform 180ms ease;
-}
-
+.core-brand:hover { background: rgba(255, 255, 255, 0.018); }
+.core-brand:active { transform: translateY(1px); }
+.core-brand-mark { transition: filter 180ms ease, transform 180ms ease; }
 .core-brand:hover .core-brand-mark {
   transform: translateY(-1px);
-  filter:
-    drop-shadow(0 0 16px rgba(255, 122, 26, 0.34))
-    drop-shadow(0 0 4px rgba(255, 148, 71, 0.18));
+  filter: drop-shadow(0 0 16px rgba(255, 122, 26, 0.34)) drop-shadow(0 0 4px rgba(255, 148, 71, 0.18));
 }
 
-.core-nav {
-  gap: 3px;
-}
-
+.core-nav { gap: 3px; }
 .core-nav-section-label {
   margin: 8px 10px 7px;
   color: rgba(201, 207, 218, 0.42);
@@ -67,116 +48,88 @@
   letter-spacing: 0.13em;
   text-transform: uppercase;
 }
-
 .core-nav button {
   min-height: 40px;
   overflow: hidden;
   isolation: isolate;
   transform: translateZ(0);
-  transition:
-    color 150ms ease,
-    background 150ms ease,
-    border-color 150ms ease,
-    box-shadow 170ms ease,
-    transform 150ms ease;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 170ms ease, transform 150ms ease;
 }
-
 .core-nav button::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.028) 48%,
-    transparent 100%
-  );
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.028) 48%, transparent 100%);
   opacity: 0;
   transform: translateX(-28%);
-  transition:
-    opacity 170ms ease,
-    transform 230ms ease;
+  transition: opacity 170ms ease, transform 230ms ease;
 }
-
 .core-nav button:hover {
   border-color: rgba(255, 255, 255, 0.055);
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.037), rgba(255, 255, 255, 0.012));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.037), rgba(255, 255, 255, 0.012));
   transform: translateX(1px);
 }
-
-.core-nav button:hover::after {
-  opacity: 1;
-  transform: translateX(26%);
+.core-nav button:hover::after { opacity: 1; transform: translateX(26%); }
+.core-nav button:active { transform: translateX(1px) scale(0.992); }
+.core-nav-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: rgba(255,255,255,.012);
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 170ms ease;
 }
-
-.core-nav button:active {
-  transform: translateX(1px) scale(0.992);
+.core-nav button svg { transition: color 150ms ease, opacity 150ms ease, filter 170ms ease, transform 170ms ease; }
+.core-nav button:hover svg { opacity: 1; transform: translateX(1px); }
+.core-nav-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.core-nav-current {
+  margin-left: auto;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  color: rgba(255, 174, 104, .72);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateX(4px);
+  transition: max-width 160ms ease, opacity 160ms ease, transform 160ms ease;
 }
-
-.core-nav button svg {
-  transition:
-    color 150ms ease,
-    opacity 150ms ease,
-    filter 170ms ease,
-    transform 170ms ease;
-}
-
-.core-nav button:hover svg {
-  opacity: 1;
-  transform: translateX(1px);
-}
-
 .core-nav button.active {
   color: rgba(255, 246, 238, 0.98);
   border-color: rgba(255, 122, 26, 0.26);
-  background:
-    radial-gradient(circle at 14% 50%, rgba(255, 151, 77, 0.12), transparent 34%),
-    linear-gradient(90deg, rgba(255, 122, 26, 0.16), rgba(255, 122, 26, 0.034) 72%, transparent),
-    rgba(255, 255, 255, 0.008);
-  box-shadow:
-    inset 0 1px rgba(255, 255, 255, 0.03),
-    inset 0 0 22px rgba(255, 122, 26, 0.025),
-    0 8px 24px rgba(0, 0, 0, 0.12);
+  background: radial-gradient(circle at 14% 50%, rgba(255, 151, 77, 0.12), transparent 34%), linear-gradient(90deg, rgba(255, 122, 26, 0.16), rgba(255, 122, 26, 0.034) 72%, transparent), rgba(255, 255, 255, 0.008);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.03), inset 0 0 22px rgba(255, 122, 26, 0.025), 0 8px 24px rgba(0, 0, 0, 0.12);
 }
-
 .core-nav button.active::before {
   top: 7px;
   bottom: 7px;
   width: 2px;
-  box-shadow:
-    0 0 8px rgba(255, 122, 26, 0.72),
-    0 0 18px rgba(255, 122, 26, 0.22);
+  box-shadow: 0 0 8px rgba(255, 122, 26, 0.72), 0 0 18px rgba(255, 122, 26, 0.22);
 }
-
-.core-nav button.active::after {
-  opacity: 0.32;
-  transform: translateX(18%);
+.core-nav button.active::after { opacity: 0.32; transform: translateX(18%); }
+.core-nav button.active .core-nav-label { font-weight: 650; letter-spacing: 0.005em; text-shadow: 0 0 18px rgba(255, 122, 26, 0.08); }
+.core-nav button.active .core-nav-icon {
+  border-color: rgba(255, 142, 54, .18);
+  background: rgba(255, 122, 26, .075);
+  box-shadow: inset 0 0 12px rgba(255,122,26,.04);
 }
-
-.core-nav button.active span {
-  font-weight: 650;
-  letter-spacing: 0.005em;
-  text-shadow: 0 0 18px rgba(255, 122, 26, 0.08);
-}
-
+.core-nav button.active .core-nav-current { max-width: 48px; opacity: 1; transform: translateX(0); }
 .core-nav button.active svg {
   color: rgba(255, 148, 71, 0.98);
-  filter:
-    drop-shadow(0 0 5px rgba(255, 122, 26, 0.32))
-    drop-shadow(0 0 12px rgba(255, 122, 26, 0.08));
+  filter: drop-shadow(0 0 5px rgba(255, 122, 26, 0.32)) drop-shadow(0 0 12px rgba(255, 122, 26, 0.08));
 }
-
 .core-nav button.active:hover {
   border-color: rgba(255, 122, 26, 0.32);
-  background:
-    radial-gradient(circle at 14% 50%, rgba(255, 151, 77, 0.14), transparent 36%),
-    linear-gradient(90deg, rgba(255, 122, 26, 0.175), rgba(255, 122, 26, 0.04) 72%, transparent),
-    rgba(255, 255, 255, 0.01);
+  background: radial-gradient(circle at 14% 50%, rgba(255, 151, 77, 0.14), transparent 36%), linear-gradient(90deg, rgba(255, 122, 26, 0.175), rgba(255, 122, 26, 0.04) 72%, transparent), rgba(255, 255, 255, 0.01);
 }
-
 .core-nav button:focus-visible,
 .core-brand:focus-visible,
 .core-sidebar-bottom button:focus-visible {
@@ -184,25 +137,9 @@
   outline-offset: 2px;
   box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.11);
 }
-
-.core-sidebar-status {
-  border: 1px solid transparent;
-  border-radius: 9px;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease;
-}
-
-.core-sidebar-status:hover {
-  border-color: rgba(97, 216, 155, 0.09);
-  background: rgba(97, 216, 155, 0.025);
-}
-
-.core-status-indicator {
-  position: relative;
-  box-shadow: inset 0 0 16px rgba(97, 216, 155, 0.025);
-}
-
+.core-sidebar-status { border: 1px solid transparent; border-radius: 9px; transition: border-color 160ms ease, background 160ms ease; }
+.core-sidebar-status:hover { border-color: rgba(97, 216, 155, 0.09); background: rgba(97, 216, 155, 0.025); }
+.core-status-indicator { position: relative; box-shadow: inset 0 0 16px rgba(97, 216, 155, 0.025); }
 .core-status-indicator::after {
   content: "";
   position: absolute;
@@ -215,34 +152,12 @@
   box-shadow: 0 0 8px rgba(97, 216, 155, 0.45);
   opacity: 0.78;
 }
-
 @media (max-width: 900px) {
-  .core-sidebar {
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
-  }
-
-  .core-nav button:hover,
-  .core-nav button:active {
-    transform: none;
-  }
+  .core-sidebar { box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2); }
+  .core-nav button:hover, .core-nav button:active { transform: none; }
+  .core-nav-current { display: none; }
 }
-
 @media (prefers-reduced-motion: reduce) {
-  .core-brand,
-  .core-brand-mark,
-  .core-nav button,
-  .core-nav button::after,
-  .core-nav button svg,
-  .core-sidebar-status {
-    transition: none !important;
-  }
-
-  .core-brand:hover .core-brand-mark,
-  .core-nav button:hover,
-  .core-nav button:active,
-  .core-nav button:hover svg,
-  .core-nav button::after,
-  .core-nav button:hover::after {
-    transform: none !important;
-  }
+  .core-brand, .core-brand-mark, .core-nav button, .core-nav button::after, .core-nav button svg, .core-nav-icon, .core-nav-current, .core-sidebar-status { transition: none !important; }
+  .core-brand:hover .core-brand-mark, .core-nav button:hover, .core-nav button:active, .core-nav button:hover svg, .core-nav button::after, .core-nav button:hover::after { transform: none !important; }
 }
