@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel, Field
@@ -253,7 +254,7 @@ def _market_session(request):
     now = now.astimezone(timezone.utc)
 
     local_day = now.astimezone(
-        __import__("zoneinfo").ZoneInfo("America/New_York")
+        ZoneInfo("America/New_York")
     ).date().isoformat()
 
     calendar_rows = []
