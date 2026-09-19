@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getApiStatus,
   getOrionAiAnalysis,
+  getOrionNewsInsights,
   getOrionMemory,
   getQuote,
   getCandles,
@@ -96,6 +97,25 @@ describe("Orion API client", () => {
     expect(fetch).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/orion-ai/analysis/AAPL",
       expect.objectContaining({ credentials: "include" })
+    );
+  });
+
+  it("sends loaded news to the bounded Orion insight route", async () => {
+    const articles = [{
+      article_id: "0",
+      title: "AAPL launches a product",
+      summary: "Provider summary",
+      publisher: "Wire",
+      published_at: 123,
+    }];
+    await getOrionNewsInsights("aapl", articles);
+    expect(fetch).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/orion-ai/news-insights",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ ticker: "AAPL", articles }),
+      })
     );
   });
 
