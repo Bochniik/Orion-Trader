@@ -432,7 +432,7 @@ function errorText(error) {
   );
 }
 
-function SessionResearchWorkspace({ session, watchlistCount = 0, onAnalyze }) {
+export function SessionResearchWorkspace({ session, watchlistCount = 0, onAnalyze }) {
   const mode = String(session?.mode || "").toLowerCase();
   if (!mode || mode === "regular") return null;
 
