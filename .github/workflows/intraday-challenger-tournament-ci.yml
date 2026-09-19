@@ -11,6 +11,7 @@ on:
       - "backend/evals/benchmark_intraday_long_horizon_v5.py"
       - "backend/evals/audit_long_horizon_screening_protocol.py"
       - "backend/evals/diagnose_intraday_v4_failure.py"
+      - "backend/evals/adaptive_research_error_diagnostics.py"
       - "backend/app/services/intraday_probability_challenger_v4.py"
       - "backend/app/services/intraday_probability_long_horizon_challenger_v5.py"
       - "scripts/build_specialist_forward_dataset.py"
@@ -28,6 +29,7 @@ on:
       - "backend/tests/test_benchmark_intraday_long_horizon_v5.py"
       - "backend/tests/test_audit_long_horizon_screening_protocol.py"
       - "backend/tests/test_diagnose_intraday_v4_failure.py"
+      - "backend/tests/test_adaptive_research_error_diagnostics.py"
       - "backend/tests/test_run_intraday_v4_benchmark_evidence.py"
       - "backend/tests/test_run_intraday_long_horizon_v5_benchmark_evidence.py"
       - "backend/tests/test_frozen_intraday_v4_benchmark_workflow.py"
@@ -43,6 +45,7 @@ on:
       - "docs/research/V5_SCREENING_PROTOCOL_AUDIT.md"
       - "docs/research/LONG_HORIZON_CHALLENGER_PROTOCOL.md"
       - "docs/research/LONG_HORIZON_V5_FORWARD_SHADOW.md"
+      - "docs/research/ADAPTIVE_RESEARCH_LOOP.md"
   workflow_dispatch:
 
 permissions:
@@ -68,6 +71,7 @@ jobs:
           python -m py_compile backend/evals/benchmark_intraday_long_horizon_v5.py
           python -m py_compile backend/evals/audit_long_horizon_screening_protocol.py
           python -m py_compile backend/evals/diagnose_intraday_v4_failure.py
+          python -m py_compile backend/evals/adaptive_research_error_diagnostics.py
           python -m py_compile backend/app/services/intraday_probability_challenger_v4.py
           python -m py_compile backend/app/services/intraday_probability_long_horizon_challenger_v5.py
           python -m py_compile scripts/build_specialist_forward_dataset.py
@@ -77,4 +81,4 @@ jobs:
       - name: Run focused regression tests
         run: |
           cd backend
-          python -m pytest -q tests/test_intraday_challenger_tournament.py tests/test_specialist_engine_tournament.py tests/test_build_specialist_forward_dataset.py tests/test_long_horizon_challenger_gate.py tests/test_long_horizon_v5_forward_ledger.py tests/test_intraday_probability_challenger_v4.py tests/test_intraday_probability_long_horizon_challenger_v5.py tests/test_benchmark_intraday_challenger_v4.py tests/test_benchmark_intraday_long_horizon_v5.py tests/test_audit_long_horizon_screening_protocol.py tests/test_diagnose_intraday_v4_failure.py tests/test_run_intraday_v4_benchmark_evidence.py tests/test_run_intraday_long_horizon_v5_benchmark_evidence.py tests/test_frozen_intraday_v4_benchmark_workflow.py tests/test_frozen_intraday_v5_benchmark_workflow.py
+          python -m pytest -q tests/test_intraday_challenger_tournament.py tests/test_specialist_engine_tournament.py tests/test_build_specialist_forward_dataset.py tests/test_long_horizon_challenger_gate.py tests/test_long_horizon_v5_forward_ledger.py tests/test_intraday_probability_challenger_v4.py tests/test_intraday_probability_long_horizon_challenger_v5.py tests/test_benchmark_intraday_challenger_v4.py tests/test_benchmark_intraday_long_horizon_v5.py tests/test_audit_long_horizon_screening_protocol.py tests/test_diagnose_intraday_v4_failure.py tests/test_adaptive_research_error_diagnostics.py tests/test_run_intraday_v4_benchmark_evidence.py tests/test_run_intraday_long_horizon_v5_benchmark_evidence.py tests/test_frozen_intraday_v4_benchmark_workflow.py tests/test_frozen_intraday_v5_benchmark_workflow.py
