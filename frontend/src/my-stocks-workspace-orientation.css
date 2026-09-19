@@ -1,0 +1,99 @@
+.core-view:has(> .core-stocks-status) {
+  --my-stocks-accent: #ff8b28;
+}
+
+.core-view:has(> .core-stocks-status) > .core-page-heading {
+  position: relative;
+  overflow: hidden;
+}
+
+.core-view:has(> .core-stocks-status) > .core-page-heading::before {
+  content: "PORTFOLIO  /  RESEARCH BOARD";
+  position: absolute;
+  top: 10px;
+  right: 18px;
+  color: rgba(255, 139, 40, 0.5);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  pointer-events: none;
+}
+
+.core-view:has(> .core-stocks-status) > .core-stocks-status {
+  position: relative;
+}
+
+.core-view:has(> .core-stocks-status) > .core-stocks-status::after {
+  content: "LIVE WORKSPACE CONTEXT";
+  position: absolute;
+  right: 12px;
+  bottom: 5px;
+  color: rgba(225, 229, 235, 0.18);
+  font-size: 0.5rem;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  pointer-events: none;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring,
+.core-view:has(> .core-stocks-status) > .core-positions {
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring:hover,
+.core-view:has(> .core-stocks-status) > .core-positions:hover {
+  border-color: rgba(255, 139, 40, 0.14);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2), 0 0 28px rgba(255, 139, 40, 0.025);
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring > h2,
+.core-view:has(> .core-stocks-status) > .core-positions .core-section-label h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring > h2::before,
+.core-view:has(> .core-stocks-status) > .core-positions .core-section-label h2::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--my-stocks-accent);
+  box-shadow: 0 0 10px rgba(255, 139, 40, 0.42);
+}
+
+.core-view:has(> .core-stocks-status) > .watchlist-card {
+  border-color: rgba(255, 139, 40, 0.09);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+}
+
+.core-view:has(> .core-stocks-status) > .core-positions .core-section-label span {
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.018);
+  font-size: 0.62rem;
+}
+
+@media (max-width: 760px) {
+  .core-view:has(> .core-stocks-status) > .core-page-heading::before,
+  .core-view:has(> .core-stocks-status) > .core-stocks-status::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-view:has(> .core-stocks-status) > .core-monitoring,
+  .core-view:has(> .core-stocks-status) > .core-positions {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .core-view:has(> .core-stocks-status) > .core-monitoring,
+  .core-view:has(> .core-stocks-status) > .core-positions,
+  .core-view:has(> .core-stocks-status) > .watchlist-card {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
