@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Orion news intelligence
+
+- Analyze the already-loaded Analyze-workspace news in one bounded Orion AI batch.
+- Show per-article POSITIVE / NEGATIVE / MIXED / NEUTRAL context, a concise digest, up to three key points and a short "why it matters" explanation.
+- Preserve provider summaries from Yahoo Finance when present; fall back explicitly to headline-only analysis when no summary text is available.
+- Keep sentiment separate from price-direction prediction and trading recommendations; the feature does not fetch arbitrary article bodies or submit orders.
+- Fail non-blockingly when Orion AI is unavailable: the underlying news feed remains readable.
+- Added focused backend/frontend tests and a dedicated CI gate.
+
 ## 2.4.0 — Unified decision radar (2026-09-02)
 
 - Preserved valid deterministic directional probabilities separately from final trade permission, so blocked decisions explain their confidence instead of displaying a misleading blank.
