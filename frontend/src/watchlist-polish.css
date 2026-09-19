@@ -19,7 +19,7 @@
 .watchlist-empty strong { display: block; color: rgba(246, 247, 250, 0.94); font-size: 13px; font-weight: 760; }
 .watchlist-empty p { max-width: 430px; margin: 5px 0 0; color: rgba(205, 210, 220, 0.54); font-size: 12px; line-height: 1.5; }
 .watchlist-table { margin-top: 4px; width: 100%; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 139, 42, 0.26) transparent; }
-.watchlist-row { position: relative; display: grid; grid-template-columns: minmax(132px, 1.25fr) minmax(96px, .9fr) minmax(104px, .95fr) minmax(94px, .85fr) minmax(68px, .6fr); align-items: center; gap: 9px; min-width: 570px; min-height: 40px; padding: 0 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.052); transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
+.watchlist-row { position: relative; display: grid; grid-template-columns: minmax(132px, 1.25fr) minmax(96px, .9fr) minmax(104px, .95fr) minmax(94px, .85fr) minmax(112px, .82fr); align-items: center; gap: 9px; min-width: 620px; min-height: 40px; padding: 0 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.052); transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
 .watchlist-row:not(.watchlist-row-head):hover { background: linear-gradient(90deg, rgba(255, 137, 38, 0.055), rgba(255, 255, 255, 0.018) 48%, transparent); border-bottom-color: rgba(255, 150, 58, 0.12); }
 .watchlist-row:not(.watchlist-row-head)::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 999px; background: #ff8a2a; opacity: 0; transform: scaleY(0.45); transition: opacity 150ms ease, transform 150ms ease; }
 .watchlist-row:not(.watchlist-row-head):hover::before { opacity: .72; transform: scaleY(1); }
@@ -28,7 +28,6 @@
 .watchlist-row.is-selected .watch-symbol { color: #ffb16f !important; }
 .watchlist-row.is-selected .watch-price { color: #fff !important; }
 .watchlist-row.is-removing { opacity: .52; background: rgba(255, 255, 255, .015); }
-.watchlist-row.is-removing::after { content: "UPDATING"; position: absolute; right: 84px; top: 50%; transform: translateY(-50%); color: rgba(255, 174, 104, .62); font-size: 8px; font-weight: 800; letter-spacing: .1em; pointer-events: none; }
 .watchlist-row.is-unavailable { background: linear-gradient(90deg, rgba(255, 98, 98, 0.025), transparent 58%); }
 .watchlist-row.is-unavailable .watch-change, .watchlist-row.is-unavailable .watch-volume { color: rgba(194, 199, 208, 0.35) !important; }
 .watch-unavailable { display: inline-flex; align-items: center; min-height: 19px; padding: 0 6px; border: 1px solid rgba(255, 107, 107, 0.13); border-radius: 999px; background: rgba(255, 82, 82, 0.04); color: rgba(255, 157, 157, 0.76); font-size: 8px; font-weight: 800; line-height: 1; letter-spacing: 0.075em; text-transform: uppercase; white-space: nowrap; }
@@ -55,9 +54,14 @@
 .watchlist-row:not(.watchlist-row-head) .watch-price, .watchlist-row:not(.watchlist-row-head) .watch-change, .watchlist-row:not(.watchlist-row-head) .watch-volume { transition: color 140ms ease, opacity 140ms ease; }
 .watchlist-row:not(.watchlist-row-head):hover .watch-price { color: #fff !important; }
 .watchlist-row:not(.watchlist-row-head):hover .watch-volume { color: rgba(226, 230, 237, .82) !important; }
-.remove-btn { justify-self: end; padding: 5px 8px !important; border: 1px solid transparent !important; border-radius: 7px; color: rgba(199, 204, 214, .4) !important; font-size: 9px !important; font-weight: 720 !important; letter-spacing: .035em; cursor: pointer; transition: color 140ms ease, border-color 140ms ease, background 140ms ease; }
+.watch-row-actions { justify-self: end; display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; min-width: 0; }
+.watch-analyze-cue { display: inline-flex; align-items: center; gap: 3px; max-width: 0; overflow: hidden; opacity: 0; color: rgba(255, 174, 104, .82); font-size: 8px; font-weight: 800; line-height: 1; letter-spacing: .065em; text-transform: uppercase; white-space: nowrap; transform: translateX(5px); transition: max-width 150ms ease, opacity 150ms ease, transform 150ms ease; }
+.watch-analyze-cue svg { flex: 0 0 auto; }
+.watchlist-row:not(.watchlist-row-head):hover .watch-analyze-cue, .watchlist-row.is-selected .watch-analyze-cue { max-width: 54px; opacity: 1; transform: translateX(0); }
+.watchlist-row.is-selected .watch-analyze-cue { color: #ffb16f; }
+.remove-btn { justify-self: end; padding: 5px 7px !important; border: 1px solid transparent !important; border-radius: 7px; color: rgba(199, 204, 214, .4) !important; font-size: 9px !important; font-weight: 720 !important; letter-spacing: .035em; cursor: pointer; transition: color 140ms ease, border-color 140ms ease, background 140ms ease; }
 .remove-btn:hover { border-color: rgba(255, 105, 105, .18) !important; background: rgba(255, 79, 79, .065) !important; color: #ff9292 !important; }
 .watch-symbol:focus-visible, .watch-price:focus-visible, .watch-change:focus-visible, .watch-volume:focus-visible, .remove-btn:focus-visible { outline: 2px solid rgba(255, 145, 50, .7); outline-offset: 1px; border-radius: 6px; }
 @keyframes watch-quote-pulse { 0%, 100% { opacity: .38; transform: scale(.82); } 50% { opacity: 1; transform: scale(1); } }
-@media (max-width: 760px) { .watchlist-header { align-items: flex-start; } .watchlist-row { min-width: 540px; grid-template-columns: 120px 92px 92px 82px 64px; } .watchlist-empty { align-items: flex-start; padding: 15px; } .watchlist-row.is-removing::after { display: none; } }
-@media (prefers-reduced-motion: reduce) { .watchlist-row, .watchlist-row::before, .watchlist-row .watch-price, .watchlist-row .watch-change, .watchlist-row .watch-volume, .remove-btn { transition: none !important; } .watch-quote-state.is-sync .watch-quote-state-dot { animation: none; } }
+@media (max-width: 760px) { .watchlist-header { align-items: flex-start; } .watchlist-row { min-width: 580px; grid-template-columns: 120px 92px 92px 82px 104px; } .watchlist-empty { align-items: flex-start; padding: 15px; } .watch-analyze-cue { display: none; } }
+@media (prefers-reduced-motion: reduce) { .watchlist-row, .watchlist-row::before, .watchlist-row .watch-price, .watchlist-row .watch-change, .watchlist-row .watch-volume, .watch-analyze-cue, .remove-btn { transition: none !important; } .watch-quote-state.is-sync .watch-quote-state-dot { animation: none; } }
