@@ -83,6 +83,59 @@
   align-self: center;
 }
 
+/* Catalyst-reading hierarchy: keep provenance quiet, headline dominant, and the lead story unmistakable. */
+.analyze-news-panel .news-item--terminal:not(.news-item--lead) {
+  opacity: .92;
+}
+
+.analyze-news-panel .news-item--terminal:not(.news-item--lead):hover,
+.analyze-news-panel .news-item--terminal:not(.news-item--lead):focus-visible {
+  opacity: 1;
+}
+
+.analyze-news-panel .news-item--lead {
+  min-height: 100px;
+  padding-block: 12px;
+}
+
+.analyze-news-panel .news-item--lead .news-copy {
+  min-height: 78px;
+}
+
+.analyze-news-panel .news-meta-row strong {
+  max-width: 18rem;
+  font-size: .64rem;
+  letter-spacing: .025em;
+}
+
+.analyze-news-panel .news-meta-row time {
+  margin-left: auto;
+  font-size: .62rem;
+  font-weight: 650;
+  letter-spacing: .035em;
+  white-space: nowrap;
+}
+
+.analyze-news-panel .news-kind {
+  color: rgba(190, 197, 207, .72);
+  border-color: rgba(255, 255, 255, .07);
+  background: rgba(255, 255, 255, .018);
+}
+
+.analyze-news-panel .news-item--lead .news-kind {
+  color: rgba(255, 184, 126, .9);
+  border-color: rgba(255, 145, 55, .2);
+  background: rgba(255, 126, 31, .055);
+}
+
+.analyze-news-panel .news-item--terminal:not(.news-item--lead) .news-copy h3 {
+  color: rgba(224, 228, 234, .86);
+}
+
+.analyze-news-panel .news-item--lead .news-link-icon {
+  color: rgba(255, 169, 101, .72);
+}
+
 @container (max-width: 560px) {
   .analyze-news-panel .news-item--terminal {
     align-items: flex-start;
@@ -99,6 +152,10 @@
     font-size: .82rem;
     -webkit-line-clamp: 3;
   }
+
+  .analyze-news-panel .news-meta-row time {
+    margin-left: 0;
+  }
 }
 
 @container (max-width: 390px) {
@@ -108,7 +165,8 @@
     height: 58px;
   }
 
-  .analyze-news-panel .news-copy {
+  .analyze-news-panel .news-copy,
+  .analyze-news-panel .news-item--lead .news-copy {
     min-height: 58px;
   }
 
@@ -125,6 +183,10 @@
 
   .analyze-news-panel .news-meta-row {
     color: rgba(190, 196, 205, .92);
+  }
+
+  .analyze-news-panel .news-item--terminal:not(.news-item--lead) {
+    opacity: 1;
   }
 }
 
