@@ -31,6 +31,7 @@ export default function WorkspaceNav({
                   ? "page"
                   : undefined
               }
+              aria-label={`${label}${isActive ? ", current workspace" : ""}`}
               className={
                 isActive
                   ? "active"
@@ -40,14 +41,19 @@ export default function WorkspaceNav({
                 onNavigate(id)
               }
             >
-              <Icon
-                size={17}
-                strokeWidth={1.8}
-                aria-hidden="true"
-              />
+              <span className="core-nav-icon" aria-hidden="true">
+                <Icon
+                  size={16}
+                  strokeWidth={1.8}
+                />
+              </span>
 
-              <span>
+              <span className="core-nav-label">
                 {label}
+              </span>
+
+              <span className="core-nav-current" aria-hidden="true">
+                Current
               </span>
             </button>
           );
