@@ -57,6 +57,7 @@ import "./today-analysis-state-polish.css";
 import "./market-explorer-polish.css";
 import "./my-stocks-polish.css";
 import "./my-stocks-status.css";
+import "./my-stocks-workspace-orientation.css";
 import "./my-stocks-monitoring.css";
 import "./my-stocks-panel-states.css";
 import "./my-stocks-watchlist-state.css";
