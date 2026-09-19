@@ -207,3 +207,26 @@ def test_news_uses_largest_thumbnail_resolution_when_original_is_missing(monkeyp
     result = MarketDataService().get_news("NVDA")
 
     assert result["news"][0]["thumbnail"] == "https://cdn.example.com/nvda-640.jpg"
+
+
+def test_news_preserves_provider_summary_for_orion_context(monkeypatch):
+    class FakeTicker:
+        news = [
+            {
+                "content": {
+                    "title": "AAPL announces product update",
+                    "summary": "  Apple announced a product update with new availability details.  ",
+                    "provider": {"displayName": "Example News"},
+                    "canonicalUrl": {"url": "https://example.com/aapl-update"},
+                    "pubDate": "2026-09-19T10:00:00Z",
+                }
+            }
+        ]
+
+    monkeypatch.setattr(market_data.yf, "Ticker", lambda _symbol: FakeTicker())
+
+    result = MarketDataService().get_news("AAPL")
+
+    assert result["news"][0]["summary"] == (
+        "Apple announced a product update with new availability details."
+    )
