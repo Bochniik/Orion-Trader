@@ -34,6 +34,7 @@ jobs:
           mkdir -p .regular-hours-health-inputs
           CUTOFF_EPOCH=$(date -u -d '30 days ago' +%s)
           RECOVERED=0
+          INELIGIBLE=0
 
           gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
             --jq '.artifacts[] | select(.expired == false) | [.id,.name,.created_at,(.workflow_run.id // ""),(.workflow_run.head_sha // "")] | @tsv' > /tmp/orion-artifacts.tsv
@@ -77,14 +78,22 @@ jobs:
               echo "Expected regular-hours prediction payload missing from artifact $ARTIFACT_NAME" >&2
               exit 4
             fi
-            python scripts/validate_regular_hours_v3_1_artifact_origin.py \
+            ORIGIN_JSON=$(python scripts/validate_regular_hours_v3_1_artifact_origin.py \
               --prediction "$PREDICTION" \
               --artifact-name "$ARTIFACT_NAME" \
-              --run-metadata "/tmp/regular-hours-run-${RUN_ID}.json"
+              --run-metadata "/tmp/regular-hours-run-${RUN_ID}.json" \
+              --allow-ineligible)
+            if [ "$(jq -r '.forward_eligible' <<<"$ORIGIN_JSON")" != "true" ]; then
+              echo "Authenticated scheduled artifact is not decision-grade eligible: $ARTIFACT_NAME"
+              rm -f "$PREDICTION"
+              INELIGIBLE=$((INELIGIBLE + 1))
+              continue
+            fi
+            echo "$ORIGIN_JSON"
             RECOVERED=$((RECOVERED + 1))
           done < /tmp/orion-artifacts.tsv
 
-          echo "Recovered ${RECOVERED} authenticated scheduled regular-hours artifacts from the trailing 30 days."
+          echo "Recovered ${RECOVERED} authenticated eligible scheduled regular-hours artifacts from the trailing 30 days; excluded ${INELIGIBLE} authenticated inactive samples."
 
       - name: Build score-blind collection health report
         shell: bash
