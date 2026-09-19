@@ -78,6 +78,75 @@
   white-space: nowrap;
 }
 
+/* Turn scanner candidates into the first decision surface in one discovery flow. */
+.scanner-section-label {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.scanner-section-label h3 {
+  letter-spacing: -0.2px;
+}
+
+.scanner-candidate-grid {
+  position: relative;
+}
+
+.scanner-candidate-grid > * {
+  transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+.scanner-candidate-grid > *:hover,
+.scanner-candidate-grid > *:focus-within {
+  border-color: rgba(255, 122, 26, 0.22);
+  background-color: rgba(255, 122, 26, 0.018);
+  transform: translateY(-1px);
+}
+
+/* Radar is supporting discovery evidence, not a competing primary scanner. */
+.core-radar {
+  position: relative;
+  margin-top: 4px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.core-radar::before {
+  content: "DISCOVERY  /  MARKET BREADTH";
+  display: block;
+  margin: 0 0 10px 2px;
+  color: rgba(139, 149, 160, 0.58);
+  font-size: 8px;
+  font-weight: 740;
+  letter-spacing: 1.25px;
+  line-height: 1;
+}
+
+.core-radar > .core-section-label {
+  align-items: flex-end;
+}
+
+.core-radar-heading-actions,
+.core-radar-card,
+.core-radar-card li {
+  font-variant-numeric: tabular-nums;
+}
+
+.core-radar-card {
+  border-color: rgba(255, 255, 255, 0.065);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.core-radar-card li.is-selected {
+  background: rgba(255, 122, 26, 0.045);
+  box-shadow: inset 2px 0 0 rgba(255, 122, 26, 0.62);
+}
+
+.core-radar-selection {
+  color: rgba(255, 176, 111, 0.9);
+}
+
 /* Keep the primary research column visually dominant over supporting context. */
 .dashboard-primary {
   position: relative;
@@ -125,6 +194,10 @@
   .scanner-surface-heading {
     gap: 10px;
   }
+
+  .core-radar {
+    padding-top: 15px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -135,6 +208,21 @@
   .dashboard-primary::before,
   .dashboard-side::before {
     margin-bottom: -5px;
+  }
+
+  .core-radar::before {
+    content: "DISCOVERY  /  BREADTH";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanner-candidate-grid > * {
+    transition: none;
+  }
+
+  .scanner-candidate-grid > *:hover,
+  .scanner-candidate-grid > *:focus-within {
+    transform: none;
   }
 }
 
@@ -150,5 +238,15 @@
 
   .scanner-surface::before {
     background: #ff7a1a;
+  }
+
+  .core-radar,
+  .scanner-section-label {
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .core-radar::before,
+  .core-radar-selection {
+    color: #ffb06f;
   }
 }
