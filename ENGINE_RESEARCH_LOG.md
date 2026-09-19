@@ -164,3 +164,21 @@ No V3.1/V5 weights, calibration, thresholds, risk policy, broker path, order beh
 ### Next logical engine step
 
 Add an immutable challenger registry that records the hypothesis, development-evidence cutoff, candidate identity, code/model lineage and frozen evaluation protocol before new forward predictions are collected. Reject any promotion evaluation containing observations at or before that candidate cutoff.
+
+## 2026-09-19 — Immutable adaptive challenger registry
+
+Branch `research/adaptive-challenger-registry` implements the next preregistered stage of the adaptive research loop.
+
+Registry policy:
+- Every evidence-informed challenger freezes its hypothesis, exact change summary, development-evidence cutoff, strictly later forward cutoff, code SHA, optional model-artifact SHA-256, tested horizons and evaluation-protocol contract.
+- Canonical candidate material receives a deterministic candidate ID and SHA-256 integrity fingerprint. Any later mutation fails validation.
+- Registration must occur no later than the declared forward cutoff.
+- Approval evidence fails closed if it is empty, malformed, at or before the forward cutoff, or outside the preregistered horizons.
+- Registry output is research-only and explicitly forbids automatic promotion or runtime modification.
+- No model weights, calibration, thresholds, risk policy, broker behavior or order paths are changed.
+
+Focused tests cover deterministic identity, mutation detection, cutoff ordering, late registration, pre-cutoff evidence rejection, wrong-horizon rejection and empty-evidence rejection.
+
+### Next logical engine step
+
+Require a valid immutable registration in adaptive challenger shadow/tournament workflows, then add a bounded hypothesis-to-candidate builder that can propose research variants from settled failure patterns without modifying the incumbent.
