@@ -177,13 +177,18 @@
 }
 
 @media (min-width: 1180px) {
+  /* Give catalysts enough reading width for full headlines and the future Orion reaction row. */
+  .analyze-view .analysis-market-grid {
+    grid-template-columns: minmax(0, 1.42fr) minmax(390px, 0.9fr);
+  }
+
   .analyze-view .analysis-market-grid::after {
     content: "";
     position: absolute;
     z-index: 3;
     top: 42px;
     bottom: 18px;
-    left: calc((100% - 12px) * 0.648 + 6px);
+    left: calc((100% - 12px) * 0.612 + 6px);
     width: 1px;
     pointer-events: none;
     background: linear-gradient(180deg, transparent, rgba(249, 115, 22, 0.2) 18%, rgba(148, 163, 184, 0.08) 58%, transparent);
