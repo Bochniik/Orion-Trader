@@ -22,6 +22,7 @@ function normalizeTicker(value) {
 export default function CoreApp({ user, onLogout }) {
   const [view, setView] = useState(() => viewFromHash(window.location.hash));
   const [selection, setSelection] = useState(null);
+  const [analysisContext, setAnalysisContext] = useState(null);
   const [saved, setSaved] = useState([]);
   const [savedLoading, setSavedLoading] = useState(true);
   const [savedError, setSavedError] = useState("");
@@ -68,7 +69,9 @@ export default function CoreApp({ user, onLogout }) {
   }
 
   function analyze(value) {
+    const context = value && typeof value === "object" ? value.context ?? null : null;
     const ticker = normalizeTicker(value) || normalizeTicker(lastAnalysis?.ticker ?? lastAnalysis?.symbol);
+    setAnalysisContext(context);
     if (ticker) setSelection((previous) => ({ ticker, request: (previous?.request || 0) + 1 }));
     navigate("analyze");
   }
@@ -127,7 +130,7 @@ export default function CoreApp({ user, onLogout }) {
       <main id="core-content" className="core-main" tabIndex={-1}>
         {notice && <div className={`core-notice core-notice-${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}><span className="core-notice-icon" aria-hidden="true"><NoticeIcon size={15} /></span><span className="core-notice-copy">{notice.text}</span><button type="button" aria-label="Dismiss notification" onClick={() => setNotice(null)}>×</button></div>}
         {view === "today" && <TodayView onAnalyze={analyze} onSave={save} saved={saved} lastAnalysis={lastAnalysis} onAnalysisComplete={handleAnalysisComplete} onOpenFullAnalysis={openFullAnalysis} dataRevision={dataRevision} onOpenData={() => setDataOpen(true)} />}
-        {view === "analyze" && <AnalyzeView selection={selection} onSelect={analyze} onSave={save} saved={saved} dataRevision={dataRevision} onAnalysisComplete={handleAnalysisComplete} />}
+        {view === "analyze" && <AnalyzeView selection={selection} context={analysisContext} onSelect={analyze} onSave={save} saved={saved} dataRevision={dataRevision} onAnalysisComplete={handleAnalysisComplete} />}
         {view === "my-stocks" && <MyStocksView saved={saved} savedError={savedError} savedLoading={savedLoading} onSave={save} onRemove={remove} onAnalyze={analyze} dataRevision={dataRevision} />}
       </main>
       <footer className="core-bottom"><div className="core-footer-left"><span className="core-footer-dot" /><span>Orion research assistant</span><span className="core-footer-separator">•</span><span>No trade execution</span></div><div className="core-footer-right"><span>OrionTrader 3.2</span><PwaControls showNotifications={false} /></div></footer>
