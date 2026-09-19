@@ -149,3 +149,18 @@ Focused regression tests cover EDT and EST regime boundaries, horizon-specific r
 ### Next logical engine step
 
 Continue accumulating genuine point-in-time Premarket V5 observations and use these regime/horizon cells only once sample size is sufficient. The current scheduled 09:15 ET cloud-shadow anchor naturally populates the `late` regime; do not infer early/mid performance from it. If broader regime coverage is desired, first pre-register a collection cadence and API-budget/data-quality policy, then collect new forward observations without reusing their outcomes to tune the cadence.
+
+
+## 2026-09-19 — Adaptive research error diagnostics
+
+Branch `research/adaptive-error-diagnostics` starts the self-improving research loop without allowing online self-tuning.
+
+The new `orion-adaptive-research-diagnostics-v1` evaluator consumes the immutable settled cloud-shadow evidence ledger and identifies covered failure-pattern hypotheses by horizon, direction, confidence band, symbol and reliability-profile source. Candidate patterns require a minimum observation count, multiple distinct sessions, a material excess error rate versus the same-horizon incumbent baseline, and a Wilson 95% lower bound above that baseline.
+
+The anti-leakage boundary is explicit: evidence used to discover a weakness is development evidence only. Any challenger influenced by it must receive a new identity and a later preregistered forward cutoff; those development observations cannot also approve the challenger. The existing paired proper-score/session-block-bootstrap tournament remains the later validation gate.
+
+No V3.1/V5 weights, calibration, thresholds, risk policy, broker path, order behavior or promotion state are changed.
+
+### Next logical engine step
+
+Add an immutable challenger registry that records the hypothesis, development-evidence cutoff, candidate identity, code/model lineage and frozen evaluation protocol before new forward predictions are collected. Reject any promotion evaluation containing observations at or before that candidate cutoff.
