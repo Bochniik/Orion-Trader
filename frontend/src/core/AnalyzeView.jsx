@@ -5,6 +5,7 @@ import StockNewsPanel from "../components/StockNewsPanel";
 import AnalysisOverview from "./AnalysisOverview";
 import useCoreJob from "./useCoreJob";
 import "../analysis-sticky-context.css";
+import "../analysis-session-mode.css";
 
 const CandleChart = lazy(() => import("../components/CandleChart"));
 const ANALYSIS_HORIZONS = [
