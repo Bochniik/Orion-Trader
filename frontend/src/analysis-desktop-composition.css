@@ -12,6 +12,71 @@
   min-width: 0;
 }
 
+/* Give chart + catalysts one shared terminal language while preserving their existing data flows. */
+.analyze-view .analysis-market-grid {
+  position: relative;
+}
+
+.analyze-view .analysis-market-grid::before {
+  content: "MARKET EVIDENCE";
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  left: 14px;
+  padding: 0 6px;
+  color: rgba(255, 157, 86, 0.5);
+  background: #090c11;
+  font-size: 0.49rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.analyze-view .analyze-chart-panel,
+.analyze-view .analyze-news-panel {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 38%), rgba(5, 8, 12, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 16px 36px rgba(0, 0, 0, 0.16);
+}
+
+.analyze-view .analyze-chart-panel::after,
+.analyze-view .analyze-news-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255, 145, 65, 0.62), rgba(255, 122, 26, 0.06) 48%, transparent 78%);
+  pointer-events: none;
+}
+
+.analyze-view .analyze-section-heading {
+  min-height: 48px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.analyze-view .analyze-section-heading .core-eyebrow {
+  color: rgba(255, 157, 86, 0.66);
+  letter-spacing: 0.12em;
+}
+
+.analyze-view .analyze-section-heading h2 {
+  letter-spacing: -0.018em;
+}
+
+.analyze-view .analyze-section-heading > span {
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 148, 71, 0.11);
+  border-radius: 999px;
+  color: rgba(208, 214, 224, 0.58);
+  background: rgba(255, 122, 26, 0.035);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (min-width: 760px) and (max-width: 1179px) {
   .analyze-view .analysis-market-grid {
     display: grid;
@@ -81,7 +146,12 @@
     gap: 10px;
   }
 
+  .analyze-view .analysis-market-grid::before {
+    left: 10px;
+  }
+
   .analyze-view .analyze-section-heading {
+    min-height: 0;
     align-items: flex-start;
     gap: 6px;
   }
@@ -188,5 +258,18 @@
   .analyze-view .analyze-news-panel .news-summary {
     -webkit-line-clamp: 1;
     line-clamp: 1;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analyze-chart-panel,
+  .analyze-view .analyze-news-panel {
+    border-color: rgba(255, 158, 86, 0.38);
+    background: #080a0e;
+    box-shadow: none;
+  }
+
+  .analyze-view .analyze-section-heading {
+    border-bottom-color: rgba(255, 255, 255, 0.22);
   }
 }
