@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, ExternalLink, Newspaper, RefreshCw } from "lucide-react";
+import { AlertTriangle, ExternalLink, Newspaper, RefreshCw, Sparkles } from "lucide-react";
 
 function newsDate(timestamp) {
   if (!timestamp) return null;
@@ -113,7 +113,7 @@ function NewsMedia({ image }) {
   );
 }
 
-export default function StockNewsPanel({ ticker, news, loading, error, onRefresh }) {
+export default function StockNewsPanel({ ticker, news, loading, error, onRefresh, insights = {}, insightsLoading = false, insightsError = "" }) {
   const items = Array.isArray(news) ? news : [];
   const hasItems = items.length > 0;
   const backgroundRefreshing = loading && hasItems;
@@ -152,6 +152,20 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                   Latest · {formatNewsDate(newestPublishedAt)}
                 </span>
               )}
+            </div>
+          )}
+          {hasItems && (
+            <div className="news-orion-feed-state" role="status" aria-live="polite">
+              <Sparkles size={12} aria-hidden="true" />
+              <span>
+                {insightsLoading
+                  ? "Orion is reviewing the loaded headlines…"
+                  : insightsError
+                    ? "News loaded · Orion commentary unavailable"
+                    : Object.keys(insights).length
+                      ? "Orion headline context ready"
+                      : "News loaded"}
+              </span>
             </div>
           )}
         </div>
@@ -251,6 +265,38 @@ export default function StockNewsPanel({ ticker, news, loading, error, onRefresh
                   </div>
                   <h3>{item.title}</h3>
                   {summary && <p className="muted-text news-summary">{summary}</p>}
+                  {index < 8 && insightsLoading && !insights[String(index)] && (
+                    <div className="news-orion-insight news-orion-insight--loading" aria-label="Orion news analysis loading">
+                      <span className="news-orion-insight-mark"><Sparkles size={12} aria-hidden="true" /> ORION</span>
+                      <span>Reviewing sentiment and extracting the key information…</span>
+                    </div>
+                  )}
+                  {insights[String(index)] && (() => {
+                    const insight = insights[String(index)];
+                    const sentiment = String(insight.sentiment || "NEUTRAL").toLowerCase();
+                    return (
+                      <div className="news-orion-insight">
+                        <div className="news-orion-insight-head">
+                          <span className="news-orion-insight-mark"><Sparkles size={12} aria-hidden="true" /> ORION TAKE</span>
+                          <span className={`news-orion-sentiment news-orion-sentiment--${sentiment}`}>
+                            {insight.sentiment}
+                          </span>
+                          <span className="news-orion-scope">
+                            {insight.evidence_scope === "headline_and_summary" ? "headline + summary" : "headline only"}
+                          </span>
+                        </div>
+                        <p className="news-orion-summary">{insight.summary}</p>
+                        {Array.isArray(insight.key_points) && insight.key_points.length > 0 && (
+                          <ul className="news-orion-points">
+                            {insight.key_points.slice(0, 3).map((point, pointIndex) => (
+                              <li key={`${pointIndex}-${point}`}>{point}</li>
+                            ))}
+                          </ul>
+                        )}
+                        <p className="news-orion-why"><strong>Why it matters:</strong> {insight.why_it_matters}</p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {articleLink && (

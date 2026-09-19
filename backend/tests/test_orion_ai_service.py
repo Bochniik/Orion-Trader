@@ -238,3 +238,90 @@ def test_predictive_ai_numeric_text_is_rejected(monkeypatch):
 
     with pytest.raises(ValueError, match="numeric boundary"):
         service.explain_predictive_result(predictive_result())
+
+
+def test_news_insights_are_structured_bounded_and_do_not_claim_full_article_access(monkeypatch):
+    captured = {}
+
+    def fake_response(prompt, response_model, minimum_output_tokens=0):
+        captured.update(prompt=prompt, model=response_model, budget=minimum_output_tokens)
+        return SimpleNamespace(output_parsed=service.OrionNewsInsightBatch(
+            symbol="WRONG",
+            overall_context="Product news is constructive, but the supplied evidence is limited.",
+            insights=[
+                service.OrionNewsInsight(
+                    article_id="0",
+                    sentiment="POSITIVE",
+                    summary="The supplied text says the company launched a new product.",
+                    key_points=["A product launch was announced."],
+                    why_it_matters="A launch can affect the company narrative, but execution is still unknown.",
+                ),
+                service.OrionNewsInsight(
+                    article_id="1",
+                    sentiment="NEUTRAL",
+                    summary="The headline reports an analyst comment without additional detail.",
+                    key_points=["Only a headline was supplied."],
+                    why_it_matters="The headline alone is not enough to establish a material business change.",
+                ),
+            ],
+        ))
+
+    monkeypatch.setattr(service, "create_structured_response", fake_response)
+    result = service.analyze_news_items("aapl", [
+        {
+            "article_id": "0",
+            "title": "AAPL launches new product",
+            "summary": "Apple announced a new product line.",
+            "publisher": "Wire",
+            "published_at": 123,
+        },
+        {
+            "article_id": "1",
+            "title": "Analyst comments on AAPL",
+            "publisher": "Desk",
+            "published_at": 124,
+        },
+    ])
+
+    assert captured["model"] is service.OrionNewsInsightBatch
+    assert captured["budget"] == 1800
+    normalized_prompt = " ".join(captured["prompt"].split())
+    assert "stock-price forecast" in normalized_prompt
+    assert "do not invent article details" in normalized_prompt
+    assert "no article body is supplied" in normalized_prompt
+    assert result["symbol"] == "AAPL"
+    assert result["analysis_scope"] == "loaded_news_metadata_only"
+    assert result["insights"][0]["evidence_scope"] == "headline_and_summary"
+    assert result["insights"][1]["evidence_scope"] == "headline_only"
+    assert result["insights"][0]["sentiment"] == "POSITIVE"
+
+
+def test_news_insights_fail_closed_when_model_drops_or_reorders_articles(monkeypatch):
+    parsed = service.OrionNewsInsightBatch(
+        symbol="AAPL",
+        insights=[
+            service.OrionNewsInsight(
+                article_id="1",
+                sentiment="NEUTRAL",
+                summary="Headline only.",
+                why_it_matters="Limited evidence.",
+            ),
+            service.OrionNewsInsight(
+                article_id="0",
+                sentiment="POSITIVE",
+                summary="Summary.",
+                why_it_matters="Relevant context.",
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        service,
+        "create_structured_response",
+        lambda *_args, **_kwargs: SimpleNamespace(output_parsed=parsed),
+    )
+
+    with pytest.raises(ValueError, match="coverage did not match"):
+        service.analyze_news_items("AAPL", [
+            {"article_id": "0", "title": "First"},
+            {"article_id": "1", "title": "Second"},
+        ])
