@@ -1,0 +1,87 @@
+.analysis-news-decision-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: rgba(7, 8, 10, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.analysis-news-decision-context small {
+  color: rgba(177, 184, 194, 0.52);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.analysis-news-decision-context strong {
+  color: rgba(241, 244, 248, 0.9);
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.analysis-news-decision-context.buy,
+.analysis-news-decision-context.bullish {
+  border-color: rgba(70, 201, 135, 0.18);
+}
+
+.analysis-news-decision-context.sell,
+.analysis-news-decision-context.bearish {
+  border-color: rgba(242, 103, 103, 0.18);
+}
+
+.analysis-news-decision-context.wait,
+.analysis-news-decision-context.hold,
+.analysis-news-decision-context.neutral,
+.analysis-news-decision-context.no-trade {
+  border-color: rgba(255, 145, 42, 0.2);
+  background: linear-gradient(90deg, rgba(255, 126, 22, 0.045), rgba(7, 8, 10, 0.68));
+}
+
+.analysis-news-panel .news-card--terminal {
+  position: relative;
+}
+
+.analysis-news-panel .news-card--terminal::before {
+  content: "CATALYST EVIDENCE";
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 12px;
+  color: rgba(255, 151, 64, 0.34);
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .analysis-news-decision-context {
+    padding: 5px 7px;
+  }
+
+  .analysis-news-decision-context small {
+    display: none;
+  }
+
+  .analysis-news-panel .news-card--terminal::before {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analysis-news-decision-context {
+    border-color: rgba(255, 160, 76, 0.58);
+  }
+
+  .analysis-news-decision-context small,
+  .analysis-news-decision-context strong {
+    color: #fff;
+  }
+}
