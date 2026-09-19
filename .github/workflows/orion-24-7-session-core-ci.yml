@@ -10,7 +10,7 @@ on:
       - "frontend/src/core/marketStatePolling.js"
       - "frontend/src/core/marketStatePolling.test.js"
       - "frontend/src/core/TodayView.jsx"
-      - "frontend/src/core/CoreExperience.test.jsx"
+      - "frontend/src/core/Orion247Session.test.jsx"
       - "frontend/src/dashboard-polish.css"
       - "docs/ORION_24_7_INTELLIGENCE.md"
       - ".github/workflows/orion-24-7-session-core-ci.yml"
@@ -50,7 +50,7 @@ jobs:
         run: npm ci
       - name: Run frontend session regressions
         working-directory: frontend
-        run: npm test -- src/core/marketStatePolling.test.js src/core/CoreExperience.test.jsx
+        run: npm test -- src/core/marketStatePolling.test.js src/core/Orion247Session.test.jsx
       - name: Build frontend
         working-directory: frontend
         run: npm run build
