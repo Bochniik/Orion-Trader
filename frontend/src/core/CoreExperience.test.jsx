@@ -2,11 +2,11 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import OpportunityCard from "./OpportunityCard";
-import { TodayResults } from "./TodayView";
+import { SessionResearchWorkspace, TodayResults } from "./TodayView";
 import AnalyzeView from "./AnalyzeView";
 import CoreApp from "./CoreApp";
 import { currentDecision, price } from "./decisionPresentation";
-import { analyzeCoreStock, scanToday, getCoreStatus, setCsrfToken } from "../api/api";
+import { analyzeCoreStock, scanToday, getCoreSession, getCoreStatus, setCsrfToken } from "../api/api";
 
 const now = Date.now();
 const fixture = {
@@ -68,6 +68,29 @@ describe("simplified core experience", () => {
     const partial = renderToStaticMarkup(<TodayResults result={{ status: "partial", opportunities: [] }} />);
     expect(partial).toContain("Scan incomplete");
   });
+  it("renders closed-market research instead of an empty live surface", () => {
+    const html = renderToStaticMarkup(
+      <SessionResearchWorkspace
+        session={{
+          mode: "closed",
+          status: "next_session_research",
+          next_open: "2026-09-21T13:30:00+00:00",
+          price_semantics: "historical_or_delayed",
+          allowed_workflows: { settlement_and_evaluation: true },
+          warnings: [],
+        }}
+        watchlistCount={7}
+      />
+    );
+    expect(html).toContain("ORION 24/7 INTELLIGENCE");
+    expect(html).toContain("Research &amp; preparation");
+    expect(html).toContain("Watchlist research queue");
+    expect(html).toContain(">7<");
+    expect(html).toContain("ACTIVE");
+    expect(html).toContain("HISTORICAL OR DELAYED");
+    expect(html).toContain("never labelled as live regular-session data");
+  });
+
   it("caps the visible board at five cards", () => {
     const opportunities = Array.from({ length: 8 }, (_, i) => ({ ...fixture, ticker: `TEST${i}` }));
     const html = renderToStaticMarkup(<TodayResults result={{ status: "ready", opportunities }} />);
@@ -90,6 +113,8 @@ describe("simplified core experience", () => {
     expect(fetch.mock.lastCall[0]).toContain("/core/today");
     await getCoreStatus();
     expect(fetch.mock.lastCall[0]).toContain("/core/status");
+    await getCoreSession();
+    expect(fetch.mock.lastCall[0]).toContain("/core/session");
     setCsrfToken("");
   });
 });
