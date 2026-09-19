@@ -40,6 +40,7 @@ def _run(path: str = ".github/workflows/regular-hours-v3-1-cloud-shadow.yml") ->
 def test_accepts_exact_scheduled_origin() -> None:
     result = validate_origin(_payload(), f"regular-hours-v3-1-shadow-{RUN_ID}", _run())
     assert result["valid"] is True
+    assert result["forward_eligible"] is True
     assert result["score_blind"] is True
 
 
@@ -48,6 +49,39 @@ def test_accepts_scheduled_market_acquisition_caller_path() -> None:
     result = validate_origin(_payload(), f"regular-hours-v3-1-shadow-{RUN_ID}", _run(path))
     assert result["valid"] is True
     assert result["workflow_path"] == path
+
+
+def test_can_authenticate_inactive_scheduled_sample_without_promoting_it() -> None:
+    payload = _payload()
+    payload["acquisition_provenance"]["forward_eligible"] = False
+    result = validate_origin(
+        payload,
+        f"regular-hours-v3-1-shadow-{RUN_ID}",
+        _run(),
+        allow_ineligible=True,
+    )
+    assert result["valid"] is True
+    assert result["forward_eligible"] is False
+
+
+def test_inactive_sample_remains_fail_closed_by_default() -> None:
+    payload = _payload()
+    payload["acquisition_provenance"]["forward_eligible"] = False
+    with pytest.raises(ValueError, match="not scheduled forward evidence"):
+        validate_origin(payload, f"regular-hours-v3-1-shadow-{RUN_ID}", _run())
+
+
+def test_allow_ineligible_does_not_accept_non_schedule_provenance() -> None:
+    payload = _payload()
+    payload["acquisition_provenance"]["forward_eligible"] = False
+    payload["acquisition_provenance"]["event_name"] = "workflow_dispatch"
+    with pytest.raises(ValueError, match="not scheduled forward evidence"):
+        validate_origin(
+            payload,
+            f"regular-hours-v3-1-shadow-{RUN_ID}",
+            _run(),
+            allow_ineligible=True,
+        )
 
 
 @pytest.mark.parametrize(

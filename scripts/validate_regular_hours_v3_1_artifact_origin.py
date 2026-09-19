@@ -22,7 +22,13 @@ EXPECTED_WORKFLOW_PATHS = frozenset(
 EXPECTED_PROVENANCE_SCHEMA = "regular-hours-v3-1-acquisition-provenance-v1"
 
 
-def validate_origin(payload: dict[str, Any], artifact_name: str, run: dict[str, Any]) -> dict[str, Any]:
+def validate_origin(
+    payload: dict[str, Any],
+    artifact_name: str,
+    run: dict[str, Any],
+    *,
+    allow_ineligible: bool = False,
+) -> dict[str, Any]:
     match = ARTIFACT_RE.fullmatch(str(artifact_name or ""))
     if not match:
         raise ValueError("Unexpected regular-hours prediction artifact name")
@@ -50,7 +56,10 @@ def validate_origin(payload: dict[str, Any], artifact_name: str, run: dict[str, 
     provenance = payload.get("acquisition_provenance")
     if not isinstance(provenance, dict) or provenance.get("schema") != EXPECTED_PROVENANCE_SCHEMA:
         raise ValueError("Prediction payload has unsupported acquisition provenance")
-    if provenance.get("event_name") != "schedule" or provenance.get("forward_eligible") is not True:
+    if provenance.get("event_name") != "schedule":
+        raise ValueError("Prediction payload is not scheduled forward evidence")
+    forward_eligible = provenance.get("forward_eligible") is True
+    if not forward_eligible and not allow_ineligible:
         raise ValueError("Prediction payload is not scheduled forward evidence")
     if int(provenance.get("workflow_run_id") or 0) != run_id:
         raise ValueError("Prediction payload workflow_run_id does not match recovered run")
@@ -61,6 +70,7 @@ def validate_origin(payload: dict[str, Any], artifact_name: str, run: dict[str, 
 
     return {
         "valid": True,
+        "forward_eligible": forward_eligible,
         "artifact_name": artifact_name,
         "workflow_run_id": run_id,
         "run_attempt": run_attempt,
@@ -75,10 +85,20 @@ def main() -> int:
     parser.add_argument("--prediction", type=Path, required=True)
     parser.add_argument("--artifact-name", required=True)
     parser.add_argument("--run-metadata", type=Path, required=True)
+    parser.add_argument(
+        "--allow-ineligible",
+        action="store_true",
+        help="Authenticate scheduled artifacts even when the market/session gate made them ineligible for scoring.",
+    )
     args = parser.parse_args()
     payload = json.loads(args.prediction.read_text(encoding="utf-8"))
     run = json.loads(args.run_metadata.read_text(encoding="utf-8"))
-    print(json.dumps(validate_origin(payload, args.artifact_name, run), sort_keys=True))
+    print(
+        json.dumps(
+            validate_origin(payload, args.artifact_name, run, allow_ineligible=args.allow_ineligible),
+            sort_keys=True,
+        )
+    )
     return 0
 
 
