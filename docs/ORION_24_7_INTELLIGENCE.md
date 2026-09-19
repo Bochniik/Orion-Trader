@@ -4,79 +4,38 @@ Milestone issue: #141
 
 ## Purpose
 
-Orion should remain useful when the NYSE regular session is not open. Outside
-regular hours the application changes workflow instead of presenting stale
-regular-session evidence as live.
-
-This milestone reuses the existing Premarket, Regular-hours, scanner, learning,
-settlement, market-intelligence, news/catalyst and research layers. It does not
-create a second prediction or learning system.
-
-## Existing capabilities found during the audit
-
-Orion already has:
-- a deterministic `market_session_engine.py` with premarket / regular /
-  after-hours / closed modes;
-- Alpaca clock and calendar access;
-- a dedicated Premarket research path;
-- Regular-hours predictive/evidence pipelines;
-- completed-session market scanning;
-- empirical learning memory and settlement/evaluation;
-- market-regime and market-intelligence services;
-- watchlist persistence;
-- news/catalyst analysis and optional Orion AI news explanations;
-- strategy research and backtesting.
-
-The main architectural gap was that Core still had a second hard-coded session
-classifier and Today treated a closed regular session as an empty live scan.
+Orion remains useful when the NYSE regular session is not open by changing workflow rather than presenting stale evidence as live. The milestone reuses the existing Premarket, Regular-hours, scanner, learning, settlement, market-intelligence, news/catalyst and research layers; it does not create a second prediction system.
 
 ## Session-state contract v2
 
-`orion-session-state-v2` is the central backend contract. It exposes:
-
-- `mode`: regular / premarket / after_hours / closed;
-- `workflow_mode`: live / transition_research / research;
-- `ui_priority`: the work the dashboard should prioritize;
-- `price_semantics`: live_regular / extended_hours /
-  historical_or_delayed;
-- regular open/close and next regular open;
-- next transition and transition kind;
-- calendar verification and warnings;
-- allowed workflows such as live scanning, premarket research, settlement,
-  research laboratory and next-session preparation.
-
-The broker clock is authoritative for whether the regular market is open. The
-broker NYSE calendar is passed into the shared classifier so holidays and early
-closes are not inferred from weekday/hour rules. Calendar failure degrades
-conservatively.
+`orion-session-state-v2` is the central backend contract. It exposes regular / premarket / after-hours / closed mode, workflow and UI priority, explicit price semantics, regular open/close and next open, next transition, calendar verification, warnings and allowed workflows. Broker clock/calendar evidence remains authoritative and failures degrade conservatively toward research rather than live mode.
 
 ## Dashboard behavior
 
-The frontend reads `GET /core/session` alongside existing cached market state.
-When regular hours are closed, Today displays an Orion 24/7 research workspace
-instead of an empty live card. It shows the next regular session in the user's
-browser-local time, the saved watchlist research queue, whether the
-settlement/evaluation window is active and explicit price semantics.
+The frontend reads `GET /core/session`. Outside regular hours Today presents the Orion 24/7 research workspace, next regular session, watchlist research queue, settlement/evaluation state and explicit price semantics instead of an empty live card.
 
-This first slice does not claim that overnight watchlist review, catalyst
-ranking, next-session scenario planning or the full daily learning report are
-complete. Those remain tracked under #141 and should land independently.
+## Daily close learning review
+
+The first follow-up slice adds `GET /scanner/learning/daily-close-review?session_date=YYYY-MM-DD`. It reads only already-settled empirical forecasts belonging to the authenticated user and assigns them to the requested session using `America/New_York`, avoiding UTC-midnight misclassification.
+
+The `orion-daily-close-review-v1` contract reports settled count, Brier score, binary log loss, directional accuracy, false-positive/false-negative counts and proper scores by forecast horizon. Invalid probabilities and malformed timestamps fail visible through diagnostics and are never converted into fabricated metrics. Slices such as liquidity and sector are explicitly reported as missing when the persisted evidence does not contain those dimensions.
+
+This report is observational. It does not retrain, recalibrate, promote a challenger, change thresholds or alter production decisions. It therefore remains compatible with the existing leakage-safe research and promotion gates.
 
 ## Safety
 
 - No production model weights, probabilities, calibration or trade gates change.
 - No order path or live-trading capability is added.
-- Premarket and after-hours are research/transition modes.
+- Premarket and after-hours remain research/transition modes.
 - Closed-market prices are never labelled as live regular-session data.
-- Missing calendar/session data fails toward research/diagnostics, not live mode.
-- Existing leakage-safe challenger and promotion gates remain authoritative.
+- Missing data produces unavailable/diagnostic output rather than invented evidence.
+- Existing challenger preregistration and promotion gates remain authoritative.
 
 ## Next slices
 
-1. Daily close review assembled from existing settled evidence.
+1. Surface the daily close review in the closed-market dashboard once endpoint CI is green.
 2. Overnight watchlist review using completed-session research + news.
 3. Next-session briefing and deterministic scenario planner.
 4. Native catalyst prioritization and thesis-impact classification.
 5. Earnings/catalyst calendar and sector/regime review.
-6. Closed-market research-lab orchestration using existing evaluation and
-   challenger gates.
+6. Closed-market research-lab orchestration using existing evaluation and challenger gates.
