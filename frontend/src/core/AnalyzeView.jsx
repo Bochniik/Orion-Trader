@@ -105,15 +105,17 @@ export default function AnalyzeView({ selection, onSelect, onSave, saved = [], d
       setNewsError("");
       const data = await getNews(requestTicker);
       const items = data.news || [];
-      if (request === newsRequest.current) setNews(items);
+      if (request === newsRequest.current) {
+        setNews(items);
+        setNewsLoading(false);
+      }
       await loadNewsInsights(requestTicker, items, request);
     } catch (error) {
       if (request === newsRequest.current) {
         if (!preserveCurrent) setNews([]);
         setNewsError(error.message || "Could not load recent news.");
+        setNewsLoading(false);
       }
-    } finally {
-      if (request === newsRequest.current) setNewsLoading(false);
     }
   }
 
