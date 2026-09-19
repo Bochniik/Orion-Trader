@@ -26,39 +26,26 @@ def _probability(value: Any) -> float | None:
         probability = float(value) / 100.0
     except (TypeError, ValueError, OverflowError):
         return None
-    if not math.isfinite(probability) or probability < 0.0 or probability > 1.0:
+    if not math.isfinite(probability) or not 0.0 <= probability <= 1.0:
         return None
     return probability
 
 
-def build_daily_close_review(
-    rows: Iterable[dict[str, Any]],
-    *,
-    session_date: date,
-) -> dict[str, Any]:
-    """Summarise already-settled forecasts for one NYSE session date.
-
-    This is an observational report only. It never retrains, calibrates or mutates
-    production state. Rows with malformed timestamps/probabilities remain visible
-    through diagnostics instead of being converted into invented metrics.
-    """
+def build_daily_close_review(rows: Iterable[dict[str, Any]], *, session_date: date) -> dict[str, Any]:
+    """Summarise settled forecasts for one NYSE session without mutating models."""
     selected: list[dict[str, Any]] = []
     malformed_timestamp_count = 0
-
     for row in rows:
         observed_session = _session_date(row.get("observed_at"))
         if observed_session is None:
             malformed_timestamp_count += 1
-            continue
-        if observed_session == session_date:
+        elif observed_session == session_date:
             selected.append(row)
 
-    valid_probability_rows: list[tuple[dict[str, Any], float, int]] = []
+    valid: list[tuple[dict[str, Any], float, int]] = []
     invalid_probability_count = 0
     directional: list[int] = []
-    false_positives = 0
-    false_negatives = 0
-
+    false_positives = false_negatives = 0
     for row in selected:
         actual = row.get("actual_up")
         if actual is None:
@@ -68,48 +55,40 @@ def build_daily_close_review(
         if probability_up is None:
             invalid_probability_count += 1
         else:
-            valid_probability_rows.append((row, probability_up, actual_up))
-
-        correct = row.get("direction_correct")
-        if correct is not None:
-            directional.append(int(bool(correct)))
-
-        predicted = row.get("predicted_up")
-        if predicted is not None:
-            predicted_up = int(bool(predicted))
+            valid.append((row, probability_up, actual_up))
+        if row.get("direction_correct") is not None:
+            directional.append(int(bool(row["direction_correct"])))
+        if row.get("predicted_up") is not None:
+            predicted_up = int(bool(row["predicted_up"]))
             false_positives += int(predicted_up == 1 and actual_up == 0)
             false_negatives += int(predicted_up == 0 and actual_up == 1)
 
     def metrics(items: list[tuple[dict[str, Any], float, int]]) -> dict[str, Any]:
         if not items:
             return {"count": 0, "brier_score": None, "log_loss": None}
-        brier = sum((probability - actual) ** 2 for _, probability, actual in items) / len(items)
+        brier = sum((p - actual) ** 2 for _, p, actual in items) / len(items)
         log_loss = -sum(
-            actual * math.log(max(EPSILON, probability))
-            + (1 - actual) * math.log(max(EPSILON, 1.0 - probability))
-            for _, probability, actual in items
+            actual * math.log(max(EPSILON, p)) + (1 - actual) * math.log(max(EPSILON, 1.0 - p))
+            for _, p, actual in items
         ) / len(items)
-        return {
-            "count": len(items),
-            "brier_score": round(brier, 6),
-            "log_loss": round(log_loss, 6),
-        }
+        return {"count": len(items), "brier_score": round(brier, 6), "log_loss": round(log_loss, 6)}
 
     by_horizon: dict[str, dict[str, Any]] = {}
-    horizons = sorted({str(row.get("forecast_horizon") or "unknown") for row in selected})
-    for horizon in horizons:
-        horizon_items = [item for item in valid_probability_rows if str(item[0].get("forecast_horizon") or "unknown") == horizon]
-        by_horizon[horizon] = metrics(horizon_items)
+    for horizon in sorted({str(row.get("forecast_horizon") or "unknown") for row in selected}):
+        by_horizon[horizon] = metrics([item for item in valid if str(item[0].get("forecast_horizon") or "unknown") == horizon])
 
-    overall = metrics(valid_probability_rows)
-    overall.update(
-        {
-            "directional_prediction_count": len(directional),
-            "directional_accuracy_pct": None if not directional else round(100.0 * sum(directional) / len(directional), 2),
-            "false_positive_count": false_positives,
-            "false_negative_count": false_negatives,
-        }
-    )
+    overall = metrics(valid)
+    overall.update({
+        "directional_prediction_count": len(directional),
+        "directional_accuracy_pct": None if not directional else round(100.0 * sum(directional) / len(directional), 2),
+        "false_positive_count": false_positives,
+        "false_negative_count": false_negatives,
+    })
+    missing_dimensions = []
+    if selected and not any(row.get("liquidity_tier") is not None for row in selected):
+        missing_dimensions.append("liquidity")
+    if selected and not any(row.get("sector") is not None for row in selected):
+        missing_dimensions.append("sector")
 
     return {
         "contract": "orion-daily-close-review-v1",
@@ -120,10 +99,7 @@ def build_daily_close_review(
         "diagnostics": {
             "malformed_timestamp_count": malformed_timestamp_count,
             "invalid_probability_count": invalid_probability_count,
-            "missing_dimensions": [
-                "liquidity" if not any(row.get("liquidity_tier") is not None for row in selected) else None,
-                "sector" if not any(row.get("sector") is not None for row in selected) else None,
-            ],
+            "missing_dimensions": missing_dimensions,
         },
         "semantics": "Settled observational evidence only; this report does not retrain, recalibrate, promote, or change production decisions.",
     }
