@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel, Field
@@ -18,6 +17,7 @@ from app.services.core_orchestration import prepare_model
 from app.services.plan_monitor import check_saved_plans
 from app.services.evidence_ledger import EvidenceLedger
 from app.services.decision_quality import quality_report, update_decision_outcomes
+from app.services.market_session_engine import classify_market_session
 
 router = APIRouter(prefix="/core", tags=["OrionTrader 2.0"])
 logger = logging.getLogger("orion.core")
