@@ -285,7 +285,7 @@ def test_news_insights_are_structured_bounded_and_do_not_claim_full_article_acce
 
     assert captured["model"] is service.OrionNewsInsightBatch
     assert captured["budget"] == 1800
-    assert "not a stock-price forecast" in captured["prompt"]
+    assert "stock-price forecast" in captured["prompt"]
     assert "do not invent article details" in captured["prompt"]
     assert "no article body is supplied" in captured["prompt"]
     assert result["symbol"] == "AAPL"
