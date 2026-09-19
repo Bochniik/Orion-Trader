@@ -5,19 +5,37 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.services.daily_close_review import build_daily_close_review
-from app.services.opportunity_learning_db import OpportunityLearningJournal, learning_database_path
+from app.services.opportunity_learning_db import (
+    OpportunityLearningJournal,
+    learning_database_path,
+)
 
-router = APIRouter(prefix="/scanner/learning", tags=["scanner-learning"])
+
+router = APIRouter(
+    prefix="/scanner/learning",
+    tags=["scanner-learning"],
+)
 
 
 def _journal() -> OpportunityLearningJournal:
-    return OpportunityLearningJournal(learning_database_path())
+    return OpportunityLearningJournal(
+        learning_database_path()
+    )
 
 
 @router.get("/status")
 def learning_status():
     journal = _journal()
-    return {"available": True, "database": str(journal.db_path), "counts": journal.counts(), "semantics": "Persistent empirical memory of OrionTrader predictions and resolved outcomes. This endpoint does not retrain or modify the production model."}
+    return {
+        "available": True,
+        "database": str(journal.db_path),
+        "counts": journal.counts(),
+        "semantics": (
+            "Persistent empirical memory of OrionTrader predictions and "
+            "resolved outcomes. This endpoint does not retrain or modify "
+            "the production model."
+        ),
+    }
 
 
 @router.get("/analytics")
@@ -29,95 +47,208 @@ def learning_analytics():
 
 
 @router.get("/daily-close-review")
-def daily_close_review(request: Request, session_date: date = Query(...)):
-    """Return settled, user-scoped evidence for one New York trading date."""
+def daily_close_review(
+    request: Request,
+    session_date: date = Query(...),
+):
     user = getattr(request.state, "user", None) or {}
     user_id = str(user.get("id") or "")
     if not user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
+
     journal = _journal()
     with journal.connection() as db:
         rows = db.execute(
             """
-            SELECT p.observed_at, p.market_regime, f.forecast_horizon,
-                   f.probability_up, o.actual_up, o.predicted_up,
-                   o.direction_correct
+            SELECT
+                p.observed_at,
+                p.market_regime,
+                f.forecast_horizon,
+                f.probability_up,
+                o.actual_up,
+                o.predicted_up,
+                o.direction_correct
             FROM probability_outcomes o
-            JOIN probability_forecasts f ON f.id = o.forecast_id
-            JOIN opportunity_predictions p ON p.id = f.prediction_id
+            JOIN probability_forecasts f
+                ON f.id = o.forecast_id
+            JOIN opportunity_predictions p
+                ON p.id = f.prediction_id
             WHERE p.user_id = ?
             ORDER BY p.observed_at, f.id
             """,
             (user_id,),
         ).fetchall()
-    result = build_daily_close_review([dict(row) for row in rows], session_date=session_date)
+
+    result = build_daily_close_review(
+        [dict(row) for row in rows],
+        session_date=session_date,
+    )
     result["available"] = True
     return result
 
 
 @router.get("/recent")
-def recent_learning_predictions(limit: int = Query(default=25, ge=1, le=200)):
+def recent_learning_predictions(
+    limit: int = Query(
+        default=25,
+        ge=1,
+        le=200,
+    ),
+):
     journal = _journal()
+
     with journal.connection() as db:
         rows = db.execute(
             """
-            SELECT p.id, p.symbol, p.scanner_horizon, p.observed_at,
-                   p.reference_price, p.raw_orion_score, p.adjusted_orion_score,
-                   p.opportunity_rank_score, p.opportunity_state, p.bias,
-                   p.strategy, p.manipulation_risk, p.market_integrity_state,
-                   p.market_regime, p.probability_engine_version, p.ranking_version,
-                   p.probability_profile_validated, COUNT(f.id) AS forecast_count,
-                   SUM(CASE WHEN o.id IS NOT NULL THEN 1 ELSE 0 END) AS resolved_count
+            SELECT
+                p.id,
+                p.symbol,
+                p.scanner_horizon,
+                p.observed_at,
+                p.reference_price,
+                p.raw_orion_score,
+                p.adjusted_orion_score,
+                p.opportunity_rank_score,
+                p.opportunity_state,
+                p.bias,
+                p.strategy,
+                p.manipulation_risk,
+                p.market_integrity_state,
+                p.market_regime,
+                p.probability_engine_version,
+                p.ranking_version,
+                p.probability_profile_validated,
+                COUNT(f.id) AS forecast_count,
+                SUM(
+                    CASE
+                        WHEN o.id IS NOT NULL THEN 1
+                        ELSE 0
+                    END
+                ) AS resolved_count
             FROM opportunity_predictions p
-            LEFT JOIN probability_forecasts f ON f.prediction_id = p.id
-            LEFT JOIN probability_outcomes o ON o.forecast_id = f.id
+            LEFT JOIN probability_forecasts f
+                ON f.prediction_id = p.id
+            LEFT JOIN probability_outcomes o
+                ON o.forecast_id = f.id
             GROUP BY p.id
             ORDER BY p.observed_at DESC, p.id DESC
             LIMIT ?
             """,
             (int(limit),),
         ).fetchall()
-    return {"available": True, "items": [{**dict(row), "probability_profile_validated": bool(row["probability_profile_validated"])} for row in rows]}
+
+    return {
+        "available": True,
+        "items": [
+            {
+                **dict(row),
+                "probability_profile_validated": bool(
+                    row["probability_profile_validated"]
+                ),
+            }
+            for row in rows
+        ],
+    }
 
 
 @router.get("/prediction/{prediction_id}")
-def learning_prediction_detail(prediction_id: int):
+def learning_prediction_detail(
+    prediction_id: int,
+):
     journal = _journal()
+
     with journal.connection() as db:
-        prediction = db.execute("SELECT * FROM opportunity_predictions WHERE id = ?", (int(prediction_id),)).fetchone()
+        prediction = db.execute(
+            """
+            SELECT *
+            FROM opportunity_predictions
+            WHERE id = ?
+            """,
+            (int(prediction_id),),
+        ).fetchone()
+
         if prediction is None:
-            raise HTTPException(status_code=404, detail="Learning prediction not found.")
+            raise HTTPException(
+                status_code=404,
+                detail="Learning prediction not found.",
+            )
+
         forecasts = db.execute(
             """
-            SELECT f.*, o.resolved_at, o.start_price, o.end_price,
-                   o.realized_return_pct, o.actual_up, o.predicted_up,
-                   o.direction_correct, o.brier_component, o.source AS outcome_source,
-                   o.source_timestamp AS outcome_source_timestamp
+            SELECT
+                f.*,
+                o.resolved_at,
+                o.start_price,
+                o.end_price,
+                o.realized_return_pct,
+                o.actual_up,
+                o.predicted_up,
+                o.direction_correct,
+                o.brier_component,
+                o.source AS outcome_source,
+                o.source_timestamp AS outcome_source_timestamp
             FROM probability_forecasts f
-            LEFT JOIN probability_outcomes o ON o.forecast_id = f.id
+            LEFT JOIN probability_outcomes o
+                ON o.forecast_id = f.id
             WHERE f.prediction_id = ?
-            ORDER BY CASE f.forecast_horizon WHEN '30m' THEN 1 WHEN '1h' THEN 2 WHEN '3h' THEN 3 WHEN '5h' THEN 4 ELSE 99 END
+            ORDER BY
+                CASE f.forecast_horizon
+                    WHEN '30m' THEN 1
+                    WHEN '1h' THEN 2
+                    WHEN '3h' THEN 3
+                    WHEN '5h' THEN 4
+                    ELSE 99
+                END
             """,
             (int(prediction_id),),
         ).fetchall()
+
     return {
         "available": True,
         "prediction": dict(prediction),
-        "forecasts": [{
-            **dict(row),
-            "profile_validated": bool(row["profile_validated"]),
-            "actual_up": None if row["actual_up"] is None else bool(row["actual_up"]),
-            "predicted_up": None if row["predicted_up"] is None else bool(row["predicted_up"]),
-            "direction_correct": None if row["direction_correct"] is None else bool(row["direction_correct"]),
-        } for row in forecasts],
+        "forecasts": [
+            {
+                **dict(row),
+                "profile_validated": bool(
+                    row["profile_validated"]
+                ),
+                "actual_up": (
+                    None
+                    if row["actual_up"] is None
+                    else bool(row["actual_up"])
+                ),
+                "predicted_up": (
+                    None
+                    if row["predicted_up"] is None
+                    else bool(row["predicted_up"])
+                ),
+                "direction_correct": (
+                    None
+                    if row["direction_correct"] is None
+                    else bool(row["direction_correct"])
+                ),
+            }
+            for row in forecasts
+        ],
     }
 
 
 @router.post("/backup")
 def create_learning_backup():
     journal = _journal()
+
     try:
         backup = journal.backup()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail="Could not create learning database backup: " + type(exc).__name__) from exc
-    return {"ok": True, "backup": str(backup)}
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Could not create learning database backup: "
+                + type(exc).__name__
+            ),
+        ) from exc
+
+    return {
+        "ok": True,
+        "backup": str(backup),
+    }
