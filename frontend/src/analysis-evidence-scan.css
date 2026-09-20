@@ -1,0 +1,141 @@
+/* Analysis evidence scan hierarchy
+   Presentation only: makes existing reasons, technicals, fundamentals and risks faster to scan. */
+
+.analyze-view .analysis-insight-grid {
+  position: relative;
+  gap: 10px;
+}
+
+.analyze-view .analysis-insight-grid::before {
+  content: "DECISION EVIDENCE";
+  grid-column: 1 / -1;
+  margin: 2px 0 -2px;
+  color: #66717c;
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: .13em;
+}
+
+.analyze-view .analysis-insight {
+  position: relative;
+  overflow: hidden;
+}
+
+.analyze-view .analysis-insight h3 svg {
+  flex: 0 0 auto;
+  color: #ff8a2b;
+  filter: drop-shadow(0 0 7px rgba(255, 122, 26, .18));
+}
+
+.analyze-view .analysis-reasons {
+  border-color: rgba(255, 132, 42, .16);
+  background:
+    radial-gradient(circle at 8% 0, rgba(255, 122, 26, .095), transparent 34%),
+    linear-gradient(180deg, rgba(20, 20, 21, .98), rgba(10, 11, 13, .99));
+}
+
+.analyze-view .analysis-reasons ol,
+.analyze-view .analysis-risks ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+
+.analyze-view .analysis-reasons li,
+.analyze-view .analysis-risks li {
+  border: 1px solid rgba(255, 255, 255, .045);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .018);
+}
+
+.analyze-view .analysis-reasons li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 8px 9px;
+  color: #d8dde2;
+  font-size: 11px;
+  line-height: 1.42;
+}
+
+.analyze-view .analysis-reasons li > span {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid rgba(255, 137, 49, .22);
+  border-radius: 6px;
+  background: rgba(255, 122, 26, .07);
+  color: #ffad6c;
+  font-size: 9px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.analyze-view .analysis-risks {
+  border-color: rgba(255, 164, 89, .11);
+}
+
+.analyze-view .analysis-risks li {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  gap: 7px;
+  padding: 8px 9px;
+  color: #c9cfd5;
+  font-size: 10.5px;
+  line-height: 1.42;
+}
+
+.analyze-view .analysis-risks li svg {
+  margin-top: 1px;
+  color: #f1a15f;
+}
+
+.analyze-view .analysis-technical-context dd,
+.analyze-view .analysis-insight dd {
+  font-variant-numeric: tabular-nums;
+}
+
+.analyze-view .analysis-chart-link {
+  margin-top: 9px;
+  border-color: rgba(255, 132, 42, .13);
+  background: linear-gradient(90deg, rgba(255, 122, 26, .06), rgba(255, 255, 255, .015));
+}
+
+.analyze-view .analysis-chart-link:hover,
+.analyze-view .analysis-chart-link:focus-visible {
+  border-color: rgba(255, 142, 55, .28);
+  background: linear-gradient(90deg, rgba(255, 122, 26, .095), rgba(255, 255, 255, .022));
+}
+
+@media (min-width: 1120px) {
+  .analyze-view .analysis-insight-grid {
+    grid-template-columns: 1.12fr 1fr 1fr .96fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .analyze-view .analysis-insight-grid::before {
+    margin-top: 0;
+  }
+
+  .analyze-view .analysis-reasons li,
+  .analyze-view .analysis-risks li {
+    padding: 8px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analysis-insight,
+  .analyze-view .analysis-reasons li,
+  .analyze-view .analysis-risks li {
+    border-color: rgba(255, 255, 255, .22);
+  }
+
+  .analyze-view .analysis-insight h3 svg,
+  .analyze-view .analysis-reasons li > span {
+    color: #ffb374;
+  }
+}
