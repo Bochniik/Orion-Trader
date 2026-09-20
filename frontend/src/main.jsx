@@ -69,6 +69,7 @@ import "./my-stocks-attention-terminal.css";
 import "./my-stocks-panel-states.css";
 import "./my-stocks-watchlist-state.css";
 import "./my-stocks-workflow-polish.css";
+import "./my-stocks-save-commandbar.css";
 import "./my-stocks-quote-telemetry.css";
 import "./my-stocks-account-positions-polish.css";
 import "./my-stocks-journal-polish.css";
