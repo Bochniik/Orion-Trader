@@ -2,21 +2,21 @@
   position: relative;
   align-items: stretch;
   margin-top: 18px;
-  padding-top: 18px;
+  padding-top: 22px;
   border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
 
 .analyze-view .analysis-market-grid::before {
-  content: "MARKET EVIDENCE";
+  content: "PRICE ACTION  ·  CATALYSTS";
   position: absolute;
   top: -7px;
   left: 14px;
   padding: 0 8px;
   background: #05080d;
-  color: rgba(148, 163, 184, 0.58);
+  color: rgba(255, 166, 99, 0.7);
   font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 760;
+  letter-spacing: 0.13em;
   line-height: 14px;
 }
 
@@ -24,6 +24,8 @@
 .analyze-view .analysis-market-grid > .analyze-news-panel {
   min-width: 0;
   height: 100%;
+  isolation: isolate;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .analyze-view .analysis-market-grid > .analyze-chart-panel,
@@ -33,17 +35,13 @@
   flex-direction: column;
 }
 
-.analyze-view .analysis-market-grid > .analyze-news-panel > .news-card--terminal {
-  flex: 1 1 auto;
-}
+.analyze-view .analysis-market-grid > .analyze-news-panel > .news-card--terminal { flex: 1 1 auto; }
 
 .analyze-view .analyze-chart-panel {
   position: relative;
   overflow: hidden;
   border-color: rgba(148, 163, 184, 0.14);
-  background:
-    radial-gradient(circle at 82% 0%, rgba(249, 115, 22, 0.055), transparent 28%),
-    linear-gradient(180deg, rgba(8, 12, 18, 0.98), rgba(3, 6, 10, 0.99));
+  background: radial-gradient(circle at 82% 0%, rgba(249, 115, 22, 0.055), transparent 28%), linear-gradient(180deg, rgba(8, 12, 18, 0.98), rgba(3, 6, 10, 0.99));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 18px 48px rgba(0, 0, 0, 0.18);
 }
 
@@ -58,199 +56,54 @@
 }
 
 .analyze-view .analyze-chart-panel .analyze-section-heading,
-.analyze-view .analysis-market-grid > .analyze-news-panel > .analyze-section-heading {
-  min-height: 48px;
-  box-sizing: border-box;
-}
+.analyze-view .analysis-market-grid > .analyze-news-panel > .analyze-section-heading { min-height: 48px; box-sizing: border-box; }
+.analyze-view .analyze-chart-panel .analyze-section-heading { margin-bottom: 0; padding-bottom: 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1); }
+.analyze-view .analyze-chart-panel .analyze-section-heading > span { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(148, 163, 184, 0.72); }
+.analyze-view .analyze-chart-panel .advanced-chart { margin-top: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.analyze-view .analyze-chart-panel .chart-toolbar { gap: 10px 16px; padding: 10px 0 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.08); }
+.analyze-view .analyze-chart-panel .range-buttons, .analyze-view .analyze-chart-panel .chart-time-controls, .analyze-view .analyze-chart-panel .indicator-toolbar { gap: 4px; }
+.analyze-view .analyze-chart-panel .range-btn, .analyze-view .analyze-chart-panel .chart-time-controls button, .analyze-view .analyze-chart-panel .indicator-toggle { min-height: 28px; border-radius: 6px; font-size: 10px; letter-spacing: 0.035em; }
+.analyze-view .analyze-chart-panel .range-btn.active, .analyze-view .analyze-chart-panel .chart-time-controls button.active { border-color: rgba(249, 115, 22, 0.42); background: rgba(249, 115, 22, 0.1); box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.05), 0 0 16px rgba(249, 115, 22, 0.06); }
+.analyze-view .analyze-chart-panel .indicator-toolbar { padding: 7px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.07); }
+.analyze-view .analyze-chart-panel .chart-inspector, .analyze-view .analyze-chart-panel .chart-period-summary { font-variant-numeric: tabular-nums; }
+.analyze-view .analyze-chart-panel .chart-inspector { margin: 0; padding: 8px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.07); background: transparent; }
+.analyze-view .analyze-chart-panel .chart-inspector > div { min-width: 0; }
+.analyze-view .analyze-chart-panel .chart-inspector span { font-size: 9px; letter-spacing: 0.075em; text-transform: uppercase; }
+.analyze-view .analyze-chart-panel .chart-inspector strong { font-size: 11px; }
+.analyze-view .analyze-chart-panel .chart-period-summary { margin: 0; padding: 8px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.07); background: transparent; }
+.analyze-view .analyze-chart-panel .chart-interval-note { white-space: nowrap; color: rgba(148, 163, 184, 0.68); }
 
-.analyze-view .analyze-chart-panel .analyze-section-heading {
-  margin-bottom: 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-}
-
-.analyze-view .analyze-chart-panel .analyze-section-heading > span {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.72);
-}
-
-.analyze-view .analyze-chart-panel .advanced-chart {
-  margin-top: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.analyze-view .analyze-chart-panel .chart-toolbar {
-  gap: 10px 16px;
-  padding: 10px 0 8px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-}
-
-.analyze-view .analyze-chart-panel .range-buttons,
-.analyze-view .analyze-chart-panel .chart-time-controls,
-.analyze-view .analyze-chart-panel .indicator-toolbar {
-  gap: 4px;
-}
-
-.analyze-view .analyze-chart-panel .range-btn,
-.analyze-view .analyze-chart-panel .chart-time-controls button,
-.analyze-view .analyze-chart-panel .indicator-toggle {
-  min-height: 28px;
-  border-radius: 6px;
-  font-size: 10px;
-  letter-spacing: 0.035em;
-}
-
-.analyze-view .analyze-chart-panel .range-btn.active,
-.analyze-view .analyze-chart-panel .chart-time-controls button.active {
-  border-color: rgba(249, 115, 22, 0.42);
-  background: rgba(249, 115, 22, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.05), 0 0 16px rgba(249, 115, 22, 0.06);
-}
-
-.analyze-view .analyze-chart-panel .indicator-toolbar {
-  padding: 7px 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
-}
-
-.analyze-view .analyze-chart-panel .chart-inspector,
-.analyze-view .analyze-chart-panel .chart-period-summary {
-  font-variant-numeric: tabular-nums;
-}
-
-.analyze-view .analyze-chart-panel .chart-inspector {
-  margin: 0;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
-  background: transparent;
-}
-
-.analyze-view .analyze-chart-panel .chart-inspector > div {
-  min-width: 0;
-}
-
-.analyze-view .analyze-chart-panel .chart-inspector span {
-  font-size: 9px;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
-}
-
-.analyze-view .analyze-chart-panel .chart-inspector strong {
-  font-size: 11px;
-}
-
-.analyze-view .analyze-chart-panel .chart-period-summary {
-  margin: 0;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.07);
-  background: transparent;
-}
-
-.analyze-view .analyze-chart-panel .chart-interval-note {
-  white-space: nowrap;
-  color: rgba(148, 163, 184, 0.68);
-}
-
-/* Treat price action and catalysts as one evidence workstation rather than unrelated cards. */
-.analyze-view .analysis-market-grid > .analyze-chart-panel,
-.analyze-view .analysis-market-grid > .analyze-news-panel {
-  isolation: isolate;
-  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
-}
-
+/* One evidence workstation: decision context flows into price action and then current catalysts. */
 .analyze-view .analysis-market-grid > .analyze-chart-panel:hover,
 .analyze-view .analysis-market-grid > .analyze-chart-panel:focus-within,
 .analyze-view .analysis-market-grid > .analyze-news-panel:hover,
-.analyze-view .analysis-market-grid > .analyze-news-panel:focus-within {
-  border-color: rgba(249, 115, 22, 0.19);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 20px 48px rgba(0, 0, 0, 0.2), 0 0 24px rgba(249, 115, 22, 0.035);
-}
-
-.analyze-view .analysis-market-grid > .analyze-news-panel {
-  background:
-    radial-gradient(circle at 0 0, rgba(249, 115, 22, 0.05), transparent 24rem),
-    linear-gradient(180deg, rgba(8, 12, 18, 0.98), rgba(3, 6, 10, 0.99));
-}
+.analyze-view .analysis-market-grid > .analyze-news-panel:focus-within { border-color: rgba(249, 115, 22, 0.19); box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 20px 48px rgba(0,0,0,.2), 0 0 24px rgba(249,115,22,.035); }
+.analyze-view .analysis-market-grid > .analyze-news-panel { background: radial-gradient(circle at 0 0, rgba(249,115,22,.05), transparent 24rem), linear-gradient(180deg, rgba(8,12,18,.98), rgba(3,6,10,.99)); }
 
 @media (min-width: 1180px) {
-  /* Give catalysts enough reading width for full headlines and the future Orion reaction row. */
-  .analyze-view .analysis-market-grid {
-    grid-template-columns: minmax(0, 1.42fr) minmax(390px, 0.9fr);
-  }
-
-  .analyze-view .analysis-market-grid::after {
-    content: "";
-    position: absolute;
-    z-index: 3;
-    top: 42px;
-    bottom: 18px;
-    left: calc((100% - 12px) * 0.612 + 6px);
-    width: 1px;
-    pointer-events: none;
-    background: linear-gradient(180deg, transparent, rgba(249, 115, 22, 0.2) 18%, rgba(148, 163, 184, 0.08) 58%, transparent);
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.05);
-  }
-
-  .analyze-view .analysis-market-grid > .analyze-chart-panel {
-    border-top-right-radius: 10px;
-    border-bottom-right-radius: 10px;
-  }
-
-  .analyze-view .analysis-market-grid > .analyze-news-panel {
-    border-top-left-radius: 10px;
-    border-bottom-left-radius: 10px;
-  }
+  .analyze-view .analysis-market-grid { grid-template-columns: minmax(0, 1.34fr) minmax(430px, .94fr); column-gap: 10px; }
+  .analyze-view .analysis-market-grid::after { content: ""; position: absolute; z-index: 3; top: 48px; bottom: 18px; left: calc((100% - 10px) * 0.588 + 5px); width: 1px; pointer-events: none; background: linear-gradient(180deg, transparent, rgba(249,115,22,.24) 16%, rgba(148,163,184,.09) 58%, transparent); box-shadow: 0 0 14px rgba(249,115,22,.06); }
+  .analyze-view .analysis-market-grid > .analyze-chart-panel { border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
+  .analyze-view .analysis-market-grid > .analyze-news-panel { border-top-left-radius: 9px; border-bottom-left-radius: 9px; }
+  .analyze-view .analysis-market-grid .news-list--terminal { max-height: 610px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(249,115,22,.28) rgba(255,255,255,.025); padding-right: 3px; }
+  .analyze-view .analysis-market-grid .news-list--terminal::-webkit-scrollbar { width: 5px; }
+  .analyze-view .analysis-market-grid .news-list--terminal::-webkit-scrollbar-track { background: rgba(255,255,255,.02); }
+  .analyze-view .analysis-market-grid .news-list--terminal::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(249,115,22,.24); }
 }
 
 @media (max-width: 900px) {
-  .analyze-view .analysis-market-grid {
-    align-items: start;
-    margin-top: 14px;
-    padding-top: 16px;
-  }
-
-  .analyze-view .analysis-market-grid > .analyze-chart-panel,
-  .analyze-view .analysis-market-grid > .analyze-news-panel {
-    height: auto;
-  }
-
-  .analyze-view .analyze-chart-panel .chart-toolbar {
-    align-items: flex-start;
-  }
-
-  .analyze-view .analyze-chart-panel .chart-time-controls {
-    width: 100%;
-    flex-wrap: wrap;
-  }
+  .analyze-view .analysis-market-grid { align-items: start; margin-top: 14px; padding-top: 18px; }
+  .analyze-view .analysis-market-grid > .analyze-chart-panel, .analyze-view .analysis-market-grid > .analyze-news-panel { height: auto; }
+  .analyze-view .analyze-chart-panel .chart-toolbar { align-items: flex-start; }
+  .analyze-view .analyze-chart-panel .chart-time-controls { width: 100%; flex-wrap: wrap; }
 }
 
 @media (prefers-contrast: more) {
-  .analyze-view .analysis-market-grid {
-    border-top-color: rgba(249, 115, 22, 0.34);
-  }
-
-  .analyze-view .analysis-market-grid::before {
-    color: rgba(226, 232, 240, 0.82);
-  }
-
-  .analyze-view .analysis-market-grid > .analyze-chart-panel:hover,
-  .analyze-view .analysis-market-grid > .analyze-chart-panel:focus-within,
-  .analyze-view .analysis-market-grid > .analyze-news-panel:hover,
-  .analyze-view .analysis-market-grid > .analyze-news-panel:focus-within {
-    border-color: rgba(249, 115, 22, 0.48);
-  }
+  .analyze-view .analysis-market-grid { border-top-color: rgba(249,115,22,.34); }
+  .analyze-view .analysis-market-grid::before { color: rgba(255,220,194,.92); }
+  .analyze-view .analysis-market-grid > .analyze-chart-panel:hover, .analyze-view .analysis-market-grid > .analyze-chart-panel:focus-within, .analyze-view .analysis-market-grid > .analyze-news-panel:hover, .analyze-view .analysis-market-grid > .analyze-news-panel:focus-within { border-color: rgba(249,115,22,.48); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .analyze-view .analyze-chart-panel .range-btn,
-  .analyze-view .analyze-chart-panel .chart-time-controls button,
-  .analyze-view .analyze-chart-panel .indicator-toggle,
-  .analyze-view .analysis-market-grid > .analyze-chart-panel,
-  .analyze-view .analysis-market-grid > .analyze-news-panel {
-    transition: none !important;
-  }
+  .analyze-view .analyze-chart-panel .range-btn, .analyze-view .analyze-chart-panel .chart-time-controls button, .analyze-view .analyze-chart-panel .indicator-toggle, .analyze-view .analysis-market-grid > .analyze-chart-panel, .analyze-view .analysis-market-grid > .analyze-news-panel { transition: none !important; }
 }
