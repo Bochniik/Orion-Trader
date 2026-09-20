@@ -384,3 +384,198 @@ def position_size(request_body: IntelligencePositionSizeRequest, request: Reques
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+
+def _evidence_metric(value, sample_size, *, minimum=8, note=None):
+    if sample_size < minimum or value is None:
+        return {
+            "status": "insufficient_evidence",
+            "value": None,
+            "sample_size": int(sample_size),
+            "minimum_sample": minimum,
+            "label": "Insufficient evidence",
+            "note": note,
+        }
+    return {
+        "status": "available",
+        "value": value,
+        "sample_size": int(sample_size),
+        "minimum_sample": minimum,
+        "note": note,
+    }
+
+
+@router.get("/ticker/{ticker}/personality")
+def ticker_personality(ticker: str, request: Request):
+    ticker = _normalize_ticker(ticker)
+    from app.api import routes as legacy
+
+    store = legacy._predictive_store()
+    memory = store.learning_memory(ticker=ticker)
+    ticker_profile = memory.get("ticker_profile") or {}
+    sample = int(ticker_profile.get("observations") or 0)
+
+    horizons = {}
+    for horizon in ("1m", "3m", "5m", "15m", "30m", "1h"):
+        profile = (store.learning_memory(ticker=ticker, horizon=horizon).get("ticker_horizon_profile") or {})
+        observations = int(profile.get("observations") or 0)
+        horizons[horizon] = {
+            "sample_size": observations,
+            "forecast_accuracy": _evidence_metric(
+                profile.get("forecast_accuracy"), observations,
+                note="Settled directional predictions for this ticker and horizon.",
+            ),
+            "average_after_cost_return": _evidence_metric(
+                profile.get("average_after_cost_return"), observations,
+                note="Signed realized return after estimated execution costs.",
+            ),
+        }
+
+    eligible = [
+        (horizon, data)
+        for horizon, data in horizons.items()
+        if data["sample_size"] >= 8
+        and data["forecast_accuracy"]["value"] is not None
+    ]
+    strongest = max(
+        eligible,
+        key=lambda item: item[1]["forecast_accuracy"]["value"],
+        default=(None, None),
+    )[0]
+    weakest = min(
+        eligible,
+        key=lambda item: item[1]["forecast_accuracy"]["value"],
+        default=(None, None),
+    )[0]
+
+    unsupported = {
+        key: {
+            "status": "insufficient_evidence",
+            "value": None,
+            "sample_size": sample,
+            "label": "Insufficient evidence",
+            "note": "This behavior is not yet stored as a validated ticker-level outcome feature.",
+        }
+        for key in (
+            "typical_volatility",
+            "news_sensitivity",
+            "gap_behaviour",
+            "breakout_reliability",
+            "fakeout_tendency",
+            "trend_persistence",
+            "typical_rvol_behaviour",
+            "sector_response",
+        )
+    }
+
+    return {
+        "ticker": ticker,
+        "status": "available" if sample >= 8 else "insufficient_evidence",
+        "sample_size": sample,
+        "minimum_sample": 8,
+        "empirical_profile": {
+            "forecast_accuracy": _evidence_metric(ticker_profile.get("forecast_accuracy"), sample),
+            "bayesian_forecast_accuracy": _evidence_metric(ticker_profile.get("bayesian_forecast_accuracy"), sample),
+            "positive_decision_rate": _evidence_metric(ticker_profile.get("positive_decision_rate"), sample),
+            "average_signed_return": _evidence_metric(ticker_profile.get("average_signed_return"), sample),
+            "average_after_cost_return": _evidence_metric(ticker_profile.get("average_after_cost_return"), sample),
+        },
+        "horizons": horizons,
+        "strongest_orion_horizon": strongest,
+        "weakest_orion_horizon": weakest,
+        "behavioral_metrics": unsupported,
+        "lessons": memory.get("lessons") or [],
+        "decision_influence": memory.get("decision_influence"),
+        "trusted_for_decision_gate": memory.get("trusted_for_decision_gate") is True,
+        "provenance": {
+            "source": "predictive_learning_events",
+            "contract": memory.get("learning_contract"),
+        },
+    }
+
+
+@router.get("/ticker/{ticker}/memory")
+def ticker_memory(ticker: str, request: Request):
+    ticker = _normalize_ticker(ticker)
+    from app.api import routes as legacy
+
+    events = []
+    for row in legacy.memory.get_history(ticker, limit=50):
+        events.append({
+            "kind": "orion_interpretation",
+            "occurred_at": row.get("created_at"),
+            "source": "orion_conversations",
+            "factual": False,
+            "title": row.get("question") or "Orion analysis",
+            "detail": row.get("answer"),
+            "record_id": row.get("id"),
+        })
+
+    predictions = [
+        row for row in legacy._predictive_store().list_predictions(limit=500)
+        if str(row.get("ticker") or "").upper() == ticker
+    ]
+    for row in predictions:
+        settled = str(row.get("outcome_status") or "").lower() == "settled"
+        events.append({
+            "kind": "settled_outcome" if settled else "prediction",
+            "occurred_at": row.get("outcome_observed_at") if settled else row.get("prediction_timestamp"),
+            "source": "predictive_intelligence",
+            "factual": settled,
+            "title": (
+                "Settled prediction outcome"
+                if settled
+                else "Orion directional prediction"
+            ),
+            "detail": {
+                "horizon": row.get("horizon"),
+                "model_direction": row.get("model_direction"),
+                "directional_confidence": row.get("directional_confidence"),
+                "final_decision": row.get("final_decision"),
+                "actual_direction": row.get("actual_direction") if settled else None,
+                "actual_return": row.get("actual_return") if settled else None,
+                "model_version": row.get("model_version"),
+                "data_freshness": row.get("data_freshness"),
+            },
+            "record_id": row.get("id"),
+        })
+
+    setup = ticker_context(ticker, request).get("setup")
+    if setup:
+        events.append({
+            "kind": "current_model_observation",
+            "occurred_at": setup.get("data_timestamp"),
+            "source": "scanner.opportunity_state",
+            "factual": False,
+            "title": "Current research setup",
+            "detail": {
+                "horizon": setup.get("horizon"),
+                "bias": setup.get("bias") or setup.get("direction"),
+                "quality_score": setup.get("quality_score"),
+                "confidence": setup.get("confidence"),
+                "warnings": setup.get("warnings") or [],
+            },
+            "record_id": None,
+        })
+
+    events.sort(
+        key=lambda event: str(event.get("occurred_at") or ""),
+        reverse=True,
+    )
+    return {
+        "ticker": ticker,
+        "items": events[:100],
+        "count": len(events[:100]),
+        "categories": {
+            "factual_historical_data": ["settled_outcome"],
+            "orion_interpretation": ["orion_interpretation"],
+            "model_derived_observations": ["prediction", "current_model_observation"],
+            "user_notes": [],
+        },
+        "user_notes_status": "not_supported_in_this_timeline_yet",
+        "semantics": (
+            "Timeline entries preserve provenance. Settled outcomes are factual historical "
+            "records; predictions and Orion analyses remain model-derived interpretations."
+        ),
+    }
