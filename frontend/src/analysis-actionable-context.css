@@ -7,6 +7,27 @@
   overflow: hidden;
 }
 
+/* Close the Analyze research loop after Orion interpretation. This is a
+   presentation-only label over the existing reasons / risks payloads. */
+.analyze-view .analysis-reasons {
+  margin-top: 28px;
+  overflow: visible;
+}
+
+.analyze-view .analysis-reasons::after {
+  content: "DECISION SUPPORT · REASONS · RISKS";
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 14px);
+  color: #858f99;
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .analysis-reasons::before,
 .analysis-risks::before {
   content: "";
@@ -198,6 +219,31 @@
 
 .analysis-risk-metric .risk-unavailable {
   color: rgba(210, 210, 210, 0.55);
+}
+
+@media (max-width: 720px) {
+  .analyze-view .analysis-reasons {
+    margin-top: 26px;
+  }
+
+  .analyze-view .analysis-reasons::after {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analysis-reasons::after {
+    color: #c8cdd2;
+  }
+
+  .analysis-reasons,
+  .analysis-risks,
+  .analysis-session,
+  .analysis-risk-metric {
+    border-color: rgba(255, 255, 255, 0.18);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
