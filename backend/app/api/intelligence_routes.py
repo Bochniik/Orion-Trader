@@ -357,7 +357,7 @@ def position_size(request_body: IntelligencePositionSizeRequest, request: Reques
 
         result = risk_adjusted_position_size(
             total_value=total_value,
-            cash=max(float(cash), 0.000001),
+            cash=float(cash),
             entry_price=request_body.entry_price,
             stop_price=request_body.stop_price,
             risk_percent=request_body.risk_percent,
