@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, BrainCircuit, RefreshCw, ShieldAlert } from "lucide-react";
 import { getOrionIntelligenceBriefing } from "../api/api";
 import PositionSizingAssistant from "./PositionSizingAssistant";
+import TickerIntelligencePanels from "./TickerIntelligencePanels";
 import "./intelligence.css";
 
 function metric(value, suffix = "") {
@@ -90,6 +91,7 @@ export default function IntelligenceView({ selectedTicker, onSelectTicker, onAna
       )}
 
       <PositionSizingAssistant ticker={selectedTicker} />
+      <TickerIntelligencePanels ticker={selectedTicker} />
 
       {data?.ranking_semantics && (
         <details className="intelligence-provenance">
