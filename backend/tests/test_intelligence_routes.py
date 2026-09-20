@@ -142,3 +142,54 @@ def test_briefing_missing_fields_remain_unavailable_not_fabricated():
     assert item["catalyst"] is None
     assert item["main_reason"] is None
     assert item["main_risk"] is None
+
+
+def test_engine_evaluation_hides_metrics_below_minimum_sample():
+    summary = intelligence._evaluation_summary({
+        "counts": {"outcomes": 3},
+        "groups": [{
+            "horizon": "30m",
+            "probability_engine_version": "v-test",
+            "ranking_version": "r-test",
+            "outcome_count": 3,
+            "directional_accuracy_pct": 100.0,
+            "brier_score": 0.01,
+            "expected_calibration_error_pct": 1.0,
+            "average_realized_return_pct": 2.0,
+            "calibration_bins": [{"range": "60-70", "count": 3}],
+        }],
+        "semantics": "stored evaluation",
+    }, minimum_sample=20)
+
+    assert summary["status"] == "insufficient_evidence"
+    row = summary["performance_by_horizon"][0]
+    assert row["sample_size"] == 3
+    assert row["accuracy_percent"] is None
+    assert row["brier_score"] is None
+    assert row["calibration_error_percent"] is None
+    assert row["calibration_bins"] == []
+
+
+def test_engine_evaluation_exposes_supported_metrics_only_after_sample_gate():
+    summary = intelligence._evaluation_summary({
+        "counts": {"outcomes": 25},
+        "groups": [{
+            "horizon": "1h",
+            "probability_engine_version": "v-test",
+            "ranking_version": "r-test",
+            "outcome_count": 25,
+            "directional_accuracy_pct": 64.0,
+            "brier_score": 0.19,
+            "expected_calibration_error_pct": 5.2,
+            "average_realized_return_pct": 0.4,
+            "calibration_bins": [],
+        }],
+    }, minimum_sample=20)
+
+    assert summary["status"] == "available"
+    row = summary["performance_by_horizon"][0]
+    assert row["accuracy_percent"] == 64.0
+    assert row["brier_score"] == 0.19
+    assert summary["log_loss"] is None
+    assert summary["log_loss_status"] == "unavailable_not_stored"
+    assert summary["last_evaluation"] is None
