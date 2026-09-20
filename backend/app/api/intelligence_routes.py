@@ -163,7 +163,7 @@ def engine_bay(request: Request):
             "module": "app.services.predictive_models",
             "status": model_engine_status,
             "purpose": "Produces saved multi-horizon directional probabilities when a validated model is available.",
-            "supported_horizons": list((active_model.get("horizons") or {}).keys()) if isinstance(active_model.get("horizons"), dict) else active_model.get("horizons"),
+            "supported_horizons": active_model.get("reliable_horizons") or [],
             "model_id": active_model.get("model_id"),
             "model_version": active_model.get("version") or active_model.get("name"),
             "performance": evaluation,
