@@ -579,3 +579,227 @@ def ticker_memory(ticker: str, request: Request):
             "records; predictions and Orion analyses remain model-derived interpretations."
         ),
     }
+
+
+
+def _history_correlation(left, right):
+    try:
+        aligned = left[["Close"]].rename(columns={"Close": "left"}).join(
+            right[["Close"]].rename(columns={"Close": "right"}),
+            how="inner",
+        ).dropna()
+        returns = aligned.pct_change().dropna()
+        if len(returns) < 30:
+            return {"value": None, "sample_size": len(returns), "status": "insufficient_evidence"}
+        value = float(returns["left"].corr(returns["right"]))
+        if not (-1 <= value <= 1):
+            raise ValueError("invalid correlation")
+        return {"value": round(value, 4), "sample_size": len(returns), "status": "available"}
+    except Exception:
+        return {"value": None, "sample_size": 0, "status": "unavailable"}
+
+
+@router.get("/ticker/{ticker}/relationships")
+def ticker_relationships(ticker: str, request: Request):
+    ticker = _normalize_ticker(ticker)
+    from app.api import routes as legacy
+    from app.services.catalyst_engine import sector_benchmark
+
+    try:
+        profile, profile_meta = legacy.context_cache.load(
+            (ticker, "intelligence-profile"),
+            lambda: legacy.market.get_profile(ticker),
+        )
+    except Exception:
+        profile, profile_meta = {}, {"status": "unavailable"}
+
+    sector = (profile or {}).get("sector")
+    industry = (profile or {}).get("industry")
+    sector_etf = sector_benchmark(sector)
+    symbols = [symbol for symbol in (sector_etf, "SPY") if symbol and symbol != ticker]
+    correlations = {}
+    history_meta = {}
+    try:
+        primary, primary_meta = legacy.context_cache.load(
+            (ticker, "intelligence-rel-history"),
+            lambda: legacy.market.get_price_history(ticker, period="6mo", interval="1d"),
+        )
+    except Exception:
+        primary, primary_meta = None, {"status": "unavailable"}
+    history_meta[ticker] = primary_meta
+
+    for symbol in symbols:
+        try:
+            other, meta = legacy.context_cache.load(
+                (symbol, "intelligence-rel-history"),
+                lambda symbol=symbol: legacy.market.get_price_history(symbol, period="6mo", interval="1d"),
+            )
+            correlations[symbol] = _history_correlation(primary, other) if primary is not None else {
+                "value": None, "sample_size": 0, "status": "unavailable"
+            }
+            history_meta[symbol] = meta
+        except Exception:
+            correlations[symbol] = {"value": None, "sample_size": 0, "status": "unavailable"}
+            history_meta[symbol] = {"status": "unavailable"}
+
+    nodes = [
+        {"id": ticker, "kind": "ticker", "label": ticker, "evidence": "selected_ticker"},
+        {"id": "sector", "kind": "sector", "label": sector or "Unknown sector", "evidence": "market_profile"},
+        {"id": "industry", "kind": "industry", "label": industry or "Unknown industry", "evidence": "market_profile"},
+        {"id": "SPY", "kind": "index_exposure", "label": "SPY", "evidence": "market_benchmark"},
+    ]
+    edges = [
+        {"from": ticker, "to": "sector", "kind": "classification", "status": "available" if sector else "unavailable"},
+        {"from": ticker, "to": "industry", "kind": "classification", "status": "available" if industry else "unavailable"},
+        {"from": ticker, "to": "SPY", "kind": "historical_correlation", **correlations.get("SPY", {})},
+    ]
+    if sector_etf:
+        nodes.append({"id": sector_etf, "kind": "sector_etf", "label": sector_etf, "evidence": "catalyst_engine.SECTOR_BENCHMARKS"})
+        edges.append({"from": ticker, "to": sector_etf, "kind": "historical_correlation", **correlations.get(sector_etf, {})})
+        edges.append({"from": "sector", "to": sector_etf, "kind": "sector_benchmark", "status": "available"})
+
+    return {
+        "ticker": ticker,
+        "nodes": nodes,
+        "edges": edges,
+        "sector": sector,
+        "industry": industry,
+        "sector_benchmark": sector_etf,
+        "correlations": correlations,
+        "move_classification": {
+            "status": "insufficient_evidence",
+            "value": None,
+            "reason": "Peer-level current-move evidence is required before classifying a move as stock-, sector-, or market-specific.",
+        },
+        "unavailable_relationships": ["peers", "suppliers_customers", "shared_catalysts", "theme_links"],
+        "data_quality": {"profile": profile_meta, "history": history_meta},
+    }
+
+
+def _earnings_date(record):
+    for key, value in (record or {}).items():
+        if "earnings" in str(key).lower() and "date" in str(key).lower():
+            try:
+                parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                return parsed.astimezone(timezone.utc)
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
+def _earnings_reactions(history, dates):
+    rows = []
+    if history is None:
+        return rows
+    for event_time in dates:
+        try:
+            event_date = event_time.date()
+            future = history[history.index.date >= event_date]
+            if len(future) < 2:
+                continue
+            event_row = future.iloc[0]
+            next_row = future.iloc[1]
+            prior = history[history.index.date < event_date]
+            prior_close = float(prior.iloc[-1]["Close"]) if len(prior) else None
+            event_open = float(event_row["Open"]) if "Open" in event_row and event_row["Open"] is not None else None
+            event_close = float(event_row["Close"])
+            next_close = float(next_row["Close"])
+            rows.append({
+                "earnings_date": event_time.isoformat(),
+                "gap_percent": round((event_open / prior_close - 1) * 100, 3) if prior_close and event_open else None,
+                "session_reaction_percent": round((event_close / prior_close - 1) * 100, 3) if prior_close else None,
+                "next_session_close_percent": round((next_close / event_close - 1) * 100, 3) if event_close else None,
+            })
+        except Exception:
+            continue
+    return rows
+
+
+@router.get("/ticker/{ticker}/earnings")
+def earnings_pack(ticker: str, request: Request):
+    ticker = _normalize_ticker(ticker)
+    from app.api import routes as legacy
+
+    now = datetime.now(timezone.utc)
+    try:
+        calendar, calendar_meta = legacy.context_cache.load(
+            (ticker, "intelligence-earnings"),
+            lambda: legacy.market.get_earnings_calendar(ticker, limit=10),
+        )
+        records = calendar.get("earnings") or []
+    except Exception:
+        records, calendar_meta = [], {"status": "unavailable"}
+
+    dated = [(stamp, row) for row in records if (stamp := _earnings_date(row)) is not None]
+    dated.sort(key=lambda item: item[0])
+    upcoming = next(((stamp, row) for stamp, row in dated if stamp >= now), None)
+    latest_past = next(((stamp, row) for stamp, row in reversed(dated) if stamp < now), None)
+    focus = upcoming or latest_past
+    mode = "preparation" if upcoming else "reaction_analysis" if latest_past else "unavailable"
+
+    try:
+        history, history_meta = legacy.context_cache.load(
+            (ticker, "intelligence-earnings-history"),
+            lambda: legacy.market.get_price_history(ticker, period="1y", interval="1d"),
+        )
+    except Exception:
+        history, history_meta = None, {"status": "unavailable"}
+
+    past_dates = [stamp for stamp, _row in dated if stamp < now]
+    reactions = _earnings_reactions(history, past_dates[-8:])
+    gaps = [abs(row["gap_percent"]) for row in reactions if row.get("gap_percent") is not None]
+    typical_gap = (
+        {"status": "available", "value_percent": round(sum(gaps) / len(gaps), 3), "sample_size": len(gaps)}
+        if len(gaps) >= 3 else
+        {"status": "insufficient_evidence", "value_percent": None, "sample_size": len(gaps), "label": "Insufficient evidence"}
+    )
+
+    volatility = {"status": "insufficient_evidence", "annualized_percent": None, "sample_size": 0}
+    if history is not None:
+        try:
+            returns = history["Close"].pct_change().dropna().tail(60)
+            if len(returns) >= 20:
+                volatility = {
+                    "status": "available",
+                    "annualized_percent": round(float(returns.std()) * (252 ** 0.5) * 100, 2),
+                    "sample_size": len(returns),
+                }
+        except Exception:
+            pass
+
+    focus_row = focus[1] if focus else {}
+    expectations = {}
+    for key, value in focus_row.items():
+        lower = str(key).lower()
+        if any(token in lower for token in ("eps estimate", "revenue estimate", "epsestimate", "revenueestimate")):
+            expectations[str(key)] = value
+
+    return {
+        "ticker": ticker,
+        "mode": mode,
+        "earnings_date": focus[0].isoformat() if focus else None,
+        "expectations": expectations,
+        "expectations_status": "available" if expectations else "unavailable",
+        "guidance_expectations": {"status": "unavailable", "value": None},
+        "historical_reactions": reactions,
+        "typical_gap_behaviour": typical_gap,
+        "volatility_context": volatility,
+        "key_metrics_to_watch": [],
+        "sector_reaction": {"status": "unavailable", "value": None},
+        "scenarios": {
+            "bull": "Report materially exceeds available expectations and forward guidance/management commentary improves.",
+            "base": "Report is broadly consistent with available expectations and forward outlook is unchanged.",
+            "bear": "Report misses available expectations or forward guidance/management commentary deteriorates.",
+            "probabilities": None,
+        } if focus else None,
+        "orion_post_report_watch": [
+            "opening gap versus prior close",
+            "gap hold or fade through the first regular-session window",
+            "volume versus the ticker's normal activity",
+            "reaction relative to sector benchmark",
+        ] if focus else [],
+        "data_quality": {"calendar": calendar_meta, "history": history_meta},
+        "semantics": "Consensus, expected move and guidance expectations are never invented when the provider does not supply them.",
+    }
