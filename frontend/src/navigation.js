@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Search,
   Star,
+  BrainCircuit,
 } from "lucide-react";
 
 export const WORKSPACE_VIEWS = [
@@ -18,6 +19,13 @@ export const WORKSPACE_VIEWS = [
     description:
       "Analyze one stock with Orion",
     icon: Search,
+  },
+  {
+    id: "intelligence",
+    label: "Orion Intelligence",
+    description:
+      "Prioritized briefings, ticker context and Orion memory",
+    icon: BrainCircuit,
   },
   {
     id: "my-stocks",
@@ -50,6 +58,7 @@ const LEGACY_VIEWS = {
 
   dashboard: "today",
   analysis: "analyze",
+  intelligence: "intelligence",
   watchlist: "my-stocks",
 };
 
