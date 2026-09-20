@@ -34,6 +34,7 @@ import "./analysis-decision-strip-polish.css";
 import "./analysis-evidence-rail.css";
 import "./analysis-insight-density.css";
 import "./analysis-insight-rail.css";
+import "./analysis-evidence-scan.css";
 import "./analysis-actionable-context.css";
 import "./analysis-responsive.css";
 import "./analysis-vertical-rhythm.css";
