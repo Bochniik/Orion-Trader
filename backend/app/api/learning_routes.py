@@ -4,8 +4,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
+from app.services.daily_close_review import (
+    build_daily_close_review,
+    read_user_settled_evidence,
+)
 from app.services.opportunity_learning_db import (
     OpportunityLearningJournal,
     learning_database_path,
@@ -22,6 +26,11 @@ def _journal() -> OpportunityLearningJournal:
     return OpportunityLearningJournal(
         learning_database_path()
     )
+
+
+def _request_user_id(request: Request) -> str:
+    user = getattr(request.state, "user", None)
+    return str(user["id"]) if user else "test-user"
 
 
 @router.get("/status")
@@ -44,6 +53,25 @@ def learning_analytics():
     journal = _journal()
     result = journal.analytics()
     result["available"] = True
+    return result
+
+
+@router.get("/daily-close-review")
+def daily_close_review(
+    request: Request,
+    session_date: Optional[str] = Query(
+        default=None,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+    ),
+):
+    """Return a read-only settled-evidence review for the authenticated user."""
+    journal = _journal()
+    user_id = _request_user_id(request)
+    with journal.connection() as db:
+        evidence = read_user_settled_evidence(db, user_id)
+    result = build_daily_close_review(evidence, session_date=session_date)
+    result["available"] = True
+    result["scope"] = "authenticated_user"
     return result
 
 
