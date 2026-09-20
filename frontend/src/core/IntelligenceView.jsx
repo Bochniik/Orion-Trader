@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, BrainCircuit, RefreshCw, ShieldAlert } from "lucide-react";
 import { getOrionIntelligenceBriefing } from "../api/api";
+import PositionSizingAssistant from "./PositionSizingAssistant";
 import "./intelligence.css";
 
 function metric(value, suffix = "") {
@@ -9,7 +10,7 @@ function metric(value, suffix = "") {
   return Number.isFinite(number) ? `${Math.round(number)}${suffix}` : String(value);
 }
 
-export default function IntelligenceView({ onAnalyze }) {
+export default function IntelligenceView({ selectedTicker, onSelectTicker, onAnalyze }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -56,7 +57,7 @@ export default function IntelligenceView({ onAnalyze }) {
       {items.length > 0 && (
         <div className="intelligence-grid">
           {items.map((item) => (
-            <article className="intelligence-card" key={`${item.ticker}-${item.expected_horizon}`}>
+            <article className={`intelligence-card ${selectedTicker === item.ticker ? "selected" : ""}`} key={`${item.ticker}-${item.expected_horizon}`}>
               <header>
                 <div>
                   <span className="intelligence-ticker">{item.ticker}</span>
@@ -75,13 +76,20 @@ export default function IntelligenceView({ onAnalyze }) {
                 <p><b>Catalyst:</b> {item.catalyst || "No verified catalyst attached."}</p>
                 <p className="intelligence-risk"><ShieldAlert size={13} /> {item.main_risk || "No explicit risk note published."}</p>
               </div>
-              <button type="button" className="intelligence-open" onClick={() => onAnalyze?.(item.ticker)}>
-                Open full analysis <ArrowRight size={14} />
-              </button>
+              <div className="intelligence-card-actions">
+                <button type="button" className="intelligence-select" onClick={() => onSelectTicker?.(item.ticker)}>
+                  {selectedTicker === item.ticker ? "Selected in Intelligence" : "Use in Intelligence"}
+                </button>
+                <button type="button" className="intelligence-open" onClick={() => onAnalyze?.(item.ticker)}>
+                  Open full analysis <ArrowRight size={14} />
+                </button>
+              </div>
             </article>
           ))}
         </div>
       )}
+
+      <PositionSizingAssistant ticker={selectedTicker} />
 
       {data?.ranking_semantics && (
         <details className="intelligence-provenance">
