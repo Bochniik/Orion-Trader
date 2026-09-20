@@ -1,8 +1,22 @@
 .core-view .watchlist-card {
+  position: relative;
+  overflow: hidden;
   border-color: rgba(255, 255, 255, 0.065);
   background:
     radial-gradient(circle at 88% -12%, rgba(255, 139, 40, 0.055), transparent 30%),
     rgba(8, 9, 11, 0.94);
+}
+
+.core-view .watchlist-card::before {
+  content: "INSTRUMENT  /  LIVE QUOTE TELEMETRY";
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  color: rgba(255, 139, 40, 0.32);
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  pointer-events: none;
 }
 
 .core-view .watchlist-header {
@@ -19,7 +33,7 @@
 }
 
 .core-view .watchlist-row {
-  min-height: 47px;
+  min-height: 50px;
   border-color: rgba(255, 255, 255, 0.045);
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
@@ -51,8 +65,37 @@
 }
 
 .core-view .watch-symbol {
+  gap: 10px;
   font-weight: 820;
   letter-spacing: 0.045em;
+}
+
+.core-view .watch-stock-mark {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: linear-gradient(145deg, rgba(255, 139, 40, 0.09), rgba(255, 255, 255, 0.025));
+  color: rgba(255, 174, 98, 0.92);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.core-view .watch-stock-mark.has-image {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.core-view .watch-stock-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
 }
 
 .core-view .watch-symbol-identity {
@@ -70,6 +113,37 @@
   align-items: center;
   gap: 6px;
 }
+
+.core-view .watch-symbol-code {
+  color: rgba(249, 250, 252, 0.96);
+  font-size: 0.8rem;
+}
+
+.core-view .watch-quote-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  color: rgba(210, 216, 224, 0.54);
+  background: rgba(255, 255, 255, 0.018);
+  font-size: 0.48rem;
+  font-weight: 820;
+  letter-spacing: 0.09em;
+}
+
+.core-view .watch-quote-state-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor;
+}
+
+.core-view .watch-quote-state.is-live { color: rgba(109, 226, 166, 0.82); }
+.core-view .watch-quote-state.is-stale { color: rgba(255, 183, 91, 0.82); }
+.core-view .watch-quote-state.is-offline { color: rgba(255, 130, 130, 0.78); }
 
 .core-view .watch-company-name {
   display: block;
@@ -101,6 +175,31 @@
   font-size: 0.74rem;
 }
 
+.core-view .watch-row-actions {
+  gap: 10px;
+}
+
+.core-view .watch-analyze-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: rgba(255, 139, 40, 0.62);
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.core-view .watchlist-row:hover .watch-analyze-cue,
+.core-view .watchlist-row.is-selected .watch-analyze-cue,
+.core-view .watchlist-row:focus-within .watch-analyze-cue {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 .core-view .watch-symbol:focus-visible,
 .core-view .watch-price:focus-visible,
 .core-view .watch-change:focus-visible,
@@ -118,25 +217,35 @@
 
 @media (min-width: 1180px) {
   .core-view .watchlist-row {
-    grid-template-columns: minmax(190px, 1.35fr) minmax(100px, 0.8fr) minmax(100px, 0.78fr) minmax(90px, 0.72fr) auto;
+    grid-template-columns: minmax(210px, 1.4fr) minmax(100px, 0.8fr) minmax(100px, 0.78fr) minmax(90px, 0.72fr) auto;
     padding-block: 5px;
   }
 }
 
 @media (max-width: 760px) {
+  .core-view .watchlist-card::before,
+  .core-view .watch-analyze-cue {
+    display: none;
+  }
+
   .core-view .watch-company-name {
     max-width: 108px;
+  }
+
+  .core-view .watch-stock-mark {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
   }
 }
 
 @media (prefers-contrast: more) {
-  .core-view .watch-company-name {
-    color: rgba(245, 247, 250, 0.72);
-  }
+  .core-view .watch-company-name { color: rgba(245, 247, 250, 0.72); }
+  .core-view .watch-stock-mark,
+  .core-view .watch-quote-state { border-color: rgba(255, 255, 255, 0.24); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .core-view .watchlist-row {
-    transition: none;
-  }
+  .core-view .watchlist-row,
+  .core-view .watch-analyze-cue { transition: none; }
 }
