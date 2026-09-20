@@ -1,0 +1,139 @@
+from __future__ import annotations
+
+import math
+from collections import defaultdict
+from datetime import datetime, timezone
+from typing import Any, Dict, Iterable, List, Optional
+from zoneinfo import ZoneInfo
+
+
+REVIEW_VERSION = "orion-daily-close-review-v1"
+_NEW_YORK = ZoneInfo("America/New_York")
+_EPSILON = 1e-15
+
+
+def _finite_probability(value: Any) -> Optional[float]:
+    try:
+        probability = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(probability) or probability < 0.0 or probability > 1.0:
+        return None
+    return probability
+
+
+def _actual_up(value: Any) -> Optional[int]:
+    if isinstance(value, bool):
+        return int(value)
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return parsed if parsed in (0, 1) else None
+
+
+def _session_date(value: Any) -> Optional[str]:
+    if not value:
+        return None
+    text = str(value).strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(_NEW_YORK).date().isoformat()
+
+
+def _score(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not rows:
+        return {
+            "sample_size": 0,
+            "brier_score": None,
+            "log_loss": None,
+            "directional_accuracy": None,
+            "false_positives": 0,
+            "false_negatives": 0,
+        }
+
+    brier = 0.0
+    log_loss = 0.0
+    correct = 0
+    false_positives = 0
+    false_negatives = 0
+
+    for row in rows:
+        probability = row["probability_up"]
+        actual = row["actual_up"]
+        predicted = 1 if probability >= 0.5 else 0
+        brier += (probability - actual) ** 2
+        clipped = min(max(probability, _EPSILON), 1.0 - _EPSILON)
+        log_loss -= actual * math.log(clipped) + (1 - actual) * math.log(1.0 - clipped)
+        correct += int(predicted == actual)
+        false_positives += int(predicted == 1 and actual == 0)
+        false_negatives += int(predicted == 0 and actual == 1)
+
+    size = len(rows)
+    return {
+        "sample_size": size,
+        "brier_score": brier / size,
+        "log_loss": log_loss / size,
+        "directional_accuracy": correct / size,
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
+    }
+
+
+def build_daily_close_review(
+    evidence: Iterable[Dict[str, Any]],
+    *,
+    session_date: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Score only already-settled forecast evidence; never infer missing outcomes."""
+    accepted: List[Dict[str, Any]] = []
+    diagnostics = defaultdict(int)
+
+    for row in evidence:
+        probability = _finite_probability(row.get("probability_up"))
+        actual = _actual_up(row.get("actual_up"))
+        resolved_session = _session_date(row.get("resolved_at"))
+
+        if probability is None:
+            diagnostics["invalid_probability"] += 1
+            continue
+        if actual is None:
+            diagnostics["missing_or_invalid_outcome"] += 1
+            continue
+        if resolved_session is None:
+            diagnostics["invalid_resolved_at"] += 1
+            continue
+        if session_date is not None and resolved_session != session_date:
+            diagnostics["outside_session"] += 1
+            continue
+
+        accepted.append(
+            {
+                "probability_up": probability,
+                "actual_up": actual,
+                "horizon": str(row.get("forecast_horizon") or "unknown"),
+                "session_date": resolved_session,
+            }
+        )
+
+    by_horizon: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in accepted:
+        by_horizon[row["horizon"]].append(row)
+
+    return {
+        "version": REVIEW_VERSION,
+        "session_date": session_date,
+        "metrics": _score(accepted),
+        "by_horizon": {
+            horizon: _score(rows)
+            for horizon, rows in sorted(by_horizon.items())
+        },
+        "diagnostics": dict(sorted(diagnostics.items())),
+        "scoring_policy": "settled_evidence_only",
+    }
