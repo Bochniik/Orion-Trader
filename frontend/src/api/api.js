@@ -70,6 +70,8 @@ export function getOrionIntelligenceBriefing(options = {}) { return request("/in
 export function getOrionTickerContext(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}`, options); }
 export function getTickerPersonality(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/personality`, options); }
 export function getTickerInvestmentMemory(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/memory`, options); }
+export function getTickerRelationships(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/relationships`, options); }
+export function getTickerEarningsPack(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/earnings`, options); }
 export function simulateIntelligencePositionSize(inputs) { return jsonRequest("/intelligence/position-size", "POST", inputs); }
 export function getEngineBay(options = {}) { return request("/intelligence/engine-bay", options); }
 
