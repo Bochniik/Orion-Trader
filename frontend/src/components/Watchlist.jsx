@@ -17,6 +17,9 @@ function quoteState(quote, loading) {
   if (quote) return { label: "LIVE", tone: "live" };
   return { label: loading ? "SYNC" : "WAIT", tone: loading ? "sync" : "wait" };
 }
+function stockName(quote) {
+  return quote?.company_name || quote?.companyName || quote?.short_name || quote?.shortName || quote?.name || "";
+}
 
 function StockMark({ symbol, quote }) {
   const imageUrl = quote?.logo_url || quote?.logo || quote?.icon_url || quote?.icon || "";
@@ -71,12 +74,12 @@ export default function Watchlist({ watchlist, onSelectStock, onRemoveStock }) {
     <div className="watchlist-header"><div className="card-title"><Search size={20} />Watchlist</div><div className="watchlist-refresh" aria-live="polite" title={lastUpdatedAt ? `Last quote refresh ${formatRefreshTime(lastUpdatedAt)}` : "Waiting for first quote refresh"}><RefreshCw size={15} className={loading ? "spin" : ""} /><span>{removingSymbol ? `Removing ${removingSymbol}…` : selectedSymbol ? `Selected · ${selectedSymbol} → Analyze` : `${quoteHealthLabel} · ${liveQuoteCount}/${watchlist.length || 0} · ${formatRefreshTime(lastUpdatedAt)}`}</span></div></div>
     {error && <p className="watchlist-error" role="alert">{error}</p>}
     {!watchlist.length ? <div className="watchlist-empty" role="status"><span className="watchlist-empty-icon" aria-hidden="true"><Search size={18} /></span><div><strong>No stocks on your watchlist</strong><p>Search for a ticker and save it to keep live price, change and volume in view.</p></div></div> : <div className="watchlist-table">
-      <div className="watchlist-row watchlist-row-head"><span>Ticker</span><span>Price</span><span>Change</span><span>Volume</span><span></span></div>
+      <div className="watchlist-row watchlist-row-head"><span>Instrument</span><span>Price</span><span>Change</span><span>Volume</span><span></span></div>
       {watchlist.map((symbol) => {
         const quote = quotes[symbol], unavailable = Boolean(quote?.error), stale = Boolean(quote?.stale), changePercent = quote?.change_percent, isUp = Number(changePercent) >= 0, TrendIcon = isUp ? TrendingUp : TrendingDown, state = quoteState(quote, loading), selected = selectedSymbol === symbol, removing = removingSymbol === symbol;
-        const analyzeLabel = `Analyze ${symbol}`;
+        const analyzeLabel = `Analyze ${symbol}`, company = stockName(quote);
         return <div className={`watchlist-row${unavailable ? " is-unavailable" : ""}${selected ? " is-selected" : ""}${removing ? " is-removing" : ""}`} key={symbol} title={stale ? `${symbol}: showing the last successful quote while live refresh is temporarily unavailable` : unavailable ? `${symbol}: live quote is temporarily unavailable` : undefined}>
-          <button className="watch-symbol" onClick={() => selectStock(symbol)} aria-label={analyzeLabel} aria-pressed={selected} disabled={removing}><StockMark symbol={symbol} quote={quote} /><span className="watch-symbol-code">{symbol}</span><span className={`watch-quote-state is-${state.tone}`} aria-label={`${symbol} quote status: ${state.label.toLowerCase()}`}><span className="watch-quote-state-dot" aria-hidden="true" />{state.label}</span></button>
+          <button className="watch-symbol" onClick={() => selectStock(symbol)} aria-label={company ? `${analyzeLabel}, ${company}` : analyzeLabel} aria-pressed={selected} disabled={removing}><StockMark symbol={symbol} quote={quote} /><span className="watch-symbol-identity"><span className="watch-symbol-primary"><span className="watch-symbol-code">{symbol}</span><span className={`watch-quote-state is-${state.tone}`} aria-label={`${symbol} quote status: ${state.label.toLowerCase()}`}><span className="watch-quote-state-dot" aria-hidden="true" />{state.label}</span></span>{company && <span className="watch-company-name">{company}</span>}</span></button>
           <button className="watch-price" onClick={() => selectStock(symbol)} aria-label={`${analyzeLabel} at ${unavailable ? "unavailable price" : formatPrice(quote?.price)}`} aria-pressed={selected} disabled={removing}>{unavailable ? <span className="watch-unavailable">Unavailable</span> : formatPrice(quote?.price)}</button>
           <button className={isUp ? "watch-change positive" : "watch-change negative"} onClick={() => selectStock(symbol)} aria-label={`${analyzeLabel}; change ${unavailable ? "unavailable" : formatPercent(changePercent)}`} aria-pressed={selected} disabled={removing}>{quote && !unavailable && <TrendIcon size={15} />}{unavailable ? "—" : formatPercent(changePercent)}</button>
           <button className="watch-volume" onClick={() => selectStock(symbol)} aria-label={`${analyzeLabel}; volume ${unavailable ? "unavailable" : formatVolume(quote?.volume)}`} aria-pressed={selected} disabled={removing}>{unavailable ? "—" : formatVolume(quote?.volume)}</button>
