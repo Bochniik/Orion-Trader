@@ -803,3 +803,70 @@ def earnings_pack(ticker: str, request: Request):
         "data_quality": {"calendar": calendar_meta, "history": history_meta},
         "semantics": "Consensus, expected move and guidance expectations are never invented when the provider does not supply them.",
     }
+
+
+
+@router.get("/ticker/{ticker}/decision-pipeline")
+def decision_pipeline(ticker: str, request: Request):
+    ticker = _normalize_ticker(ticker)
+    context = ticker_context(ticker, request)
+    setup = context.get("setup") or {}
+    model = setup.get("model_output") or {}
+
+    layers = [
+        {
+            "id": "liquidity",
+            "name": "Liquidity Engine",
+            "status": "used" if setup.get("liquidity_score") is not None else "unavailable",
+            "evidence": {"liquidity_score": setup.get("liquidity_score")},
+        },
+        {
+            "id": "market-regime",
+            "name": "Market Regime Engine",
+            "status": "used" if setup.get("market_regime") is not None else "unavailable",
+            "evidence": {"market_regime": setup.get("market_regime")},
+        },
+        {
+            "id": "directional-model",
+            "name": "Directional Model",
+            "status": "used" if model or setup.get("confidence") is not None else "unavailable",
+            "evidence": {
+                "direction": setup.get("direction") or setup.get("bias"),
+                "confidence": setup.get("confidence"),
+                "confidence_horizon": setup.get("confidence_horizon"),
+            },
+        },
+        {
+            "id": "news-catalyst",
+            "name": "News Catalyst",
+            "status": "supporting" if (setup.get("catalyst") or setup.get("news_score")) else "unavailable",
+            "evidence": {
+                "catalyst": setup.get("catalyst"),
+                "news_score": setup.get("news_score"),
+            },
+        },
+        {
+            "id": "risk-layer",
+            "name": "Risk / Decision Layer",
+            "status": "conflicting" if setup.get("warnings") else "used",
+            "evidence": {
+                "warnings": setup.get("warnings") or [],
+                "opportunity_state": setup.get("opportunity_state"),
+            },
+        },
+        {
+            "id": "learning",
+            "name": "Learning / Evaluation Memory",
+            "status": "used" if setup.get("learning_memory") else "unavailable",
+            "evidence": setup.get("learning_memory"),
+        },
+    ]
+
+    return {
+        "ticker": ticker,
+        "layers": layers,
+        "weights": None,
+        "weights_status": "not_exposed_by_current_pipeline",
+        "semantics": "Layer states reflect observed participation/evidence only. No contribution percentages are invented.",
+        "source": "scanner.opportunity_state",
+    }
