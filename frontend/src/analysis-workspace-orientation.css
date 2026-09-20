@@ -3,26 +3,75 @@
 
 .analyze-view .analyze-page-heading {
   position: relative;
-  margin-bottom: 14px;
-  padding-bottom: 13px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  margin-bottom: 12px;
+  padding: 14px 16px 15px 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 86% 18%, rgba(255, 122, 26, 0.075), transparent 24%),
+    linear-gradient(90deg, rgba(255, 122, 26, 0.055), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.006)),
+    rgba(4, 7, 11, 0.9);
+  box-shadow: inset 2px 0 0 rgba(255, 139, 55, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.022), 0 18px 42px rgba(0, 0, 0, 0.16);
+}
+
+.analyze-view .analyze-page-heading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 58%, rgba(255, 151, 78, 0.018) 58.2%, transparent 58.5%);
 }
 
 .analyze-view .analyze-page-heading::after {
-  content: "RESEARCH WORKSPACE";
+  content: "INSPECT · VERIFY · DECIDE";
   position: absolute;
-  right: 0;
-  bottom: 14px;
-  color: rgba(178, 186, 198, 0.34);
-  font-size: 0.56rem;
+  right: 16px;
+  top: 16px;
+  color: rgba(255, 151, 78, 0.42);
+  font-size: 0.54rem;
   font-weight: 850;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.15em;
   line-height: 1;
+}
+
+.analyze-view .analyze-page-heading .core-eyebrow {
+  color: rgba(255, 151, 78, 0.62);
+  letter-spacing: 0.13em;
+}
+
+.analyze-view .analyze-page-heading h1 {
+  letter-spacing: -0.035em;
+}
+
+.analyze-view .analyze-page-heading > div > p:last-child {
+  max-width: 760px;
+}
+
+.analyze-view .core-search-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.analyze-view .core-search {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006)), rgba(4, 7, 11, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018), 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.analyze-view .core-search:focus-within {
+  border-color: rgba(255, 151, 78, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.024), 0 0 0 1px rgba(255, 122, 26, 0.06), 0 14px 34px rgba(0, 0, 0, 0.16), 0 0 24px rgba(255, 122, 26, 0.035);
+}
+
+.analyze-view .core-search input {
+  font-variant-numeric: tabular-nums;
 }
 
 .analyze-view .core-search-wrap + .analyze-horizon-selector,
 .analyze-view .core-warning + .analyze-horizon-selector {
-  margin-top: 11px;
+  margin-top: 10px;
 }
 
 .analyze-view .analyze-horizon-selector:has(.analyze-sticky-context) {
@@ -38,19 +87,28 @@
 }
 
 .analyze-view .analyze-sticky-context::after {
-  content: "IN FOCUS";
+  content: "INSPECTION CONTEXT";
   margin-left: 2px;
   padding-left: 8px;
   border-left: 1px solid rgba(255, 255, 255, 0.07);
   color: rgba(181, 189, 201, 0.36);
-  font-size: 0.52rem;
+  font-size: 0.5rem;
   font-weight: 800;
   letter-spacing: 0.11em;
   white-space: nowrap;
 }
 
+.analyze-view .analyze-horizon-tabs button {
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
 .analyze-view .analyze-horizon-tabs button.active {
   box-shadow: inset 0 -1px 0 rgba(255, 150, 78, 0.72), 0 0 16px rgba(255, 122, 26, 0.045);
+}
+
+.analyze-view .analyze-horizon-tabs button:focus-visible {
+  outline: 2px solid rgba(255, 151, 78, 0.68);
+  outline-offset: 2px;
 }
 
 .analyze-view .analyze-result-horizon {
@@ -58,12 +116,18 @@
 }
 
 @media (max-width: 840px) {
+  .analyze-view .analyze-page-heading { padding: 13px 14px 14px 16px; }
   .analyze-view .analyze-page-heading::after { display: none; }
   .analyze-view .analyze-horizon-selector:has(.analyze-sticky-context) { top: 6px; }
 }
 
 @media (max-width: 540px) {
+  .analyze-view .analyze-page-heading { border-radius: 9px; }
   .analyze-view .analyze-sticky-context::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view .analyze-horizon-tabs button { transition: none; }
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -75,7 +139,9 @@
 }
 
 @media (prefers-contrast: more) {
-  .analyze-view .analyze-page-heading { border-bottom-color: rgba(255, 255, 255, 0.14); }
+  .analyze-view .analyze-page-heading { border-color: rgba(255, 255, 255, 0.16); box-shadow: inset 2px 0 0 rgba(255, 151, 78, 0.9); }
+  .analyze-view .analyze-page-heading::after { color: rgba(255, 190, 142, 0.72); }
+  .analyze-view .core-search { border-color: rgba(255, 255, 255, 0.15); }
   .analyze-view .analyze-horizon-selector:has(.analyze-sticky-context) { border-color: rgba(255, 151, 78, 0.34); }
   .analyze-view .analyze-sticky-context::after { color: rgba(225, 229, 235, 0.68); }
 }
