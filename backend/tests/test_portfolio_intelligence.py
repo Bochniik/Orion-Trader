@@ -110,7 +110,6 @@ def test_confidence_is_a_haircut_not_capital_percentage():
     )
     assert result["base_position_size"]["shares"] == 200
     assert result["risk_adjusted_position_size"]["shares"] == 100
-    assert result["account"] if False else True
     assert "never" in result["semantics"].lower()
 
 
