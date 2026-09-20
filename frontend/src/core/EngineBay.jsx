@@ -7,6 +7,34 @@ function statusClass(status) {
   return String(status || "unavailable").toLowerCase();
 }
 
+
+function PerformancePanel({ performance }) {
+  if (!performance || performance.status !== "available") {
+    return <div className="engine-insufficient">
+      {performance?.label || "Insufficient evidence"}
+      {performance?.minimum_sample ? <small>Minimum sample per horizon: {performance.minimum_sample}</small> : null}
+    </div>;
+  }
+  const rows = performance.performance_by_horizon || [];
+  return <div className="engine-performance">
+    <div className="engine-performance-summary">
+      <span><small>Settled predictions</small><strong>{performance.settled_predictions ?? 0}</strong></span>
+      <span><small>Log loss</small><strong>{performance.log_loss ?? "Unavailable"}</strong></span>
+      <span><small>Last evaluation</small><strong>{performance.last_evaluation ?? "Unavailable"}</strong></span>
+    </div>
+    <div className="engine-performance-table">
+      {rows.map((row) => <div className={"engine-performance-row " + row.status} key={row.horizon || row.model_version}>
+        <span><b>{row.horizon || "Unknown"}</b><small>n={row.sample_size}</small></span>
+        {row.status === "available" ? <>
+          <span><small>Accuracy</small><strong>{row.accuracy_percent ?? "—"}%</strong></span>
+          <span><small>Brier</small><strong>{row.brier_score ?? "—"}</strong></span>
+          <span><small>Calibration error</small><strong>{row.calibration_error_percent ?? "—"}%</strong></span>
+        </> : <span className="engine-performance-insufficient">Insufficient evidence</span>}
+      </div>)}
+    </div>
+  </div>;
+}
+
 export default function EngineBay({ open, onClose, selectedTicker }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -78,7 +106,7 @@ export default function EngineBay({ open, onClose, selectedTicker }) {
             <div><dt>Model version</dt><dd>{detail.model_version || "Unavailable"}</dd></div>
             <div><dt>Horizons</dt><dd>{Array.isArray(detail.supported_horizons) && detail.supported_horizons.length ? detail.supported_horizons.join(", ") : "Unavailable"}</dd></div>
           </dl>
-          {detail.performance ? <details><summary>Evaluation dataset metrics</summary><pre>{JSON.stringify(detail.performance, null, 2)}</pre></details> : <div className="engine-insufficient">Insufficient evidence / not independently scored.</div>}
+          {detail.performance ? <PerformancePanel performance={detail.performance} /> : <div className="engine-insufficient">Insufficient evidence / not independently scored.</div>}
         </section>}
 
         <footer>{data?.semantics || "Missing metrics are shown as unavailable."}</footer>
