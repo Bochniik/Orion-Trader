@@ -67,6 +67,8 @@ export function getResearchSetupAnalytics(options = {}) { return request("/scann
 export function explainResearchSetup(id) { return request(`/scanner/opportunities/${encodeURIComponent(id)}/explain`, { method: "POST" }); }
 
 export function getOrionIntelligenceBriefing(options = {}) { return request("/intelligence/briefing", options); }
+export function getOrionTickerContext(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}`, options); }
+export function simulateIntelligencePositionSize(inputs) { return jsonRequest("/intelligence/position-size", "POST", inputs); }
 export function getEngineBay(options = {}) { return request("/intelligence/engine-bay", options); }
 
 export function getCoreStatus(options = {}) { return request("/core/status", options); }
