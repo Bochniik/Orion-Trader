@@ -117,8 +117,8 @@ def build_daily_close_review(
     *,
     session_date: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Score only already-settled forecast evidence; never infer missing outcomes."""
-    accepted: List[Dict[str, Any]] = []
+    """Score settled evidence for one session; default to the latest settled session."""
+    normalized: List[Dict[str, Any]] = []
     diagnostics = defaultdict(int)
 
     for row in evidence:
@@ -135,11 +135,8 @@ def build_daily_close_review(
         if resolved_session is None:
             diagnostics["invalid_resolved_at"] += 1
             continue
-        if session_date is not None and resolved_session != session_date:
-            diagnostics["outside_session"] += 1
-            continue
 
-        accepted.append(
+        normalized.append(
             {
                 "probability_up": probability,
                 "actual_up": actual,
@@ -148,13 +145,24 @@ def build_daily_close_review(
             }
         )
 
+    effective_session = session_date
+    if effective_session is None and normalized:
+        effective_session = max(row["session_date"] for row in normalized)
+
+    accepted: List[Dict[str, Any]] = []
+    for row in normalized:
+        if effective_session is not None and row["session_date"] != effective_session:
+            diagnostics["outside_session"] += 1
+            continue
+        accepted.append(row)
+
     by_horizon: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for row in accepted:
         by_horizon[row["horizon"]].append(row)
 
     return {
         "version": REVIEW_VERSION,
-        "session_date": session_date,
+        "session_date": effective_session,
         "metrics": _score(accepted),
         "by_horizon": {
             horizon: _score(rows)
