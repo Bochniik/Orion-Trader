@@ -12,13 +12,8 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 26%),
     radial-gradient(circle at 96% 8%, rgba(255, 122, 26, 0.05), transparent 12rem),
     #080c11;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.018),
-    0 14px 38px rgba(0, 0, 0, 0.15);
-  transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    transform 150ms ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018), 0 14px 38px rgba(0, 0, 0, 0.15);
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
 .dashboard-view .today-opportunities .opportunity-card::after {
@@ -34,25 +29,47 @@
 @media (hover: hover) and (pointer: fine) {
   .dashboard-view .today-opportunities .opportunity-card:hover {
     border-color: rgba(255, 132, 46, 0.16);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.022),
-      0 16px 42px rgba(0, 0, 0, 0.2),
-      0 0 22px rgba(255, 122, 26, 0.03);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.022), 0 16px 42px rgba(0, 0, 0, 0.2), 0 0 22px rgba(255, 122, 26, 0.03);
     transform: translateY(-1px);
   }
 }
 
 .dashboard-view .today-opportunities .opportunity-card:focus-within {
   border-color: rgba(255, 145, 66, 0.22);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.02),
-    0 0 0 1px rgba(255, 122, 26, 0.05),
-    0 0 24px rgba(255, 122, 26, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 0 0 1px rgba(255, 122, 26, 0.05), 0 0 24px rgba(255, 122, 26, 0.04);
 }
 
+/* Match the instrument grammar used by My Stocks and Analyze without changing scanner data. */
 .dashboard-view .today-opportunities .opportunity-heading {
   align-items: flex-start;
+  gap: 14px;
   padding-bottom: 11px;
+}
+
+.dashboard-view .today-opportunities .opportunity-heading > div:first-child {
+  min-width: 0;
+}
+
+.dashboard-view .today-opportunities .opportunity-symbol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-view .today-opportunities .opportunity-symbol::before {
+  content: "INSTRUMENT";
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1px solid rgba(255, 122, 26, 0.18);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(255, 122, 26, 0.075), rgba(255, 122, 26, 0.025));
+  color: rgba(255, 178, 119, 0.78);
+  font-size: 6px;
+  font-weight: 760;
+  letter-spacing: 0.13em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 0 14px rgba(255, 122, 26, 0.025);
 }
 
 .dashboard-view .today-opportunities .opportunity-symbol h2 {
@@ -63,14 +80,44 @@
   letter-spacing: -0.45px;
 }
 
+.dashboard-view .today-opportunities .opportunity-symbol .decision-pill {
+  border-color: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
 .dashboard-view .today-opportunities .opportunity-heading > div:first-child > p {
+  margin-top: 5px;
   color: #68737e;
   line-height: 1.45;
 }
 
 .dashboard-view .today-opportunities .opportunity-session {
-  background: rgba(3, 6, 9, 0.48);
+  position: relative;
+  min-width: 118px;
+  border-color: rgba(255, 255, 255, 0.065);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), rgba(3, 6, 9, 0.48);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.016);
+}
+
+.dashboard-view .today-opportunities .opportunity-session::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 122, 26, 0.5);
+  box-shadow: 0 0 8px rgba(255, 122, 26, 0.12);
+}
+
+.dashboard-view .today-opportunities .opportunity-session > span {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-view .today-opportunities .opportunity-session > strong {
+  font-variant-numeric: tabular-nums;
 }
 
 .dashboard-view .today-opportunities .opportunity-why {
@@ -93,9 +140,7 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .dashboard-view .today-opportunities .opportunity-plan > div:hover {
-    background: rgba(255, 122, 26, 0.025);
-  }
+  .dashboard-view .today-opportunities .opportunity-plan > div:hover { background: rgba(255, 122, 26, 0.025); }
 }
 
 .dashboard-view .today-opportunities .opportunity-plan dt {
@@ -120,10 +165,7 @@
   letter-spacing: 0.015em;
 }
 
-.dashboard-view .today-opportunities .opportunity-footer {
-  margin-top: 11px;
-  padding-top: 9px;
-}
+.dashboard-view .today-opportunities .opportunity-footer { margin-top: 11px; padding-top: 9px; }
 
 .dashboard-view .today-opportunities .opportunity-actions .core-text-button {
   min-height: 34px;
@@ -143,42 +185,29 @@
 }
 
 @media (max-width: 640px) {
-  .dashboard-view .today-opportunities .opportunity-heading {
-    gap: 9px;
-  }
-
-  .dashboard-view .today-opportunities .opportunity-session {
-    min-width: 104px;
-    padding: 6px 8px;
-  }
-
-  .dashboard-view .today-opportunities .opportunity-plan {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+  .dashboard-view .today-opportunities .opportunity-heading { gap: 9px; }
+  .dashboard-view .today-opportunities .opportunity-symbol { flex-wrap: wrap; gap: 6px; }
+  .dashboard-view .today-opportunities .opportunity-symbol::before { min-height: 18px; padding-inline: 6px; }
+  .dashboard-view .today-opportunities .opportunity-session { min-width: 104px; padding: 6px 8px; }
+  .dashboard-view .today-opportunities .opportunity-plan { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-view .today-opportunities .opportunity-plan > div,
   .dashboard-view .today-opportunities .opportunity-plan > div:nth-child(3n),
   .dashboard-view .today-opportunities .opportunity-plan > div:nth-last-child(-n + 3) {
     border-right: 1px solid rgba(255, 255, 255, 0.045);
     border-bottom: 1px solid rgba(255, 255, 255, 0.045);
   }
-
-  .dashboard-view .today-opportunities .opportunity-plan > div:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .dashboard-view .today-opportunities .opportunity-plan > div:nth-last-child(-n + 2) {
-    border-bottom: 0;
-  }
+  .dashboard-view .today-opportunities .opportunity-plan > div:nth-child(2n) { border-right: 0; }
+  .dashboard-view .today-opportunities .opportunity-plan > div:nth-last-child(-n + 2) { border-bottom: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dashboard-view .today-opportunities .opportunity-card,
-  .dashboard-view .today-opportunities .opportunity-plan > div {
-    transition: none;
-  }
+  .dashboard-view .today-opportunities .opportunity-plan > div { transition: none; }
+  .dashboard-view .today-opportunities .opportunity-card:hover { transform: none; }
+}
 
-  .dashboard-view .today-opportunities .opportunity-card:hover {
-    transform: none;
-  }
+@media (prefers-contrast: more) {
+  .dashboard-view .today-opportunities .opportunity-symbol::before,
+  .dashboard-view .today-opportunities .opportunity-session { border-color: rgba(255, 174, 112, 0.48); }
+  .dashboard-view .today-opportunities .opportunity-heading > div:first-child > p { color: #aab3bb; }
 }
