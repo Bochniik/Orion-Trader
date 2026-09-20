@@ -3,6 +3,31 @@
 
 .analyze-view .analysis-insight-grid {
   grid-auto-rows: 1fr;
+  position: relative;
+  padding-top: 28px;
+}
+
+/* Visually continue the Analyze research flow after price action + catalysts.
+   This labels existing payloads only; no analysis data or semantics change. */
+.analyze-view .analysis-insight-grid::before {
+  content: "ORION INTERPRETATION · SUPPORTING EVIDENCE";
+  position: absolute;
+  inset: 0 auto auto 0;
+  color: #858f99;
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.analyze-view .analysis-insight-grid::after {
+  content: "";
+  position: absolute;
+  inset: 15px 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 139, 55, 0.32), rgba(255, 255, 255, 0.055) 28%, transparent 92%);
+  pointer-events: none;
 }
 
 .analyze-view .analysis-insight {
@@ -68,12 +93,34 @@
 }
 
 @media (max-width: 720px) {
+  .analyze-view .analysis-insight-grid {
+    padding-top: 26px;
+  }
+
+  .analyze-view .analysis-insight-grid::before {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .analyze-view .analysis-insight h3 {
     min-height: 24px;
   }
 
   .analyze-view .analysis-insight dl > div {
     min-height: 33px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analysis-insight-grid::before {
+    color: #c8cdd2;
+  }
+
+  .analyze-view .analysis-insight-grid::after,
+  .analyze-view .analysis-insight {
+    border-color: rgba(255, 255, 255, 0.18);
   }
 }
 
