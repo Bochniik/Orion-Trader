@@ -110,6 +110,59 @@ def briefing(request: Request):
     }
 
 
+def _evaluation_summary(evaluation: dict[str, Any] | None, *, minimum_sample: int = 20):
+    """Expose historical evaluation only when the stored sample is large enough.
+
+    The learning journal currently provides accuracy, Brier score and calibration
+    error. Log loss and an explicit last-evaluation timestamp are not stored, so
+    they remain unavailable rather than being reconstructed or invented.
+    """
+    if not evaluation:
+        return {
+            "status": "insufficient_evidence",
+            "label": "Insufficient evidence",
+            "minimum_sample": minimum_sample,
+            "settled_predictions": 0,
+            "performance_by_horizon": [],
+            "log_loss": None,
+            "last_evaluation": None,
+        }
+
+    counts = evaluation.get("counts") or {}
+    groups = []
+    for row in evaluation.get("groups") or []:
+        sample = int(row.get("outcome_count") or 0)
+        enough = sample >= minimum_sample
+        groups.append({
+            "horizon": row.get("horizon"),
+            "model_version": row.get("probability_engine_version"),
+            "ranking_version": row.get("ranking_version"),
+            "sample_size": sample,
+            "status": "available" if enough else "insufficient_evidence",
+            "label": None if enough else "Insufficient evidence",
+            "accuracy_percent": row.get("directional_accuracy_pct") if enough else None,
+            "brier_score": row.get("brier_score") if enough else None,
+            "calibration_error_percent": row.get("expected_calibration_error_pct") if enough else None,
+            "average_realized_return_percent": row.get("average_realized_return_pct") if enough else None,
+            "calibration_bins": row.get("calibration_bins") if enough else [],
+        })
+
+    eligible = [row for row in groups if row["status"] == "available"]
+    settled = int(counts.get("outcomes") or 0)
+    return {
+        "status": "available" if eligible else "insufficient_evidence",
+        "label": None if eligible else "Insufficient evidence",
+        "minimum_sample": minimum_sample,
+        "settled_predictions": settled,
+        "performance_by_horizon": groups,
+        "log_loss": None,
+        "log_loss_status": "unavailable_not_stored",
+        "last_evaluation": None,
+        "last_evaluation_status": "unavailable_not_stored",
+        "semantics": evaluation.get("semantics"),
+    }
+
+
 def _runtime_status(current: dict[str, Any]) -> str:
     status = current.get("status")
     if status in {"stale", "partial_failure"}:
@@ -150,6 +203,7 @@ def engine_bay(request: Request):
 
     active_model = model_status.get("active_model") or {}
     model_available = bool(active_model)
+    evaluation_summary = _evaluation_summary(evaluation)
     model_engine_status = "ACTIVE" if model_available and runtime == "ACTIVE" else (
         "STANDBY" if model_available and runtime == "STANDBY" else
         "RESEARCH" if model_available else "unavailable"
@@ -183,8 +237,8 @@ def engine_bay(request: Request):
             "supported_horizons": active_model.get("reliable_horizons") or [],
             "model_id": active_model.get("model_id"),
             "model_version": active_model.get("version") or active_model.get("name"),
-            "performance": evaluation,
-            "performance_state": "evaluation_dataset" if evaluation else "insufficient_evidence",
+            "performance": evaluation_summary,
+            "performance_state": evaluation_summary["status"],
         },
         {
             "id": "market-regime",
@@ -210,8 +264,8 @@ def engine_bay(request: Request):
             "module": "app.services.opportunity_learning_db",
             "status": "ACTIVE" if evaluation else "RESEARCH",
             "purpose": "Persists predictions and settled outcomes for empirical evaluation.",
-            "performance": evaluation,
-            "performance_state": "evaluation_dataset" if evaluation else "insufficient_evidence",
+            "performance": evaluation_summary,
+            "performance_state": evaluation_summary["status"],
         },
     ]
 
