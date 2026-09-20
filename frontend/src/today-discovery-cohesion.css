@@ -1,0 +1,86 @@
+/* Today discovery cohesion layer.
+   Presentation only: visually connects existing Opportunity Radar and scanner data/actions. */
+
+.core-radar,
+.scanner-surface {
+  --discovery-line: rgba(255, 255, 255, 0.055);
+  --discovery-orange: rgba(255, 132, 36, 0.78);
+}
+
+.core-radar {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--discovery-line);
+}
+
+.core-radar::after {
+  content: "DISCOVER  ·  RANK  ·  INSPECT";
+  display: block;
+  width: max-content;
+  margin: 12px 0 -25px auto;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 122, 26, 0.1);
+  border-radius: 999px;
+  background: #07090c;
+  color: #6f7880;
+  font: 700 8px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .1em;
+}
+
+.scanner-surface {
+  margin-top: 18px;
+  padding-top: 18px;
+}
+
+.scanner-surface::before {
+  margin-top: -19px;
+}
+
+.core-radar-card li,
+.scanner-candidate-card {
+  font-variant-numeric: tabular-nums;
+}
+
+.core-radar-card li.is-selected {
+  background: linear-gradient(90deg, rgba(255, 122, 26, .095), rgba(255, 122, 26, .012));
+  box-shadow: inset 2px 0 var(--discovery-orange);
+}
+
+.core-radar-card li.is-selected .core-text-button {
+  color: #ff9a50;
+}
+
+.core-radar-selection {
+  border-color: rgba(255, 132, 36, .26) !important;
+  background: rgba(255, 122, 26, .085) !important;
+  color: #d6aa89 !important;
+}
+
+.core-radar-selection::before {
+  background: #ff963f !important;
+  box-shadow: 0 0 10px rgba(255, 122, 26, .5) !important;
+}
+
+.core-radar-card li .core-text-button,
+.scanner-candidate-actions .core-text-button {
+  text-underline-offset: 3px;
+}
+
+.core-radar-card li:hover .core-text-button,
+.scanner-candidate-actions .core-text-button:hover {
+  text-decoration-color: rgba(255, 145, 66, .5);
+}
+
+@media (max-width: 760px) {
+  .core-radar::after {
+    margin-right: auto;
+  }
+
+  .scanner-surface {
+    margin-top: 20px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .core-radar { border-bottom-color: rgba(255,255,255,.25); }
+  .core-radar-card li.is-selected { box-shadow: inset 3px 0 #ff9a50; }
+}
