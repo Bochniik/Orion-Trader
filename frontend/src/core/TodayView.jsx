@@ -21,7 +21,6 @@ import OpportunityRadar from "./OpportunityRadar";
 import ScannerCandidateCard from "./ScannerCandidateCard";
 import useCoreJob from "./useCoreJob";
 
-import LearningAnalyticsPanel from "../components/LearningAnalyticsPanel";
 import MarketExplorerPanel from "../components/MarketExplorerPanel";
 import { MarketSessionBadge, PremarketResearchStrip } from "./SessionAwareOrionMetrics";
 import StockLogo from "../components/StockLogo";
@@ -970,9 +969,6 @@ export default function TodayView(props) {
         </aside>
       </div>
 
-      <section className="dashboard-learning">
-        <LearningAnalyticsPanel />
-      </section>
     </section>
   );
 }
