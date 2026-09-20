@@ -1,0 +1,146 @@
+/* My Stocks: saved plans + decision quality as one portfolio-intelligence language. */
+.core-view > .core-monitoring[aria-label="Saved decision plans"],
+.core-view > .core-monitoring[aria-label="Decision quality"] {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 143, 31, 0.14);
+  background:
+    linear-gradient(135deg, rgba(255, 143, 31, 0.035), transparent 34%),
+    linear-gradient(180deg, rgba(20, 22, 25, 0.96), rgba(10, 11, 13, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 14px 38px rgba(0,0,0,.18);
+}
+
+.core-view > .core-monitoring[aria-label="Saved decision plans"]::before,
+.core-view > .core-monitoring[aria-label="Decision quality"]::before {
+  content: "PORTFOLIO INTELLIGENCE";
+  display: block;
+  margin-bottom: 12px;
+  color: rgba(255, 159, 54, .72);
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .14em;
+}
+
+.core-view > .core-monitoring[aria-label="Saved decision plans"] h2,
+.core-view > .core-monitoring[aria-label="Decision quality"] > details > summary {
+  color: rgba(248, 249, 251, .96);
+  letter-spacing: -.015em;
+}
+
+.core-plan-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.core-plan-list > li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 11px 12px 11px 15px;
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 10px;
+  background: rgba(5, 6, 8, .48);
+}
+
+.core-plan-list > li::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(255, 145, 31, .72);
+  box-shadow: 0 0 12px rgba(255, 132, 24, .28);
+}
+
+.core-plan-list > li > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.core-plan-list > li > div:first-child span,
+.core-plan-list > li small,
+.core-decision-history small {
+  color: rgba(190, 195, 202, .68);
+  font-size: 11px;
+}
+
+.core-plan-list > li p { margin: 0; }
+
+.core-plan-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.core-plan-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(205, 209, 215, .76);
+  font-size: 12px;
+}
+
+.core-view > .core-monitoring[aria-label="Decision quality"] > details > summary {
+  cursor: pointer;
+  list-style-position: inside;
+  font-weight: 650;
+}
+
+.core-quality-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  margin: 12px 0;
+}
+
+.core-quality-grid > span {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.055);
+  border-radius: 9px;
+  background: rgba(5,6,8,.52);
+}
+
+.core-quality-grid strong {
+  display: block;
+  color: rgba(250,250,251,.96);
+  font: 650 15px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.core-quality-grid small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(181,187,195,.64);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.core-decision-history {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.055);
+}
+
+@media (max-width: 900px) {
+  .core-quality-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .core-quality-grid > span:last-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+  .core-quality-grid { grid-template-columns: 1fr 1fr; }
+  .core-plan-controls { align-items: stretch; flex-direction: column; }
+}
+
+@media (prefers-contrast: more) {
+  .core-view > .core-monitoring[aria-label="Saved decision plans"],
+  .core-view > .core-monitoring[aria-label="Decision quality"],
+  .core-plan-list > li,
+  .core-quality-grid > span { border-color: rgba(255, 167, 76, .42); }
+}
