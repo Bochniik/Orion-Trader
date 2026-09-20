@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { Activity, ChevronRight, Gauge, Settings2, X } from "lucide-react";
-import { getEngineBay } from "../api/api";
+import { getEngineBay, getTickerDecisionPipeline } from "../api/api";
 import "./engineBay.css";
 
 function statusClass(status) {
   return String(status || "unavailable").toLowerCase();
 }
 
-export default function EngineBay({ open, onClose }) {
+export default function EngineBay({ open, onClose, selectedTicker }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
+  const [pipeline, setPipeline] = useState(null);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -21,6 +22,13 @@ export default function EngineBay({ open, onClose }) {
       .catch((err) => { if (active) setError(err?.message || "Engine Bay unavailable."); });
     return () => { active = false; };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !selectedTicker) { setPipeline(null); return undefined; }
+    let active = true;
+    getTickerDecisionPipeline(selectedTicker).then((value) => { if (active) setPipeline(value); }).catch(() => { if (active) setPipeline(null); });
+    return () => { active = false; };
+  }, [open, selectedTicker]);
 
   if (!open) return null;
   const engines = data?.engines || [];
@@ -41,6 +49,12 @@ export default function EngineBay({ open, onClose }) {
         </div>}
 
         {error && <div className="core-error" role="alert">{error}</div>}
+
+        {pipeline && <section className="engine-pipeline">
+          <div className="engine-pipeline-heading"><span>Current decision pipeline</span><strong>{pipeline.ticker}</strong></div>
+          {pipeline.layers.map((layer) => <div className="engine-pipeline-row" key={layer.id}><span>{layer.name}</span><strong className={statusClass(layer.status)}>{layer.status}</strong></div>)}
+          <small>{pipeline.semantics}</small>
+        </section>}
 
         <div className="engine-list">
           {engines.map((engine) => (
