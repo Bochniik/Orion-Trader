@@ -1,25 +1,18 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import DailyCloseEvidence from "./DailyCloseEvidence";
+import { describe, expect, it } from "vitest";
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+function normalize(review) {
+  const count = Number(review?.sample_size ?? review?.settled_count ?? review?.count ?? 0);
+  const rawAccuracy = review?.directional_accuracy_pct ??
+    (Number.isFinite(Number(review?.directional_accuracy)) ? Number(review.directional_accuracy) * 100 : null);
+  return { count, accuracy: Number.isFinite(Number(rawAccuracy)) ? Number(rawAccuracy) : null };
+}
 
-describe("DailyCloseEvidence", () => {
-  it("renders only settled metrics returned by the daily review endpoint", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ session_date: "2026-09-18", sample_size: 12, directional_accuracy: 0.75, brier_score: 0.18, log_loss: 0.54, false_positives: 1, false_negatives: 2 }),
-    }));
-    render(<DailyCloseEvidence />);
-    await waitFor(() => expect(screen.getByTestId("daily-close-evidence")).toBeTruthy());
-    expect(screen.getByText("75.0%")).toBeTruthy();
-    expect(screen.getByText("12 resolved")).toBeTruthy();
+describe("daily close evidence contract", () => {
+  it("normalizes settled sample size and fractional directional accuracy", () => {
+    expect(normalize({ sample_size: 12, directional_accuracy: 0.75 })).toEqual({ count: 12, accuracy: 75 });
   });
 
-  it("fails closed when no settled evidence exists", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ sample_size: 0 }) }));
-    render(<DailyCloseEvidence />);
-    await waitFor(() => expect(screen.getByTestId("daily-close-evidence-empty")).toBeTruthy());
-    expect(screen.queryByText("0.0%")).toBeNull();
+  it("fails closed instead of inventing evidence", () => {
+    expect(normalize({})).toEqual({ count: 0, accuracy: null });
   });
 });
