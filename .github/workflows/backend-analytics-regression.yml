@@ -1,0 +1,54 @@
+name: Backend analytics regression
+
+on:
+  pull_request:
+    paths:
+      - "backend/evals/**"
+      - "backend/tests/**"
+      - ".github/analytics-regression-tests.txt"
+      - ".github/workflows/backend-analytics-regression.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/evals/**"
+      - "backend/tests/**"
+      - ".github/analytics-regression-tests.txt"
+      - ".github/workflows/backend-analytics-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  analytics-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused test dependency
+        run: python -m pip install pytest
+      - name: Validate explicit regression manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tests < <(grep -Ev '^[[:space:]]*(#|$)' .github/analytics-regression-tests.txt)
+          if [ "${#tests[@]}" -eq 0 ]; then
+            echo "Analytics regression manifest is empty" >&2
+            exit 1
+          fi
+          for test_path in "${tests[@]}"; do
+            if [ ! -f "$test_path" ]; then
+              echo "Manifest entry does not exist: $test_path" >&2
+              exit 1
+            fi
+          done
+          printf '%s\n' "${tests[@]}" > /tmp/orion-analytics-tests.txt
+      - name: Compile analytics evaluator
+        run: python -m py_compile backend/evals/evaluate_directional_model.py
+      - name: Run deterministic analytics regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tests < /tmp/orion-analytics-tests.txt
+          python -m pytest "${tests[@]}" -q

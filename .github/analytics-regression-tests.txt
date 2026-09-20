@@ -1,0 +1,4 @@
+# Explicit dependency-light analytics regression suite.
+# Keep one repository-relative pytest path per line.
+# Any analytics PR that adds a new dependency-light regression test should add it here.
+backend/tests/test_directional_model_evaluation.py
