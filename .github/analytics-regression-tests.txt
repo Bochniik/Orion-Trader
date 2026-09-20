@@ -3,3 +3,4 @@
 # Any analytics PR that adds a new dependency-light regression test should add it here.
 backend/tests/test_directional_model_evaluation.py
 backend/tests/test_daily_close_review.py
+backend/tests/test_daily_close_review_scope.py
