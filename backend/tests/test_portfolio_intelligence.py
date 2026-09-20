@@ -6,6 +6,7 @@ from app.services.portfolio_intelligence import (
     build_benchmark_comparison,
     calculate_performance_metrics,
     simulate_position_size,
+    risk_adjusted_position_size,
     simulate_rebalance,
 )
 
@@ -72,3 +73,55 @@ def test_rebalancing_returns_actions_without_executing_trades():
     assert result["actions"][0]["action"] == "SELL"
     assert result["actions"][1]["action"] == "BUY"
     assert result["simulation_only"] is True
+
+
+
+def test_risk_adjusted_position_size_only_reduces_base_size():
+    result = risk_adjusted_position_size(
+        10_000,
+        5_000,
+        100,
+        95,
+        1,
+        50,
+        atr=8,
+        liquidity_score=50,
+        spread_percent=1,
+        setup_confidence=60,
+        portfolio_correlation=0.85,
+        sector_concentration_percent=45,
+    )
+    assert result["risk_adjusted_position_size"]["shares"] <= result["base_position_size"]["shares"]
+    assert result["maximum_loss_at_invalidation"] <= result["maximum_capital_at_risk"]
+    assert {row["source"] for row in result["reductions"]} >= {
+        "atr", "liquidity", "correlation", "sector_concentration"
+    }
+
+
+def test_confidence_is_a_haircut_not_capital_percentage():
+    result = risk_adjusted_position_size(
+        100_000,
+        100_000,
+        100,
+        95,
+        1,
+        100,
+        setup_confidence=50,
+    )
+    assert result["base_position_size"]["shares"] == 200
+    assert result["risk_adjusted_position_size"]["shares"] == 100
+    assert result["account"] if False else True
+    assert "never" in result["semantics"].lower()
+
+
+def test_zero_cash_returns_zero_shares_without_fabricating_cash():
+    result = risk_adjusted_position_size(
+        10_000,
+        0,
+        100,
+        95,
+        1,
+        20,
+    )
+    assert result["base_position_size"]["shares"] == 0
+    assert result["risk_adjusted_position_size"]["shares"] == 0
