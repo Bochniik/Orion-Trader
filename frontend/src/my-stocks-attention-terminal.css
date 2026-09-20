@@ -1,0 +1,159 @@
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] {
+  overflow: hidden;
+  padding: 34px 16px 15px;
+  border-color: rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(255, 139, 40, 0.055), transparent 19rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.004)),
+    rgba(7, 9, 12, 0.9);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.13);
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"]::after {
+  content: "ALERT TELEMETRY";
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  color: rgba(255, 154, 66, 0.58);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"]::before {
+  top: 33px;
+  height: 30px;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] h2 {
+  margin: 0 0 11px;
+  color: #eef1f3;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] ul {
+  margin: 0 0 10px;
+  border-top-color: rgba(255, 139, 40, 0.09);
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li {
+  position: relative;
+  min-height: 52px;
+  padding: 9px 8px 9px 12px;
+  border-bottom-color: rgba(255, 255, 255, 0.055);
+  background: linear-gradient(90deg, rgba(255, 139, 40, 0.035), transparent 48%);
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 139, 40, 0.72);
+  box-shadow: 0 0 9px rgba(255, 139, 40, 0.2);
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li:hover {
+  border-bottom-color: rgba(255, 139, 40, 0.12);
+  background: linear-gradient(90deg, rgba(255, 139, 40, 0.07), transparent 62%);
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li .core-text-button {
+  color: #f3f5f6;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li > span {
+  color: rgba(224, 229, 234, 0.7);
+  font-size: 0.72rem;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li small {
+  color: rgba(194, 202, 210, 0.4);
+  font-size: 0.58rem;
+  letter-spacing: 0.025em;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] > .core-text-button {
+  min-height: 30px;
+  margin-top: 2px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 139, 40, 0.13);
+  border-radius: 7px;
+  background: rgba(255, 139, 40, 0.025);
+  color: #d9a275;
+  font-size: 0.67rem;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] > .core-text-button:hover:not(:disabled),
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] > .core-text-button:focus-visible {
+  border-color: rgba(255, 139, 40, 0.3);
+  background: rgba(255, 139, 40, 0.065);
+  color: #ffad66;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] > .core-muted {
+  display: inline;
+  margin: 0 0 0 10px;
+  color: rgba(190, 198, 206, 0.34);
+  font-size: 0.61rem;
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] .core-panel-state {
+  margin: 0 0 10px;
+  border-color: rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] .core-panel-state.is-clear {
+  border-color: rgba(255, 139, 40, 0.075);
+  background: linear-gradient(90deg, rgba(255, 139, 40, 0.025), rgba(255, 255, 255, 0.008));
+}
+
+@media (max-width: 760px) {
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] {
+    padding: 33px 13px 14px;
+  }
+
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"]::after {
+    left: 13px;
+  }
+
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li {
+    padding-left: 11px;
+  }
+
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] > .core-muted {
+    display: block;
+    margin: 8px 0 0;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"],
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li {
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"]::after,
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] > .core-text-button {
+    color: #ffad66;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-view:has(> .core-stocks-status) > .core-monitoring[aria-label="Monitoring status"] li {
+    transition: none;
+  }
+}
