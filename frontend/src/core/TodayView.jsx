@@ -952,7 +952,7 @@ export default function TodayView(props) {
                     onClick={() => runQuickAnalysis(savedTicker)}
                   >
                     <span className="dashboard-watch-symbol">
-                      {savedTicker.slice(0, 1)}
+                      <StockLogo ticker={savedTicker} size={34} />
                     </span>
                     <strong>{savedTicker}</strong>
                     <span>Analyze</span>
