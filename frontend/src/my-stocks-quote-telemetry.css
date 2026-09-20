@@ -19,7 +19,7 @@
 }
 
 .core-view .watchlist-row {
-  min-height: 43px;
+  min-height: 47px;
   border-color: rgba(255, 255, 255, 0.045);
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
@@ -53,6 +53,35 @@
 .core-view .watch-symbol {
   font-weight: 820;
   letter-spacing: 0.045em;
+}
+
+.core-view .watch-symbol-identity {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.core-view .watch-symbol-primary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.core-view .watch-company-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: rgba(205, 211, 220, 0.46);
+  font-size: 0.62rem;
+  font-weight: 590;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .core-view .watch-price {
@@ -89,8 +118,20 @@
 
 @media (min-width: 1180px) {
   .core-view .watchlist-row {
-    grid-template-columns: minmax(150px, 1.15fr) minmax(100px, 0.8fr) minmax(100px, 0.78fr) minmax(90px, 0.72fr) auto;
-    padding-block: 6px;
+    grid-template-columns: minmax(190px, 1.35fr) minmax(100px, 0.8fr) minmax(100px, 0.78fr) minmax(90px, 0.72fr) auto;
+    padding-block: 5px;
+  }
+}
+
+@media (max-width: 760px) {
+  .core-view .watch-company-name {
+    max-width: 108px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .core-view .watch-company-name {
+    color: rgba(245, 247, 250, 0.72);
   }
 }
 
