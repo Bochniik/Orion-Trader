@@ -12,6 +12,32 @@ _NEW_YORK = ZoneInfo("America/New_York")
 _EPSILON = 1e-15
 
 
+def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
+    """Read settled forecast evidence owned by one user only.
+
+    The ownership predicate is deliberately enforced in SQL so callers cannot
+    accidentally score another user's rows and filter them afterwards.
+    """
+    rows = db.execute(
+        """
+        SELECT
+            f.probability_up,
+            f.forecast_horizon,
+            o.actual_up,
+            o.resolved_at
+        FROM probability_outcomes o
+        JOIN probability_forecasts f
+            ON f.id = o.forecast_id
+        JOIN opportunity_predictions p
+            ON p.id = f.prediction_id
+        WHERE p.user_id = ?
+        ORDER BY o.resolved_at ASC, o.id ASC
+        """,
+        (str(user_id),),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def _finite_probability(value: Any) -> Optional[float]:
     try:
         probability = float(value)
