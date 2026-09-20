@@ -29,6 +29,12 @@ The canonical candidate material is hashed into an immutable SHA-256 and determi
 
 `assert_forward_evidence_eligible` rejects empty evidence, malformed timestamps, observations at or before the candidate's forward cutoff, and horizons outside the preregistered set. This makes the development/approval split machine-checkable rather than a documentation convention.
 
+## Stage 3 — registered tournament gate
+
+`backend/evals/registered_challenger_tournament.py` is the mandatory adapter for evidence-informed adaptive candidates entering the paired intraday tournament. It validates the immutable registration before scoring, requires the tournament horizon set to exactly match the preregistered horizons, flattens the challenger's timestamped forward evidence, and fails closed if any observation is malformed, at or before the forward cutoff, outside the registered horizons, or absent.
+
+Only after those checks pass does it call the existing paired proper-score/session-block-bootstrap tournament. The output carries the candidate ID and immutable-material SHA-256 alongside the eligibility audit, making the research conclusion traceable to the preregistered candidate lineage. The adapter does not alter incumbent or challenger probabilities and does not promote a candidate automatically.
+
 ## Anti-leakage boundary
 
 Any challenger whose design is influenced by diagnostic evidence must receive a new immutable candidate identity and a later preregistered forward cohort. The observations used to discover a weakness cannot approve the challenger created from that weakness. Paired incumbent/challenger scoring, proper scores, calibration diagnostics and session-block bootstrap remain separate downstream gates.
@@ -39,4 +45,4 @@ The adaptive research loop does not retrain V3.1 or V5 in place, change runtime 
 
 ## Next stage
 
-Wire the registry into challenger-generation/evaluation workflows so every new adaptive candidate must present a valid registration before shadow collection and tournament scoring. Then add a research-only hypothesis-to-candidate builder that can propose bounded model/feature variants from settled failure patterns without touching the incumbent runtime.
+Add a bounded research-only hypothesis-to-candidate builder that can translate sufficiently covered settled failure patterns into explicit candidate specs without touching the incumbent runtime. Every generated spec must still be registered before its forward cutoff and must collect a new forward cohort before tournament evaluation.
