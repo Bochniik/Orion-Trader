@@ -81,9 +81,11 @@ def build_benchmark_comparison(history, benchmark, benchmark_history):
 
 
 def simulate_position_size(total_value, cash, entry_price, stop_price, risk_percent, max_allocation_percent):
-    values = [total_value, cash, entry_price, stop_price, risk_percent, max_allocation_percent]
-    if any(float(value) <= 0 for value in values):
-        raise ValueError("Sizing inputs must be greater than 0")
+    positive_values = [total_value, entry_price, stop_price, risk_percent, max_allocation_percent]
+    if any(float(value) <= 0 for value in positive_values):
+        raise ValueError("Sizing inputs other than cash must be greater than 0")
+    if float(cash) < 0:
+        raise ValueError("Cash cannot be negative")
     if float(stop_price) >= float(entry_price):
         raise ValueError("Stop price must be below entry price for a long position")
     risk_per_share = float(entry_price) - float(stop_price)
