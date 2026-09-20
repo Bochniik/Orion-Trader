@@ -738,3 +738,155 @@
   .orion-247-workspace > header { flex-direction: column; }
   .orion-247-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Compact Orion Analysis card — aligns the dashboard snapshot with the reference terminal card. */
+.dashboard-orion-card {
+  padding: 12px;
+  border-color: rgba(255, 122, 26, 0.2);
+}
+
+.dashboard-orion-card .dashboard-card-heading {
+  padding-bottom: 8px;
+}
+
+.dashboard-orion-card .dashboard-card-heading h2 {
+  font-size: 12px;
+}
+
+.dashboard-orion-card .dashboard-heading-icon {
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+}
+
+.dashboard-orion-card .orion-snapshot-stock {
+  margin-top: 8px;
+  padding: 6px 7px;
+  gap: 8px;
+  border-radius: 8px;
+}
+
+.dashboard-orion-card .orion-snapshot-logo .stock-logo {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy {
+  gap: 1px;
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > span {
+  font-size: 6px;
+  letter-spacing: .9px;
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > strong {
+  font-size: 12px;
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > small {
+  font-size: 8px;
+}
+
+.dashboard-orion-card .orion-score-area {
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+  padding: 7px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.dashboard-orion-card .orion-score-ring {
+  width: 76px;
+  height: 76px;
+  min-width: 76px;
+}
+
+.dashboard-orion-card .orion-score-ring > div strong {
+  font-size: 22px;
+}
+
+.dashboard-orion-card .orion-score-ring > div span {
+  font-size: 7px;
+}
+
+.dashboard-orion-card .orion-score-metrics {
+  gap: 6px;
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child {
+  padding: 2px 0 6px;
+  border: 0;
+  border-bottom: 1px solid rgba(255,255,255,.055);
+  border-radius: 0;
+  background: transparent;
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child > span,
+.dashboard-orion-card .orion-probability-grid > div > span {
+  font-size: 7px;
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child > strong {
+  font-size: 12px;
+}
+
+.dashboard-orion-card .orion-probability-grid {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.dashboard-orion-card .orion-probability-grid > div {
+  min-height: 34px;
+  padding: 4px 6px;
+  background: transparent;
+}
+
+.dashboard-orion-card .orion-probability-grid > div::before {
+  display: none;
+}
+
+.dashboard-orion-card .orion-probability-grid > div > strong {
+  font-size: 13px;
+}
+
+.dashboard-orion-card .orion-risk-row {
+  margin-top: 4px;
+  padding: 7px 2px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.dashboard-orion-card .orion-setup-summary {
+  margin-top: 7px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.dashboard-orion-card .orion-setup-summary small {
+  font-size: 7px;
+}
+
+.dashboard-orion-card .orion-setup-summary p {
+  margin-top: 2px;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.dashboard-orion-card .dashboard-primary-action {
+  min-height: 31px;
+  margin-top: 7px;
+  padding: 6px 9px;
+  font-size: 9px;
+}
+
+@media (max-width: 560px) {
+  .dashboard-orion-card .orion-score-area {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+}
