@@ -506,6 +506,10 @@ export function getLearningAnalytics(options = {}) {
   return request("/scanner/learning/analytics", options);
 }
 
+export function getDailyCloseReview(options = {}) {
+  return request("/scanner/learning/daily-close-review", options);
+}
+
 export function getRecentLearningPredictions(limit = 25, options = {}) {
   return request(
     `/scanner/learning/recent?limit=${encodeURIComponent(Number(limit))}`,
