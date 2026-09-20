@@ -41,16 +41,45 @@
 }
 
 .core-stocks-status {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   margin: 0 0 18px;
+  padding-top: 22px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-top: 1px solid rgba(255, 139, 40, 0.09);
   border-radius: 0 0 16px 16px;
-  background: rgba(7, 9, 12, 0.94);
+  background:
+    linear-gradient(90deg, rgba(255, 139, 40, 0.025), transparent 34%),
+    rgba(7, 9, 12, 0.94);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.16);
+}
+
+.core-stocks-status::before {
+  content: "PORTFOLIO MONITOR";
+  position: absolute;
+  top: 8px;
+  left: 14px;
+  color: rgba(255, 154, 66, 0.64);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.core-stocks-status::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  width: 38px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 139, 40, 0.42));
+  box-shadow: 0 0 8px rgba(255, 139, 40, 0.12);
+  pointer-events: none;
 }
 
 .core-stocks-status > div {
@@ -61,7 +90,9 @@
   grid-template-areas: "label value" "meta value";
   align-items: center;
   gap: 4px 14px;
-  padding: 12px 14px;
+  min-height: 62px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.035);
   border-right: 1px solid rgba(255, 255, 255, 0.055);
   background: linear-gradient(135deg, rgba(255, 139, 40, 0.025), transparent 50%);
   transition: background 150ms ease, border-color 150ms ease;
@@ -176,10 +207,20 @@
 
   .core-stocks-status {
     grid-template-columns: 1fr;
+    padding-top: 21px;
+  }
+
+  .core-stocks-status::before {
+    left: 12px;
+  }
+
+  .core-stocks-status::after {
+    right: 12px;
   }
 
   .core-stocks-status > div,
   .core-stocks-status > div:nth-child(2) {
+    min-height: 58px;
     border-right: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.055);
   }
@@ -194,5 +235,16 @@
   .core-view:has(> .core-stocks-status) > .watchlist-card,
   .core-view:has(> .core-stocks-status) > .core-positions {
     margin-top: 10px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .core-stocks-status,
+  .core-stocks-status > div {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .core-stocks-status::before {
+    color: #ffad66;
   }
 }
