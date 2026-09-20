@@ -1,0 +1,73 @@
+.core-save-form {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(170px, .72fr) minmax(220px, 1.35fr) auto;
+  grid-template-areas:
+    "copy command action"
+    "copy hint hint";
+  align-items: center;
+  gap: 8px 10px;
+  overflow: hidden;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 88% -30%, rgba(255,139,40,.09), transparent 36%),
+    linear-gradient(180deg, rgba(17,18,21,.97), rgba(8,9,11,.97));
+  box-shadow: inset 0 1px rgba(255,255,255,.025), 0 16px 38px rgba(0,0,0,.16);
+}
+
+.core-save-form::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, #ff8b28 25%, #ff8b28 75%, transparent);
+  opacity: .78;
+  box-shadow: 0 0 16px rgba(255,139,40,.34);
+}
+
+.core-save-copy { grid-area: copy; min-width: 0; }
+.core-save-copy label { display:block; color:#f1f3f6; font-size:.78rem; font-weight:800; letter-spacing:.065em; text-transform:uppercase; }
+.core-save-copy small { display:block; margin-top:3px; color:rgba(220,225,232,.46); font-size:.68rem; }
+
+.core-save-command {
+  grid-area: command;
+  display:flex;
+  align-items:center;
+  min-width:0;
+  height:38px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:8px;
+  background:rgba(0,0,0,.3);
+  transition:border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+.core-save-command:focus-within { border-color:rgba(255,139,40,.42); background:rgba(255,139,40,.025); box-shadow:0 0 0 2px rgba(255,139,40,.07), inset 0 0 18px rgba(255,139,40,.025); }
+.core-save-command > span { padding-left:11px; color:#ff9b43; font:800 .92rem/1 ui-monospace,SFMono-Regular,Consolas,monospace; }
+.core-save-command input { width:100%; min-width:0; height:100%; padding:0 10px 0 7px; border:0; outline:0; background:transparent; color:#f4f5f7; font:800 .84rem/1 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.075em; text-transform:uppercase; }
+.core-save-command input::placeholder { color:rgba(224,228,234,.25); }
+
+.core-save-form > .core-button { grid-area:action; min-width:92px; height:38px; justify-content:center; }
+.core-save-hint { grid-area:hint; min-width:0; color:rgba(220,225,232,.43); font-size:.66rem; letter-spacing:.025em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.core-save-form.is-duplicate .core-save-command { border-color:rgba(255,139,40,.22); }
+.core-save-form.is-duplicate .core-save-hint { color:rgba(255,171,96,.74); }
+.core-save-form.is-saving::after { content:""; position:absolute; left:2px; right:0; bottom:0; height:1px; background:linear-gradient(90deg,transparent,#ff8b28,transparent); animation:orion-save-scan 1.05s linear infinite; }
+@keyframes orion-save-scan { from { transform:translateX(-55%); } to { transform:translateX(55%); } }
+
+@media (max-width:760px) {
+  .core-save-form { grid-template-columns:1fr auto; grid-template-areas:"copy copy" "command action" "hint hint"; }
+  .core-save-copy small { margin-top:2px; }
+}
+@media (max-width:480px) {
+  .core-save-form { grid-template-columns:1fr; grid-template-areas:"copy" "command" "action" "hint"; }
+  .core-save-form > .core-button { width:100%; }
+}
+@media (prefers-contrast: more) {
+  .core-save-form, .core-save-command { border-color:rgba(255,255,255,.22); }
+  .core-save-command:focus-within { border-color:#ff9b43; }
+  .core-save-hint, .core-save-copy small { color:rgba(255,255,255,.72); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .core-save-command { transition:none; }
+  .core-save-form.is-saving::after { animation:none; opacity:.8; }
+}
