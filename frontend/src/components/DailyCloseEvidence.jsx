@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../api/api";
+import { normalizeDailyCloseEvidence } from "./dailyCloseEvidenceModel";
 
 function metric(value, digits = 3) {
   const n = Number(value);
@@ -12,45 +13,21 @@ export default function DailyCloseEvidence() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_BASE_URL}/scanner/learning/daily-close-review`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`daily close review ${response.status}`);
-        return response.json();
-      })
+    fetch(`${API_BASE_URL}/scanner/learning/daily-close-review`, { credentials: "include", signal: controller.signal })
+      .then(async (response) => { if (!response.ok) throw new Error(`daily close review ${response.status}`); return response.json(); })
       .then((data) => setReview(data))
-      .catch((error) => {
-        if (error?.name !== "AbortError") setUnavailable(true);
-      });
+      .catch((error) => { if (error?.name !== "AbortError") setUnavailable(true); });
     return () => controller.abort();
   }, []);
 
-  const count = Number(review?.sample_size ?? review?.settled_count ?? review?.count ?? 0);
+  const { count, accuracy } = normalizeDailyCloseEvidence(review);
   if (unavailable || !review || count <= 0) {
-    return (
-      <div className="learning-empty" data-testid="daily-close-evidence-empty">
-        <strong>Latest settled session</strong>
-        <span>No settled daily evidence is available yet.</span>
-      </div>
-    );
+    return <div className="learning-empty" data-testid="daily-close-evidence-empty"><strong>Latest settled session</strong><span>No settled daily evidence is available yet.</span></div>;
   }
-
-  const accuracy = review.directional_accuracy_pct ??
-    (Number.isFinite(Number(review.directional_accuracy))
-      ? Number(review.directional_accuracy) * 100
-      : null);
 
   return (
     <article className="learning-horizon-card" data-testid="daily-close-evidence">
-      <div className="learning-horizon-head">
-        <div>
-          <span className="learning-horizon-kicker">SETTLED EVIDENCE · LATEST NY SESSION</span>
-          <h4>{review.session_date || "Latest settled session"}</h4>
-        </div>
-        <span className="learning-status-pill learning-status-pill--active">{count} resolved</span>
-      </div>
+      <div className="learning-horizon-head"><div><span className="learning-horizon-kicker">SETTLED EVIDENCE · LATEST NY SESSION</span><h4>{review.session_date || "Latest settled session"}</h4></div><span className="learning-status-pill learning-status-pill--active">{count} resolved</span></div>
       <div className="learning-metrics-grid">
         <div className="learning-metric"><span className="learning-metric-label">Directional accuracy</span><strong className="learning-metric-value">{metric(accuracy, 1)}{accuracy != null ? "%" : ""}</strong></div>
         <div className="learning-metric"><span className="learning-metric-label">Brier score</span><strong className="learning-metric-value">{metric(review.brier_score, 4)}</strong></div>
