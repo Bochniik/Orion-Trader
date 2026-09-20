@@ -102,6 +102,91 @@
   color: rgba(255, 181, 113, 0.94);
 }
 
+/* Compact monitoring rows used by the top-level My Stocks positions snapshot. */
+.core-positions > .core-section-label {
+  align-items: end;
+  margin-bottom: 10px;
+}
+
+.core-positions > .core-section-label span {
+  color: rgba(191, 195, 203, 0.48);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.core-positions .core-position-list {
+  display: grid;
+  gap: 5px;
+}
+
+.core-positions .core-position-list > button {
+  position: relative;
+  width: 100%;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 13px 10px 15px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006));
+  color: rgba(224, 228, 233, 0.88);
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.core-positions .core-position-list > button::before {
+  content: "";
+  position: absolute;
+  inset: 9px auto 9px 0;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: rgba(255, 132, 31, 0.72);
+  box-shadow: 0 0 10px rgba(255, 126, 24, 0.22);
+  opacity: 0.58;
+}
+
+.core-positions .core-position-list > button:hover,
+.core-positions .core-position-list > button:focus-visible {
+  border-color: rgba(255, 145, 45, 0.2);
+  background: linear-gradient(90deg, rgba(255, 126, 18, 0.06), rgba(255, 255, 255, 0.012) 44%, transparent);
+}
+
+.core-positions .core-position-list > button:hover {
+  transform: translateX(1px);
+}
+
+.core-positions .core-position-list > button > strong {
+  color: #f1f3f5;
+  font-size: 13px;
+  font-weight: 760;
+  letter-spacing: 0.035em;
+}
+
+.core-positions .core-position-list > button > span:nth-of-type(1) {
+  color: rgba(191, 195, 203, 0.62);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.core-positions .core-position-list > button > span:last-child {
+  justify-self: end;
+  color: rgba(255, 168, 91, 0.84);
+  font-size: 10px;
+  font-weight: 720;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.core-positions .core-position-list > button:hover > span:last-child,
+.core-positions .core-position-list > button:focus-visible > span:last-child {
+  color: #ffb16d;
+}
+
 @media (max-width: 820px) {
   .core-account-summary .core-metric,
   .core-positions-panel .core-metric {
@@ -112,14 +197,51 @@
     gap: 9px;
     min-height: 46px;
   }
+
+  .core-positions .core-position-list > button {
+    grid-template-columns: minmax(84px, 0.7fr) minmax(90px, 1fr) auto;
+    gap: 10px;
+    min-height: 48px;
+    padding-inline: 13px 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .core-positions .core-position-list > button {
+    grid-template-columns: 1fr auto;
+  }
+
+  .core-positions .core-position-list > button > span:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: -6px;
+  }
+
+  .core-positions .core-position-list > button > span:last-child {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .core-positions .core-position-list > button {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .core-positions .core-position-list > button::before {
+    background: #ff9a45;
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .core-position-row {
+  .core-position-row,
+  .core-positions .core-position-list > button {
     transition: none;
   }
 
-  .core-position-row:hover {
+  .core-position-row:hover,
+  .core-positions .core-position-list > button:hover {
     transform: none;
   }
 }
