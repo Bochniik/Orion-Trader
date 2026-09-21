@@ -1,0 +1,79 @@
+/* Compact market-terminal pass for the existing watchlist. Presentation only. */
+.watchlist-card .watchlist-header {
+  padding-bottom: 9px;
+}
+
+.watchlist-card .watchlist-table {
+  margin-top: 2px;
+}
+
+.watchlist-card .watchlist-row {
+  min-height: 39px;
+  gap: 7px;
+  padding-inline: 7px;
+}
+
+.watchlist-card .watchlist-row-head {
+  min-height: 25px;
+  color: rgba(188, 195, 206, .46);
+  font-size: 8px;
+  letter-spacing: .115em;
+}
+
+.watchlist-card .watch-stock-mark {
+  width: 25px;
+  height: 25px;
+  flex-basis: 25px;
+  border-radius: 7px;
+}
+
+.watchlist-card .watch-symbol {
+  gap: 6px;
+  font-size: 11px !important;
+}
+
+.watchlist-card .watch-price {
+  font-size: 11px !important;
+  font-weight: 750 !important;
+}
+
+.watchlist-card .watch-change {
+  min-width: 66px;
+  font-size: 10px !important;
+}
+
+.watchlist-card .watch-volume {
+  font-size: 9px !important;
+}
+
+.watchlist-card .watch-quote-state {
+  min-height: 15px;
+  padding: 1px 4px;
+  font-size: 7px;
+  letter-spacing: .08em;
+}
+
+.watchlist-card .watchlist-row:not(.watchlist-row-head):hover {
+  background: linear-gradient(90deg, rgba(255, 137, 38, .07), rgba(255, 255, 255, .014) 52%, transparent);
+}
+
+.watchlist-card .watchlist-row.is-selected {
+  background: linear-gradient(90deg, rgba(255, 126, 26, .12), rgba(255, 126, 26, .028) 50%, transparent 82%);
+}
+
+.watchlist-card .remove-btn {
+  padding: 4px 6px !important;
+  font-size: 8px !important;
+}
+
+@media (max-width: 760px) {
+  .watchlist-card .watchlist-row {
+    min-height: 42px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .watchlist-card .watchlist-row-head {
+    color: rgba(218, 222, 229, .72);
+  }
+}
