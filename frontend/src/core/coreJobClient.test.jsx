@@ -16,7 +16,12 @@ function fake(overrides = {}) {
 describe("one-action research job client", () => {
   it("waits for final results and reports real stage labels", async () => {
     const api = fake(), onProgress = vi.fn();
-    expect(await runCoreJob({ kind: "analyze", ticker: "AAPL" }, { onProgress }, api)).toEqual({ decision: "WAIT" });
+    const result = await runCoreJob({ kind: "analyze", ticker: "AAPL" }, { onProgress }, api);
+    expect(result).toMatchObject({ decision: "WAIT", direction: "WAIT", bias: "WAIT", model_direction: null, strategy_bias: null });
+    expect(result.reasons).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result).not.toHaveProperty("confidence");
+    expect(result).not.toHaveProperty("directional_confidence");
     expect(onProgress).toHaveBeenCalledWith("Validating");
     expect(api.start).toHaveBeenCalledOnce();
     expect(api.cancel).not.toHaveBeenCalled();
