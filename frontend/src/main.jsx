@@ -14,6 +14,7 @@ import "./news-refresh-feedback.css";
 import "./news-catalyst-hierarchy.css";
 import "./chart-polish.css";
 import "./chart-commandbar-polish.css";
+import "./chart-terminal-density.css";
 import "./chart-interaction-accessibility.css";
 import "./chart-period-summary-polish.css";
 import "./chart-inspector-focus-polish.css";
