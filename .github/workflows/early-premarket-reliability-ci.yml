@@ -1,0 +1,23 @@
+name: Early premarket reliability CI
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/summarize_early_premarket_reliability.py'
+      - 'scripts/test_summarize_early_premarket_reliability.py'
+      - '.github/workflows/early-premarket-reliability-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  reliability-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile
+        run: python -m py_compile scripts/summarize_early_premarket_reliability.py scripts/test_summarize_early_premarket_reliability.py
+      - name: Run focused tests
+        working-directory: scripts
+        run: python -m unittest -v test_summarize_early_premarket_reliability.py
