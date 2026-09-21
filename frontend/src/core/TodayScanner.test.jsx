@@ -30,10 +30,11 @@ describe("Today scanner surface", () => {
     expect(html).toContain("Universe scanned: Unavailable");
   });
 
-  it("shows an intentional first-scan loading state", () => {
+  it("shows an intentional first-scan loading state without inventing progress", () => {
     const html = renderToStaticMarkup(<ScannerStateView />);
     expect(html).toContain("Orion is scanning the market");
-    expect(html).toContain("first market page");
+    expect(html).toContain("Results will appear here without a reload.");
+    expect(html).not.toContain("Universe scanned:");
   });
 
   it("renders scanner candidates with decision fields and no probability label for score", () => {
@@ -73,7 +74,8 @@ describe("Today scanner surface", () => {
     expect(unavailable).toContain("MARKET DATA UNAVAILABLE");
     expect(unavailable).toContain("Set up research data");
     const empty = renderToStaticMarkup(<ScannerStateView state={{ status: "no_high_quality_candidates", freshness: { state: "current" }, top_candidates: [], universe: {} }} />);
-    expect(empty).toContain("No high-quality opportunities detected in the currently scanned universe.");
+    expect(empty).toContain("No high-quality opportunities detected.");
+    expect(empty).toContain("Orion will continue scanning automatically.");
   });
 
   it("does not invent progress when the universe total is unknown and polls cheaply", () => {
