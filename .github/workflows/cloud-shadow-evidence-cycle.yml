@@ -134,6 +134,29 @@ jobs:
           PRIOR=$(find .shadow-inputs/prior-ledger -type f -name 'ledger.json' | head -n 1)
           cp "$PRIOR" backend/data/cloud_shadow/evidence/ledger.json
 
+      - name: Feed settled regular-hours evidence to adaptive research loop
+        shell: bash
+        run: |
+          set -euo pipefail
+          LEDGER="backend/data/cloud_shadow/evidence/ledger.json"
+          if [ ! -f "$LEDGER" ]; then
+            echo "No cumulative evidence ledger is available yet; adaptive diagnostics skipped."
+            exit 0
+          fi
+          mkdir -p backend/data/cloud_shadow/adaptive
+          python backend/evals/adaptive_research_error_diagnostics.py "$LEDGER" \
+            --engine regular_hours_v3_1 \
+            --output backend/data/cloud_shadow/adaptive/regular-hours-diagnostics-${{ github.run_id }}.json
+
+      - name: Upload adaptive self-improvement diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regular-hours-adaptive-diagnostics-${{ github.run_id }}
+          path: backend/data/cloud_shadow/adaptive/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Upload settlement diagnostics
         if: always()
         uses: actions/upload-artifact@v4
