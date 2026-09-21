@@ -61,6 +61,22 @@ class EarlyPremarketAcquisitionHealthTests(unittest.TestCase):
         self.assertEqual(report["slots"][0]["status"], "pending")
         self.assertEqual(report["slots"][1]["status"], "pending")
 
+    def test_weekend_is_not_scored_as_acquisition_failure(self):
+        with self.assertRaisesRegex(ValueError, "not a regular NYSE trading day"):
+            build_health_report(
+                session_date=date(2026, 9, 19),
+                runs=[],
+                observed_at_utc=datetime(2026, 9, 19, 12, 0, tzinfo=timezone.utc),
+            )
+
+    def test_nyse_holiday_is_not_scored_as_acquisition_failure(self):
+        with self.assertRaisesRegex(ValueError, "not a regular NYSE trading day"):
+            build_health_report(
+                session_date=date(2026, 12, 25),
+                runs=[],
+                observed_at_utc=datetime(2026, 12, 25, 12, 0, tzinfo=timezone.utc),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
