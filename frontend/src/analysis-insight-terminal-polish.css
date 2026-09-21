@@ -1,0 +1,86 @@
+/* Analysis insight terminal polish
+   Presentation only: strengthen hierarchy of existing Orion analysis payloads. */
+
+.analyze-view .analysis-insight-grid {
+  grid-auto-rows: 1fr;
+}
+
+.analyze-view .analysis-insight {
+  border-color: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+.analyze-view .analysis-insight:hover {
+  border-color: rgba(255, 138, 54, 0.14);
+}
+
+.analyze-view .analysis-insight h3 {
+  min-height: 28px;
+  margin: -2px 0 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  color: #f0f2f4;
+  font-size: 12px;
+  font-weight: 730;
+  letter-spacing: -0.012em;
+}
+
+.analyze-view .analysis-insight h3 svg {
+  flex: 0 0 auto;
+}
+
+.analyze-view .analysis-insight dl > div {
+  min-height: 34px;
+  padding-block: 6px;
+}
+
+.analyze-view .analysis-insight dt {
+  color: #7d8792;
+  font-size: 9px;
+  letter-spacing: 0.075em;
+}
+
+.analyze-view .analysis-insight dd {
+  color: #e8ebee;
+  font-size: 11px;
+  font-weight: 690;
+}
+
+.analyze-view .analysis-reasons li,
+.analyze-view .analysis-risks li {
+  min-height: 38px;
+  padding-block: 8px;
+  color: #cbd1d7;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.analyze-view .analysis-reasons li > span {
+  flex-basis: 21px;
+  width: 21px;
+  height: 21px;
+  border-radius: 6px;
+  font-size: 9px;
+}
+
+.analyze-view .analysis-insight > p {
+  color: #818b95;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .analyze-view .analysis-insight-grid {
+    grid-auto-rows: auto;
+  }
+
+  .analyze-view .analysis-insight h3 {
+    min-height: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view .analysis-insight {
+    transition: none;
+  }
+}
