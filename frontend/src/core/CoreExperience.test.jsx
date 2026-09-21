@@ -22,7 +22,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("simplified core experience", () => {
   it("renders the four primary workflows and no lab/order controls", () => {
-    vi.stubGlobal("window", { location: { hash: "" } });
+    vi.stubGlobal("window", {
+      location: { hash: "" },
+      history: { replaceState: vi.fn(), pushState: vi.fn() },
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      setTimeout, clearTimeout, scrollTo: vi.fn(),
+    });
     const html = renderToStaticMarkup(<CoreApp user={{ id: "user", email: "user@example.com" }} />);
     expect(html).toContain("Primary navigation");
     expect(html).toContain('aria-current="page"');
