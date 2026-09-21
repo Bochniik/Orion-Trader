@@ -5,6 +5,7 @@ describe("workspace navigation", () => {
   it("maps valid deep links to their workspace section", () => {
     expect(viewFromHash("#/analyze")).toBe("analyze");
     expect(viewFromHash("#my-stocks")).toBe("my-stocks");
+    expect(viewFromHash("#/intelligence")).toBe("intelligence");
   });
 
   it("falls back safely for unknown or empty links", () => {
@@ -12,11 +13,12 @@ describe("workspace navigation", () => {
     expect(viewFromHash()).toBe("today");
   });
 
-  it("exposes exactly three primary workflows", () => {
+  it("exposes the four primary workflows", () => {
     const ids = WORKSPACE_VIEWS.map((view) => view.id);
-    expect(ids).toEqual(["today", "analyze", "my-stocks"]);
+    expect(ids).toEqual(["today", "analyze", "intelligence", "my-stocks"]);
     expect(new Set(ids).size).toBe(ids.length);
     expect(isWorkspaceView("analyze")).toBe(true);
+    expect(isWorkspaceView("intelligence")).toBe(true);
     expect(isWorkspaceView("live-edge")).toBe(false);
     expect(isWorkspaceView("settings")).toBe(false);
   });

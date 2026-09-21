@@ -66,6 +66,16 @@ export function getResearchSetupHistory(options = {}) { return request("/scanner
 export function getResearchSetupAnalytics(options = {}) { return request("/scanner/opportunities/analytics", options); }
 export function explainResearchSetup(id) { return request(`/scanner/opportunities/${encodeURIComponent(id)}/explain`, { method: "POST" }); }
 
+export function getOrionIntelligenceBriefing(options = {}) { return request("/intelligence/briefing", options); }
+export function getOrionTickerContext(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}`, options); }
+export function getTickerPersonality(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/personality`, options); }
+export function getTickerInvestmentMemory(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/memory`, options); }
+export function getTickerRelationships(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/relationships`, options); }
+export function getTickerEarningsPack(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/earnings`, options); }
+export function getTickerDecisionPipeline(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/decision-pipeline`, options); }
+export function simulateIntelligencePositionSize(inputs) { return jsonRequest("/intelligence/position-size", "POST", inputs); }
+export function getEngineBay(options = {}) { return request("/intelligence/engine-bay", options); }
+
 export function getCoreStatus(options = {}) { return request("/core/status", options); }
 export function getCoreSession(options = {}) { return request("/core/session", options); }
 export function startCoreJob(body) { return jsonRequest("/core/jobs", "POST", body); }

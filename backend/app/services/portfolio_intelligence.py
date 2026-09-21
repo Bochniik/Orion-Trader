@@ -81,9 +81,11 @@ def build_benchmark_comparison(history, benchmark, benchmark_history):
 
 
 def simulate_position_size(total_value, cash, entry_price, stop_price, risk_percent, max_allocation_percent):
-    values = [total_value, cash, entry_price, stop_price, risk_percent, max_allocation_percent]
-    if any(float(value) <= 0 for value in values):
-        raise ValueError("Sizing inputs must be greater than 0")
+    positive_values = [total_value, entry_price, stop_price, risk_percent, max_allocation_percent]
+    if any(float(value) <= 0 for value in positive_values):
+        raise ValueError("Sizing inputs other than cash must be greater than 0")
+    if float(cash) < 0:
+        raise ValueError("Cash cannot be negative")
     if float(stop_price) >= float(entry_price):
         raise ValueError("Stop price must be below entry price for a long position")
     risk_per_share = float(entry_price) - float(stop_price)
@@ -141,4 +143,210 @@ def simulate_rebalance(snapshot, targets):
             "delta_value": round(target_cash - current_cash, 2),
         },
         "simulation_only": True,
+    }
+
+
+def risk_adjusted_position_size(
+    total_value,
+    cash,
+    entry_price,
+    stop_price,
+    risk_percent,
+    max_allocation_percent,
+    *,
+    atr=None,
+    liquidity_score=None,
+    spread_percent=None,
+    setup_confidence=None,
+    portfolio_correlation=None,
+    sector_concentration_percent=None,
+):
+    """Conservatively adjust deterministic stop-based sizing.
+
+    Confidence is never converted directly into a capital percentage. Optional
+    evidence can only reduce the base stop/risk-budget position.
+    """
+    base = simulate_position_size(
+        total_value=total_value,
+        cash=cash,
+        entry_price=entry_price,
+        stop_price=stop_price,
+        risk_percent=risk_percent,
+        max_allocation_percent=max_allocation_percent,
+    )
+    entry = float(entry_price)
+    stop_distance = entry - float(stop_price)
+    stop_distance_percent = stop_distance / entry * 100
+    factor = 1.0
+    reductions = []
+    evidence = {}
+
+    def finite_optional(value):
+        if value is None or value == "":
+            return None
+        try:
+            number = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return number if math.isfinite(number) else None
+
+    atr_value = finite_optional(atr)
+    if atr_value is not None and atr_value > 0:
+        evidence["atr"] = atr_value
+        atr_percent = atr_value / entry * 100
+        evidence["atr_percent"] = round(atr_percent, 3)
+        # A stop materially tighter than observed ATR is more noise-sensitive.
+        if stop_distance < atr_value * 0.75:
+            factor *= 0.75
+            reductions.append({
+                "factor": 0.75,
+                "reason": "Stop distance is tighter than 0.75× ATR; size reduced for volatility noise.",
+                "source": "atr",
+            })
+        elif stop_distance < atr_value:
+            factor *= 0.9
+            reductions.append({
+                "factor": 0.9,
+                "reason": "Stop distance is inside 1× ATR; size modestly reduced for volatility.",
+                "source": "atr",
+            })
+    else:
+        evidence["atr"] = None
+
+    liquidity = finite_optional(liquidity_score)
+    evidence["liquidity_score"] = liquidity
+    if liquidity is not None:
+        if liquidity < 40:
+            factor *= 0.5
+            reductions.append({
+                "factor": 0.5,
+                "reason": "Liquidity score below 40; execution risk materially reduces size.",
+                "source": "liquidity",
+            })
+        elif liquidity < 60:
+            factor *= 0.75
+            reductions.append({
+                "factor": 0.75,
+                "reason": "Liquidity score below 60; position reduced for execution quality.",
+                "source": "liquidity",
+            })
+        elif liquidity < 75:
+            factor *= 0.9
+            reductions.append({
+                "factor": 0.9,
+                "reason": "Liquidity is adequate but not top-tier; small execution haircut applied.",
+                "source": "liquidity",
+            })
+
+    spread = finite_optional(spread_percent)
+    evidence["spread_percent"] = spread
+    if spread is not None and spread >= 0:
+        spread_to_stop = spread / stop_distance_percent if stop_distance_percent > 0 else None
+        evidence["spread_to_stop_ratio"] = round(spread_to_stop, 3) if spread_to_stop is not None else None
+        if spread_to_stop is not None and spread_to_stop >= 0.25:
+            factor *= 0.6
+            reductions.append({
+                "factor": 0.6,
+                "reason": "Spread consumes at least 25% of stop distance; execution friction is high.",
+                "source": "spread",
+            })
+        elif spread_to_stop is not None and spread_to_stop >= 0.1:
+            factor *= 0.8
+            reductions.append({
+                "factor": 0.8,
+                "reason": "Spread consumes at least 10% of stop distance; size reduced for friction.",
+                "source": "spread",
+            })
+
+    confidence = finite_optional(setup_confidence)
+    evidence["setup_confidence"] = confidence
+    if confidence is not None:
+        # Confidence is a quality gate/haircut only; it is never a capital allocation.
+        if confidence < 55:
+            factor *= 0.5
+            reductions.append({
+                "factor": 0.5,
+                "reason": "Setup confidence is below 55; confidence is used only as a conservative haircut, never as capital allocation.",
+                "source": "confidence",
+            })
+        elif confidence < 65:
+            factor *= 0.8
+            reductions.append({
+                "factor": 0.8,
+                "reason": "Setup confidence is below 65; a conservative quality haircut is applied.",
+                "source": "confidence",
+            })
+
+    correlation = finite_optional(portfolio_correlation)
+    evidence["portfolio_correlation"] = correlation
+    if correlation is not None:
+        absolute = abs(correlation)
+        if absolute >= 0.8:
+            factor *= 0.65
+            reductions.append({
+                "factor": 0.65,
+                "reason": "High absolute correlation with existing exposure increases concentration risk.",
+                "source": "correlation",
+            })
+        elif absolute >= 0.6:
+            factor *= 0.8
+            reductions.append({
+                "factor": 0.8,
+                "reason": "Moderate-high correlation with existing exposure reduces diversification.",
+                "source": "correlation",
+            })
+
+    sector_concentration = finite_optional(sector_concentration_percent)
+    evidence["sector_concentration_percent"] = sector_concentration
+    if sector_concentration is not None:
+        if sector_concentration >= 40:
+            factor *= 0.65
+            reductions.append({
+                "factor": 0.65,
+                "reason": "Existing sector exposure is at least 40% of invested capital.",
+                "source": "sector_concentration",
+            })
+        elif sector_concentration >= 25:
+            factor *= 0.8
+            reductions.append({
+                "factor": 0.8,
+                "reason": "Existing sector exposure is at least 25%; concentration haircut applied.",
+                "source": "sector_concentration",
+            })
+
+    factor = max(0.0, min(1.0, factor))
+    adjusted_shares = math.floor(base["recommended_shares"] * factor)
+    adjusted_cost = adjusted_shares * entry
+    adjusted_risk = adjusted_shares * stop_distance
+
+    return {
+        "base_position_size": {
+            "shares": base["recommended_shares"],
+            "position_cost": base["position_cost"],
+            "risk_amount": base["risk_amount"],
+            "allocation_percent": base["allocation_percent"],
+            "limiting_factor": base["limiting_factor"],
+        },
+        "risk_adjusted_position_size": {
+            "shares": adjusted_shares,
+            "position_cost": round(adjusted_cost, 2),
+            "allocation_percent": round(adjusted_cost / float(total_value) * 100, 2),
+            "adjustment_factor": round(factor, 4),
+        },
+        "maximum_capital_at_risk": base["risk_budget"],
+        "maximum_loss_at_invalidation": round(adjusted_risk, 2),
+        "stop_distance": round(stop_distance, 4),
+        "stop_distance_percent": round(stop_distance_percent, 3),
+        "reductions": reductions,
+        "evidence": evidence,
+        "missing_evidence": [
+            key for key, value in evidence.items()
+            if value is None and key not in {"atr_percent", "spread_to_stop_ratio"}
+        ],
+        "semantics": (
+            "Base sizing is determined by account value, cash, stop distance, risk budget "
+            "and maximum allocation. Optional volatility/liquidity/spread/confidence/"
+            "correlation/concentration evidence can only reduce size. Confidence is never "
+            "converted directly into a percentage of capital."
+        ),
     }
