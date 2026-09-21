@@ -5,6 +5,7 @@ import "./motion.css";
 import "./shell-polish.css";
 import "./navigation-polish.css";
 import "./core-shell-density-polish.css";
+import "./sidebar-terminal-cohesion.css";
 import "./responsive-shell-density.css";
 import "./notification-polish.css";
 import "./data-panels.css";
