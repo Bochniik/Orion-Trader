@@ -19,6 +19,20 @@ def _parse_utc(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def parse_identity_artifact(text: str) -> dict[str, str]:
+    identity: dict[str, str] = {}
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        key, sep, value = line.partition("=")
+        if not sep or not key or not value:
+            raise ValueError("malformed run identity artifact line")
+        identity[key.strip()] = value.strip()
+    if not identity.get("github_run_id") or not identity.get("target_slot_et"):
+        raise ValueError("run identity artifact requires github_run_id and target_slot_et")
+    return identity
+
+
 def _identity_index(raw_identities: Iterable[dict[str, Any]]) -> dict[str, str]:
     index: dict[str, str] = {}
     for identity in raw_identities:
@@ -43,14 +57,11 @@ def _target_slot(run: dict[str, Any], identity_index: dict[str, str]) -> str | N
         return artifact
     if inline:
         return str(inline)
-
-    # Never infer an ET target from created_at. Queue delay makes that unsafe.
     return None
 
 
 def normalize_runs(
-    raw_runs: Iterable[dict[str, Any]],
-    raw_identities: Iterable[dict[str, Any]] = (),
+    raw_runs: Iterable[dict[str, Any]], raw_identities: Iterable[dict[str, Any]] = ()
 ) -> tuple[list[RunEvidence], list[str]]:
     identity_index = _identity_index(raw_identities)
     evidence: list[RunEvidence] = []
@@ -65,30 +76,19 @@ def normalize_runs(
         created = run.get("created_at")
         if not created:
             raise ValueError(f"run {run_id} is missing created_at")
-        evidence.append(
-            RunEvidence(
-                run_id=run_id,
-                created_at_utc=_parse_utc(str(created)),
-                conclusion=run.get("conclusion"),
-                target_slot_et=_target_slot(run, identity_index),
-            )
-        )
+        evidence.append(RunEvidence(
+            run_id=run_id,
+            created_at_utc=_parse_utc(str(created)),
+            conclusion=run.get("conclusion"),
+            target_slot_et=_target_slot(run, identity_index),
+        ))
     return evidence, sorted(ignored)
 
 
-def reconcile(
-    *,
-    session_date: date,
-    raw_runs: Iterable[dict[str, Any]],
-    observed_at_utc: datetime,
-    raw_identities: Iterable[dict[str, Any]] = (),
-) -> dict[str, Any]:
+def reconcile(*, session_date: date, raw_runs: Iterable[dict[str, Any]], observed_at_utc: datetime,
+              raw_identities: Iterable[dict[str, Any]] = ()) -> dict[str, Any]:
     evidence, ignored = normalize_runs(raw_runs, raw_identities)
-    health = build_health_report(
-        session_date=session_date,
-        runs=evidence,
-        observed_at_utc=observed_at_utc,
-    )
+    health = build_health_report(session_date=session_date, runs=evidence, observed_at_utc=observed_at_utc)
     mature = [slot for slot in health["slots"] if slot["status"] != "pending"]
     succeeded = [slot for slot in mature if slot["status"] == "collector_succeeded"]
     attributed = sum(len(slot["run_ids"]) for slot in mature)
@@ -105,10 +105,7 @@ def reconcile(
             "unattributed_run_count": len(health["unattributed_run_ids"]),
         },
         "ignored_run_ids": ignored,
-        "provenance_warning": (
-            "Only explicit target_slot_et evidence is accepted. GitHub run created_at "
-            "is never used as target-slot identity."
-        ),
+        "provenance_warning": "Only explicit target_slot_et evidence is accepted. GitHub run created_at is never used as target-slot identity.",
     }
 
 
@@ -120,23 +117,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Reconcile early-premarket GitHub run history")
     parser.add_argument("--runs-json", type=Path, required=True)
     parser.add_argument("--identities-json", type=Path)
+    parser.add_argument("--identity-file", type=Path, action="append", default=[])
     parser.add_argument("--session-date", type=date.fromisoformat, required=True)
     parser.add_argument("--observed-at-utc", required=True)
     args = parser.parse_args()
     raw = _load_json(args.runs_json)
     if isinstance(raw, dict):
         raw = raw.get("workflow_runs", [])
-    identities: Any = []
+    identities: list[dict[str, Any]] = []
     if args.identities_json:
-        identities = _load_json(args.identities_json)
-        if isinstance(identities, dict):
-            identities = identities.get("run_identities", [])
-    report = reconcile(
-        session_date=args.session_date,
-        raw_runs=raw,
-        raw_identities=identities,
-        observed_at_utc=_parse_utc(args.observed_at_utc),
-    )
+        loaded = _load_json(args.identities_json)
+        identities.extend(loaded.get("run_identities", []) if isinstance(loaded, dict) else loaded)
+    identities.extend(parse_identity_artifact(path.read_text(encoding="utf-8")) for path in args.identity_file)
+    report = reconcile(session_date=args.session_date, raw_runs=raw, raw_identities=identities,
+                       observed_at_utc=_parse_utc(args.observed_at_utc))
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 
