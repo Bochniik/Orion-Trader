@@ -30,6 +30,29 @@ SESSION_WINDOWS = {
 }
 
 
+def session_window_from_calendar(
+    session: str, calendar_entry: dict | None
+) -> SessionWindow:
+    base = SESSION_WINDOWS[session]
+    if not calendar_entry:
+        return base
+
+    def parsed_clock(name: str, fallback: time) -> time:
+        raw = str(calendar_entry.get(name) or "")
+        try:
+            return time.fromisoformat(raw)
+        except ValueError:
+            return fallback
+
+    market_open = parsed_clock("open", time(9, 30))
+    market_close = parsed_clock("close", time(16, 0))
+    if session == "premarket":
+        return SessionWindow(session, time(4, 0), market_open)
+    if session == "regular":
+        return SessionWindow(session, market_open, market_close)
+    return SessionWindow(session, market_close, time(20, 0))
+
+
 def utc_bounds(session_date: date, window: SessionWindow) -> tuple[str, str]:
     start = datetime.combine(session_date, window.start, tzinfo=NY)
     end = datetime.combine(session_date, window.end, tzinfo=NY)
@@ -182,7 +205,6 @@ def main() -> int:
     symbols = parse_symbols(args.symbols)
     market_date = date.fromisoformat(args.session_date)
     window = SESSION_WINDOWS[args.session]
-    start, end = utc_bounds(market_date, window)
     headers = {
         "APCA-API-KEY-ID": key_id,
         "APCA-API-SECRET-KEY": secret_key,
@@ -199,6 +221,8 @@ def main() -> int:
         calendar_payload = calendar_response.json()
         market_day = isinstance(calendar_payload, list) and bool(calendar_payload)
         if market_day:
+            window = session_window_from_calendar(args.session, calendar_payload[0])
+            start, end = utc_bounds(market_date, window)
             for symbol_batch in chunks(symbols, args.batch_size):
                 batch = alpaca_bars(
                     client,
