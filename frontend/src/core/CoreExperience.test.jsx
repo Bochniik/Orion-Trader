@@ -31,11 +31,12 @@ describe("simplified core experience", () => {
     expect(html).toContain("Watchlist");
     for (const forbidden of ["Build / validate", "Paper agent", "Submit order", "Latest signal", "Buying power", "Live Edge", "Orion AI"]) expect(html).not.toContain(forbidden);
   });
-  it("puts the verdict and plan before expandable evidence", () => {
+  it("puts the verdict and plan before expandable evidence without presenting unverified confidence", () => {
     const html = renderToStaticMarkup(<OpportunityCard decision={fixture} now={now} />);
     expect(html).toContain("Apple Inc.");
     expect(html).toContain("LONG");
-    expect(html).toContain("80%");
+    expect(html).toContain("SESSION UNVERIFIED");
+    expect(html).not.toContain("80%");
     expect(html.indexOf("Entry zone")).toBeLessThan(html.indexOf("<summary>Details"));
     expect(html).toContain("1 : 2");
     expect(html).not.toContain("<details open");
@@ -43,7 +44,7 @@ describe("simplified core experience", () => {
   it("withholds price levels and confidence for WAIT", () => {
     const decision = { ...fixture, actionable: false, confidence: null, directional_confidence: null, direction: "WAIT", decision: "WAIT" };
     const html = renderToStaticMarkup(<OpportunityCard decision={decision} />);
-    expect(html).toContain("Unavailable");
+    expect(html).toContain("SESSION UNVERIFIED");
     expect(html).toContain("No trade plan issued");
     expect(html).not.toContain("<dt>Entry zone");
     expect(html).not.toContain("80%");
