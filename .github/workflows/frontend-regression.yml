@@ -36,15 +36,11 @@ jobs:
         run: npm ci
 
       - name: Run frontend regression tests
-        id: tests
-        continue-on-error: true
         run: |
           set -o pipefail
           npm test 2>&1 | tee vitest-output.txt
 
       - name: Build production frontend
-        id: build
-        continue-on-error: true
         run: |
           set -o pipefail
           npm run build 2>&1 | tee build-output.txt
@@ -59,16 +55,3 @@ jobs:
             frontend/build-output.txt
           if-no-files-found: warn
           retention-days: 7
-
-      - name: Enforce regression gate
-        if: always()
-        working-directory: .
-        env:
-          TEST_OUTCOME: ${{ steps.tests.outcome }}
-          BUILD_OUTCOME: ${{ steps.build.outcome }}
-        run: |
-          echo "Vitest: ${TEST_OUTCOME}"
-          echo "Production build: ${BUILD_OUTCOME}"
-          if [ "${TEST_OUTCOME}" != "success" ] || [ "${BUILD_OUTCOME}" != "success" ]; then
-            exit 1
-          fi
