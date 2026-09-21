@@ -2,10 +2,6 @@ name: Regular-hours V3.1 cloud shadow
 run-name: Regular-hours V3.1 ${{ github.event_name }} ${{ github.event.schedule || 'manual' }}
 
 on:
-  schedule:
-    # Hourly collection across the UTC span that covers NYSE RTH in both EDT and EST.
-    # The runtime NYSE/session gate remains authoritative and skips out-of-window runs.
-    - cron: "35 13-21 * * 1-5"
   workflow_call:
   workflow_dispatch:
     inputs:
