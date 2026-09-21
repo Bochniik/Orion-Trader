@@ -79,7 +79,7 @@ describe("simplified core experience", () => {
   it("has one Analyze input and no manual statistical controls", () => {
     const html = renderToStaticMarkup(<AnalyzeView />);
     expect(html).toContain('id="analyze-ticker"');
-    expect(html).toContain("One analysis, no model controls.");
+    expect(html).toContain("Missing evidence means WAIT, not an invented answer.");
     expect(html).not.toContain("Build baseline");
     expect(html).not.toContain("Choose models");
   });
