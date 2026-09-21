@@ -5,6 +5,8 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
+from nyse_session_calendar import is_nyse_trading_day
+
 NY = ZoneInfo("America/New_York")
 OBSERVATION_SLOTS = ((4, 5), (4, 35), (5, 5), (5, 35), (6, 5), (6, 35))
 CONTRACT = "orion-early-premarket-acquisition-health-v1"
@@ -42,6 +44,11 @@ def build_health_report(
     observed_at_utc: datetime,
     grace_minutes: int = 20,
 ) -> dict[str, Any]:
+    if not is_nyse_trading_day(session_date):
+        raise ValueError(
+            f"{session_date.isoformat()} is not a regular NYSE trading day; "
+            "refusing to score nonexistent acquisition slots as failures"
+        )
     if observed_at_utc.tzinfo is None:
         raise ValueError("observed_at_utc must be timezone-aware")
     observed = observed_at_utc.astimezone(timezone.utc)
