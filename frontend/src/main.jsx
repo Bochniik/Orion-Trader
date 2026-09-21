@@ -27,6 +27,7 @@ import "./analysis-news-context.css";
 import "./analysis-news-decision-context.css";
 import "./news-media-integrity-polish.css";
 import "./news-terminal-density-polish.css";
+import "./news-feed-scanability.css";
 import "./analysis-snapshot.css";
 import "./analysis-provenance-polish.css";
 import "./analysis-decision-hierarchy.css";
