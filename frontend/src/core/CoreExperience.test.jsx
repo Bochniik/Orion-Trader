@@ -21,12 +21,13 @@ const fixture = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("simplified core experience", () => {
-  it("renders only the three primary workflows and no lab/order controls", () => {
+  it("renders the four primary workflows and no lab/order controls", () => {
     vi.stubGlobal("window", { location: { hash: "" } });
     const html = renderToStaticMarkup(<CoreApp user={{ id: "user", email: "user@example.com" }} />);
     expect(html).toContain("Primary navigation");
     expect(html).toContain('aria-current="page"');
     expect(html).toContain("What deserves your attention?");
+    expect(html).toContain("Orion Intelligence");
     for (const forbidden of ["Build / validate", "Paper agent", "Submit order", "Latest signal", "Buying power", "Live Edge", "Orion AI"]) expect(html).not.toContain(forbidden);
   });
   it("puts the verdict and plan before expandable evidence", () => {
