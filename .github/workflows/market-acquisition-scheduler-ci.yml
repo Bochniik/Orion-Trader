@@ -6,6 +6,7 @@ on:
       - ".github/workflows/market-acquisition-scheduler.yml"
       - ".github/workflows/premarket-v5-cloud-shadow.yml"
       - ".github/workflows/regular-hours-v3-1-cloud-shadow.yml"
+      - ".github/workflows/market-session-data-cloud.yml"
       - ".github/workflows/market-acquisition-scheduler-ci.yml"
       - "scripts/test_market_acquisition_scheduler_contract.py"
   workflow_dispatch:

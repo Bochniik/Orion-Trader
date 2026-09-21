@@ -1,0 +1,83 @@
+name: Market session data cloud reconciliation
+run-name: Session data ${{ inputs.session }} ${{ github.event_name }}
+
+on:
+  workflow_call:
+    inputs:
+      session:
+        description: Market session to reconcile
+        required: true
+        type: string
+      symbols:
+        description: Space-separated frozen symbol basket
+        required: false
+        type: string
+        default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
+  workflow_dispatch:
+    inputs:
+      session:
+        description: Market session to reconcile
+        required: true
+        type: choice
+        options: [premarket, regular, after_hours]
+      symbols:
+        description: Space-separated frozen symbol basket
+        required: false
+        default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: market-session-data-${{ inputs.session }}
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+      ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install focused collection dependencies
+        run: python -m pip install httpx python-dotenv
+      - name: Verify cloud credentials
+        shell: bash
+        run: |
+          if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
+            echo "Missing repository secrets ALPACA_API_KEY_ID / ALPACA_API_SECRET_KEY." >&2
+            exit 2
+          fi
+      - name: Reconcile completed market session
+        shell: bash
+        env:
+          SESSION: ${{ inputs.session }}
+          SYMBOLS: ${{ inputs.symbols }}
+        run: |
+          set -euo pipefail
+          SESSION_DATE="$(TZ=America/New_York date +'%Y-%m-%d')"
+          OUTPUT_DIR="backend/data/cloud_shadow/market_sessions/${SESSION_DATE}"
+          OUTPUT="${OUTPUT_DIR}/${SESSION}-iex-${GITHUB_RUN_ID}.csv"
+          mkdir -p "$OUTPUT_DIR"
+          python scripts/collect_alpaca_session_data.py \
+            --session "$SESSION" \
+            --session-date "$SESSION_DATE" \
+            --symbols $SYMBOLS \
+            --feed iex \
+            --output "$OUTPUT"
+      - name: Upload immutable session dataset and receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-session-${{ inputs.session }}-${{ github.run_id }}
+          path: backend/data/cloud_shadow/market_sessions/**/*
+          if-no-files-found: warn
+          retention-days: 90
