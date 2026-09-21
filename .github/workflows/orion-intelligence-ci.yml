@@ -12,6 +12,8 @@ on:
       - 'frontend/src/core/PositionSizingAssistant.jsx'
       - 'frontend/src/core/TickerIntelligencePanels.jsx'
       - 'frontend/src/core/RelationshipEarningsPanels.jsx'
+      - 'frontend/src/core/CoreApp.jsx'
+      - 'frontend/src/core/CoreExperience.test.jsx'
       - 'frontend/src/core/intelligence.css'
       - 'frontend/src/core/engineBay.css'
       - 'frontend/src/navigation.js'
