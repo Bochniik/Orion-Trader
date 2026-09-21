@@ -1,0 +1,27 @@
+name: Early premarket acquisition health CI
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit_early_premarket_acquisition_health.py"
+      - "scripts/test_early_premarket_acquisition_health.py"
+      - ".github/workflows/early-premarket-acquisition-health-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquisition-health-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile acquisition health audit
+        run: python -m py_compile scripts/audit_early_premarket_acquisition_health.py scripts/test_early_premarket_acquisition_health.py
+      - name: Run acquisition health regression tests
+        working-directory: scripts
+        run: python -m unittest -v test_early_premarket_acquisition_health.py
