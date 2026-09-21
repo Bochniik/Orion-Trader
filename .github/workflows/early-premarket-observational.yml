@@ -38,6 +38,35 @@ jobs:
         run: |
           python scripts/resolve_early_premarket_observation.py --github-output "$GITHUB_OUTPUT"
 
+      - name: Export resolved slot identity
+        if: steps.target.outputs.active == 'true'
+        shell: bash
+        env:
+          TARGET_SLOT: ${{ steps.target.outputs.slot }}
+          TARGET_ET: ${{ steps.target.outputs.target_et }}
+          TARGET_UTC: ${{ steps.target.outputs.target_utc }}
+          SESSION_DATE: ${{ steps.target.outputs.session_date }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Early premarket acquisition identity"
+            echo ""
+            echo "- target_slot_et: \`$TARGET_SLOT\`"
+            echo "- target_as_of_et: \`$TARGET_ET\`"
+            echo "- target_as_of_utc: \`$TARGET_UTC\`"
+            echo "- session_date: \`$SESSION_DATE\`"
+            echo "- github_run_id: \`$GITHUB_RUN_ID\`"
+            echo "- github_run_attempt: \`$GITHUB_RUN_ATTEMPT\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' \
+            "target_slot_et=$TARGET_SLOT" \
+            "target_as_of_et=$TARGET_ET" \
+            "target_as_of_utc=$TARGET_UTC" \
+            "session_date=$SESSION_DATE" \
+            "github_run_id=$GITHUB_RUN_ID" \
+            "github_run_attempt=$GITHUB_RUN_ATTEMPT" \
+            > "$RUNNER_TEMP/early-premarket-run-identity.txt"
+
       - name: Report inactive schedule slot
         if: steps.target.outputs.active != 'true'
         run: |
@@ -156,5 +185,6 @@ jobs:
             backend/data/cloud_shadow/early_premarket_observational/*.csv
             backend/data/cloud_shadow/early_premarket_observational/*.manifest.json
             backend/data/cloud_shadow/early_premarket_observational/*.observation.json
+            ${{ runner.temp }}/early-premarket-run-identity.txt
           if-no-files-found: warn
           retention-days: 90
