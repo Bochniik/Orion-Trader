@@ -37,6 +37,7 @@ import "./analysis-terminal-hierarchy-polish.css";
 import "./analysis-decision-strip-polish.css";
 import "./analysis-evidence-rail.css";
 import "./analysis-insight-density.css";
+import "./analysis-insight-terminal-polish.css";
 import "./analysis-insight-rail.css";
 import "./analysis-evidence-scan.css";
 import "./analysis-actionable-context.css";
