@@ -22,6 +22,14 @@ on:
     # Regular-hours V3.1. The worker's America/New_York gate keeps only
     # 09:35-15:35 ET decision slots active across DST.
     - cron: "35 13-21 * * 1-5"
+    # Completed-session raw-data reconciliation. Off-hour minutes reduce
+    # schedule congestion; America/New_York handles DST and early dates safely.
+    - cron: "47 9 * * 1-5"
+      timezone: "America/New_York"
+    - cron: "17 16 * * 1-5"
+      timezone: "America/New_York"
+    - cron: "17 20 * * 1-5"
+      timezone: "America/New_York"
 
 permissions:
   actions: read
@@ -29,11 +37,44 @@ permissions:
 
 jobs:
   premarket-v5:
-    if: github.event.schedule != '35 13-21 * * 1-5'
+    if: >-
+      github.event.schedule == '45 10 * * 1-5' ||
+      github.event.schedule == '55 10 * * 1-5' ||
+      github.event.schedule == '0 12 * * 1-5' ||
+      github.event.schedule == '10 12 * * 1-5' ||
+      github.event.schedule == '15 13 * * 1-5' ||
+      github.event.schedule == '25 13 * * 1-5' ||
+      github.event.schedule == '45 11 * * 1-5' ||
+      github.event.schedule == '55 11 * * 1-5' ||
+      github.event.schedule == '0 13 * * 1-5' ||
+      github.event.schedule == '10 13 * * 1-5' ||
+      github.event.schedule == '15 14 * * 1-5' ||
+      github.event.schedule == '25 14 * * 1-5'
     uses: ./.github/workflows/premarket-v5-cloud-shadow.yml
     secrets: inherit
 
   regular-hours-v3-1:
     if: github.event.schedule == '35 13-21 * * 1-5'
     uses: ./.github/workflows/regular-hours-v3-1-cloud-shadow.yml
+    secrets: inherit
+
+  premarket-session-data:
+    if: github.event.schedule == '47 9 * * 1-5'
+    uses: ./.github/workflows/market-session-data-cloud.yml
+    with:
+      session: premarket
+    secrets: inherit
+
+  regular-session-data:
+    if: github.event.schedule == '17 16 * * 1-5'
+    uses: ./.github/workflows/market-session-data-cloud.yml
+    with:
+      session: regular
+    secrets: inherit
+
+  after-hours-session-data:
+    if: github.event.schedule == '17 20 * * 1-5'
+    uses: ./.github/workflows/market-session-data-cloud.yml
+    with:
+      session: after_hours
     secrets: inherit
