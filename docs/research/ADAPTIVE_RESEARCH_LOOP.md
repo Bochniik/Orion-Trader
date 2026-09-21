@@ -35,6 +35,12 @@ The canonical candidate material is hashed into an immutable SHA-256 and determi
 
 Only after those checks pass does it call the existing paired proper-score/session-block-bootstrap tournament. The output carries the candidate ID and immutable-material SHA-256 alongside the eligibility audit, making the research conclusion traceable to the preregistered candidate lineage. The adapter does not alter incumbent or challenger probabilities and does not promote a candidate automatically.
 
+## Stage 4 — bounded hypothesis-to-candidate builder
+
+`backend/evals/adaptive_hypothesis_candidate.py` converts exactly one already-qualified diagnostic failure pattern into a research-only candidate spec and immediately passes it through the immutable registry. The builder accepts only the diagnostic dimensions produced by Stage 1, carries the selected horizon and observed failure statistics into the frozen evaluation protocol, and uses the diagnostics creation time as the development-evidence cutoff.
+
+The caller must supply the exact candidate code SHA, an explicit change summary, the downstream evaluation contract and a strictly later forward cutoff. Empty or unqualified diagnostics, unsupported/tampered dimensions, same-time cutoffs, and diagnostics that do not preserve the same-evidence-promotion guard fail closed. The builder never writes model weights, changes runtime probabilities or promotes a challenger.
+
 ## Anti-leakage boundary
 
 Any challenger whose design is influenced by diagnostic evidence must receive a new immutable candidate identity and a later preregistered forward cohort. The observations used to discover a weakness cannot approve the challenger created from that weakness. Paired incumbent/challenger scoring, proper scores, calibration diagnostics and session-block bootstrap remain separate downstream gates.
@@ -45,4 +51,4 @@ The adaptive research loop does not retrain V3.1 or V5 in place, change runtime 
 
 ## Next stage
 
-Add a bounded research-only hypothesis-to-candidate builder that can translate sufficiently covered settled failure patterns into explicit candidate specs without touching the incumbent runtime. Every generated spec must still be registered before its forward cutoff and must collect a new forward cohort before tournament evaluation.
+Use the bounded builder only when settled diagnostics contain a sufficiently covered failure pattern and a concrete research change exists. Then collect a genuinely new post-cutoff cohort and run the registered tournament. If the cohort is too small or the challenger does not improve proper-score/calibration evidence without material regressions, retain the incumbent and record the rejection rather than modifying production.
