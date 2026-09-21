@@ -1,6 +1,16 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
+
+# Focused CI executes pytest from backend/. Add the repository root explicitly so
+# the production-style backend.evals imports below resolve exactly as they do
+# when Orion is launched from the repository root.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from backend.evals.adaptive_challenger_registry import validate_registration
 from backend.evals.adaptive_hypothesis_candidate import build_candidate_spec, build_registration
