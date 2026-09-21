@@ -1,0 +1,93 @@
+/* Terminal-grade chart density: presentation only; no market-data or chart logic changes. */
+.analyze-chart-panel .advanced-chart {
+  --chart-terminal-border: rgba(148, 163, 184, .085);
+}
+
+.analyze-chart-panel .chart-toolbar,
+.analyze-chart-panel .indicator-toolbar,
+.analyze-chart-panel .chart-inspector,
+.analyze-chart-panel .chart-period-summary {
+  font-variant-numeric: tabular-nums;
+}
+
+.analyze-chart-panel .chart-toolbar {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.analyze-chart-panel .range-buttons,
+.analyze-chart-panel .chart-time-controls {
+  min-width: 0;
+}
+
+.analyze-chart-panel .range-btn,
+.analyze-chart-panel .chart-time-controls button,
+.analyze-chart-panel .indicator-toggle {
+  letter-spacing: .015em;
+}
+
+.analyze-chart-panel .chart-box {
+  border-color: var(--chart-terminal-border);
+  box-shadow: inset 0 1px rgba(255,255,255,.018), 0 18px 44px rgba(0,0,0,.18);
+}
+
+.analyze-chart-panel .chart-inspector {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.35fr) repeat(7, minmax(72px, 1fr));
+  gap: 0;
+}
+
+.analyze-chart-panel .chart-inspector > div {
+  padding: 0 9px;
+  border-left: 1px solid rgba(148, 163, 184, .065);
+}
+
+.analyze-chart-panel .chart-inspector > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.analyze-chart-panel .chart-inspector > div:last-child {
+  padding-right: 0;
+}
+
+.analyze-chart-panel .chart-inspector strong {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analyze-chart-panel .chart-period-summary {
+  justify-content: flex-start;
+  gap: 8px 18px;
+}
+
+@media (max-width: 1320px) {
+  .analyze-chart-panel .chart-inspector {
+    grid-template-columns: repeat(4, minmax(110px, 1fr));
+    gap: 7px 0;
+  }
+  .analyze-chart-panel .chart-inspector > div:nth-child(5) {
+    border-left: 0;
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .analyze-chart-panel .chart-inspector {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .analyze-chart-panel .chart-inspector > div:nth-child(odd) {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .analyze-chart-panel .chart-inspector > div:nth-child(even) {
+    padding-right: 0;
+  }
+  .analyze-chart-panel .chart-period-summary {
+    scrollbar-width: none;
+  }
+  .analyze-chart-panel .chart-period-summary::-webkit-scrollbar { display: none; }
+}
