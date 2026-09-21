@@ -21,17 +21,27 @@ def _parse_utc(value: Any, *, field: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _preregistered_minimums(validated: Mapping[str, Any]) -> tuple[int, int]:
+    protocol = validated["candidate"].get("evaluation_protocol") or {}
+    try:
+        min_observations = int(protocol["min_forward_observations"])
+        min_distinct_sessions = int(protocol["min_forward_distinct_sessions"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(
+            "evaluation_protocol must preregister positive min_forward_observations "
+            "and min_forward_distinct_sessions before forward evidence is inspected"
+        ) from exc
+    if min_observations < 1 or min_distinct_sessions < 1:
+        raise ValueError("preregistered forward evidence minimums must both be positive")
+    return min_observations, min_distinct_sessions
+
+
 def assess_forward_evidence_readiness(
     registration: Mapping[str, Any],
     records: list[Mapping[str, Any]],
-    *,
-    min_observations: int,
-    min_distinct_sessions: int,
 ) -> dict[str, Any]:
-    if min_observations < 1 or min_distinct_sessions < 1:
-        raise ValueError("minimum observations and sessions must both be positive")
-
     validated = validate_registration(registration)
+    min_observations, min_distinct_sessions = _preregistered_minimums(validated)
     eligibility = assert_forward_evidence_eligible(validated, records)
     allowed_horizons = set(validated["candidate"]["horizons"])
 
@@ -94,6 +104,7 @@ def assess_forward_evidence_readiness(
             "automatic_promotion_allowed": False,
             "pre_cutoff_evidence_forbidden": True,
             "same_evidence_approval_forbidden": True,
+            "readiness_thresholds_preregistered": True,
         },
     }
 
@@ -102,20 +113,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Assess untouched Orion challenger evidence before tournament scoring.")
     parser.add_argument("registration", type=Path)
     parser.add_argument("evidence", type=Path)
-    parser.add_argument("--min-observations", type=int, required=True)
-    parser.add_argument("--min-distinct-sessions", type=int, required=True)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     registration = json.loads(args.registration.read_text(encoding="utf-8"))
     records = json.loads(args.evidence.read_text(encoding="utf-8"))
     if not isinstance(records, list):
         raise ValueError("evidence must be a JSON list")
-    result = assess_forward_evidence_readiness(
-        registration,
-        records,
-        min_observations=args.min_observations,
-        min_distinct_sessions=args.min_distinct_sessions,
-    )
+    result = assess_forward_evidence_readiness(registration, records)
     text = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
