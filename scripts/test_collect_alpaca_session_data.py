@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, time
 import tempfile
 from pathlib import Path
 import unittest
@@ -9,6 +9,7 @@ from collect_alpaca_session_data import (
     SESSION_WINDOWS,
     build_receipt,
     normalized_rows,
+    session_window_from_calendar,
     utc_bounds,
     write_csv,
 )
@@ -33,6 +34,13 @@ class SessionCollectorTests(unittest.TestCase):
         }
         output = normalized_rows(rows, date(2026, 9, 21), SESSION_WINDOWS["after_hours"])
         self.assertEqual([row["timestamp"] for row in output], ["2026-09-21T20:00:00Z", "2026-09-21T23:59:00Z"])
+
+    def test_early_close_comes_from_market_calendar(self):
+        entry = {"open": "09:30", "close": "13:00"}
+        regular = session_window_from_calendar("regular", entry)
+        after_hours = session_window_from_calendar("after_hours", entry)
+        self.assertEqual((regular.start, regular.end), (time(9, 30), time(13, 0)))
+        self.assertEqual(after_hours.start, time(13, 0))
 
     def test_receipt_fails_closed_when_symbol_is_missing(self):
         rows = [{"ticker": "AAPL", "timestamp": "2026-09-21T13:30:00Z", "open": 1, "high": 2, "low": 1, "close": 2, "volume": 10}]
