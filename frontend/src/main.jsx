@@ -50,6 +50,7 @@ import "./analysis-responsive.css";
 import "./analysis-vertical-rhythm.css";
 import "./analysis-desktop-composition.css";
 import "./analysis-market-evidence-composition.css";
+import "./analysis-supporting-evidence-cohesion.css";
 import "./analysis-state-polish.css";
 import "./analysis-pending-density.css";
 import "./analysis-commandbar.css";
