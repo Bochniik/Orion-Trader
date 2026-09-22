@@ -1,0 +1,94 @@
+/* OrionTrader Analyze supporting-evidence cohesion
+   Presentation only: groups existing insight, reasons and risk payloads into a
+   denser terminal hierarchy without changing data, ordering or semantics. */
+
+.analyze-view .analysis-insight-grid {
+  align-items: stretch;
+  column-gap: 10px;
+  row-gap: 10px;
+}
+
+.analyze-view .analysis-insight {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 10px 28px rgba(0, 0, 0, 0.13);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.analyze-view .analysis-insight:hover,
+.analyze-view .analysis-insight:focus-within {
+  border-color: rgba(255, 148, 71, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 12px 30px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(255, 122, 26, 0.018);
+}
+
+.analyze-view .analysis-insight h3 {
+  color: #e8edf1;
+}
+
+.analyze-view .analysis-insight dt {
+  color: #727d88;
+}
+
+.analyze-view .analysis-insight dd {
+  color: #e2e7eb;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Narrative evidence should scan like compact terminal rows rather than a
+   second set of large cards. Existing reasons/risks remain untouched. */
+.analyze-view .analysis-reasons li,
+.analyze-view .analysis-risks li {
+  min-height: 38px;
+  padding-block: 8px;
+  color: #bdc5cd;
+}
+
+.analyze-view .analysis-reasons li:hover,
+.analyze-view .analysis-reasons li:focus-within,
+.analyze-view .analysis-risks li:hover,
+.analyze-view .analysis-risks li:focus-within {
+  color: #edf1f4;
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.04), rgba(255, 255, 255, 0.008) 68%, transparent);
+}
+
+@media (min-width: 1180px) {
+  .analyze-view .analysis-insight-grid {
+    grid-auto-flow: row;
+  }
+
+  .analyze-view .analysis-insight {
+    min-height: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .analyze-view .analysis-insight-grid {
+    row-gap: 9px;
+  }
+
+  .analyze-view .analysis-insight {
+    border-radius: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view .analysis-insight {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analysis-insight,
+  .analyze-view .analysis-insight:hover,
+  .analyze-view .analysis-insight:focus-within {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+  }
+
+  .analyze-view .analysis-insight dt {
+    color: #c3cad1;
+  }
+}
