@@ -1,0 +1,116 @@
+/* OrionTrader Analyze compact desktop density
+   Presentation only: protects chart, evidence and decision readability on constrained desktop widths. */
+
+@media (min-width: 960px) and (max-width: 1179px) {
+  .analyze-view {
+    --analyze-compact-gap: 10px;
+  }
+
+  .analyze-view .analysis-market-grid,
+  .analyze-view .analysis-insight-grid {
+    gap: var(--analyze-compact-gap);
+  }
+
+  .analyze-view .analyze-chart-panel,
+  .analyze-view .analyze-news-panel,
+  .analyze-view .analysis-insight-grid > * {
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-section-heading {
+    min-height: 42px;
+    gap: 7px;
+  }
+
+  .analyze-view .analyze-section-heading h2 {
+    font-size: clamp(0.98rem, 1.45vw, 1.08rem);
+  }
+
+  .analyze-view .analyze-section-heading > span {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .analyze-view .analyze-news-panel .news-list--terminal {
+    gap: 7px;
+  }
+
+  .analyze-view .analyze-news-panel .news-item--terminal {
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-news-panel .news-title,
+  .analyze-view .analyze-news-panel .news-summary {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1399px) {
+  .analyze-view {
+    --analyze-primary-column: minmax(0, 1.66fr);
+    --analyze-context-column: minmax(292px, 0.84fr);
+  }
+
+  .analyze-view .analysis-market-grid {
+    gap: 10px;
+  }
+
+  .analyze-view .analysis-insight-grid {
+    gap: 10px;
+  }
+
+  .analyze-view .analyze-chart-panel,
+  .analyze-view .analyze-news-panel,
+  .analyze-view .analysis-insight-grid > * {
+    min-width: 0;
+  }
+
+  .analyze-view .analyze-news-panel .news-item--terminal:not(.news-item--lead) {
+    padding-block: 8px;
+  }
+
+  .analyze-view .analyze-news-panel .news-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .analyze-view .analyze-news-panel .news-meta-row,
+  .analyze-view .analyze-news-panel .news-feed-telemetry {
+    min-width: 0;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .analyze-view .analyze-section-heading > span {
+    max-width: 145px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1400px) {
+  .analyze-view .analysis-market-grid,
+  .analyze-view .analysis-insight-grid {
+    column-gap: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view .analyze-chart-panel,
+  .analyze-view .analyze-news-panel,
+  .analyze-view .analysis-insight-grid > * {
+    scroll-behavior: auto;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analyze-section-heading > span {
+    border-color: rgba(255, 158, 86, 0.42);
+  }
+}
