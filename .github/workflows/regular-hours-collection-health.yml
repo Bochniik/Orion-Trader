@@ -116,7 +116,16 @@ jobs:
             "${PREDICTIONS[@]}" \
             --output backend/data/cloud_shadow/regular_hours_v3_1/health/collection-health-${{ github.run_id }}.json
 
-      - name: Upload collection health report
+      - name: Audit scheduled session cadence
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEALTH="backend/data/cloud_shadow/regular_hours_v3_1/health/collection-health-${{ github.run_id }}.json"
+          python scripts/audit_regular_hours_session_cadence.py \
+            "$HEALTH" \
+            --output backend/data/cloud_shadow/regular_hours_v3_1/health/session-cadence-${{ github.run_id }}.json
+
+      - name: Upload collection health and cadence reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
