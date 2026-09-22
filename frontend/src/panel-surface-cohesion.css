@@ -1,0 +1,125 @@
+/* Cohesive Orion terminal surfaces.
+   Presentation only: keeps existing component behavior and data semantics intact. */
+
+:root {
+  --orion-surface-border: rgba(255, 255, 255, 0.075);
+  --orion-surface-border-hover: rgba(244, 123, 42, 0.22);
+  --orion-surface-bg: linear-gradient(155deg, rgba(18, 19, 22, 0.97), rgba(9, 10, 12, 0.985));
+  --orion-surface-radius: 14px;
+  --orion-surface-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 16px 42px rgba(0, 0, 0, 0.2);
+}
+
+/* Major workspace surfaces share one restrained graphite treatment. */
+.core-card,
+.dashboard-card,
+.chart-card,
+.watchlist-card,
+.analysis-card,
+.news-card,
+.market-explorer-card,
+.quote-card,
+.scanner-card {
+  border-color: var(--orion-surface-border);
+  border-radius: var(--orion-surface-radius);
+  background: var(--orion-surface-bg);
+  box-shadow: var(--orion-surface-shadow);
+}
+
+/* Keep hover feedback subtle so dense data remains the visual priority. */
+.core-card:hover,
+.dashboard-card:hover,
+.watchlist-card:hover,
+.analysis-card:hover,
+.news-card:hover,
+.market-explorer-card:hover,
+.quote-card:hover,
+.scanner-card:hover {
+  border-color: var(--orion-surface-border-hover);
+}
+
+/* Normalize panel headers without changing their markup or controls. */
+.core-card > header,
+.dashboard-card > header,
+.chart-card > header,
+.watchlist-card > header,
+.analysis-card > header,
+.news-card > header,
+.market-explorer-card > header,
+.quote-card > header,
+.scanner-card > header {
+  min-height: 42px;
+  padding-bottom: 10px;
+  border-bottom-color: rgba(255, 255, 255, 0.055);
+}
+
+.core-card h2,
+.core-card h3,
+.dashboard-card h2,
+.dashboard-card h3,
+.analysis-card h2,
+.analysis-card h3,
+.news-card h2,
+.news-card h3,
+.watchlist-card h2,
+.watchlist-card h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Numeric content should align like a market terminal rather than prose. */
+.core-card strong,
+.dashboard-card strong,
+.chart-card strong,
+.watchlist-card strong,
+.analysis-card strong,
+.quote-card strong,
+.scanner-card strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A restrained top highlight gives depth without competing with status colors. */
+.core-card,
+.dashboard-card,
+.chart-card,
+.watchlist-card,
+.analysis-card,
+.news-card,
+.market-explorer-card,
+.quote-card,
+.scanner-card {
+  background-image:
+    linear-gradient(90deg, rgba(244, 123, 42, 0.08), transparent 22%),
+    var(--orion-surface-bg);
+  background-size: 100% 1px, 100% 100%;
+  background-repeat: no-repeat;
+}
+
+@media (max-width: 720px) {
+  :root { --orion-surface-radius: 12px; }
+
+  .core-card > header,
+  .dashboard-card > header,
+  .chart-card > header,
+  .watchlist-card > header,
+  .analysis-card > header,
+  .news-card > header,
+  .market-explorer-card > header,
+  .quote-card > header,
+  .scanner-card > header {
+    min-height: 38px;
+    padding-bottom: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-card,
+  .dashboard-card,
+  .chart-card,
+  .watchlist-card,
+  .analysis-card,
+  .news-card,
+  .market-explorer-card,
+  .quote-card,
+  .scanner-card {
+    transition: none !important;
+  }
+}
