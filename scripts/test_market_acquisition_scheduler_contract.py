@@ -13,12 +13,12 @@ PREMARKET_CRONS = [
 ]
 REGULAR_CRON = "35 13-21 * * 1-5"
 SESSION_CRONS = {
-    "premarket": "47 9 * * 1-5",
-    "regular": "17 16 * * 1-5",
-    "after_hours": "17 20 * * 1-5",
+    "premarket": ["47 13 * * 1-5", "47 14 * * 1-5"],
+    "regular": ["17 20 * * 1-5", "17 21 * * 1-5"],
+    "after_hours": ["17 0 * * 2-6", "17 1 * * 2-6"],
 }
 
-for cron in [*PREMARKET_CRONS, REGULAR_CRON, *SESSION_CRONS.values()]:
+for cron in [*PREMARKET_CRONS, REGULAR_CRON, *(c for crons in SESSION_CRONS.values() for c in crons)]:
     needle = f'- cron: "{cron}"'
     assert scheduler.count(needle) == 1, f"missing or duplicate acquisition cron: {cron}"
 
@@ -29,10 +29,11 @@ assert "github.event.schedule != '35 13-21 * * 1-5'" not in scheduler
 assert "uses: ./.github/workflows/premarket-v5-cloud-shadow.yml" in scheduler
 assert "uses: ./.github/workflows/regular-hours-v3-1-cloud-shadow.yml" in scheduler
 assert scheduler.count("uses: ./.github/workflows/market-session-data-cloud.yml") == 3
-assert scheduler.count('timezone: "America/New_York"') == 3
+assert 'timezone: "America/New_York"' not in scheduler
 
-for session, cron in SESSION_CRONS.items():
-    assert f"github.event.schedule == '{cron}'" in scheduler
+for session, crons in SESSION_CRONS.items():
+    for cron in crons:
+        assert f"github.event.schedule == '{cron}'" in scheduler
     assert f"session: {session}" in scheduler
 
 assert "workflow_call:" in session_worker
@@ -42,5 +43,16 @@ assert "collect_alpaca_session_data.py" in session_worker
 assert "ALPACA_API_KEY_ID" in session_worker
 assert "ALPACA_API_SECRET_KEY" in session_worker
 assert "retention-days: 90" in session_worker
+
+# Scheduled reconciliation must be guarded by the actual New York wall clock so
+# the inactive EDT/EST duplicate cannot collect an incomplete session. Manual
+# workflow_dispatch remains intentionally available for research/backfills.
+assert "Gate scheduled reconciliation on New York local time" in session_worker
+assert "TZ=America/New_York" in session_worker
+assert 'if [ "$EVENT_NAME" != "schedule" ]' in session_worker
+assert "premarket) TARGET_HOUR=09; TARGET_MINUTE=47" in session_worker
+assert "regular) TARGET_HOUR=16; TARGET_MINUTE=17" in session_worker
+assert "after_hours) TARGET_HOUR=20; TARGET_MINUTE=17" in session_worker
+assert "steps.schedule_gate.outputs.active == 'true'" in session_worker
 
 print("market acquisition scheduler contract: OK")
