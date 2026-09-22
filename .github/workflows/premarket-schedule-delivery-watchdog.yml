@@ -1,0 +1,102 @@
+name: Premarket schedule delivery watchdog
+run-name: Premarket schedule delivery watchdog ${{ github.event_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      session_date:
+        description: "NYSE session date (YYYY-MM-DD); defaults to current New York date"
+        required: false
+  schedule:
+    # Runs after the final 06:35 ET observation plus its 20-minute delivery window
+    # in both EDT and EST. 12:05 UTC is 08:05 EDT / 07:05 EST.
+    - cron: "5 12 * * 1-5"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve session date
+        id: session
+        shell: bash
+        env:
+          REQUESTED_DATE: ${{ github.event.inputs.session_date }}
+        run: |
+          set -euo pipefail
+          if [ -n "$REQUESTED_DATE" ]; then
+            SESSION_DATE="$REQUESTED_DATE"
+          else
+            SESSION_DATE="$(TZ=America/New_York date +%F)"
+          fi
+          echo "date=$SESSION_DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch scheduled early-premarket workflow runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SESSION_DATE: ${{ steps.session.outputs.date }}
+        run: |
+          set -euo pipefail
+          mkdir -p backend/data/cloud_shadow/acquisition_health
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/early-premarket-observational.yml/runs?event=schedule&per_page=100&created=${SESSION_DATE}" \
+            > "$RUNNER_TEMP/early-premarket-runs.json"
+
+      - name: Audit preregistered slot delivery
+        id: audit
+        continue-on-error: true
+        shell: bash
+        env:
+          SESSION_DATE: ${{ steps.session.outputs.date }}
+        run: |
+          set -o pipefail
+          python scripts/audit_premarket_schedule_delivery.py \
+            --runs-json "$RUNNER_TEMP/early-premarket-runs.json" \
+            --session-date "$SESSION_DATE" \
+            --output "backend/data/cloud_shadow/acquisition_health/premarket-schedule-delivery-${SESSION_DATE}.json" \
+            | tee "$RUNNER_TEMP/premarket-schedule-delivery.txt"
+
+      - name: Publish watchdog summary
+        if: always()
+        shell: bash
+        env:
+          SESSION_DATE: ${{ steps.session.outputs.date }}
+        run: |
+          {
+            echo "## Premarket schedule delivery health"
+            echo ""
+            echo "Session: \`$SESSION_DATE\`"
+            echo ""
+            echo '```json'
+            cat "backend/data/cloud_shadow/acquisition_health/premarket-schedule-delivery-${SESSION_DATE}.json" 2>/dev/null || echo '{"status":"audit_artifact_missing"}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload immutable schedule-health evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: premarket-schedule-delivery-${{ steps.session.outputs.date }}-${{ github.run_id }}
+          path: |
+            backend/data/cloud_shadow/acquisition_health/premarket-schedule-delivery-*.json
+            ${{ runner.temp }}/premarket-schedule-delivery.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Fail visibly on missing or failed scheduled acquisition
+        if: steps.audit.outcome != 'success'
+        run: |
+          echo "Premarket acquisition schedule delivery is incomplete; see the uploaded score-blind health report." >&2
+          exit 1
