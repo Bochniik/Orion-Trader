@@ -49,6 +49,7 @@ import "./analysis-actionable-context.css";
 import "./analysis-responsive.css";
 import "./analysis-vertical-rhythm.css";
 import "./analysis-desktop-composition.css";
+import "./analysis-market-evidence-composition.css";
 import "./analysis-state-polish.css";
 import "./analysis-pending-density.css";
 import "./analysis-commandbar.css";
@@ -99,28 +100,58 @@ import OrionMark from "./components/OrionMark";
 import CoreApp from "./core/CoreApp";
 import { getAuthSession, logoutAccount } from "./api/api";
 
-function Root() {
+function App() {
   const [session, setSession] = useState(null);
-  const [checking, setChecking] = useState(true);
-  const [error, setError] = useState("");
-  useEffect(() => { getAuthSession().then(setSession).catch(() => setSession(null)).finally(() => setChecking(false)); }, []);
-  async function logout() {
-    try { await logoutAccount(); setSession(null); setError(""); }
-    catch { setError("Sign out failed. Your session remains active; please try again."); }
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    getAuthSession()
+      .then((data) => {
+        if (active) setSession(data);
+      })
+      .catch(() => {
+        if (active) setSession(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logoutAccount();
+    } finally {
+      setSession(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-loading-panel">
+          <OrionMark size={38} />
+          <strong>OrionTrader</strong>
+          <span>Loading secure workspace...</span>
+        </div>
+      </div>
+    );
   }
-  if (checking) return (
-    <main className="orion-system-state" aria-busy="true" aria-live="polite">
-      <section className="orion-system-state-card">
-        <OrionMark size={54} className="orion-system-state-mark" />
-        <p className="orion-system-state-eyebrow">Market intelligence workspace</p>
-        <h1>Preparing OrionTrader</h1>
-        <p>Checking your secure session and workspace.</p>
-        <div className="orion-system-state-progress" aria-hidden="true"><span /></div>
-      </section>
-    </main>
-  );
-  if (!session?.authenticated) return <AuthPanel onAuthenticated={setSession} />;
-  return <><CoreApp user={session.user} onLogout={logout} />{error && <div className="toast error" role="alert">{error}</div>}</>;
+
+  if (!session?.authenticated) {
+    return <AuthPanel onAuthenticated={setSession} />;
+  }
+
+  return <CoreApp session={session} onLogout={handleLogout} />;
 }
 
-createRoot(document.getElementById("root")).render(<AppErrorBoundary><Root /></AppErrorBoundary>);
+createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
+  </React.StrictMode>,
+);
