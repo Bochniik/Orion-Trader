@@ -1,0 +1,145 @@
+/* OrionTrader topbar terminal density
+   Presentation-only shell overrides. Keeps existing routing and data flow intact. */
+
+.core-topbar {
+  min-height: 52px;
+  padding: 7px clamp(18px, 2.2vw, 34px);
+  gap: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.014), transparent 72%),
+    rgba(6, 8, 11, 0.9);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.16),
+    inset 0 -1px rgba(255, 255, 255, 0.018);
+}
+
+.core-topbar-dashboard {
+  min-height: 48px;
+}
+
+.core-command-search {
+  width: min(520px, 48vw);
+  min-height: 34px;
+  padding: 6px 9px 6px 11px;
+  gap: 9px;
+  border-radius: 7px;
+  color: #9aa4af;
+  font-size: 12px;
+  letter-spacing: 0.005em;
+}
+
+.core-command-search svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.core-command-search kbd {
+  min-width: 34px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: #737d88;
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.core-topbar-actions {
+  margin-left: auto;
+  gap: 5px;
+}
+
+.core-market-status {
+  min-height: 30px;
+  padding: 5px 9px;
+  margin-right: 5px;
+  gap: 7px;
+  border-color: rgba(255, 255, 255, 0.055);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.014);
+  color: #8c96a1;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.core-market-status > span {
+  width: 6px;
+  height: 6px;
+  box-shadow: 0 0 8px rgba(97, 216, 155, 0.5);
+}
+
+.core-topbar-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: #77818c;
+}
+
+.core-topbar-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.core-topbar-icon:hover,
+.core-topbar-icon:focus-visible {
+  color: #ff9a52;
+}
+
+.core-main {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .core-topbar {
+    padding-inline: 18px;
+  }
+
+  .core-command-search {
+    width: min(430px, 46vw);
+  }
+
+  .core-market-status {
+    max-width: 142px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .core-topbar,
+  .core-topbar-dashboard {
+    min-height: 46px;
+    padding: 6px 12px;
+  }
+
+  .core-command-search {
+    width: min(100%, 360px);
+    min-height: 32px;
+  }
+
+  .core-market-status {
+    width: 28px;
+    min-width: 28px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .core-market-status > span {
+    margin: 0;
+  }
+
+  .core-topbar-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-command-search,
+  .core-topbar-icon {
+    transition: none;
+  }
+}
