@@ -1,0 +1,73 @@
+/* OrionTrader workspace shell rhythm
+   Presentation-only cohesion for the primary market-intelligence canvas. */
+
+.core-workspace {
+  background:
+    radial-gradient(circle at 48% -12%, rgba(255, 122, 26, 0.035), transparent 34rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.008), transparent 18rem);
+}
+
+.core-main {
+  --workspace-gutter: clamp(20px, 2.5vw, 38px);
+  padding: 26px var(--workspace-gutter) 48px;
+}
+
+.core-main::before {
+  left: var(--workspace-gutter);
+  right: var(--workspace-gutter);
+  opacity: 0.5;
+}
+
+.core-view {
+  margin-inline: auto;
+}
+
+.core-page-heading {
+  gap: 22px;
+  margin-bottom: 22px;
+  padding: 7px 0 17px;
+}
+
+.core-page-heading h1 {
+  margin: 4px 0 7px;
+  font-size: clamp(25px, 2.45vw, 36px);
+  letter-spacing: -1.15px;
+}
+
+.core-page-heading p {
+  max-width: 720px;
+  line-height: 1.55;
+}
+
+.core-page-heading::after {
+  width: 96px;
+  opacity: 0.88;
+}
+
+@media (min-width: 1440px) {
+  .core-main {
+    --workspace-gutter: clamp(28px, 2.7vw, 44px);
+    padding-top: 28px;
+  }
+}
+
+@media (max-width: 900px) {
+  .core-main {
+    --workspace-gutter: clamp(14px, 4vw, 22px);
+    padding: 22px var(--workspace-gutter) 42px;
+  }
+
+  .core-page-heading {
+    gap: 16px;
+    margin-bottom: 18px;
+    padding-bottom: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-workspace,
+  .core-main,
+  .core-page-heading {
+    scroll-behavior: auto;
+  }
+}
