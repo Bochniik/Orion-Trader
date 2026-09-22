@@ -1,0 +1,107 @@
+/* OrionTrader Analyze market-evidence composition
+   Presentation only: strengthens chart/news hierarchy using existing rendered data. */
+
+.analyze-view .analysis-market-grid {
+  isolation: isolate;
+}
+
+.analyze-view .analyze-chart-panel {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 126, 34, 0.045), transparent 30%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.02), transparent 38%),
+    rgba(5, 8, 12, 0.88);
+}
+
+.analyze-view .analyze-news-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 122, 26, 0.022), transparent 24%),
+    rgba(5, 8, 12, 0.8);
+}
+
+.analyze-view .analyze-chart-panel .analyze-section-heading h2 {
+  font-size: clamp(1rem, 1.1vw, 1.16rem);
+  font-weight: 760;
+}
+
+.analyze-view .analyze-news-panel .analyze-section-heading h2 {
+  font-size: 0.98rem;
+  font-weight: 720;
+}
+
+.analyze-view .analyze-news-panel .news-feed-telemetry {
+  padding-block: 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.analyze-view .analyze-news-panel .news-item--terminal {
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.analyze-view .analyze-news-panel .news-item--terminal:hover,
+.analyze-view .analyze-news-panel .news-item--terminal:focus-within {
+  border-color: rgba(255, 148, 71, 0.13);
+  background: rgba(255, 122, 26, 0.025);
+}
+
+.analyze-view .analyze-news-panel .news-item--lead {
+  background: linear-gradient(110deg, rgba(255, 122, 26, 0.04), rgba(255, 255, 255, 0.012));
+}
+
+.analyze-view .analyze-news-panel .news-title {
+  letter-spacing: -0.008em;
+}
+
+.analyze-view .analyze-news-panel .news-meta-row,
+.analyze-view .analyze-news-panel .news-summary {
+  color: rgba(195, 202, 212, 0.62);
+}
+
+@media (min-width: 1180px) {
+  .analyze-view .analysis-market-grid {
+    grid-template-columns: minmax(0, 1.76fr) minmax(330px, 0.78fr);
+  }
+
+  .analyze-view .analyze-chart-panel {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 18px 42px rgba(0, 0, 0, 0.19);
+  }
+
+  .analyze-view .analyze-news-panel .news-list--terminal {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 145, 65, 0.2) transparent;
+  }
+}
+
+@media (min-width: 1500px) {
+  .analyze-view .analysis-market-grid {
+    grid-template-columns: minmax(0, 1.86fr) minmax(350px, 0.74fr);
+  }
+}
+
+@media (max-width: 759px) {
+  .analyze-view .analyze-chart-panel,
+  .analyze-view .analyze-news-panel {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view .analyze-news-panel .news-item--terminal {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analyze-chart-panel,
+  .analyze-view .analyze-news-panel {
+    background: #080a0e;
+  }
+
+  .analyze-view .analyze-news-panel .news-item--terminal:hover,
+  .analyze-view .analyze-news-panel .news-item--terminal:focus-within {
+    border-color: rgba(255, 158, 86, 0.5);
+    background: rgba(255, 122, 26, 0.07);
+  }
+}
