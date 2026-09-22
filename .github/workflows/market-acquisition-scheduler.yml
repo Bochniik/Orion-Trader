@@ -22,14 +22,15 @@ on:
     # Regular-hours V3.1. The worker's America/New_York gate keeps only
     # 09:35-15:35 ET decision slots active across DST.
     - cron: "35 13-21 * * 1-5"
-    # Completed-session raw-data reconciliation. Off-hour minutes reduce
-    # schedule congestion; America/New_York handles DST and early dates safely.
-    - cron: "47 9 * * 1-5"
-      timezone: "America/New_York"
-    - cron: "17 16 * * 1-5"
-      timezone: "America/New_York"
+    # Completed-session reconciliation. GitHub cron is UTC, so register both
+    # EDT and EST equivalents; the called workflow gates on New York local time.
+    - cron: "47 13 * * 1-5"
+    - cron: "47 14 * * 1-5"
     - cron: "17 20 * * 1-5"
-      timezone: "America/New_York"
+    - cron: "17 21 * * 1-5"
+    # 20:17 ET lands on the following UTC day.
+    - cron: "17 0 * * 2-6"
+    - cron: "17 1 * * 2-6"
 
 permissions:
   actions: read
@@ -59,21 +60,27 @@ jobs:
     secrets: inherit
 
   premarket-session-data:
-    if: github.event.schedule == '47 9 * * 1-5'
+    if: >-
+      github.event.schedule == '47 13 * * 1-5' ||
+      github.event.schedule == '47 14 * * 1-5'
     uses: ./.github/workflows/market-session-data-cloud.yml
     with:
       session: premarket
     secrets: inherit
 
   regular-session-data:
-    if: github.event.schedule == '17 16 * * 1-5'
+    if: >-
+      github.event.schedule == '17 20 * * 1-5' ||
+      github.event.schedule == '17 21 * * 1-5'
     uses: ./.github/workflows/market-session-data-cloud.yml
     with:
       session: regular
     secrets: inherit
 
   after-hours-session-data:
-    if: github.event.schedule == '17 20 * * 1-5'
+    if: >-
+      github.event.schedule == '17 0 * * 2-6' ||
+      github.event.schedule == '17 1 * * 2-6'
     uses: ./.github/workflows/market-session-data-cloud.yml
     with:
       session: after_hours
