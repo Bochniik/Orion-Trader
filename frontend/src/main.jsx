@@ -46,6 +46,7 @@ import "./analysis-insight-terminal-polish.css";
 import "./analysis-insight-rail.css";
 import "./analysis-evidence-scan.css";
 import "./analysis-actionable-context.css";
+import "./analysis-decision-action-cohesion.css";
 import "./analysis-responsive.css";
 import "./analysis-vertical-rhythm.css";
 import "./analysis-desktop-composition.css";
