@@ -1,0 +1,79 @@
+/* Workspace data hierarchy polish.
+   Presentation only: no market, model, scoring, or trading semantics live here. */
+
+:root {
+  --orion-data-primary: rgba(248, 249, 251, 0.96);
+  --orion-data-secondary: rgba(214, 218, 224, 0.72);
+  --orion-data-muted: rgba(174, 180, 190, 0.52);
+}
+
+/* Make dense terminal data easier to scan without changing component markup. */
+.core-card :is(dt, .label, .metric-label, .eyebrow, .meta-label),
+.dashboard-card :is(dt, .label, .metric-label, .eyebrow, .meta-label),
+.analysis-card :is(dt, .label, .metric-label, .eyebrow, .meta-label),
+.quote-card :is(dt, .label, .metric-label, .eyebrow, .meta-label),
+.watchlist-card :is(dt, .label, .metric-label, .eyebrow, .meta-label),
+.scanner-card :is(dt, .label, .metric-label, .eyebrow, .meta-label) {
+  color: var(--orion-data-muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.075em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.core-card :is(dd, .metric-value, .value),
+.dashboard-card :is(dd, .metric-value, .value),
+.analysis-card :is(dd, .metric-value, .value),
+.quote-card :is(dd, .metric-value, .value),
+.watchlist-card :is(dd, .metric-value, .value),
+.scanner-card :is(dd, .metric-value, .value) {
+  color: var(--orion-data-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.018em;
+}
+
+/* Metadata should remain visible but never compete with price or decision data. */
+.core-card :is(time, .timestamp, .updated-at, .meta),
+.dashboard-card :is(time, .timestamp, .updated-at, .meta),
+.analysis-card :is(time, .timestamp, .updated-at, .meta),
+.news-card :is(time, .timestamp, .updated-at, .meta),
+.watchlist-card :is(time, .timestamp, .updated-at, .meta),
+.market-explorer-card :is(time, .timestamp, .updated-at, .meta) {
+  color: var(--orion-data-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.015em;
+}
+
+/* Keep status chips compact and terminal-like across panels. */
+.core-card :is(.status, .status-pill, .badge),
+.dashboard-card :is(.status, .status-pill, .badge),
+.analysis-card :is(.status, .status-pill, .badge),
+.watchlist-card :is(.status, .status-pill, .badge),
+.scanner-card :is(.status, .status-pill, .badge) {
+  min-height: 22px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  line-height: 1;
+}
+
+/* Secondary explanatory copy sits one clear step below actionable data. */
+.core-card :is(.muted, .secondary, small),
+.dashboard-card :is(.muted, .secondary, small),
+.analysis-card :is(.muted, .secondary, small),
+.news-card :is(.muted, .secondary, small),
+.watchlist-card :is(.muted, .secondary, small) {
+  color: var(--orion-data-secondary);
+}
+
+@media (max-width: 720px) {
+  .core-card :is(dt, .label, .metric-label, .eyebrow, .meta-label),
+  .dashboard-card :is(dt, .label, .metric-label, .eyebrow, .meta-label),
+  .analysis-card :is(dt, .label, .metric-label, .eyebrow, .meta-label) {
+    letter-spacing: 0.06em;
+  }
+}

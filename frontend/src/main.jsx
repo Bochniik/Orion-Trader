@@ -12,6 +12,7 @@ import "./responsive-shell-density.css";
 import "./notification-polish.css";
 import "./data-panels.css";
 import "./panel-surface-cohesion.css";
+import "./workspace-data-hierarchy.css";
 import "./news-polish.css";
 import "./news-state-polish.css";
 import "./news-refresh-feedback.css";
