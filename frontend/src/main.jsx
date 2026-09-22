@@ -61,6 +61,7 @@ import "./quote-polish.css";
 import "./stock-workspace.css";
 import "./scanner-polish.css";
 import "./scanner-density-polish.css";
+import "./scanner-candidate-state-cohesion.css";
 import "./radar-ranking-polish.css";
 import "./radar-bucket-priority-polish.css";
 import "./radar-workflow-polish.css";
