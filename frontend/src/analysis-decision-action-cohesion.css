@@ -1,0 +1,116 @@
+/* Analysis decision/action cohesion.
+   Presentation only: clarifies the existing Orion decision -> context -> support flow. */
+
+.analyze-view .analysis-decision,
+.analyze-view .analysis-session,
+.analyze-view .analysis-risk-metric {
+  position: relative;
+  isolation: isolate;
+}
+
+.analyze-view .analysis-decision {
+  overflow: hidden;
+  border-color: rgba(255, 148, 71, 0.12);
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 122, 26, 0.07), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 68%),
+    rgba(10, 11, 13, 0.86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 184, 116, 0.035),
+    0 12px 34px rgba(0, 0, 0, 0.16);
+}
+
+.analyze-view .analysis-decision::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255, 148, 71, 0.9), rgba(255, 122, 26, 0.08) 72%);
+  box-shadow: 0 0 16px rgba(255, 122, 26, 0.16);
+  pointer-events: none;
+}
+
+.analyze-view .analysis-decision h2,
+.analyze-view .analysis-decision h3 {
+  letter-spacing: -0.018em;
+}
+
+.analyze-view .analysis-decision strong,
+.analyze-view .analysis-decision [class*="confidence"],
+.analyze-view .analysis-decision [class*="price"],
+.analyze-view .analysis-decision [class*="target"],
+.analyze-view .analysis-decision [class*="stop"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.analyze-view .analysis-decision button,
+.analyze-view .analysis-decision a {
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.analyze-view .analysis-decision button:hover,
+.analyze-view .analysis-decision a:hover {
+  border-color: rgba(255, 148, 71, 0.24);
+  background-color: rgba(255, 122, 26, 0.055);
+  box-shadow: 0 0 18px rgba(255, 122, 26, 0.07);
+}
+
+.analyze-view .analysis-decision button:focus-visible,
+.analyze-view .analysis-decision a:focus-visible {
+  outline: 2px solid rgba(255, 148, 71, 0.72);
+  outline-offset: 2px;
+}
+
+/* Keep the existing session/risk context visually attached to the decision
+   without changing values, labels, ordering, or backend bindings. */
+.analyze-view .analysis-session,
+.analyze-view .analysis-risk-metric {
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.analyze-view .analysis-session:hover,
+.analyze-view .analysis-risk-metric:hover {
+  border-color: rgba(255, 148, 71, 0.13);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.11);
+}
+
+.analyze-view .analysis-session:focus-within,
+.analyze-view .analysis-risk-metric:focus-within {
+  border-color: rgba(255, 148, 71, 0.2);
+  box-shadow: 0 0 0 1px rgba(255, 122, 26, 0.07), 0 0 20px rgba(255, 122, 26, 0.055);
+}
+
+.analyze-view .analysis-reasons {
+  border-top-color: rgba(255, 148, 71, 0.1);
+}
+
+.analyze-view .analysis-risks {
+  border-top-color: rgba(255, 255, 255, 0.055);
+}
+
+@media (max-width: 720px) {
+  .analyze-view .analysis-decision {
+    box-shadow: inset 0 1px 0 rgba(255, 184, 116, 0.03);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analysis-decision,
+  .analyze-view .analysis-session,
+  .analyze-view .analysis-risk-metric {
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .analyze-view .analysis-decision::before {
+    background: #ff9447;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view .analysis-decision button,
+  .analyze-view .analysis-decision a,
+  .analyze-view .analysis-session,
+  .analyze-view .analysis-risk-metric {
+    transition: none;
+  }
+}
