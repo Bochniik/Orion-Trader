@@ -1,0 +1,70 @@
+/* Shared row-state hierarchy for market lists and tables.
+   Presentation only: existing data, ranking, selection and backend semantics are unchanged. */
+
+:where(.watchlist-card .watchlist-row:not(.watchlist-row-head), .market-v3-row, .table-scroll tbody tr) {
+  position: relative;
+  font-variant-numeric: tabular-nums;
+}
+
+:where(.watchlist-card .watchlist-row:not(.watchlist-row-head), .market-v3-row) {
+  transition: background 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.watchlist-card .watchlist-row:not(.watchlist-row-head):hover,
+.watchlist-card .watchlist-row:not(.watchlist-row-head):focus-within,
+.market-v3-row:hover,
+.market-v3-row:focus-visible {
+  background: linear-gradient(90deg, rgba(255, 132, 25, .065), rgba(255, 132, 25, .014) 48%, transparent 82%);
+  box-shadow: inset 2px 0 rgba(255, 148, 53, .54);
+}
+
+.watchlist-card .watchlist-row.is-selected {
+  background: linear-gradient(90deg, rgba(255, 126, 26, .14), rgba(255, 126, 26, .035) 52%, transparent 84%);
+  box-shadow: inset 2px 0 rgba(255, 151, 61, .86), inset 0 1px rgba(255, 255, 255, .025);
+}
+
+.watchlist-card .watch-symbol,
+.market-v3-symbol {
+  color: rgba(239, 242, 245, .92);
+  font-weight: 720;
+  letter-spacing: .025em;
+}
+
+.watchlist-card .watch-price,
+.market-v3-price {
+  color: rgba(232, 236, 240, .9);
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+}
+
+.watchlist-card .watch-volume,
+.market-v3-exchange,
+.market-v3-company-copy > small {
+  color: rgba(137, 146, 156, .62);
+}
+
+.market-v3-table-head > span,
+.watchlist-card .watchlist-row-head {
+  color: rgba(173, 181, 190, .52);
+  font-weight: 720;
+}
+
+.market-v3-row:focus-visible {
+  outline: 1px solid rgba(255, 151, 61, .66);
+  outline-offset: -1px;
+}
+
+@media (prefers-contrast: more) {
+  .watchlist-card .watchlist-row:not(.watchlist-row-head):hover,
+  .watchlist-card .watchlist-row.is-selected,
+  .market-v3-row:hover,
+  .market-v3-row:focus-visible {
+    box-shadow: inset 3px 0 rgba(255, 166, 83, .95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.watchlist-card .watchlist-row:not(.watchlist-row-head), .market-v3-row) {
+    transition: none;
+  }
+}
