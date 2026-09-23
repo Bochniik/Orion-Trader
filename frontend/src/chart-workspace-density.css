@@ -1,0 +1,95 @@
+/* Dense chart command surface: presentation only; existing CandleChart state and data flow stay untouched. */
+.analyze-chart-panel .advanced-chart { --chart-control-h: 25px; }
+.analyze-chart-panel .chart-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(300px, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  padding: 5px 6px;
+}
+.analyze-chart-panel .chart-toolbar::before { display: none; }
+.analyze-chart-panel .range-buttons {
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+}
+.analyze-chart-panel .range-btn {
+  min-width: 32px;
+  min-height: var(--chart-control-h);
+  padding: 4px 7px;
+}
+.analyze-chart-panel .chart-time-controls {
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+.analyze-chart-panel .chart-time-controls::before { content: none; }
+.analyze-chart-panel .chart-time-controls button,
+.analyze-chart-panel .chart-interval-note,
+.analyze-chart-panel .indicator-toggle { min-height: var(--chart-control-h); }
+.analyze-chart-panel .chart-time-controls button { padding: 4px 7px; }
+.analyze-chart-panel .chart-interval-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 2px;
+  padding: 0 7px;
+}
+.analyze-chart-panel .chart-interval-note::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: #36b77c;
+  box-shadow: 0 0 8px rgba(54, 183, 124, .28);
+}
+.analyze-chart-panel .indicator-toolbar {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 4px 0 7px;
+  padding: 3px 4px;
+  border: 1px solid rgba(148, 163, 184, .07);
+  border-radius: 9px;
+  background: rgba(2, 6, 12, .38);
+}
+.analyze-chart-panel .indicator-toolbar::before {
+  content: "LAYERS";
+  position: static;
+  transform: none;
+  flex: 0 0 auto;
+  margin: 0 4px 0 2px;
+}
+.analyze-chart-panel .indicator-toggle { padding: 4px 7px; }
+.analyze-chart-panel .chart-inspector { margin-bottom: 4px; }
+.analyze-chart-panel .chart-period-summary { margin-bottom: 6px; }
+
+@media (max-width: 1180px) {
+  .analyze-chart-panel .chart-toolbar { grid-template-columns: 1fr; row-gap: 4px; }
+  .analyze-chart-panel .chart-time-controls { justify-content: flex-start; }
+}
+@media (max-width: 720px) {
+  .analyze-chart-panel .range-buttons,
+  .analyze-chart-panel .chart-time-controls,
+  .analyze-chart-panel .indicator-toolbar { overflow-x: auto; scrollbar-width: none; }
+  .analyze-chart-panel .range-buttons::-webkit-scrollbar,
+  .analyze-chart-panel .chart-time-controls::-webkit-scrollbar,
+  .analyze-chart-panel .indicator-toolbar::-webkit-scrollbar { display: none; }
+  .analyze-chart-panel .chart-time-controls { flex-wrap: nowrap; }
+  .analyze-chart-panel .chart-time-controls button,
+  .analyze-chart-panel .chart-interval-note,
+  .analyze-chart-panel .indicator-toggle { flex: 0 0 auto; }
+  .analyze-chart-panel .chart-interval-note { margin-left: 2px; }
+  .analyze-chart-panel .indicator-toolbar::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analyze-chart-panel .range-buttons,
+  .analyze-chart-panel .chart-time-controls,
+  .analyze-chart-panel .indicator-toolbar { scroll-behavior: auto; }
+}
