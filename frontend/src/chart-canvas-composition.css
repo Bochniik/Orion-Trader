@@ -35,6 +35,57 @@
   order: 6;
 }
 
+/* Keep request state feedback visually attached to the dominant canvas. */
+.advanced-chart:has(.chart-status-loading) .chart-container,
+.advanced-chart:has(.chart-status-empty) .chart-container,
+.advanced-chart:has(.chart-status-error) .chart-container {
+  isolation: isolate;
+}
+
+.advanced-chart:has(.chart-status-loading) .chart-container::after,
+.advanced-chart:has(.chart-status-empty) .chart-container::after,
+.advanced-chart:has(.chart-status-error) .chart-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(2, 5, 10, .08), rgba(2, 5, 10, .38));
+}
+
+.advanced-chart:has(.chart-status-loading) .chart-container::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  width: 28%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(249, 115, 22, .88), transparent);
+  box-shadow: 0 0 14px rgba(249, 115, 22, .22);
+  animation: chart-canvas-sync 1.6s ease-in-out infinite;
+}
+
+.advanced-chart:has(.chart-status-empty) .chart-container::after {
+  background: linear-gradient(180deg, rgba(2, 5, 10, .2), rgba(15, 23, 42, .48));
+}
+
+.advanced-chart:has(.chart-status-error) .chart-container {
+  border-color: rgba(239, 68, 68, .16);
+}
+
+.advanced-chart:has(.chart-status-error) .chart-container::after {
+  background: linear-gradient(180deg, rgba(2, 5, 10, .18), rgba(69, 10, 10, .16));
+}
+
+@keyframes chart-canvas-sync {
+  0% { transform: translateX(-110%); opacity: 0; }
+  18% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { transform: translateX(460%); opacity: 0; }
+}
+
 /* Analyze uses the larger chart as the focal evidence surface. */
 .analyze-chart-panel .advanced-chart .chart-container {
   min-height: 540px;
@@ -73,8 +124,20 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .advanced-chart:has(.chart-status-loading) .chart-container::before {
+    width: 100%;
+    animation: none;
+    opacity: .5;
+  }
+}
+
 @media (prefers-contrast: more) {
   .advanced-chart .chart-container {
     border-color: rgba(226, 232, 240, .32);
+  }
+
+  .advanced-chart:has(.chart-status-error) .chart-container {
+    border-color: rgba(248, 113, 113, .5);
   }
 }
