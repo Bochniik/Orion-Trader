@@ -1,0 +1,113 @@
+/* Selected watchlist instrument -> Analyze orientation. Presentation only. */
+.watchlist-card .watchlist-row:not(.watchlist-row-head) {
+  position: relative;
+  isolation: isolate;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.watchlist-card .watchlist-row:not(.watchlist-row-head)::before {
+  content: "";
+  position: absolute;
+  inset: 5px auto 5px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.watchlist-card .watchlist-row.is-selected {
+  border-color: rgba(255, 139, 40, .18);
+  box-shadow: inset 0 0 0 1px rgba(255, 139, 40, .035), 0 8px 24px rgba(0, 0, 0, .12);
+}
+
+.watchlist-card .watchlist-row.is-selected::before {
+  background: #ff8b28;
+  box-shadow: 0 0 12px rgba(255, 139, 40, .62);
+}
+
+.watchlist-card .watchlist-row.is-selected .watch-symbol-code,
+.watchlist-card .watchlist-row.is-selected .watch-price {
+  color: #fff5eb;
+}
+
+.watchlist-card .watchlist-row.is-selected .watch-stock-mark {
+  border-color: rgba(255, 139, 40, .32);
+  box-shadow: 0 0 0 1px rgba(255, 139, 40, .08), 0 0 16px rgba(255, 139, 40, .08);
+}
+
+.watchlist-card .watch-analyze-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: rgba(215, 220, 228, .34);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  transition: color 150ms ease, transform 150ms ease;
+}
+
+.watchlist-card .watchlist-row:hover .watch-analyze-cue,
+.watchlist-card .watchlist-row:focus-within .watch-analyze-cue {
+  color: rgba(255, 171, 92, .78);
+}
+
+.watchlist-card .watchlist-row.is-selected .watch-analyze-cue {
+  color: #ff9b42;
+  transform: translateX(1px);
+}
+
+.watchlist-card .watchlist-row.is-selected .watch-analyze-cue::before {
+  content: "Active";
+  color: rgba(255, 226, 198, .62);
+}
+
+.watchlist-card .watchlist-refresh {
+  min-width: 0;
+}
+
+.watchlist-card .watchlist-refresh span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watchlist-card:has(.watchlist-row.is-selected) .watchlist-refresh {
+  border-color: rgba(255, 139, 40, .16);
+  background: rgba(255, 139, 40, .045);
+  color: rgba(255, 197, 143, .78);
+}
+
+@media (max-width: 980px) {
+  .watchlist-card .watch-analyze-cue {
+    letter-spacing: .045em;
+  }
+
+  .watchlist-card .watchlist-row.is-selected .watch-analyze-cue::before {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watchlist-card .watchlist-row:not(.watchlist-row-head),
+  .watchlist-card .watchlist-row:not(.watchlist-row-head)::before,
+  .watchlist-card .watch-analyze-cue {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .watchlist-card .watchlist-row.is-selected {
+    border-color: rgba(255, 168, 87, .62);
+  }
+
+  .watchlist-card .watchlist-row.is-selected::before {
+    width: 3px;
+    background: #ffad61;
+  }
+
+  .watchlist-card .watch-analyze-cue {
+    color: rgba(235, 238, 243, .72);
+  }
+}
