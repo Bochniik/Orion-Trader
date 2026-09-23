@@ -61,6 +61,7 @@ import "./analysis-workspace-orientation.css";
 import "./analyze-chart-cohesion.css";
 import "./watchlist-polish.css";
 import "./watchlist-terminal-density.css";
+import "./watchlist-analysis-orientation.css";
 import "./quote-polish.css";
 import "./stock-workspace.css";
 import "./scanner-polish.css";
