@@ -1,21 +1,21 @@
 /* Presentation-only telemetry for CandleChart live quote state.
    Reuses the existing live/stale/paused state emitted by CandleChart. */
-.analyze-chart-panel .chart-live-message {
+.chart-live-message {
   --feed-state: "LIVE";
   --feed-state-color: #34d399;
 }
 
-.analyze-chart-panel .chart-live-stale {
+.chart-live-stale {
   --feed-state: "STALE";
   --feed-state-color: #fbbf24;
 }
 
-.analyze-chart-panel .chart-live-paused {
+.chart-live-paused {
   --feed-state: "PAUSED";
   --feed-state-color: #94a3b8;
 }
 
-.analyze-chart-panel .chart-live-message > div::after {
+.chart-live-message > div::after {
   content: var(--feed-state);
   flex: 0 0 auto;
   margin-left: auto;
@@ -30,11 +30,11 @@
   line-height: 1.2;
 }
 
-.analyze-chart-panel .chart-live-message .chart-live-indicator {
+.chart-live-message .chart-live-indicator {
   position: relative;
 }
 
-.analyze-chart-panel .chart-live-message:not(.chart-live-stale):not(.chart-live-paused) .chart-live-indicator::after {
+.chart-live-message:not(.chart-live-stale):not(.chart-live-paused) .chart-live-indicator::after {
   content: "";
   position: absolute;
   inset: -3px;
@@ -43,7 +43,7 @@
   animation: chart-feed-pulse 2.2s ease-out infinite;
 }
 
-.analyze-chart-panel .chart-live-message > div > span {
+.chart-live-message > div > span {
   flex: 0 1 auto;
   margin-left: auto;
 }
@@ -54,20 +54,32 @@
 }
 
 @media (max-width: 720px) {
-  .analyze-chart-panel .chart-live-message > div::after {
+  .chart-live-message > div::after {
     grid-row: 1 / span 2;
     grid-column: 2;
     align-self: center;
   }
 
-  .analyze-chart-panel .chart-live-message > div > span {
+  .chart-live-message > div > span {
     margin-left: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .analyze-chart-panel .chart-live-message .chart-live-indicator::after {
+  .chart-live-message .chart-live-indicator::after {
     animation: none;
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .chart-live-message > div::after {
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .chart-live-message .chart-live-indicator::after {
     display: none;
   }
 }
