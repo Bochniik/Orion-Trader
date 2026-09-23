@@ -21,10 +21,20 @@ export default function LiveQuoteCard({ quote, loading, error, direction, isFavo
   const directionClass = direction === "up" ? "flash-up" : direction === "down" ? "flash-down" : "";
   const quoteState = error ? "offline" : quote?.stale ? "stale" : loading && !quote ? "syncing" : quote ? "live" : "waiting";
   const quoteStateLabel = { offline: "OFFLINE", stale: "STALE", syncing: "SYNC", live: "LIVE", waiting: "WAIT" }[quoteState];
-  const quoteStateDetail = loading && quote ? "Refreshing" : quote?.updated_at ? `Updated ${formatTime(quote.updated_at)}` : "Waiting for first quote";
+  const quoteStateDetail = error
+    ? "Quote feed unavailable"
+    : quote?.stale && quote?.updated_at
+      ? `Last quote ${formatTime(quote.updated_at)}`
+      : loading && quote
+        ? "Refreshing live quote"
+        : quote?.updated_at
+          ? `Updated ${formatTime(quote.updated_at)}`
+          : loading
+            ? "Connecting to quote feed"
+            : "Waiting for first quote";
 
   return (
-    <section className={`card live-quote-card ${directionClass}`}>
+    <section className={`card live-quote-card ${directionClass}`} data-feed-state={quoteState}>
       <div className="quote-header">
         <div>
           <div className="card-title"><Activity size={20} />Live quote</div>
@@ -37,7 +47,7 @@ export default function LiveQuoteCard({ quote, loading, error, direction, isFavo
             {isFavorite ? "Favorited" : "Favorite"}
           </button>
 
-          <div className="quote-status" data-state={quoteState} aria-live="polite" title={`${quoteStateLabel} · ${quoteStateDetail}`}>
+          <div className="quote-status" data-state={quoteState} aria-live="polite" aria-label={`Quote feed ${quoteStateLabel}: ${quoteStateDetail}`} title={`${quoteStateLabel} · ${quoteStateDetail}`}>
             <RefreshCw size={16} className={loading ? "spin" : ""} />
             <span className="quote-status-badge"><span className="quote-status-dot" aria-hidden="true" />{quoteStateLabel}</span>
             <span className="quote-status-detail">{quoteStateDetail}</span>
