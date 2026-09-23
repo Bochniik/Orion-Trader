@@ -28,6 +28,7 @@ import "./chart-state-polish.css";
 import "./chart-live-telemetry-polish.css";
 import "./chart-request-telemetry-polish.css";
 import "./chart-empty-state-polish.css";
+import "./chart-canvas-composition.css";
 import "./analysis-polish.css";
 import "./analysis-news-context.css";
 import "./analysis-news-decision-context.css";
