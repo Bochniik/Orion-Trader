@@ -1,0 +1,129 @@
+/* Responsive density bridge for scanner/watchlist -> analysis workflows.
+   Presentation only: keeps existing data, actions and selection semantics intact. */
+
+@media (min-width: 981px) and (max-width: 1360px) {
+  .scanner-surface-heading {
+    gap: 14px;
+  }
+
+  .scanner-progress {
+    margin-block: 10px 13px;
+    padding: 7px 9px;
+  }
+
+  .scanner-candidate-grid {
+    gap: 7px;
+  }
+
+  .scanner-candidate-card {
+    min-width: 0;
+  }
+
+  .scanner-candidate-heading {
+    min-height: 38px;
+  }
+
+  .scanner-candidate-primary span {
+    margin-bottom: 4px;
+    font-size: 7.5px;
+  }
+
+  .scanner-candidate-why {
+    min-height: 36px;
+    font-size: 9.5px;
+  }
+
+  .watchlist-card .watchlist-row {
+    min-width: 0;
+    min-height: 37px;
+    gap: 6px;
+    padding-inline: 6px;
+  }
+
+  .watchlist-card .watch-stock-mark {
+    width: 23px;
+    height: 23px;
+    flex-basis: 23px;
+  }
+
+  .watchlist-card .watch-symbol,
+  .watchlist-card .watch-price {
+    min-width: 0;
+  }
+
+  .watchlist-card .watch-symbol {
+    overflow: hidden;
+  }
+
+  .watchlist-card .watch-change {
+    min-width: 60px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .watchlist-card {
+    min-width: 0;
+  }
+
+  .watchlist-card .watchlist-table {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .watchlist-card .watchlist-row {
+    min-width: 560px;
+  }
+
+  .scanner-section-label {
+    gap: 10px;
+  }
+
+  .scanner-section-label span {
+    overflow: hidden;
+    max-width: 48%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .scanner-surface::before {
+    margin-bottom: 9px;
+  }
+
+  .scanner-section-label {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .scanner-section-label span {
+    max-width: 100%;
+  }
+
+  .scanner-candidate-heading > div:first-child > p {
+    max-width: 28ch;
+  }
+
+  .watchlist-card .watchlist-table {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .watchlist-card .watchlist-row {
+    min-width: 520px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .watchlist-card .watchlist-table {
+    scrollbar-color: currentColor transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watchlist-card .watchlist-table {
+    scroll-behavior: auto;
+  }
+}
