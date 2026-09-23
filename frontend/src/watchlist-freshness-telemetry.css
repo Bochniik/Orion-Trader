@@ -1,0 +1,75 @@
+.watch-quote-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 18px;
+  padding: 1px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted, #8f949e);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.watch-quote-state-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.watch-quote-state.is-live {
+  border-color: rgba(61, 214, 140, 0.18);
+  background: rgba(61, 214, 140, 0.055);
+  color: #63dca0;
+}
+
+.watch-quote-state.is-stale {
+  border-color: rgba(245, 154, 35, 0.24);
+  background: rgba(245, 154, 35, 0.07);
+  color: var(--accent, #f59a23);
+}
+
+.watch-quote-state.is-offline {
+  border-color: rgba(238, 92, 92, 0.2);
+  background: rgba(238, 92, 92, 0.055);
+  color: #df7777;
+}
+
+.watch-quote-state.is-sync .watch-quote-state-dot {
+  animation: watch-quote-sync 1.4s ease-in-out infinite;
+}
+
+.watch-quote-state.is-wait {
+  opacity: 0.72;
+}
+
+.watchlist-row:has(.watch-quote-state.is-stale) .watch-price,
+.watchlist-row:has(.watch-quote-state.is-offline) .watch-price {
+  color: var(--muted, #8f949e);
+}
+
+@keyframes watch-quote-sync {
+  0%, 100% { opacity: 0.42; transform: scale(0.82); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watch-quote-state.is-sync .watch-quote-state-dot { animation: none; }
+}
+
+@media (forced-colors: active) {
+  .watch-quote-state {
+    border-color: ButtonText;
+    color: ButtonText;
+    forced-color-adjust: auto;
+  }
+
+  .watch-quote-state-dot { box-shadow: none; }
+}
