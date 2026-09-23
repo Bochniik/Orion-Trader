@@ -34,6 +34,7 @@ import "./news-media-integrity-polish.css";
 import "./news-terminal-density-polish.css";
 import "./news-feed-scanability.css";
 import "./analysis-snapshot.css";
+import "./analysis-ticker-identity-continuity.css";
 import "./analysis-provenance-polish.css";
 import "./analysis-decision-hierarchy.css";
 import "./analysis-decision-console-polish.css";
