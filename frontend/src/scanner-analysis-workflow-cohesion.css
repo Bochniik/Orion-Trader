@@ -2,13 +2,18 @@
    Presentation-only: reinforces the selected candidate and the carried ticker context
    without changing ranking, scoring, decisions, or data flow. */
 
+.opportunity-card.is-selected,
+.watchlist-card .watchlist-row.is-selected,
+.analyze-view .analyze-sticky-context {
+  --instrument-accent: #ff8b28;
+  --instrument-accent-strong: #ffad61;
+  --instrument-accent-border: rgba(255, 139, 40, 0.34);
+}
+
 .opportunity-card.is-selected {
   position: relative;
-  border-color: rgba(255, 145, 48, 0.42);
-  box-shadow:
-    0 0 0 1px rgba(255, 145, 48, 0.08),
-    0 14px 34px rgba(0, 0, 0, 0.24),
-    0 0 28px rgba(255, 122, 24, 0.07);
+  border-color: var(--instrument-accent-border);
+  box-shadow: 0 0 0 1px rgba(255, 145, 48, 0.08), 0 14px 34px rgba(0, 0, 0, 0.24), 0 0 28px rgba(255, 122, 24, 0.07);
 }
 
 .opportunity-card.is-selected::before {
@@ -17,28 +22,34 @@
   inset: 0 auto 0 0;
   width: 2px;
   border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 174, 82, 0.95), rgba(255, 113, 18, 0.24));
+  background: linear-gradient(180deg, var(--instrument-accent-strong), var(--instrument-accent));
+  box-shadow: 0 0 14px rgba(255, 139, 40, 0.34);
   pointer-events: none;
 }
 
 .opportunity-card.is-selected .opportunity-symbol h2,
-.opportunity-card.is-selected .opportunity-actions [aria-pressed="true"] {
-  color: #fff4e8;
+.watchlist-card .watchlist-row.is-selected .watch-symbol-code,
+.analyze-view .analyze-sticky-ticker {
+  color: #fff5eb;
+  text-shadow: 0 0 18px rgba(255, 139, 40, 0.12);
 }
 
 .opportunity-card.is-selected .opportunity-actions [aria-pressed="true"] {
+  color: var(--instrument-accent-strong);
   border-color: rgba(255, 145, 48, 0.46);
   background: rgba(255, 126, 24, 0.1);
   box-shadow: inset 0 0 0 1px rgba(255, 168, 76, 0.05);
 }
 
+.watchlist-card .watchlist-row.is-selected .watch-analyze-cue {
+  color: var(--instrument-accent-strong);
+}
+
 .analyze-view .analyze-sticky-context {
   position: relative;
   overflow: hidden;
-  border-color: rgba(255, 145, 48, 0.28);
-  background:
-    linear-gradient(100deg, rgba(255, 126, 24, 0.09), rgba(255, 126, 24, 0.015) 58%, transparent),
-    rgba(13, 14, 16, 0.9);
+  border-color: var(--instrument-accent-border);
+  background: linear-gradient(100deg, rgba(255, 139, 40, 0.10), rgba(255, 139, 40, 0.018) 56%, transparent), rgba(13, 14, 16, 0.92);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
@@ -47,39 +58,34 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 2px;
-  background: linear-gradient(180deg, rgba(255, 174, 82, 0.95), rgba(255, 113, 18, 0.24));
+  background: linear-gradient(180deg, var(--instrument-accent-strong), var(--instrument-accent));
+  box-shadow: 0 0 14px rgba(255, 139, 40, 0.28);
   pointer-events: none;
 }
 
-.analyze-view .analyze-sticky-ticker {
-  letter-spacing: 0.035em;
-  text-shadow: 0 0 18px rgba(255, 135, 38, 0.12);
-}
-
+.analyze-view .analyze-sticky-ticker { letter-spacing: 0.035em; }
 .analyze-view .analyze-result-horizon {
   border-color: rgba(255, 255, 255, 0.075);
   background: linear-gradient(90deg, rgba(255, 126, 24, 0.045), rgba(255, 255, 255, 0.012) 44%, transparent);
 }
-
-.analyze-view .analysis-market-grid > section {
-  scroll-margin-top: 112px;
-}
+.analyze-view .analysis-market-grid > section { scroll-margin-top: 112px; }
 
 @media (prefers-reduced-motion: no-preference) {
   .opportunity-card.is-selected,
-  .analyze-view .analyze-sticky-context {
-    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
-  }
+  .analyze-view .analyze-sticky-context { transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease; }
+}
+
+@media (prefers-contrast: more) {
+  .opportunity-card.is-selected,
+  .watchlist-card .watchlist-row.is-selected,
+  .analyze-view .analyze-sticky-context { --instrument-accent-border: rgba(255, 173, 97, 0.72); }
 }
 
 @media (forced-colors: active) {
   .opportunity-card.is-selected,
-  .analyze-view .analyze-sticky-context {
-    border-color: Highlight;
-  }
-
+  .watchlist-card .watchlist-row.is-selected,
+  .analyze-view .analyze-sticky-context { border-color: Highlight; }
   .opportunity-card.is-selected::before,
-  .analyze-view .analyze-sticky-context::before {
-    background: Highlight;
-  }
+  .watchlist-card .watchlist-row.is-selected::before,
+  .analyze-view .analyze-sticky-context::before { background: Highlight; box-shadow: none; }
 }
