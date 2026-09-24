@@ -1,0 +1,76 @@
+/* Keep price action and existing ticker news visually connected as one research workflow. */
+.analyze-view .analyze-news-panel {
+  --analysis-research-rail: rgba(249, 115, 22, 0.2);
+}
+
+.analyze-view .analyze-news-panel > .analyze-section-heading {
+  position: relative;
+  gap: 16px;
+}
+
+.analyze-view .analyze-news-panel > .analyze-section-heading::before {
+  content: "PRICE ACTION → CATALYSTS";
+  position: absolute;
+  right: 12px;
+  bottom: -6px;
+  z-index: 1;
+  padding: 0 7px;
+  background: #080b10;
+  color: rgba(255, 166, 99, 0.64);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+  line-height: 12px;
+  white-space: nowrap;
+}
+
+.analyze-view .analyze-news-panel::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 38%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.4), transparent);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.07);
+}
+
+@media (min-width: 901px) {
+  .analyze-view .analyze-news-panel {
+    scroll-margin-top: 112px;
+  }
+
+  .analyze-view .analyze-news-panel:hover > .analyze-section-heading::before,
+  .analyze-view .analyze-news-panel:focus-within > .analyze-section-heading::before {
+    color: rgba(255, 190, 140, 0.86);
+  }
+}
+
+@media (max-width: 700px) {
+  .analyze-view .analyze-news-panel > .analyze-section-heading::before {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analyze-news-panel {
+    --analysis-research-rail: rgba(249, 115, 22, 0.5);
+  }
+
+  .analyze-view .analyze-news-panel > .analyze-section-heading::before {
+    color: rgba(255, 220, 194, 0.96);
+  }
+}
+
+@media (forced-colors: active) {
+  .analyze-view .analyze-news-panel > .analyze-section-heading::before {
+    color: CanvasText;
+    background: Canvas;
+  }
+
+  .analyze-view .analyze-news-panel::after {
+    background: CanvasText;
+    box-shadow: none;
+  }
+}
