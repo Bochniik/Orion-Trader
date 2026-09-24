@@ -60,8 +60,78 @@
   50% { opacity: 1; transform: scale(1); }
 }
 
+.watchlist-table .watchlist-row:not(.watchlist-row-head) {
+  position: relative;
+  min-height: 62px;
+  border-radius: 10px;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.watchlist-table .watchlist-row:not(.watchlist-row-head)::before {
+  content: "";
+  position: absolute;
+  inset: 7px auto 7px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.watchlist-table .watchlist-row:not(.watchlist-row-head):hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.watchlist-table .watchlist-row.is-selected {
+  background: linear-gradient(90deg, rgba(255, 126, 35, 0.105), rgba(255, 126, 35, 0.025) 58%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(255, 126, 35, 0.2), 0 0 22px rgba(255, 126, 35, 0.055);
+}
+
+.watchlist-table .watchlist-row.is-selected::before {
+  background: #ff7e23;
+  box-shadow: 0 0 10px rgba(255, 126, 35, 0.65);
+}
+
+.watchlist-table .watch-symbol { gap: 10px; min-width: 0; }
+.watchlist-table .watch-stock-mark { flex: 0 0 auto; }
+.watchlist-table .watch-symbol-identity { min-width: 0; }
+.watchlist-table .watch-symbol-primary { gap: 7px; }
+.watchlist-table .watch-symbol-code { letter-spacing: 0.035em; }
+.watchlist-table .watch-company-name {
+  overflow: hidden;
+  max-width: 180px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.66;
+}
+
+.watchlist-table .watch-price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.watchlist-table .watch-change,
+.watchlist-table .watch-volume { font-variant-numeric: tabular-nums; }
+.watchlist-table .watch-row-actions { gap: 8px; }
+
+.watchlist-table .watch-analyze-cue {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.watchlist-table .watchlist-row:hover .watch-analyze-cue,
+.watchlist-table .watchlist-row:focus-within .watch-analyze-cue,
+.watchlist-table .watchlist-row.is-selected .watch-analyze-cue {
+  opacity: 0.72;
+  transform: translateX(0);
+}
+.watchlist-table .watchlist-row.is-selected .watch-analyze-cue { color: #ff9b55; opacity: 1; }
+.watchlist-table .watchlist-row.is-removing { opacity: 0.58; }
+
 @media (prefers-reduced-motion: reduce) {
   .watch-quote-state.is-sync .watch-quote-state-dot { animation: none; }
+  .watchlist-table .watchlist-row:not(.watchlist-row-head),
+  .watchlist-table .watchlist-row:not(.watchlist-row-head)::before,
+  .watchlist-table .watch-analyze-cue { transition: none; }
 }
 
 @media (forced-colors: active) {
@@ -70,6 +140,14 @@
     color: ButtonText;
     forced-color-adjust: auto;
   }
-
   .watch-quote-state-dot { box-shadow: none; }
+  .watchlist-table .watchlist-row.is-selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+    box-shadow: none;
+  }
+  .watchlist-table .watchlist-row.is-selected::before {
+    background: Highlight;
+    box-shadow: none;
+  }
 }
