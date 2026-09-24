@@ -1,0 +1,90 @@
+/* Preserve decision context as the analysis flows from the snapshot into price action. */
+.analyze-view .analysis-market-grid {
+  --analysis-context-rail: rgba(249, 115, 22, 0.22);
+}
+
+.analyze-view .analysis-market-grid::before {
+  border-left: 1px solid var(--analysis-context-rail);
+  border-right: 1px solid rgba(249, 115, 22, 0.06);
+  border-radius: 3px;
+}
+
+.analyze-view .analyze-chart-panel .analyze-section-heading {
+  position: relative;
+  gap: 16px;
+}
+
+.analyze-view .analyze-chart-panel .analyze-section-heading::after {
+  content: "DECISION → PRICE ACTION";
+  position: absolute;
+  right: 0;
+  bottom: -6px;
+  padding: 0 7px;
+  background: #060a0f;
+  color: rgba(255, 166, 99, 0.66);
+  font-size: 8px;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+  line-height: 12px;
+  white-space: nowrap;
+}
+
+.analyze-view .analyze-chart-panel .advanced-chart {
+  position: relative;
+}
+
+.analyze-view .analyze-chart-panel .advanced-chart::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  width: 34%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.42), transparent);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.08);
+}
+
+@media (min-width: 901px) {
+  .analyze-view .analysis-market-grid {
+    scroll-margin-top: 112px;
+  }
+
+  .analyze-view .analyze-chart-panel:focus-within .analyze-section-heading::after,
+  .analyze-view .analyze-chart-panel:hover .analyze-section-heading::after {
+    color: rgba(255, 190, 140, 0.88);
+  }
+}
+
+@media (max-width: 700px) {
+  .analyze-view .analyze-chart-panel .analyze-section-heading::after {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .analyze-view .analysis-market-grid {
+    --analysis-context-rail: rgba(249, 115, 22, 0.52);
+  }
+
+  .analyze-view .analyze-chart-panel .analyze-section-heading::after {
+    color: rgba(255, 220, 194, 0.96);
+  }
+}
+
+@media (forced-colors: active) {
+  .analyze-view .analysis-market-grid::before {
+    border-color: CanvasText;
+  }
+
+  .analyze-view .analyze-chart-panel .analyze-section-heading::after {
+    color: CanvasText;
+    background: Canvas;
+  }
+
+  .analyze-view .analyze-chart-panel .advanced-chart::before {
+    background: CanvasText;
+    box-shadow: none;
+  }
+}
