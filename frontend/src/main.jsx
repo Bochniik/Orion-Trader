@@ -66,6 +66,7 @@ import "./watchlist-polish.css";
 import "./watchlist-terminal-density.css";
 import "./watchlist-analysis-orientation.css";
 import "./watchlist-freshness-telemetry.css";
+import "./watchlist-scroll-context.css";
 import "./quote-polish.css";
 import "./stock-workspace.css";
 import "./scanner-polish.css";
