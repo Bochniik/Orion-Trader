@@ -1,0 +1,100 @@
+/* Presentation-only market/session context polish for the analysis overview. */
+.analysis-overview .analysis-company {
+  position: relative;
+  min-width: 0;
+}
+
+.analysis-overview .analysis-company::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.28), rgba(255, 255, 255, 0.045) 42%, transparent 88%);
+  opacity: 0.7;
+}
+
+.analysis-overview .analysis-symbol-row h2 {
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.045em;
+}
+
+.analysis-overview .analysis-session {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-width: 154px;
+  padding: 12px 14px 13px 17px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.008));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.022);
+}
+
+.analysis-overview .analysis-session::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: rgba(148, 163, 184, 0.45);
+  box-shadow: 0 0 12px rgba(148, 163, 184, 0.12);
+}
+
+.analysis-overview .analysis-session.open::before {
+  background: rgba(74, 222, 128, 0.82);
+  box-shadow: 0 0 14px rgba(74, 222, 128, 0.22);
+}
+
+.analysis-overview .analysis-session.premarket::before,
+.analysis-overview .analysis-session.after-hours::before {
+  background: rgba(255, 148, 71, 0.84);
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.24);
+}
+
+.analysis-overview .analysis-session small,
+.analysis-overview .analysis-session strong,
+.analysis-overview .analysis-session span {
+  display: block;
+}
+
+.analysis-overview .analysis-session small {
+  margin-bottom: 5px;
+  color: rgba(194, 201, 212, 0.48);
+  font-size: 0.62rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysis-overview .analysis-session strong {
+  color: rgba(244, 247, 250, 0.9);
+  font-size: 0.73rem;
+  letter-spacing: 0.035em;
+}
+
+.analysis-overview .analysis-session span {
+  margin-top: 7px;
+  color: rgba(250, 251, 252, 0.96);
+  font-size: 1.02rem;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  letter-spacing: -0.025em;
+}
+
+@media (max-width: 760px) {
+  .analysis-overview .analysis-session {
+    min-width: 0;
+    padding: 11px 12px 12px 15px;
+  }
+}
+
+@media (forced-colors: active) {
+  .analysis-overview .analysis-company::after { background: CanvasText; }
+  .analysis-overview .analysis-session { border-color: CanvasText; background: Canvas; box-shadow: none; }
+  .analysis-overview .analysis-session::before,
+  .analysis-overview .analysis-session.open::before,
+  .analysis-overview .analysis-session.premarket::before,
+  .analysis-overview .analysis-session.after-hours::before { background: Highlight; box-shadow: none; }
+}
