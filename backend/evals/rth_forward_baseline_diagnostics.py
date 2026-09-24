@@ -15,7 +15,9 @@ EPSILON = 1e-15
 SEMANTICS = (
     "Research-only proper-score comparison of the RTH incumbent against neutral 50/50 and a "
     "strictly chronological expanding prior. Outcomes sharing a prediction timestamp are scored "
-    "before any of them are admitted to the prior, preventing cross-sectional same-timestamp leakage."
+    "before any of them are admitted to the prior, preventing cross-sectional same-timestamp leakage. "
+    "Chronological priors are isolated by forecast horizon so a settled 30m outcome can never inform "
+    "the baseline probability assigned to a 1h forecast."
 )
 
 
@@ -109,28 +111,29 @@ def _metrics(probabilities: list[float], outcomes: list[int]) -> dict[str, Any]:
 
 
 def _chronological_prior(rows: list[dict[str, Any]]) -> list[float]:
-    """Return priors using only outcomes from strictly earlier prediction timestamps."""
+    """Return horizon-local priors using only strictly earlier prediction timestamps."""
     indexed = list(enumerate(rows))
-    by_time: dict[str, list[tuple[int, dict[str, Any]]]] = defaultdict(list)
+    by_horizon_time: dict[str, dict[str, list[tuple[int, dict[str, Any]]]]] = defaultdict(lambda: defaultdict(list))
     for index, row in indexed:
-        by_time[row["prediction_time_utc"]].append((index, row))
+        by_horizon_time[row["horizon"]][row["prediction_time_utc"]].append((index, row))
 
     priors = [0.5] * len(rows)
-    positives = 0
-    total = 0
-    for prediction_time in sorted(by_time):
-        group = by_time[prediction_time]
-        prior = positives / total if total else 0.5
-        for index, _row in group:
-            priors[index] = prior
-        # Critical: update only after every same-timestamp forecast has been scored.
-        positives += sum(int(row["actual_up"]) for _, row in group)
-        total += len(group)
+    for horizon in sorted(by_horizon_time):
+        positives = 0
+        total = 0
+        for prediction_time in sorted(by_horizon_time[horizon]):
+            group = by_horizon_time[horizon][prediction_time]
+            prior = positives / total if total else 0.5
+            for index, _row in group:
+                priors[index] = prior
+            # Critical: update only after every same-horizon, same-timestamp forecast has been scored.
+            positives += sum(int(row["actual_up"]) for _, row in group)
+            total += len(group)
     return priors
 
 
 def _comparison(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    ordered = sorted(rows, key=lambda row: (row["prediction_time_utc"], row["symbol"]))
+    ordered = sorted(rows, key=lambda row: (row["prediction_time_utc"], row["horizon"], row["symbol"]))
     model = [float(row["probability_up"]) for row in ordered]
     outcomes = [int(row["actual_up"]) for row in ordered]
     prior = _chronological_prior(ordered)

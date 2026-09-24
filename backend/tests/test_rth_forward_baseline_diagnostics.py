@@ -54,6 +54,24 @@ def test_same_timestamp_outcomes_never_enter_each_others_prior():
     assert MODULE._chronological_prior(ordered) == [0.5, 0.5, 1.0, 1.0]
 
 
+def test_chronological_prior_never_cross_contaminates_horizons():
+    rows = [
+        _record(1, 0, "AAPL", p=0.5, actual=1, horizon="30m"),
+        _record(1, 0, "MSFT", p=0.5, actual=1, horizon="30m"),
+        _record(2, 0, "AAPL", p=0.5, actual=0, horizon="1h"),
+        _record(2, 0, "MSFT", p=0.5, actual=0, horizon="1h"),
+        _record(3, 0, "AAPL", p=0.5, actual=0, horizon="30m"),
+        _record(3, 0, "MSFT", p=0.5, actual=0, horizon="1h"),
+    ]
+    normalized = MODULE._normalize(_ledger(rows), "regular_hours_v3_1")
+    ordered = sorted(normalized, key=lambda row: (row["prediction_time_utc"], row["horizon"], row["symbol"]))
+    priors = MODULE._chronological_prior(ordered)
+    keyed = {(row["horizon"], row["prediction_time_utc"]): prior for row, prior in zip(ordered, priors)}
+    assert keyed[("1h", "2026-09-02T14:00:00+00:00")] == 0.5
+    assert keyed[("30m", "2026-09-03T14:00:00+00:00")] == 1.0
+    assert keyed[("1h", "2026-09-03T14:00:00+00:00")] == 0.0
+
+
 def test_report_exposes_proper_score_deltas_and_fail_closed_promotion():
     rows = [
         _record(1, 0, "AAPL", p=0.9, actual=1),
