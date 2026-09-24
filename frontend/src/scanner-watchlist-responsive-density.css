@@ -33,9 +33,9 @@
     font-size: 9.5px;
   }
 
-  .watchlist-card .watchlist-row {
+  .watchlist-card .watchlist-table .watchlist-row:not(.watchlist-row-head) {
     min-width: 0;
-    min-height: 37px;
+    min-height: 50px;
     gap: 6px;
     padding-inline: 6px;
   }
@@ -55,8 +55,16 @@
     overflow: hidden;
   }
 
+  .watchlist-card .watch-company-name {
+    max-width: 118px;
+  }
+
   .watchlist-card .watch-change {
     min-width: 60px;
+  }
+
+  .watchlist-card .watch-row-actions {
+    gap: 5px;
   }
 }
 
@@ -73,6 +81,11 @@
 
   .watchlist-card .watchlist-row {
     min-width: 560px;
+  }
+
+  .watchlist-card .watch-quote-state {
+    padding-inline: 5px;
+    letter-spacing: 0.055em;
   }
 
   .scanner-section-label {
@@ -113,6 +126,14 @@
 
   .watchlist-card .watchlist-row {
     min-width: 520px;
+  }
+
+  .watchlist-card .watchlist-table .watchlist-row:not(.watchlist-row-head) {
+    min-height: 48px;
+  }
+
+  .watchlist-card .watch-company-name {
+    max-width: 104px;
   }
 }
 
