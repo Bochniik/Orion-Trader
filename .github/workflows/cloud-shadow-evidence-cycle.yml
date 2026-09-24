@@ -110,6 +110,7 @@ jobs:
           if [ ! -f "$LEDGER" ]; then exit 0; fi
           mkdir -p backend/data/cloud_shadow/adaptive
           python backend/evals/adaptive_research_error_diagnostics.py "$LEDGER" --engine regular_hours_v3_1 --output backend/data/cloud_shadow/adaptive/regular-hours-diagnostics-${{ github.run_id }}.json
+          python backend/evals/rth_forward_proper_score_slices.py "$LEDGER" --engine regular_hours_v3_1 --output backend/data/cloud_shadow/adaptive/rth-proper-score-slices-${{ github.run_id }}.json
       - name: Upload adaptive self-improvement diagnostics
         if: always()
         uses: actions/upload-artifact@v4
