@@ -65,6 +65,7 @@ import "./analysis-interaction-polish.css";
 import "./analysis-workspace-orientation.css";
 import "./analyze-chart-cohesion.css";
 import "./analysis-chart-decision-continuity.css";
+import "./analysis-chart-news-continuity.css";
 import "./watchlist-polish.css";
 import "./watchlist-terminal-density.css";
 import "./watchlist-analysis-orientation.css";
