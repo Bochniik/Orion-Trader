@@ -21,7 +21,7 @@ describe("Orion Intelligence cockpit cards", () => {
       <PriorityCard item={candidate} selected onSelect={() => {}} onAnalyze={() => {}} />
     );
 
-    expect(html).toContain("TOP");
+    expect(html).toContain("intelligence-priority-card selected");
     expect(html).toContain("ASX");
     expect(html).toContain("Setup quality");
     expect(html).toContain("90");
