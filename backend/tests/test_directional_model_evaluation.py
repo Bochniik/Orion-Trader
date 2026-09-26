@@ -1,7 +1,7 @@
 import json
 import sqlite3
 
-from backend.evals.evaluate_directional_model import evaluate
+from backend.evals.evaluate_directional_model import _improvement_interval, evaluate
 
 
 def _create_prediction_table(connection):
@@ -138,6 +138,7 @@ def test_calibration_error_covers_low_confidence_multiclass_predictions(tmp_path
     assert metrics["score_uncertainty"]["log_loss_ci_95"]["status"] == "insufficient_sample"
     assert metrics["score_improvement_uncertainty"]["brier_improvement_ci_95"]["status"] == "insufficient_sample"
     assert metrics["score_improvement_uncertainty"]["log_loss_improvement_ci_95"]["status"] == "insufficient_sample"
+    assert metrics["score_improvement_uncertainty"]["brier_improvement_ci_95"]["verdict"] == "insufficient_sample"
 
 
 def test_calibration_bucket_is_estimated_only_after_minimum_sample_size(tmp_path):
@@ -220,3 +221,19 @@ def test_paired_improvement_intervals_compare_same_chronological_rows(tmp_path):
         assert interval["sample_count"] == metrics["sample_count"]
         assert interval["method"] == "circular_moving_block_bootstrap"
         assert interval["lower"] <= metrics[point_name] <= interval["upper"]
+
+
+def test_improvement_verdicts_require_entire_interval_to_clear_zero():
+    better = _improvement_interval([0.10] * 30, seed=1)
+    worse = _improvement_interval([-0.10] * 30, seed=2)
+    inconclusive = _improvement_interval([-0.10, 0.10] * 15, seed=3)
+    insufficient = _improvement_interval([0.10] * 29, seed=4)
+
+    assert better["verdict"] == "better"
+    assert better["lower"] > 0.0
+    assert worse["verdict"] == "worse"
+    assert worse["upper"] < 0.0
+    assert inconclusive["verdict"] == "inconclusive"
+    assert inconclusive["lower"] <= 0.0 <= inconclusive["upper"]
+    assert insufficient["verdict"] == "insufficient_sample"
+    assert better["positive_means"] == "model_has_lower_loss_than_chronological_prior"
