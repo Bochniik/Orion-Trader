@@ -15,7 +15,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 CLASSES = ("DOWN", "NEUTRAL", "UP")
-BUCKETS = ((0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01))
+BUCKETS = ((0.0, 0.5), (0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01))
 
 
 def _finite(value):
@@ -128,8 +128,10 @@ def _metrics(rows, include_groups=True):
         return {"sample_count": 0, "rejected_malformed_rows": rejected,
                 "directional_accuracy": None, "multiclass_accuracy": None,
                 "baseline_accuracy": None, "brier_score": None, "log_loss": None,
-                "calibration_error": None, "class_distribution": {},
-                "confidence_buckets": [], "by_direction": {}, "by_horizon": {},
+                "calibration_error": None, "maximum_calibration_error": None,
+                "calibration_sample_count": 0, "calibration_coverage": None,
+                "class_distribution": {}, "confidence_buckets": [],
+                "by_direction": {}, "by_horizon": {},
                 "baselines": {"chronological_prior": _chronological_prior_baseline([])}}
     actual = [row["actual_direction"] for row in rows]
     probs = [[float(row[f"p_{name.lower()}"]) for name in CLASSES] for row in rows]
@@ -145,6 +147,8 @@ def _metrics(rows, include_groups=True):
                    for v, a in zip(probs, actual)) / len(rows)
     confidence = [max(v) for v in probs]
     calibration_error = 0.0
+    maximum_calibration_error = 0.0
+    calibration_sample_count = 0
     buckets = []
     for lower, upper in BUCKETS:
         selected = [(c, p == a) for c, p, a in zip(confidence, predicted, actual)
@@ -153,10 +157,14 @@ def _metrics(rows, include_groups=True):
             continue
         mean_conf = sum(c for c, _ in selected) / len(selected)
         success = sum(ok for _, ok in selected) / len(selected)
-        calibration_error += abs(mean_conf - success) * len(selected) / len(rows)
+        bucket_error = abs(mean_conf - success)
+        calibration_error += bucket_error * len(selected) / len(rows)
+        maximum_calibration_error = max(maximum_calibration_error, bucket_error)
+        calibration_sample_count += len(selected)
         buckets.append({"lower": lower, "upper": min(1.0, upper),
                         "count": len(selected), "mean_predicted_probability": round(mean_conf, 8),
-                        "observed_success_rate": round(success, 8)})
+                        "observed_success_rate": round(success, 8),
+                        "absolute_calibration_error": round(bucket_error, 8)})
 
     chronological = _chronological_prior_baseline(rows)
 
@@ -184,6 +192,9 @@ def _metrics(rows, include_groups=True):
         "log_loss": round(log_loss, 8),
         "log_loss_improvement_vs_chronological_prior": round(chronological["log_loss"] - log_loss, 8),
         "calibration_error": round(calibration_error, 8),
+        "maximum_calibration_error": round(maximum_calibration_error, 8),
+        "calibration_sample_count": calibration_sample_count,
+        "calibration_coverage": round(calibration_sample_count / len(rows), 8),
         "class_distribution": dict(Counter(actual)),
         "confidence_buckets": buckets,
         "by_direction": grouped(lambda row: row.get("model_direction") or max(CLASSES, key=lambda n: row[f"p_{n.lower()}"])) if include_groups else {},
