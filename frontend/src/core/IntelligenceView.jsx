@@ -32,7 +32,7 @@ function directionTone(value) {
   return "neutral";
 }
 
-function PriorityCard({ item, selected, onSelect, onAnalyze }) {
+export function PriorityCard({ item, selected, onSelect, onAnalyze }) {
   const tone = directionTone(item.directional_bias);
   return <article className={`intelligence-priority-card ${selected ? "selected" : ""}`}>
     <header>
@@ -59,7 +59,7 @@ function PriorityCard({ item, selected, onSelect, onAnalyze }) {
   </article>;
 }
 
-function CompactCandidate({ item, selected, onSelect }) {
+export function CompactCandidate({ item, selected, onSelect }) {
   const tone = directionTone(item.directional_bias);
   return <button type="button" className={`intelligence-compact-candidate ${selected ? "selected" : ""}`} onClick={() => onSelect?.(item.ticker)}>
     <span className="intelligence-compact-symbol"><strong>{item.ticker}</strong><small>{displayValue(item.setup_state, "research")}</small></span>
