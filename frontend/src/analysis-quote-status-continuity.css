@@ -100,3 +100,68 @@
     border-color: rgba(255,255,255,.22);
   }
 }
+
+
+/* Quote ↔ chart feed continuity.
+   Mirrors the existing quote and CandleChart telemetry states; no feed state is derived here. */
+.analyze-view .live-quote-card .quote-status,
+.analyze-view .analyze-chart-panel .chart-live-message {
+  --feed-continuity-color: rgba(148, 163, 184, .78);
+}
+
+.analyze-view .live-quote-card .quote-status[data-state="live"],
+.analyze-view .analyze-chart-panel .chart-live-message:not(.chart-live-stale):not(.chart-live-paused) {
+  --feed-continuity-color: #71dda1;
+}
+
+.analyze-view .live-quote-card .quote-status[data-state="stale"],
+.analyze-view .analyze-chart-panel .chart-live-stale {
+  --feed-continuity-color: #ffad68;
+}
+
+.analyze-view .live-quote-card .quote-status[data-state="offline"],
+.analyze-view .analyze-chart-panel .chart-live-paused {
+  --feed-continuity-color: #ff9292;
+}
+
+.analyze-view .live-quote-card .quote-status::after,
+.analyze-view .analyze-chart-panel .chart-live-message::before {
+  content: "";
+  width: 18px;
+  height: 1px;
+  flex: 0 0 18px;
+  background: linear-gradient(90deg, var(--feed-continuity-color), transparent);
+  opacity: .48;
+}
+
+.analyze-view .live-quote-card .quote-status[data-state="live"],
+.analyze-view .analyze-chart-panel .chart-live-message:not(.chart-live-stale):not(.chart-live-paused) {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--feed-continuity-color) 58%, transparent);
+}
+
+.analyze-view .live-quote-card .quote-status[data-state="stale"],
+.analyze-view .live-quote-card .quote-status[data-state="offline"],
+.analyze-view .analyze-chart-panel .chart-live-stale,
+.analyze-view .analyze-chart-panel .chart-live-paused {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--feed-continuity-color) 48%, transparent);
+}
+
+@media (max-width: 760px) {
+  .analyze-view .live-quote-card .quote-status::after,
+  .analyze-view .analyze-chart-panel .chart-live-message::before {
+    width: 10px;
+    flex-basis: 10px;
+  }
+}
+
+@media (forced-colors: active) {
+  .analyze-view .live-quote-card .quote-status,
+  .analyze-view .analyze-chart-panel .chart-live-message {
+    box-shadow: inset 2px 0 0 CanvasText;
+  }
+
+  .analyze-view .live-quote-card .quote-status::after,
+  .analyze-view .analyze-chart-panel .chart-live-message::before {
+    background: CanvasText;
+  }
+}
