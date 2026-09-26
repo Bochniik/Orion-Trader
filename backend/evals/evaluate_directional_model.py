@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import random
 import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -17,6 +18,55 @@ from pathlib import Path
 CLASSES = ("DOWN", "NEUTRAL", "UP")
 BUCKETS = ((0.0, 0.5), (0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01))
 MIN_CALIBRATION_BUCKET_SIZE = 30
+MIN_BOOTSTRAP_SAMPLE_SIZE = 30
+BOOTSTRAP_RESAMPLES = 1000
+
+
+def _percentile(values, probability):
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * probability
+    lower = math.floor(position)
+    upper = math.ceil(position)
+    if lower == upper:
+        return ordered[lower]
+    weight = position - lower
+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+
+
+def _moving_block_mean_interval(values, *, seed):
+    """Deterministic moving-block bootstrap interval for chronological losses."""
+    count = len(values)
+    if count < MIN_BOOTSTRAP_SAMPLE_SIZE:
+        return {
+            "status": "insufficient_sample",
+            "sample_count": count,
+            "minimum_sample_size": MIN_BOOTSTRAP_SAMPLE_SIZE,
+            "lower": None,
+            "upper": None,
+            "block_size": None,
+            "resamples": 0,
+        }
+
+    block_size = max(2, round(math.sqrt(count)))
+    rng = random.Random(seed)
+    means = []
+    for _ in range(BOOTSTRAP_RESAMPLES):
+        sampled = []
+        while len(sampled) < count:
+            start = rng.randrange(count)
+            sampled.extend(values[(start + offset) % count] for offset in range(block_size))
+        means.append(sum(sampled[:count]) / count)
+
+    return {
+        "status": "estimated",
+        "sample_count": count,
+        "minimum_sample_size": MIN_BOOTSTRAP_SAMPLE_SIZE,
+        "lower": round(_percentile(means, 0.025), 8),
+        "upper": round(_percentile(means, 0.975), 8),
+        "block_size": block_size,
+        "resamples": BOOTSTRAP_RESAMPLES,
+        "method": "circular_moving_block_bootstrap",
+    }
 
 
 def _wilson_interval(successes, total, z=1.959963984540054):
@@ -145,6 +195,10 @@ def _metrics(rows, include_groups=True):
         return {"sample_count": 0, "rejected_malformed_rows": rejected,
                 "directional_accuracy": None, "multiclass_accuracy": None,
                 "baseline_accuracy": None, "brier_score": None, "log_loss": None,
+                "score_uncertainty": {
+                    "brier_score_ci_95": _moving_block_mean_interval([], seed=1729),
+                    "log_loss_ci_95": _moving_block_mean_interval([], seed=2718),
+                },
                 "calibration_error": None, "maximum_calibration_error": None,
                 "calibration_sample_count": 0, "calibration_coverage": None,
                 "calibration_min_bucket_size": MIN_CALIBRATION_BUCKET_SIZE,
@@ -159,10 +213,12 @@ def _metrics(rows, include_groups=True):
                         if p != "NEUTRAL" and a != "NEUTRAL"]
     directional_accuracy = (sum(p == a for p, a, _ in directional_rows) / len(directional_rows)
                             if directional_rows else None)
-    brier = sum(sum((v[i] - (a == CLASSES[i])) ** 2 for i in range(3))
-                for v, a in zip(probs, actual)) / len(rows)
-    log_loss = sum(-math.log(max(1e-12, v[CLASSES.index(a)]))
-                   for v, a in zip(probs, actual)) / len(rows)
+    brier_losses = [sum((v[i] - (a == CLASSES[i])) ** 2 for i in range(3))
+                    for v, a in zip(probs, actual)]
+    log_losses = [-math.log(max(1e-12, v[CLASSES.index(a)]))
+                  for v, a in zip(probs, actual)]
+    brier = sum(brier_losses) / len(rows)
+    log_loss = sum(log_losses) / len(rows)
     confidence = [max(v) for v in probs]
     calibration_error = 0.0
     maximum_calibration_error = 0.0
@@ -212,6 +268,10 @@ def _metrics(rows, include_groups=True):
         "brier_score": round(brier, 8),
         "brier_improvement_vs_chronological_prior": round(chronological["brier_score"] - brier, 8),
         "log_loss": round(log_loss, 8),
+        "score_uncertainty": {
+            "brier_score_ci_95": _moving_block_mean_interval(brier_losses, seed=1729),
+            "log_loss_ci_95": _moving_block_mean_interval(log_losses, seed=2718),
+        },
         "log_loss_improvement_vs_chronological_prior": round(chronological["log_loss"] - log_loss, 8),
         "calibration_error": round(calibration_error, 8),
         "maximum_calibration_error": round(maximum_calibration_error, 8),
