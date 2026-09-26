@@ -114,28 +114,12 @@ def _accuracy_baseline(rows, mode):
     return (correct / usable if usable else None)
 
 
-def _chronological_prior_baseline(rows, alpha=1.0):
-    """Expanding class-prior benchmark using only outcomes known before each row.
-
-    Laplace smoothing gives the first prediction a uniform prior and avoids
-    peeking at the eventual evaluation-set class balance. Rows are expected in
-    persistence order, which is the chronological settlement order used by the
-    prediction store evaluator.
-    """
-    if not rows:
-        return {
-            "sample_count": 0,
-            "multiclass_accuracy": None,
-            "brier_score": None,
-            "log_loss": None,
-            "alpha": float(alpha),
-        }
-
+def _chronological_prior_loss_series(rows, alpha=1.0):
+    """Per-row expanding-prior losses aligned with chronological model losses."""
     counts = Counter()
     correct = 0
-    brier_total = 0.0
-    log_loss_total = 0.0
-    used = 0
+    brier_losses = []
+    log_losses = []
 
     for row in rows:
         actual = str(row.get("actual_direction") or "").upper()
@@ -148,11 +132,22 @@ def _chronological_prior_baseline(rows, alpha=1.0):
         }
         predicted = max(CLASSES, key=lambda name: (probs[name], -CLASSES.index(name)))
         correct += predicted == actual
-        brier_total += sum((probs[name] - (actual == name)) ** 2 for name in CLASSES)
-        log_loss_total += -math.log(max(1e-12, probs[actual]))
-        used += 1
+        brier_losses.append(sum((probs[name] - (actual == name)) ** 2 for name in CLASSES))
+        log_losses.append(-math.log(max(1e-12, probs[actual])))
         counts[actual] += 1
 
+    return {
+        "sample_count": len(brier_losses),
+        "correct": correct,
+        "brier_losses": brier_losses,
+        "log_losses": log_losses,
+    }
+
+
+def _chronological_prior_baseline(rows, alpha=1.0):
+    """Expanding class-prior benchmark using only outcomes known before each row."""
+    series = _chronological_prior_loss_series(rows, alpha=alpha)
+    used = series["sample_count"]
     if not used:
         return {
             "sample_count": 0,
@@ -163,12 +158,11 @@ def _chronological_prior_baseline(rows, alpha=1.0):
         }
     return {
         "sample_count": used,
-        "multiclass_accuracy": round(correct / used, 8),
-        "brier_score": round(brier_total / used, 8),
-        "log_loss": round(log_loss_total / used, 8),
+        "multiclass_accuracy": round(series["correct"] / used, 8),
+        "brier_score": round(sum(series["brier_losses"]) / used, 8),
+        "log_loss": round(sum(series["log_losses"]) / used, 8),
         "alpha": float(alpha),
     }
-
 
 def _valid_rows(rows):
     valid = []
@@ -198,6 +192,10 @@ def _metrics(rows, include_groups=True):
                 "score_uncertainty": {
                     "brier_score_ci_95": _moving_block_mean_interval([], seed=1729),
                     "log_loss_ci_95": _moving_block_mean_interval([], seed=2718),
+                },
+                "score_improvement_uncertainty": {
+                    "brier_improvement_ci_95": _moving_block_mean_interval([], seed=3141),
+                    "log_loss_improvement_ci_95": _moving_block_mean_interval([], seed=5772),
                 },
                 "calibration_error": None, "maximum_calibration_error": None,
                 "calibration_sample_count": 0, "calibration_coverage": None,
@@ -245,6 +243,11 @@ def _metrics(rows, include_groups=True):
                                         else "insufficient_sample")})
 
     chronological = _chronological_prior_baseline(rows)
+    prior_losses = _chronological_prior_loss_series(rows)
+    brier_improvements = [baseline - model for baseline, model in
+                          zip(prior_losses["brier_losses"], brier_losses)]
+    log_loss_improvements = [baseline - model for baseline, model in
+                             zip(prior_losses["log_losses"], log_losses)]
 
     def grouped(key):
         groups = defaultdict(list)
@@ -271,6 +274,10 @@ def _metrics(rows, include_groups=True):
         "score_uncertainty": {
             "brier_score_ci_95": _moving_block_mean_interval(brier_losses, seed=1729),
             "log_loss_ci_95": _moving_block_mean_interval(log_losses, seed=2718),
+        },
+        "score_improvement_uncertainty": {
+            "brier_improvement_ci_95": _moving_block_mean_interval(brier_improvements, seed=3141),
+            "log_loss_improvement_ci_95": _moving_block_mean_interval(log_loss_improvements, seed=5772),
         },
         "log_loss_improvement_vs_chronological_prior": round(chronological["log_loss"] - log_loss, 8),
         "calibration_error": round(calibration_error, 8),
