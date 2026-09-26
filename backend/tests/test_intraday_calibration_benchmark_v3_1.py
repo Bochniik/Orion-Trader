@@ -95,9 +95,9 @@ def test_symbol_failure_is_recorded_and_forces_fail_closed_conclusion():
 def test_cross_symbol_support_requires_leave_one_symbol_out_stability():
     # Two small winners can outvote one large loser, while the aggregate is still
     # positive. Removing either winner exposes that the result depends on it.
-    loser = _audit("AAPL", improvement=-0.01, verdict="degrades_proper_scores")
-    winner_one = _audit("MSFT", improvement=0.03)
-    winner_two = _audit("NVDA", improvement=0.03)
+    loser = _audit("AAPL", improvement=-0.02, verdict="degrades_proper_scores")
+    winner_one = _audit("MSFT", improvement=0.01)
+    winner_two = _audit("NVDA", improvement=0.05)
     for row in loser["horizons"].values():
         row["evaluation_count"] = 100
     for row in winner_one["horizons"].values():
