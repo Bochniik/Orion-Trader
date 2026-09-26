@@ -134,6 +134,8 @@ def test_calibration_error_covers_low_confidence_multiclass_predictions(tmp_path
         "reliability": "insufficient_sample",
     }
     assert metrics["calibration_min_bucket_size"] == 30
+    assert metrics["score_uncertainty"]["brier_score_ci_95"]["status"] == "insufficient_sample"
+    assert metrics["score_uncertainty"]["log_loss_ci_95"]["status"] == "insufficient_sample"
 
 
 def test_calibration_bucket_is_estimated_only_after_minimum_sample_size(tmp_path):
@@ -157,3 +159,33 @@ def test_calibration_bucket_is_estimated_only_after_minimum_sample_size(tmp_path
     assert bucket["reliability"] == "estimated"
     assert bucket["observed_success_ci_95"]["lower"] < 0.8
     assert bucket["observed_success_ci_95"]["upper"] > 0.8
+
+
+def test_score_uncertainty_uses_deterministic_chronological_blocks(tmp_path):
+    database = tmp_path / "orion.db"
+    connection = sqlite3.connect(database)
+    connection.execute("CREATE TABLE predictive_model_runs (id INTEGER)")
+    _create_prediction_table(connection)
+    rows = [
+        (index, "settled", "{}", "{}", 0.70, 0.20, 0.10,
+         "UP" if index % 5 else "DOWN", "1m", "UP")
+        for index in range(40)
+    ]
+    connection.executemany("INSERT INTO live_predictions VALUES (?,?,?,?,?,?,?,?,?,?)", rows)
+    connection.commit()
+    connection.close()
+
+    first = evaluate(database)["metrics"]
+    second = evaluate(database)["metrics"]
+
+    assert first["score_uncertainty"] == second["score_uncertainty"]
+    for metric_name, point_name in (
+        ("brier_score_ci_95", "brier_score"),
+        ("log_loss_ci_95", "log_loss"),
+    ):
+        interval = first["score_uncertainty"][metric_name]
+        assert interval["status"] == "estimated"
+        assert interval["method"] == "circular_moving_block_bootstrap"
+        assert interval["block_size"] == 6
+        assert interval["resamples"] == 1000
+        assert interval["lower"] <= first[point_name] <= interval["upper"]
