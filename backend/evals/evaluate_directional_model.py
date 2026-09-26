@@ -69,6 +69,21 @@ def _moving_block_mean_interval(values, *, seed):
     }
 
 
+def _improvement_interval(values, *, seed):
+    """Add a fail-closed verdict to a paired baseline-minus-model interval."""
+    interval = _moving_block_mean_interval(values, seed=seed)
+    if interval["status"] != "estimated":
+        interval["verdict"] = "insufficient_sample"
+    elif interval["lower"] > 0.0:
+        interval["verdict"] = "better"
+    elif interval["upper"] < 0.0:
+        interval["verdict"] = "worse"
+    else:
+        interval["verdict"] = "inconclusive"
+    interval["positive_means"] = "model_has_lower_loss_than_chronological_prior"
+    return interval
+
+
 def _wilson_interval(successes, total, z=1.959963984540054):
     """Return a two-sided Wilson score interval for a binomial success rate."""
     if total <= 0:
@@ -194,8 +209,8 @@ def _metrics(rows, include_groups=True):
                     "log_loss_ci_95": _moving_block_mean_interval([], seed=2718),
                 },
                 "score_improvement_uncertainty": {
-                    "brier_improvement_ci_95": _moving_block_mean_interval([], seed=3141),
-                    "log_loss_improvement_ci_95": _moving_block_mean_interval([], seed=5772),
+                    "brier_improvement_ci_95": _improvement_interval([], seed=3141),
+                    "log_loss_improvement_ci_95": _improvement_interval([], seed=5772),
                 },
                 "calibration_error": None, "maximum_calibration_error": None,
                 "calibration_sample_count": 0, "calibration_coverage": None,
@@ -276,8 +291,8 @@ def _metrics(rows, include_groups=True):
             "log_loss_ci_95": _moving_block_mean_interval(log_losses, seed=2718),
         },
         "score_improvement_uncertainty": {
-            "brier_improvement_ci_95": _moving_block_mean_interval(brier_improvements, seed=3141),
-            "log_loss_improvement_ci_95": _moving_block_mean_interval(log_loss_improvements, seed=5772),
+            "brier_improvement_ci_95": _improvement_interval(brier_improvements, seed=3141),
+            "log_loss_improvement_ci_95": _improvement_interval(log_loss_improvements, seed=5772),
         },
         "log_loss_improvement_vs_chronological_prior": round(chronological["log_loss"] - log_loss, 8),
         "calibration_error": round(calibration_error, 8),
