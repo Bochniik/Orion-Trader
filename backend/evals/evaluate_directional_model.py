@@ -84,6 +84,28 @@ def _improvement_interval(values, *, seed):
     return interval
 
 
+def _combined_improvement_verdict(brier_interval, log_loss_interval):
+    """Require both proper scoring rules to agree before a directional verdict."""
+    metric_verdicts = {
+        "brier_score": brier_interval["verdict"],
+        "log_loss": log_loss_interval["verdict"],
+    }
+    verdicts = tuple(metric_verdicts.values())
+    if "insufficient_sample" in verdicts:
+        verdict = "insufficient_sample"
+    elif all(value == "better" for value in verdicts):
+        verdict = "better"
+    elif all(value == "worse" for value in verdicts):
+        verdict = "worse"
+    else:
+        verdict = "inconclusive"
+    return {
+        "verdict": verdict,
+        "metric_verdicts": metric_verdicts,
+        "policy": "brier_and_log_loss_must_agree",
+    }
+
+
 def _wilson_interval(successes, total, z=1.959963984540054):
     """Return a two-sided Wilson score interval for a binomial success rate."""
     if total <= 0:
@@ -211,6 +233,10 @@ def _metrics(rows, include_groups=True):
                 "score_improvement_uncertainty": {
                     "brier_improvement_ci_95": _improvement_interval([], seed=3141),
                     "log_loss_improvement_ci_95": _improvement_interval([], seed=5772),
+                    "overall_probabilistic_verdict": _combined_improvement_verdict(
+                        _improvement_interval([], seed=3141),
+                        _improvement_interval([], seed=5772),
+                    ),
                 },
                 "calibration_error": None, "maximum_calibration_error": None,
                 "calibration_sample_count": 0, "calibration_coverage": None,
@@ -263,6 +289,8 @@ def _metrics(rows, include_groups=True):
                           zip(prior_losses["brier_losses"], brier_losses)]
     log_loss_improvements = [baseline - model for baseline, model in
                              zip(prior_losses["log_losses"], log_losses)]
+    brier_improvement_interval = _improvement_interval(brier_improvements, seed=3141)
+    log_loss_improvement_interval = _improvement_interval(log_loss_improvements, seed=5772)
 
     def grouped(key):
         groups = defaultdict(list)
@@ -291,8 +319,11 @@ def _metrics(rows, include_groups=True):
             "log_loss_ci_95": _moving_block_mean_interval(log_losses, seed=2718),
         },
         "score_improvement_uncertainty": {
-            "brier_improvement_ci_95": _improvement_interval(brier_improvements, seed=3141),
-            "log_loss_improvement_ci_95": _improvement_interval(log_loss_improvements, seed=5772),
+            "brier_improvement_ci_95": brier_improvement_interval,
+            "log_loss_improvement_ci_95": log_loss_improvement_interval,
+            "overall_probabilistic_verdict": _combined_improvement_verdict(
+                brier_improvement_interval, log_loss_improvement_interval
+            ),
         },
         "log_loss_improvement_vs_chronological_prior": round(chronological["log_loss"] - log_loss, 8),
         "calibration_error": round(calibration_error, 8),
