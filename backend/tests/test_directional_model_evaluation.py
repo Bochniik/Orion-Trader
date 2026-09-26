@@ -130,4 +130,30 @@ def test_calibration_error_covers_low_confidence_multiclass_predictions(tmp_path
         "mean_predicted_probability": 0.34,
         "observed_success_rate": 0.8,
         "absolute_calibration_error": 0.46,
+        "observed_success_ci_95": {"lower": 0.37553463, "upper": 0.96377589},
+        "reliability": "insufficient_sample",
     }
+    assert metrics["calibration_min_bucket_size"] == 30
+
+
+def test_calibration_bucket_is_estimated_only_after_minimum_sample_size(tmp_path):
+    database = tmp_path / "orion.db"
+    connection = sqlite3.connect(database)
+    connection.execute("CREATE TABLE predictive_model_runs (id INTEGER)")
+    _create_prediction_table(connection)
+    rows = [
+        (index, "settled", "{}", "{}", 0.75, 0.15, 0.10,
+         "UP" if index < 24 else "DOWN", "1m", "UP")
+        for index in range(30)
+    ]
+    connection.executemany("INSERT INTO live_predictions VALUES (?,?,?,?,?,?,?,?,?,?)", rows)
+    connection.commit()
+    connection.close()
+
+    bucket = evaluate(database)["metrics"]["confidence_buckets"][0]
+
+    assert bucket["count"] == 30
+    assert bucket["observed_success_rate"] == 0.8
+    assert bucket["reliability"] == "estimated"
+    assert bucket["observed_success_ci_95"]["lower"] < 0.8
+    assert bucket["observed_success_ci_95"]["upper"] > 0.8
