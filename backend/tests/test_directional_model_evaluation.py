@@ -101,3 +101,33 @@ def test_malformed_probability_rows_are_rejected_from_metrics(tmp_path):
     assert report["status"] == "evaluable"
     assert report["metrics"]["sample_count"] == 1
     assert report["metrics"]["rejected_malformed_rows"] == 2
+
+
+def test_calibration_error_covers_low_confidence_multiclass_predictions(tmp_path):
+    database = tmp_path / "orion.db"
+    connection = sqlite3.connect(database)
+    connection.execute("CREATE TABLE predictive_model_runs (id INTEGER)")
+    _create_prediction_table(connection)
+    actual = ["DOWN", "UP", "UP", "UP", "UP"]
+    rows = [
+        (index, "settled", "{}", "{}", 0.34, 0.33, 0.33, direction, "5m", "UP")
+        for index, direction in enumerate(actual)
+    ]
+    connection.executemany("INSERT INTO live_predictions VALUES (?,?,?,?,?,?,?,?,?,?)", rows)
+    connection.commit()
+    connection.close()
+
+    metrics = evaluate(database)["metrics"]
+
+    assert metrics["calibration_sample_count"] == 5
+    assert metrics["calibration_coverage"] == 1.0
+    assert metrics["calibration_error"] == 0.46
+    assert metrics["maximum_calibration_error"] == 0.46
+    assert metrics["confidence_buckets"][0] == {
+        "lower": 0.0,
+        "upper": 0.5,
+        "count": 5,
+        "mean_predicted_probability": 0.34,
+        "observed_success_rate": 0.8,
+        "absolute_calibration_error": 0.46,
+    }
