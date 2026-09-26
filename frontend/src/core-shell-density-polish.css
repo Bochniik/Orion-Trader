@@ -77,3 +77,23 @@
     width: 212px;
   }
 }
+
+
+/* Keep keyboard navigation obvious without adding persistent visual noise. */
+.core-sidebar nav button:focus-visible,
+.core-sidebar nav a:focus-visible,
+.core-sidebar-settings:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-sidebar nav button,
+  .core-sidebar nav a,
+  .core-sidebar-settings {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
