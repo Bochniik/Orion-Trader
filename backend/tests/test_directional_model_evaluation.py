@@ -1,7 +1,11 @@
 import json
 import sqlite3
 
-from backend.evals.evaluate_directional_model import _improvement_interval, evaluate
+from backend.evals.evaluate_directional_model import (
+    _combined_improvement_verdict,
+    _improvement_interval,
+    evaluate,
+)
 
 
 def _create_prediction_table(connection):
@@ -139,6 +143,7 @@ def test_calibration_error_covers_low_confidence_multiclass_predictions(tmp_path
     assert metrics["score_improvement_uncertainty"]["brier_improvement_ci_95"]["status"] == "insufficient_sample"
     assert metrics["score_improvement_uncertainty"]["log_loss_improvement_ci_95"]["status"] == "insufficient_sample"
     assert metrics["score_improvement_uncertainty"]["brier_improvement_ci_95"]["verdict"] == "insufficient_sample"
+    assert metrics["score_improvement_uncertainty"]["overall_probabilistic_verdict"]["verdict"] == "insufficient_sample"
 
 
 def test_calibration_bucket_is_estimated_only_after_minimum_sample_size(tmp_path):
@@ -237,3 +242,30 @@ def test_improvement_verdicts_require_entire_interval_to_clear_zero():
     assert inconclusive["lower"] <= 0.0 <= inconclusive["upper"]
     assert insufficient["verdict"] == "insufficient_sample"
     assert better["positive_means"] == "model_has_lower_loss_than_chronological_prior"
+
+
+def test_overall_probabilistic_verdict_requires_metric_consensus():
+    def interval(verdict):
+        return {"verdict": verdict}
+
+    assert _combined_improvement_verdict(
+        interval("better"), interval("better")
+    )["verdict"] == "better"
+    assert _combined_improvement_verdict(
+        interval("worse"), interval("worse")
+    )["verdict"] == "worse"
+    assert _combined_improvement_verdict(
+        interval("better"), interval("inconclusive")
+    )["verdict"] == "inconclusive"
+    assert _combined_improvement_verdict(
+        interval("better"), interval("worse")
+    )["verdict"] == "inconclusive"
+    insufficient = _combined_improvement_verdict(
+        interval("better"), interval("insufficient_sample")
+    )
+    assert insufficient["verdict"] == "insufficient_sample"
+    assert insufficient["metric_verdicts"] == {
+        "brier_score": "better",
+        "log_loss": "insufficient_sample",
+    }
+    assert insufficient["policy"] == "brier_and_log_loss_must_agree"
