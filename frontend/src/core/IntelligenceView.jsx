@@ -6,8 +6,21 @@ import TickerIntelligencePanels from "./TickerIntelligencePanels";
 import RelationshipEarningsPanels from "./RelationshipEarningsPanels";
 import "./intelligence.css";
 
+function displayValue(value, fallback = "Unavailable") {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "object") {
+    if ("value" in value) {
+      const unit = value.unit ? ` ${value.unit}` : "";
+      return `${value.value ?? fallback}${unit}`;
+    }
+    return fallback;
+  }
+  return String(value);
+}
+
 function metric(value, suffix = "") {
   if (value === null || value === undefined || value === "") return "Unavailable";
+  if (typeof value === "object") return displayValue(value);
   const number = Number(value);
   return Number.isFinite(number) ? `${Math.round(number)}${suffix}` : String(value);
 }
@@ -65,18 +78,18 @@ export default function IntelligenceView({ selectedTicker, onSelectTicker, onAna
                   <span className="intelligence-ticker">{item.ticker}</span>
                   <span className="intelligence-state">{item.setup_state || "research"}</span>
                 </div>
-                <strong>{item.directional_bias || "Neutral / unavailable"}</strong>
+                <strong>{displayValue(item.directional_bias, "Neutral / unavailable")}</strong>
               </header>
               <div className="intelligence-metrics">
                 <div><span>Confidence</span><strong>{metric(item.confidence, "%")}</strong></div>
                 <div><span>Setup quality</span><strong>{metric(item.setup_quality)}</strong></div>
                 <div><span>Liquidity</span><strong>{metric(item.liquidity_score)}</strong></div>
-                <div><span>Horizon</span><strong>{item.expected_horizon || "Unavailable"}</strong></div>
+                <div><span>Horizon</span><strong>{displayValue(item.expected_horizon)}</strong></div>
               </div>
               <div className="intelligence-evidence">
-                <p><b>Why it is here:</b> {item.main_reason || "No explanatory evidence was published."}</p>
-                <p><b>Catalyst:</b> {item.catalyst || "No verified catalyst attached."}</p>
-                <p className="intelligence-risk"><ShieldAlert size={13} /> {item.main_risk || "No explicit risk note published."}</p>
+                <p><b>Why it is here:</b> {displayValue(item.main_reason, "No explanatory evidence was published.")}</p>
+                <p><b>Catalyst:</b> {displayValue(item.catalyst, "No verified catalyst attached.")}</p>
+                <p className="intelligence-risk"><ShieldAlert size={13} /> {displayValue(item.main_risk, "No explicit risk note published.")}</p>
               </div>
               <div className="intelligence-card-actions">
                 <button type="button" className="intelligence-select" onClick={() => onSelectTicker?.(item.ticker)}>
@@ -98,8 +111,8 @@ export default function IntelligenceView({ selectedTicker, onSelectTicker, onAna
       {data?.ranking_semantics && (
         <details className="intelligence-provenance">
           <summary>How this briefing is built</summary>
-          <p>{data.ranking_semantics}</p>
-          <small>Source: {data.source}. Missing values remain unavailable.</small>
+          <p>{displayValue(data.ranking_semantics)}</p>
+          <small>Source: {displayValue(data.source)}. Missing values remain unavailable.</small>
         </details>
       )}
     </div>
