@@ -16,6 +16,23 @@ from pathlib import Path
 
 CLASSES = ("DOWN", "NEUTRAL", "UP")
 BUCKETS = ((0.0, 0.5), (0.5, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01))
+MIN_CALIBRATION_BUCKET_SIZE = 30
+
+
+def _wilson_interval(successes, total, z=1.959963984540054):
+    """Return a two-sided Wilson score interval for a binomial success rate."""
+    if total <= 0:
+        return None
+    proportion = successes / total
+    denominator = 1.0 + (z * z / total)
+    centre = (proportion + z * z / (2.0 * total)) / denominator
+    margin = (
+        z
+        * math.sqrt((proportion * (1.0 - proportion) / total) + (z * z / (4.0 * total * total)))
+        / denominator
+    )
+    return {"lower": round(max(0.0, centre - margin), 8),
+            "upper": round(min(1.0, centre + margin), 8)}
 
 
 def _finite(value):
@@ -130,6 +147,7 @@ def _metrics(rows, include_groups=True):
                 "baseline_accuracy": None, "brier_score": None, "log_loss": None,
                 "calibration_error": None, "maximum_calibration_error": None,
                 "calibration_sample_count": 0, "calibration_coverage": None,
+                "calibration_min_bucket_size": MIN_CALIBRATION_BUCKET_SIZE,
                 "class_distribution": {}, "confidence_buckets": [],
                 "by_direction": {}, "by_horizon": {},
                 "baselines": {"chronological_prior": _chronological_prior_baseline([])}}
@@ -156,7 +174,8 @@ def _metrics(rows, include_groups=True):
         if not selected:
             continue
         mean_conf = sum(c for c, _ in selected) / len(selected)
-        success = sum(ok for _, ok in selected) / len(selected)
+        successes = sum(ok for _, ok in selected)
+        success = successes / len(selected)
         bucket_error = abs(mean_conf - success)
         calibration_error += bucket_error * len(selected) / len(rows)
         maximum_calibration_error = max(maximum_calibration_error, bucket_error)
@@ -164,7 +183,10 @@ def _metrics(rows, include_groups=True):
         buckets.append({"lower": lower, "upper": min(1.0, upper),
                         "count": len(selected), "mean_predicted_probability": round(mean_conf, 8),
                         "observed_success_rate": round(success, 8),
-                        "absolute_calibration_error": round(bucket_error, 8)})
+                        "absolute_calibration_error": round(bucket_error, 8),
+                        "observed_success_ci_95": _wilson_interval(successes, len(selected)),
+                        "reliability": ("estimated" if len(selected) >= MIN_CALIBRATION_BUCKET_SIZE
+                                        else "insufficient_sample")})
 
     chronological = _chronological_prior_baseline(rows)
 
@@ -195,6 +217,7 @@ def _metrics(rows, include_groups=True):
         "maximum_calibration_error": round(maximum_calibration_error, 8),
         "calibration_sample_count": calibration_sample_count,
         "calibration_coverage": round(calibration_sample_count / len(rows), 8),
+        "calibration_min_bucket_size": MIN_CALIBRATION_BUCKET_SIZE,
         "class_distribution": dict(Counter(actual)),
         "confidence_buckets": buckets,
         "by_direction": grouped(lambda row: row.get("model_direction") or max(CLASSES, key=lambda n: row[f"p_{n.lower()}"])) if include_groups else {},
