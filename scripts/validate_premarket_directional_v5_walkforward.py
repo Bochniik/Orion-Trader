@@ -15,6 +15,9 @@ from premarket_directional_v5_common import (
 )
 
 
+EVIDENCE_ROLE = "development_threshold_search"
+PROMOTION_ELIGIBLE = False
+
 THRESHOLDS = (
     (0.10, 0.52),
     (0.15, 0.52),
@@ -136,6 +139,13 @@ def validate_target(frame: pd.DataFrame, target: str, *, min_train_days=40, cali
     )
 
     return {
+        "evidence_role": EVIDENCE_ROLE,
+        "promotion_eligible": PROMOTION_ELIGIBLE,
+        "selection_warning": (
+            "Threshold candidates and robust_gate are selected using outcomes from these "
+            "walk-forward test folds. Treat this report as development evidence only; "
+            "freeze a gate before evaluating an untouched or forward promotion holdout."
+        ),
         "target": target,
         "samples": int(sum(fold["samples"] for fold in folds)),
         "fold_count": len(folds),
@@ -153,7 +163,18 @@ def main():
     args = parser.parse_args()
 
     frame = pd.read_csv(args.dataset)
-    report = {"dataset": str(args.dataset), "rows": int(len(frame)), "targets": {}}
+    report = {
+        "contract": "orion-premarket-v5-threshold-search-v2",
+        "evidence_role": EVIDENCE_ROLE,
+        "promotion_eligible": PROMOTION_ELIGIBLE,
+        "selection_warning": (
+            "This report searches threshold candidates on observed walk-forward outcomes. "
+            "It must not be used as promotion evidence for the selected gate."
+        ),
+        "dataset": str(args.dataset),
+        "rows": int(len(frame)),
+        "targets": {},
+    }
 
     for target in args.targets:
         print(f"Validating v5 {target}...", flush=True)
