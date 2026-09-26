@@ -6,11 +6,20 @@ from pathlib import Path
 import re
 from typing import Any, Iterable
 
-from scripts.audit_regular_hours_collection_health import (
-    CollectionHealthError,
-    _load_payload,
-    build_health_report,
-)
+try:
+    from scripts.audit_regular_hours_collection_health import (
+        CollectionHealthError,
+        _load_payload,
+        build_health_report,
+    )
+except ModuleNotFoundError as exc:
+    if exc.name != "scripts":
+        raise
+    from audit_regular_hours_collection_health import (
+        CollectionHealthError,
+        _load_payload,
+        build_health_report,
+    )
 
 REPORT_CONTRACT = "orion-regular-hours-collection-health-v5"
 FORWARD_PROTOCOL_ID = "regular-hours-v3-1-forward-validation-2026-09-12"
