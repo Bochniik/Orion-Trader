@@ -67,3 +67,177 @@
 @media(max-width:980px){.market-v3-table-wrap{overflow-x:auto}.market-v3-table-head,.market-v3-row{min-width:690px}}
 @media(max-width:800px){.market-explorer-panel.market-v3{padding:10px}.market-explorer-tabs{margin-inline:-10px;padding-inline:10px}.market-v3-layout-wide .market-v3-content{padding-top:5px!important}.market-v3-group-hero{align-items:flex-start;flex-direction:column}.market-v3-controls{width:100%;flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.market-v3-row,.market-explorer-refresh,.market-explorer-tabs button,.market-explorer-list-picker button{transition:none!important}.market-explorer-refresh:disabled svg{animation:none}}
+
+
+/* Readability pass: give Market Explorer more visual weight and restore comfortable scan density. */
+.dashboard-primary .market-explorer-panel.market-v3 {
+  padding: 20px 22px 16px;
+  border-radius: 14px;
+}
+
+.dashboard-primary .market-explorer-header {
+  margin-bottom: 14px;
+}
+
+.dashboard-primary .market-explorer-header h2 {
+  margin-bottom: 5px;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.dashboard-primary .market-explorer-header p {
+  max-width: 660px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.dashboard-primary .market-explorer-refresh {
+  min-height: 38px;
+  padding: 8px 13px;
+  font-size: 11px;
+}
+
+.dashboard-primary .market-explorer-tabs {
+  gap: 7px;
+  margin-inline: -22px;
+  padding: 0 22px 8px;
+}
+
+.dashboard-primary .market-explorer-tabs button {
+  min-height: 38px;
+  padding: 8px 13px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.dashboard-primary .market-explorer-tabs button.active::after {
+  bottom: -9px;
+}
+
+.dashboard-primary .market-v3-group-hero {
+  padding: 12px 0 13px;
+}
+
+.dashboard-primary .market-v3-hero-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+}
+
+.dashboard-primary .market-v3-group-title h3 {
+  margin-bottom: 4px;
+  font-size: 16px !important;
+}
+
+.dashboard-primary .market-v3-group-title p,
+.dashboard-primary .market-v3-group-title small {
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.dashboard-primary .market-v3-controls label {
+  gap: 4px;
+  font-size: 9px;
+}
+
+.dashboard-primary .market-v3-controls label > span {
+  font-size: 7px;
+}
+
+.dashboard-primary .market-v3-controls select {
+  min-height: 34px;
+  padding: 6px 9px;
+  font-size: 10px;
+}
+
+.dashboard-primary .market-v3-group-select select {
+  min-width: 190px;
+}
+
+.dashboard-primary .market-v3-table-wrap,
+.dashboard-primary .market-v3-layout-wide .market-v3-table-wrap {
+  margin-top: 10px !important;
+  border-radius: 9px;
+}
+
+.dashboard-primary .market-v3-table-head {
+  padding: 8px 12px;
+}
+
+.dashboard-primary .market-v3-table-head > span {
+  font-size: 7px;
+  letter-spacing: .07em;
+}
+
+.dashboard-primary .market-v3-row {
+  min-height: 50px;
+  padding: 6px 12px;
+}
+
+.dashboard-primary .market-v3-company {
+  gap: 10px;
+}
+
+.dashboard-primary .market-v3-company .stock-logo {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 7px;
+}
+
+.dashboard-primary .market-v3-company-copy > strong {
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.dashboard-primary .market-v3-company-copy > small {
+  margin-top: 2px;
+  font-size: 7px;
+}
+
+.dashboard-primary .market-v3-symbol,
+.dashboard-primary .market-v3-exchange,
+.dashboard-primary .market-v3-change {
+  font-size: 9px;
+}
+
+.dashboard-primary .market-v3-price {
+  font-size: 10px;
+}
+
+.dashboard-primary .market-v3-change.positive,
+.dashboard-primary .market-v3-change.negative {
+  padding: 3px 6px;
+  border-radius: 5px;
+}
+
+.dashboard-primary .market-v3-spark {
+  width: 94px;
+  height: 28px;
+}
+
+.dashboard-primary .market-v3-footer {
+  margin-top: 8px !important;
+  padding-top: 8px;
+  font-size: 8px;
+}
+
+@media (min-width: 1180px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1.65fr) minmax(300px, .72fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .dashboard-primary .market-explorer-panel.market-v3 {
+    padding: 14px;
+  }
+
+  .dashboard-primary .market-explorer-tabs {
+    margin-inline: -14px;
+    padding-inline: 14px;
+  }
+
+  .dashboard-primary .market-explorer-header h2 {
+    font-size: 19px;
+  }
+}
