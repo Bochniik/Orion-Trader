@@ -890,3 +890,106 @@
     grid-template-columns: 76px minmax(0, 1fr);
   }
 }
+
+
+/* Orion Analysis readability pass: larger workspace-context card without changing analysis semantics. */
+@media (min-width: 1181px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(380px, .9fr);
+  }
+
+  .dashboard-orion-card {
+    padding: 20px;
+  }
+
+  .dashboard-orion-card .dashboard-card-heading {
+    padding-bottom: 16px;
+  }
+
+  .dashboard-orion-card .dashboard-card-heading h2 {
+    font-size: 16px;
+  }
+
+  .dashboard-orion-card .dashboard-heading-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .dashboard-orion-card .orion-snapshot-stock {
+    gap: 14px;
+    margin-top: 18px;
+    padding: 12px 14px;
+  }
+
+  .dashboard-orion-card .orion-snapshot-logo .stock-logo {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .dashboard-orion-card .orion-snapshot-stock-copy > span {
+    font-size: 9px;
+  }
+
+  .dashboard-orion-card .orion-snapshot-stock-copy > strong {
+    font-size: 18px;
+  }
+
+  .dashboard-orion-card .orion-snapshot-stock-copy > small {
+    font-size: 11px;
+  }
+
+  .dashboard-orion-card .orion-score-area {
+    gap: 22px;
+    margin-top: 18px;
+    padding: 14px;
+  }
+
+  .dashboard-orion-card .orion-score-ring {
+    transform: scale(1.08);
+    transform-origin: center;
+    margin: 5px;
+  }
+
+  .dashboard-orion-card .orion-score-metrics {
+    gap: 11px;
+  }
+
+  .dashboard-orion-card .orion-score-metrics > div:first-child > span,
+  .dashboard-orion-card .orion-probability-grid > div > span {
+    font-size: 9px;
+  }
+
+  .dashboard-orion-card .orion-score-metrics > div:first-child > strong {
+    font-size: 15px;
+  }
+
+  .dashboard-orion-card .orion-probability-grid > div {
+    min-height: 58px;
+    padding: 11px 12px 11px 14px;
+  }
+
+  .dashboard-orion-card .orion-probability-grid > div > strong {
+    font-size: 13px;
+  }
+
+  .dashboard-orion-card .orion-risk-row,
+  .dashboard-orion-card .orion-setup-summary {
+    margin-top: 16px;
+  }
+
+  .dashboard-orion-card .orion-setup-summary {
+    padding: 14px;
+  }
+
+  .dashboard-orion-card .orion-setup-summary p {
+    font-size: 11px;
+    line-height: 1.55;
+  }
+
+  .dashboard-orion-card .dashboard-primary-action {
+    min-height: 42px;
+    margin-top: 16px;
+    padding-inline: 14px;
+    font-size: 11px;
+  }
+}
