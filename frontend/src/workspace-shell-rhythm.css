@@ -71,3 +71,9 @@
     scroll-behavior: auto;
   }
 }
+
+
+/* Today dashboard owns a true-black canvas; suppress the generic workspace glow. */
+.core-workspace:has(.dashboard-view) {
+  background: #000 !important;
+}
