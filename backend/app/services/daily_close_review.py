@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -24,7 +25,8 @@ def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
             f.probability_up,
             f.forecast_horizon,
             o.actual_up,
-            o.resolved_at
+            o.resolved_at,
+            p.snapshot_json
         FROM probability_outcomes o
         JOIN probability_forecasts f
             ON f.id = o.forecast_id
@@ -35,7 +37,45 @@ def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
         """,
         (str(user_id),),
     ).fetchall()
-    return [dict(row) for row in rows]
+    evidence = []
+    for row in rows:
+        item = dict(row)
+        snapshot_json = item.pop("snapshot_json", None)
+        try:
+            snapshot = json.loads(snapshot_json) if snapshot_json else {}
+        except (TypeError, ValueError, json.JSONDecodeError):
+            snapshot = {}
+        item["sector_context_availability"] = _sector_context_availability(
+            snapshot
+        )
+        evidence.append(item)
+    return evidence
+
+
+def _sector_context_availability(snapshot: Any) -> Optional[str]:
+    if not isinstance(snapshot, dict):
+        return None
+
+    component = (
+        ((snapshot.get("opportunity_score") or {}).get("component_evidence") or {})
+        .get("sector_confirmation") or {}
+    )
+    status = component.get("status")
+    if status in {"aligned", "not_aligned"}:
+        return "available"
+    if status == "unavailable":
+        return "unavailable"
+
+    source = (
+        (snapshot.get("feature_source_diagnostics") or {})
+        .get("sector_benchmark") or {}
+    )
+    status = source.get("status")
+    if status == "fresh":
+        return "available"
+    if status in {"unavailable", "blocked"}:
+        return "unavailable"
+    return None
 
 
 def _finite_probability(value: Any) -> Optional[float]:
@@ -136,12 +176,18 @@ def build_daily_close_review(
             diagnostics["invalid_resolved_at"] += 1
             continue
 
+        sector_context = row.get("sector_context_availability")
+        if sector_context not in {"available", "unavailable"}:
+            sector_context = None
+            diagnostics["missing_sector_context_status"] += 1
+
         normalized.append(
             {
                 "probability_up": probability,
                 "actual_up": actual,
                 "horizon": str(row.get("forecast_horizon") or "unknown"),
                 "session_date": resolved_session,
+                "sector_context_availability": sector_context,
             }
         )
 
@@ -157,8 +203,12 @@ def build_daily_close_review(
         accepted.append(row)
 
     by_horizon: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_sector_context: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for row in accepted:
         by_horizon[row["horizon"]].append(row)
+        sector_context = row["sector_context_availability"]
+        if sector_context is not None:
+            by_sector_context[sector_context].append(row)
 
     return {
         "version": REVIEW_VERSION,
@@ -168,6 +218,13 @@ def build_daily_close_review(
             horizon: _score(rows)
             for horizon, rows in sorted(by_horizon.items())
         },
+        "by_sector_context_availability": {
+            status: _score(rows)
+            for status, rows in sorted(by_sector_context.items())
+        },
         "diagnostics": dict(sorted(diagnostics.items())),
         "scoring_policy": "settled_evidence_only",
+        "sector_slice_policy": (
+            "explicit_point_in_time_status_only; unknown rows excluded from slices"
+        ),
     }
