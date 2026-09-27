@@ -667,12 +667,6 @@ export default function TodayView(props) {
           alt=""
           aria-hidden="true"
         />
-        <div className="dashboard-hero-motto">
-          <span>MARKETS</span>
-          <span>MOVE IDEAS</span>
-          <span>MOVE THE WORLD</span>
-          <i />
-        </div>
       </section>
 
       <div className="dashboard-grid">
