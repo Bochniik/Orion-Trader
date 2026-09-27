@@ -6323,3 +6323,26 @@ button
     border-bottom-left-radius: 0 !important;
   }
 }
+
+
+/* Match Orion Analysis to Market Explorer's full desktop row height.
+   The grid row is sized by the taller Explorer; Analysis stretches to it. */
+@media (min-width: 981px) {
+  .dashboard-grid {
+    align-items: stretch !important;
+  }
+
+  .dashboard-side {
+    align-self: stretch !important;
+    top: auto !important;
+    transform: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .dashboard-side > .dashboard-orion-card {
+    height: 100% !important;
+    min-height: 100% !important;
+    box-sizing: border-box;
+  }
+}
