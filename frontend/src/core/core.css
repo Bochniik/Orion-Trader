@@ -5921,3 +5921,37 @@ button
     right: -20px !important;
   }
 }
+
+
+/* Seat the hero artwork directly onto the Market Explorer / Orion Analysis row. */
+.dashboard-hero {
+  min-height: 276px !important;
+  padding-bottom: 0 !important;
+}
+
+.dashboard-hero-planet-art {
+  top: 18px !important;
+  right: -12px !important;
+  height: 352px !important;
+}
+
+.dashboard-hero-planet-art::after {
+  bottom: -12px !important;
+  height: 86px !important;
+}
+
+.dashboard-grid {
+  margin-top: -58px !important;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-planet-art {
+    top: 12px !important;
+    right: -20px !important;
+    height: 374px !important;
+  }
+
+  .dashboard-grid {
+    margin-top: -62px !important;
+  }
+}
