@@ -130,6 +130,30 @@ def _aggregate_horizon_verdict(by_horizon):
     }
 
 
+def _aggregate_direction_verdict(by_direction):
+    """Prevent a dominant predicted class from hiding weak minority classes."""
+    direction_verdicts = {
+        direction: metrics["score_improvement_uncertainty"][
+            "overall_probabilistic_verdict"
+        ]["verdict"]
+        for direction, metrics in sorted(by_direction.items())
+    }
+    verdicts = tuple(direction_verdicts.values())
+    if not verdicts or "insufficient_sample" in verdicts:
+        verdict = "insufficient_sample"
+    elif all(value == "better" for value in verdicts):
+        verdict = "better"
+    elif all(value == "worse" for value in verdicts):
+        verdict = "worse"
+    else:
+        verdict = "inconclusive"
+    return {
+        "verdict": verdict,
+        "direction_verdicts": direction_verdicts,
+        "policy": "all_predicted_directions_must_agree",
+    }
+
+
 def _wilson_interval(successes, total, z=1.959963984540054):
     """Return a two-sided Wilson score interval for a binomial success rate."""
     if total <= 0:
@@ -267,6 +291,7 @@ def _metrics(rows, include_groups=True):
                 "calibration_min_bucket_size": MIN_CALIBRATION_BUCKET_SIZE,
                 "class_distribution": {}, "confidence_buckets": [],
                 "horizon_probabilistic_verdict": _aggregate_horizon_verdict({}),
+                "direction_probabilistic_verdict": _aggregate_direction_verdict({}),
                 "by_direction": {}, "by_horizon": {},
                 "baselines": {"chronological_prior": _chronological_prior_baseline([])}}
     actual = [row["actual_direction"] for row in rows]
@@ -365,6 +390,8 @@ def _metrics(rows, include_groups=True):
         "confidence_buckets": buckets,
         "horizon_probabilistic_verdict": (_aggregate_horizon_verdict(by_horizon)
                                             if include_groups else None),
+        "direction_probabilistic_verdict": (_aggregate_direction_verdict(by_direction)
+                                              if include_groups else None),
         "by_direction": by_direction,
         "by_horizon": by_horizon,
     }
