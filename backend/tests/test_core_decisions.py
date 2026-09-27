@@ -1,12 +1,14 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 
+import pandas as pd
 import pytest
 from starlette.testclient import TestClient
 
 from app import main
 from app.api import core_routes as api
 from app.services.auth_store import AuthStore
+from app.services.core_readiness import audit_features
 from app.services.decision_engine import decision_from_prediction, decisions_from_board, technical_decision, today_from_board
 
 NOW = datetime(2026, 9, 1, 14, 0, tzinfo=timezone.utc)
@@ -220,6 +222,55 @@ def test_stale_benchmark_feed_isolated_from_fresh_stock_features():
     assert (
         result["directional_diagnostics"]["feature_sources"]
         == result["feature_source_diagnostics"]
+    )
+
+
+def test_explicit_source_event_times_flow_from_feature_audit_to_decision():
+    observed = (NOW - timedelta(seconds=20)).isoformat()
+    stale_benchmark = NOW - timedelta(minutes=5)
+    required = (
+        "price_momentum", "atr_14", "realized_volatility",
+        "relative_volume", "index_momentum", "relative_strength_market",
+    )
+    snapshot = audit_features(
+        {
+            "timestamp": observed,
+            "features": {name: 1.0 for name in required},
+        },
+        market_history=pd.DataFrame(
+            {"Close": [100.0]},
+            index=pd.DatetimeIndex([stale_benchmark]),
+        ),
+        now=NOW,
+    )
+
+    assert snapshot["source_event_time_contract"] == "explicit-v1"
+    assert snapshot["source_event_times"]["stock"]["status"] == "fresh"
+    assert snapshot["source_event_times"]["market_benchmark"]["status"] == "stale"
+
+    result = decision_from_prediction(
+        prediction(
+            core_validation={"ready": True},
+            feature_snapshot=snapshot,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["source_event_time_reason_codes"] == [
+        "stale_market_benchmark_source_timestamp"
+    ]
+    sources = result["feature_source_diagnostics"]
+    assert sources["stock"]["event_time"]["status"] == "fresh"
+    assert sources["market_benchmark"]["event_time"]["status"] == "stale"
+    assert (
+        "stale_market_benchmark_source_timestamp"
+        in sources["market_benchmark"]["reason_codes"]
+    )
+    assert (
+        result["directional_diagnostics"]["source_event_time_reason_codes"]
+        == result["source_event_time_reason_codes"]
     )
 
 
