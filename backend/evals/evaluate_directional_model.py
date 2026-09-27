@@ -106,6 +106,30 @@ def _combined_improvement_verdict(brier_interval, log_loss_interval):
     }
 
 
+def _aggregate_horizon_verdict(by_horizon):
+    """Prevent one strong horizon from hiding weak or unverified horizons."""
+    horizon_verdicts = {
+        horizon: metrics["score_improvement_uncertainty"][
+            "overall_probabilistic_verdict"
+        ]["verdict"]
+        for horizon, metrics in sorted(by_horizon.items())
+    }
+    verdicts = tuple(horizon_verdicts.values())
+    if not verdicts or "insufficient_sample" in verdicts:
+        verdict = "insufficient_sample"
+    elif all(value == "better" for value in verdicts):
+        verdict = "better"
+    elif all(value == "worse" for value in verdicts):
+        verdict = "worse"
+    else:
+        verdict = "inconclusive"
+    return {
+        "verdict": verdict,
+        "horizon_verdicts": horizon_verdicts,
+        "policy": "all_horizons_must_agree",
+    }
+
+
 def _wilson_interval(successes, total, z=1.959963984540054):
     """Return a two-sided Wilson score interval for a binomial success rate."""
     if total <= 0:
@@ -242,6 +266,7 @@ def _metrics(rows, include_groups=True):
                 "calibration_sample_count": 0, "calibration_coverage": None,
                 "calibration_min_bucket_size": MIN_CALIBRATION_BUCKET_SIZE,
                 "class_distribution": {}, "confidence_buckets": [],
+                "horizon_probabilistic_verdict": _aggregate_horizon_verdict({}),
                 "by_direction": {}, "by_horizon": {},
                 "baselines": {"chronological_prior": _chronological_prior_baseline([])}}
     actual = [row["actual_direction"] for row in rows]
@@ -298,6 +323,11 @@ def _metrics(rows, include_groups=True):
             groups[str(key(row) or "unknown")].append(row)
         return {name: _metrics(group, include_groups=False) for name, group in sorted(groups.items())}
 
+    by_direction = (grouped(lambda row: row.get("model_direction") or
+                            max(CLASSES, key=lambda n: row[f"p_{n.lower()}"]))
+                    if include_groups else {})
+    by_horizon = grouped(lambda row: row.get("horizon")) if include_groups else {}
+
     return {
         "sample_count": len(rows),
         "rejected_malformed_rows": rejected,
@@ -333,8 +363,10 @@ def _metrics(rows, include_groups=True):
         "calibration_min_bucket_size": MIN_CALIBRATION_BUCKET_SIZE,
         "class_distribution": dict(Counter(actual)),
         "confidence_buckets": buckets,
-        "by_direction": grouped(lambda row: row.get("model_direction") or max(CLASSES, key=lambda n: row[f"p_{n.lower()}"])) if include_groups else {},
-        "by_horizon": grouped(lambda row: row.get("horizon")) if include_groups else {},
+        "horizon_probabilistic_verdict": (_aggregate_horizon_verdict(by_horizon)
+                                            if include_groups else None),
+        "by_direction": by_direction,
+        "by_horizon": by_horizon,
     }
 
 
