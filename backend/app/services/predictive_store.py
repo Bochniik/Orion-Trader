@@ -1,5 +1,7 @@
 """Per-user persistence for deterministic predictive-intelligence artifacts."""
 
+import copy
+import hashlib
 import json
 import math
 import sqlite3
@@ -92,6 +94,7 @@ class PredictiveIntelligenceStore:
                     directional_confidence REAL,
                     final_decision TEXT,
                     evaluation_eligible INTEGER NOT NULL DEFAULT 0,
+                    prediction_fingerprint TEXT,
                     FOREIGN KEY(model_id) REFERENCES predictive_model_runs(id)
                 )
             """)
@@ -103,6 +106,7 @@ class PredictiveIntelligenceStore:
                 "raw_p_neutral": "REAL", "calibration_temperature": "REAL",
                 "model_direction": "TEXT", "directional_confidence": "REAL",
                 "final_decision": "TEXT", "evaluation_eligible": "INTEGER NOT NULL DEFAULT 0",
+                "prediction_fingerprint": "TEXT",
             }
             for column, definition in migrations.items():
                 if column not in existing:
@@ -335,12 +339,31 @@ class PredictiveIntelligenceStore:
         calibrated_values = [calibrated.get(key) for key in ("P_UP", "P_DOWN", "P_NEUTRAL")]
         complete_probability_vector = all(_number(value) is not None for value in raw_values + calibrated_values)
         feature_snapshot = result.get("feature_snapshot")
+        persisted_feature_snapshot = _with_persisted_liquidity_tier(
+            feature_snapshot, result.get("liquidity_tier")
+        )
+        encoded_feature_snapshot = json.dumps(
+            persisted_feature_snapshot or {}, default=str, sort_keys=True
+        )
+        encoded_result = json.dumps(result, default=str, sort_keys=True)
         source_timestamp = result.get("market_data_timestamp") or result.get("timestamp")
         evaluation_eligible = int(bool(
             complete_probability_vector and isinstance(feature_snapshot, dict)
             and result.get("model_version") and result.get("model_direction") in {"UP", "DOWN"}
             and source_timestamp and result.get("horizon")
         ))
+        prediction_fingerprint = (
+            _prediction_fingerprint(
+                model_id=model_id,
+                ticker=result["ticker"],
+                model_version=result.get("model_version"),
+                horizon=result["horizon"],
+                source_timestamp=source_timestamp,
+                feature_json=encoded_feature_snapshot,
+                result_json=encoded_result,
+            )
+            if evaluation_eligible else None
+        )
         with self._lock, self._connect() as connection:
             cursor = connection.execute(
                 """
@@ -352,14 +375,14 @@ class PredictiveIntelligenceStore:
                     market_data_timestamp, model_version, data_provider, data_freshness,
                     data_quality_json, raw_p_up, raw_p_down, raw_p_neutral,
                     calibration_temperature, model_direction, directional_confidence,
-                    final_decision, evaluation_eligible
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    final_decision, evaluation_eligible, prediction_fingerprint
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(model_id) if model_id is not None else None,
                     result["timestamp"], result["due_at"], result["ticker"],
                     float(result["price"]), result["horizon"],
-                    json.dumps(result.get("feature_snapshot") or {}, default=str, sort_keys=True),
+                    encoded_feature_snapshot,
                     float(result["P_UP"]), float(result["P_DOWN"]),
                     float(result["P_NEUTRAL"]),
                     _number(expected.get("predicted_return")),
@@ -367,23 +390,99 @@ class PredictiveIntelligenceStore:
                     _number((result.get("opportunity_score") or {}).get("score")),
                     (result.get("market_regime") or {}).get("regime"),
                     result.get("confidence"),
-                    json.dumps(result, default=str, sort_keys=True),
+                    encoded_result,
                     source_timestamp, result.get("market_data_timestamp"),
                     result.get("model_version"), result.get("data_provider"),
                     result.get("data_freshness"), json.dumps(result.get("data_quality") or {}, default=str, sort_keys=True),
                     _number(raw.get("P_UP")), _number(raw.get("P_DOWN")), _number(raw.get("P_NEUTRAL")),
                     _number(result.get("calibration_temperature")), result.get("model_direction"),
                     _number(result.get("directional_confidence")), result.get("decision") or result.get("direction"),
-                    evaluation_eligible,
+                    evaluation_eligible, prediction_fingerprint,
                 ),
             )
             if cursor.rowcount == 0 and evaluation_eligible:
                 row = connection.execute(
-                    "SELECT id FROM live_predictions WHERE ticker=? AND model_version=? AND horizon=? AND source_observation_timestamp=?",
-                    (str(result["ticker"]).upper(), result.get("model_version"), result["horizon"], source_timestamp),
+                    "SELECT id, model_id, feature_json, result_json, prediction_fingerprint "
+                    "FROM live_predictions "
+                    "WHERE ticker=? AND model_version=? AND horizon=? "
+                    "AND source_observation_timestamp=?",
+                    (
+                        str(result["ticker"]).upper(), result.get("model_version"),
+                        result["horizon"], source_timestamp,
+                    ),
                 ).fetchone()
+                expected_model_id = int(model_id) if model_id is not None else None
+                if row is None:
+                    raise RuntimeError("Prediction uniqueness conflict could not be resolved")
+                if (
+                    row["prediction_fingerprint"] is not None
+                    and row["prediction_fingerprint"] != prediction_fingerprint
+                ):
+                    raise ValueError(
+                        "Conflicting payload for immutable evaluation prediction"
+                    )
+                if (
+                    row["model_id"] != expected_model_id
+                    or row["feature_json"] != encoded_feature_snapshot
+                    or row["result_json"] != encoded_result
+                ):
+                    raise ValueError(
+                        "Conflicting payload for immutable evaluation prediction"
+                    )
                 return row["id"]
         return cursor.lastrowid
+
+
+    def audit_prediction_registry(self):
+        """Verify persisted fingerprints without mutating or backfilling evidence."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT id, model_id, ticker, model_version, horizon, "
+                "source_observation_timestamp, feature_json, result_json, "
+                "prediction_fingerprint FROM live_predictions "
+                "WHERE evaluation_eligible=1 ORDER BY id"
+            ).fetchall()
+
+        verified_ids = []
+        corrupted_ids = []
+        unverifiable_ids = []
+        for row in rows:
+            fingerprint = row["prediction_fingerprint"]
+            if not fingerprint:
+                unverifiable_ids.append(row["id"])
+                continue
+            expected = _prediction_fingerprint(
+                model_id=row["model_id"],
+                ticker=row["ticker"],
+                model_version=row["model_version"],
+                horizon=row["horizon"],
+                source_timestamp=row["source_observation_timestamp"],
+                feature_json=row["feature_json"],
+                result_json=row["result_json"],
+            )
+            if fingerprint == expected:
+                verified_ids.append(row["id"])
+            else:
+                corrupted_ids.append(row["id"])
+
+        if not rows:
+            status = "empty"
+        elif corrupted_ids:
+            status = "failed"
+        elif unverifiable_ids:
+            status = "partial"
+        else:
+            status = "verified"
+        return {
+            "status": status,
+            "evaluation_prediction_count": len(rows),
+            "verified_count": len(verified_ids),
+            "corrupted_count": len(corrupted_ids),
+            "unverifiable_count": len(unverifiable_ids),
+            "corrupted_prediction_ids": corrupted_ids,
+            "unverifiable_prediction_ids": unverifiable_ids,
+            "policy": "read_only_no_backfill",
+        }
 
     def list_predictions(self, limit=100, *, outcome_status=None):
         safe_limit = max(1, min(int(limit), 1_000))
@@ -710,6 +809,36 @@ class PredictiveIntelligenceStore:
         with self._lock, self._connect() as connection:
             cursor = connection.execute("DELETE FROM live_predictions")
         return cursor.rowcount
+
+
+def _prediction_fingerprint(*, model_id, ticker, model_version, horizon,
+                            source_timestamp, feature_json, result_json):
+    """Return a deterministic integrity digest for one forward-only observation."""
+    payload = json.dumps({
+        "model_id": int(model_id) if model_id is not None else None,
+        "ticker": str(ticker).upper(),
+        "model_version": model_version,
+        "horizon": horizon,
+        "source_observation_timestamp": source_timestamp,
+        "feature_json": feature_json,
+        "result_json": result_json,
+    }, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _with_persisted_liquidity_tier(feature_snapshot, liquidity_tier):
+    """Copy an explicit A-D tier into the immutable prediction-time snapshot."""
+    if not isinstance(feature_snapshot, dict):
+        return feature_snapshot
+    snapshot = copy.deepcopy(feature_snapshot)
+    normalized = str(liquidity_tier or "").strip().upper()
+    if normalized not in {"A", "B", "C", "D"}:
+        return snapshot
+    existing = snapshot.get("liquidity_tier")
+    if existing is not None and str(existing).strip().upper() != normalized:
+        raise ValueError("Conflicting liquidity tiers in prediction and feature snapshot")
+    snapshot["liquidity_tier"] = normalized
+    return snapshot
 
 
 def _number(value):
