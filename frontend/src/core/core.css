@@ -6293,3 +6293,14 @@ button
   position: relative;
   z-index: 1;
 }
+
+
+/* Restore Orion Analysis to the top alignment of the dashboard workspace row. */
+@media (min-width: 981px) {
+  .dashboard-side {
+    align-self: start !important;
+    top: 76px;
+    margin-top: 0 !important;
+    transform: translateY(-16px);
+  }
+}
