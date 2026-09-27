@@ -8,6 +8,7 @@ time; evaluation-set label statistics are retained only as diagnostics.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import random
@@ -467,16 +468,58 @@ def _metrics(rows, include_groups=True):
     }
 
 
+def _stored_prediction_fingerprint(row):
+    payload = json.dumps({
+        "model_id": row.get("model_id"),
+        "ticker": str(row.get("ticker") or "").upper(),
+        "model_version": row.get("model_version"),
+        "horizon": row.get("horizon"),
+        "source_observation_timestamp": row.get("source_observation_timestamp"),
+        "feature_json": row.get("feature_json"),
+        "result_json": row.get("result_json"),
+    }, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _registry_integrity(rows, columns):
+    if not rows:
+        return {"status": "empty", "verified_count": 0, "corrupted_count": 0,
+                "unverifiable_count": 0, "policy": "fail_closed_no_backfill"}
+    if "prediction_fingerprint" not in columns:
+        return {"status": "unverifiable", "verified_count": 0, "corrupted_count": 0,
+                "unverifiable_count": len(rows), "policy": "fail_closed_no_backfill"}
+    verified = corrupted = unverifiable = 0
+    for raw_row in rows:
+        row = dict(raw_row)
+        fingerprint = row.get("prediction_fingerprint")
+        if not fingerprint:
+            unverifiable += 1
+        elif fingerprint == _stored_prediction_fingerprint(row):
+            verified += 1
+        else:
+            corrupted += 1
+    status = ("corrupted" if corrupted else
+              "unverifiable" if unverifiable else "verified")
+    return {"status": status, "verified_count": verified,
+            "corrupted_count": corrupted, "unverifiable_count": unverifiable,
+            "policy": "fail_closed_no_backfill"}
+
+
 def load_settled_predictions(database_path):
     path = Path(database_path)
     if not path.exists():
-        return [], {"database_exists": False, "model_runs": 0, "live_predictions": 0, "settled_predictions": 0}
+        return [], {"database_exists": False, "model_runs": 0, "live_predictions": 0,
+                    "settled_predictions": 0,
+                    "registry_integrity": _registry_integrity([], set())}
     with sqlite3.connect(path) as db:
         db.row_factory = sqlite3.Row
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         model_runs = db.execute("SELECT COUNT(*) FROM predictive_model_runs").fetchone()[0] if "predictive_model_runs" in tables else 0
         total = db.execute("SELECT COUNT(*) FROM live_predictions").fetchone()[0] if "live_predictions" in tables else 0
+        columns = ({row[1] for row in db.execute("PRAGMA table_info(live_predictions)")}
+                   if "live_predictions" in tables else set())
         rows = db.execute("SELECT * FROM live_predictions WHERE outcome_status='settled' ORDER BY id").fetchall() if "live_predictions" in tables else []
+    integrity = _registry_integrity(rows, columns)
     parsed = []
     for row in rows:
         item = dict(row)
@@ -489,12 +532,31 @@ def load_settled_predictions(database_path):
         item["feature_snapshot"] = features
         parsed.append(item)
     return parsed, {"database_exists": True, "model_runs": model_runs,
-                    "live_predictions": total, "settled_predictions": len(parsed)}
+                    "live_predictions": total, "settled_predictions": len(parsed),
+                    "registry_integrity": integrity}
 
 
 def evaluate(database_path):
     rows, inventory = load_settled_predictions(database_path)
     metrics = _metrics(rows)
+    integrity = inventory["registry_integrity"]
+    probabilistic_verdict = metrics["score_improvement_uncertainty"][
+        "overall_probabilistic_verdict"
+    ]["verdict"]
+    if not metrics["sample_count"]:
+        evidence_verdict = {"verdict": "no_evidence", "reason": "no_settled_predictions"}
+    elif integrity["status"] != "verified":
+        evidence_verdict = {
+            "verdict": "insufficient_evidence",
+            "reason": "prediction_registry_integrity_not_verified",
+            "registry_status": integrity["status"],
+        }
+    else:
+        evidence_verdict = {
+            "verdict": probabilistic_verdict,
+            "reason": "registry_verified_and_probabilistic_metrics_applied",
+            "registry_status": "verified",
+        }
     calibration = {"status": "not_evaluable", "reason": "No persisted raw and calibrated probability pairs are available."}
     if rows:
         calibration = {"status": "not_evaluable", "reason": "The prediction store persists calibrated probabilities but not raw pre-temperature probabilities."}
@@ -509,6 +571,7 @@ def evaluate(database_path):
             "using the final holdout class balance as a deployable benchmark would leak future labels into the baseline."
         ),
         "metrics": metrics,
+        "model_evidence_verdict": evidence_verdict,
         "temperature_calibration": calibration,
         "conclusion": "No measurable predictive value can be established from this repository because zero truly out-of-sample settled predictions are available." if not metrics["sample_count"] else "Evaluate only with the leakage-safe metrics above; reliability requires a materially sized chronological holdout.",
     }
