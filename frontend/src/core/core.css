@@ -5990,3 +5990,17 @@ button
 .dashboard-orion-card .orion-risk-row strong {
   font-size: 18px !important;
 }
+
+
+/* Final hero placement: slightly left and lower to meet both dashboard cards. */
+.dashboard-hero-planet-art {
+  right: 34px !important;
+  top: 28px !important;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-planet-art {
+    right: 46px !important;
+    top: 24px !important;
+  }
+}
