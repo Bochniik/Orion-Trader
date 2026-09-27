@@ -339,6 +339,10 @@ class PredictiveIntelligenceStore:
         persisted_feature_snapshot = _with_persisted_liquidity_tier(
             feature_snapshot, result.get("liquidity_tier")
         )
+        encoded_feature_snapshot = json.dumps(
+            persisted_feature_snapshot or {}, default=str, sort_keys=True
+        )
+        encoded_result = json.dumps(result, default=str, sort_keys=True)
         source_timestamp = result.get("market_data_timestamp") or result.get("timestamp")
         evaluation_eligible = int(bool(
             complete_probability_vector and isinstance(feature_snapshot, dict)
@@ -363,7 +367,7 @@ class PredictiveIntelligenceStore:
                     int(model_id) if model_id is not None else None,
                     result["timestamp"], result["due_at"], result["ticker"],
                     float(result["price"]), result["horizon"],
-                    json.dumps(persisted_feature_snapshot or {}, default=str, sort_keys=True),
+                    encoded_feature_snapshot,
                     float(result["P_UP"]), float(result["P_DOWN"]),
                     float(result["P_NEUTRAL"]),
                     _number(expected.get("predicted_return")),
@@ -371,7 +375,7 @@ class PredictiveIntelligenceStore:
                     _number((result.get("opportunity_score") or {}).get("score")),
                     (result.get("market_regime") or {}).get("regime"),
                     result.get("confidence"),
-                    json.dumps(result, default=str, sort_keys=True),
+                    encoded_result,
                     source_timestamp, result.get("market_data_timestamp"),
                     result.get("model_version"), result.get("data_provider"),
                     result.get("data_freshness"), json.dumps(result.get("data_quality") or {}, default=str, sort_keys=True),
@@ -383,9 +387,25 @@ class PredictiveIntelligenceStore:
             )
             if cursor.rowcount == 0 and evaluation_eligible:
                 row = connection.execute(
-                    "SELECT id FROM live_predictions WHERE ticker=? AND model_version=? AND horizon=? AND source_observation_timestamp=?",
-                    (str(result["ticker"]).upper(), result.get("model_version"), result["horizon"], source_timestamp),
+                    "SELECT id, model_id, feature_json, result_json FROM live_predictions "
+                    "WHERE ticker=? AND model_version=? AND horizon=? "
+                    "AND source_observation_timestamp=?",
+                    (
+                        str(result["ticker"]).upper(), result.get("model_version"),
+                        result["horizon"], source_timestamp,
+                    ),
                 ).fetchone()
+                expected_model_id = int(model_id) if model_id is not None else None
+                if row is None:
+                    raise RuntimeError("Prediction uniqueness conflict could not be resolved")
+                if (
+                    row["model_id"] != expected_model_id
+                    or row["feature_json"] != encoded_feature_snapshot
+                    or row["result_json"] != encoded_result
+                ):
+                    raise ValueError(
+                        "Conflicting payload for immutable evaluation prediction"
+                    )
                 return row["id"]
         return cursor.lastrowid
 
