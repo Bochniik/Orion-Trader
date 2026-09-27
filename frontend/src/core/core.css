@@ -6188,3 +6188,48 @@ button
     mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%) !important;
   }
 }
+
+
+/* Fill the entire dashboard hero with the generated starfield asset.
+   Extend beyond the hero box so no uncovered black gutter remains. */
+.dashboard-hero {
+  overflow: visible !important;
+}
+
+.dashboard-hero-starfield {
+  inset: -18px calc(clamp(24px, 3vw, 46px) * -1) -72px !important;
+  width: auto !important;
+  height: auto !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 82%,
+    rgba(0, 0, 0, .94) 91%,
+    transparent 100%
+  ) !important;
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 82%,
+    rgba(0, 0, 0, .94) 91%,
+    transparent 100%
+  ) !important;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-starfield {
+    inset-inline: calc(clamp(24px, 3vw, 46px) * -1) !important;
+    background-size: 106% auto !important;
+    background-position: center 48% !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .dashboard-hero-starfield {
+    inset: -12px -18px -46px !important;
+    background-size: cover !important;
+    background-position: 62% center !important;
+  }
+}
