@@ -254,6 +254,23 @@ def build_live_prediction(symbol, horizon, feature_snapshot, liquidity_row,
     support = sum(item["direction"] == "supports" for item in contributors)
     contradiction = sum(item["direction"] == "contradicts" for item in contributors)
     blockers = []
+    observation_timestamp = (
+        feature_snapshot.get("timestamp")
+        or feature_snapshot.get("history_timestamp")
+    )
+    parsed_observation_timestamp = None
+    if observation_timestamp is None:
+        blockers.append("Point-in-time observation timestamp is unavailable")
+    else:
+        try:
+            parsed_observation_timestamp = datetime.fromisoformat(
+                str(observation_timestamp).replace("Z", "+00:00")
+            )
+            if parsed_observation_timestamp.tzinfo is None:
+                raise ValueError("timezone is required")
+        except (TypeError, ValueError):
+            observation_timestamp = None
+            blockers.append("Point-in-time observation timestamp is invalid or lacks a timezone")
     if not horizon_artifact.get("reliable"):
         blockers.append("Model has not passed the minimum out-of-sample reliability gates")
     if tier == "D" or not tier_policy["default_recommendation_eligible"]:
@@ -318,11 +335,30 @@ def build_live_prediction(symbol, horizon, feature_snapshot, liquidity_row,
             "target_area": None, "status": "no_trade",
         }
     )
-    timestamp = feature_snapshot.get("timestamp") or datetime.now(timezone.utc).isoformat()
+    timestamp = observation_timestamp
     due_at = (
-        datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-        + timedelta(seconds=HORIZON_SECONDS[horizon])
-    ).astimezone(timezone.utc).isoformat()
+        (
+            parsed_observation_timestamp
+            + timedelta(seconds=HORIZON_SECONDS[horizon])
+        ).astimezone(timezone.utc).isoformat()
+        if parsed_observation_timestamp is not None else None
+    )
+    observation_time_diagnostics = {
+        "status": "ready" if parsed_observation_timestamp is not None else "unavailable",
+        "source": (
+            "feature_snapshot.timestamp"
+            if feature_snapshot.get("timestamp") is not None
+            else "feature_snapshot.history_timestamp"
+            if feature_snapshot.get("history_timestamp") is not None
+            else None
+        ),
+        "timestamp": timestamp,
+        "missing_inputs": (
+            [] if parsed_observation_timestamp is not None
+            else ["timezone-aware point-in-time observation timestamp"]
+        ),
+        "policy": "missing_or_invalid_observation_time_forces_no_trade",
+    }
     explanation = _deterministic_explanation(
         symbol, model_direction, probabilities, contributors, blockers, regime
     )
@@ -366,6 +402,7 @@ def build_live_prediction(symbol, horizon, feature_snapshot, liquidity_row,
         "data_provider": feature_snapshot.get("data_provider") or feature_snapshot.get("provider"),
         "data_freshness": feature_snapshot.get("freshness_contract"),
         "data_quality": feature_snapshot.get("feature_provenance"),
+        "observation_time_diagnostics": observation_time_diagnostics,
         "confidence": (
             "validated_baseline" if horizon_artifact.get("reliable")
             else "experimental_unvalidated"
