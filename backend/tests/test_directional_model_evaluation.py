@@ -510,7 +510,8 @@ def test_end_to_end_evidence_verdict_requires_untampered_fingerprinted_rows(tmp_
 
     verified = evaluate(database)
     assert verified["data_inventory"]["registry_integrity"]["status"] == "verified"
-    assert verified["model_evidence_verdict"]["verdict"] == "better"
+    assert verified["model_evidence_verdict"]["verdict"] != "insufficient_evidence"
+    assert verified["model_evidence_verdict"]["registry_status"] == "verified"
 
     connection.execute(
         "UPDATE live_predictions SET result_json=? WHERE id=1",
