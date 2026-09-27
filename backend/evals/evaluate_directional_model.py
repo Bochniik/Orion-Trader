@@ -536,27 +536,51 @@ def load_settled_predictions(database_path):
                     "registry_integrity": integrity}
 
 
-def evaluate(database_path):
-    rows, inventory = load_settled_predictions(database_path)
-    metrics = _metrics(rows)
-    integrity = inventory["registry_integrity"]
-    probabilistic_verdict = metrics["score_improvement_uncertainty"][
-        "overall_probabilistic_verdict"
-    ]["verdict"]
+def _model_evidence_verdict(metrics, integrity):
+    """Require registry integrity and agreement across every audited model slice."""
     if not metrics["sample_count"]:
-        evidence_verdict = {"verdict": "no_evidence", "reason": "no_settled_predictions"}
-    elif integrity["status"] != "verified":
-        evidence_verdict = {
+        return {"verdict": "no_evidence", "reason": "no_settled_predictions"}
+    if integrity["status"] != "verified":
+        return {
             "verdict": "insufficient_evidence",
             "reason": "prediction_registry_integrity_not_verified",
             "registry_status": integrity["status"],
         }
+    components = {
+        "overall": metrics["score_improvement_uncertainty"][
+            "overall_probabilistic_verdict"
+        ]["verdict"],
+        "horizons": metrics["horizon_probabilistic_verdict"]["verdict"],
+        "directions": metrics["direction_probabilistic_verdict"]["verdict"],
+        "liquidity_tiers": metrics["liquidity_probabilistic_verdict"]["verdict"],
+    }
+    values = tuple(components.values())
+    if "insufficient_sample" in values:
+        verdict = "insufficient_evidence"
+        reason = "one_or_more_audited_slices_lack_evidence"
+    elif all(value == "better" for value in values):
+        verdict = "better"
+        reason = "all_audited_slices_agree"
+    elif all(value == "worse" for value in values):
+        verdict = "worse"
+        reason = "all_audited_slices_agree"
     else:
-        evidence_verdict = {
-            "verdict": probabilistic_verdict,
-            "reason": "registry_verified_and_probabilistic_metrics_applied",
-            "registry_status": "verified",
-        }
+        verdict = "inconclusive"
+        reason = "audited_slice_verdicts_do_not_agree"
+    return {
+        "verdict": verdict,
+        "reason": reason,
+        "registry_status": "verified",
+        "component_verdicts": components,
+        "policy": "integrity_and_all_audited_slices_must_agree",
+    }
+
+
+def evaluate(database_path):
+    rows, inventory = load_settled_predictions(database_path)
+    metrics = _metrics(rows)
+    integrity = inventory["registry_integrity"]
+    evidence_verdict = _model_evidence_verdict(metrics, integrity)
     calibration = {"status": "not_evaluable", "reason": "No persisted raw and calibrated probability pairs are available."}
     if rows:
         calibration = {"status": "not_evaluable", "reason": "The prediction store persists calibrated probabilities but not raw pre-temperature probabilities."}
