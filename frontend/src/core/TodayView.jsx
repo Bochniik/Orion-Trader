@@ -677,11 +677,6 @@ export default function TodayView(props) {
 
       <div className="dashboard-grid">
         <div className="dashboard-primary">
-          <SessionResearchWorkspace
-            session={sessionState}
-            watchlistCount={saved.length}
-            onAnalyze={props.onAnalyze}
-          />
           {isPremarket && (
             <PremarketResearchStrip
               research={premarketResearch}
