@@ -278,3 +278,60 @@
     font-size: 9px;
   }
 }
+
+
+/* Desktop fit pass: keep Exchange visible without horizontal scrolling while
+   reducing the oversized top category tabs. */
+@media (min-width: 981px) {
+  .market-explorer-panel.market-v3 {
+    padding-inline: 18px;
+  }
+
+  .market-explorer-tabs {
+    margin-inline: -18px;
+    padding: 12px 18px 8px;
+  }
+
+  .market-explorer-tabs button {
+    min-height: 42px;
+    padding: 8px 14px;
+    font-size: 17px;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-layout-wide .market-v3-table-head,
+  .market-explorer-panel.market-v3 .market-v3-layout-wide .market-v3-row {
+    min-width: 0 !important;
+    grid-template-columns:
+      minmax(210px, 1.9fr)
+      minmax(62px, .55fr)
+      minmax(92px, .78fr)
+      minmax(82px, .68fr)
+      minmax(118px, .95fr)
+      minmax(72px, .62fr);
+    column-gap: 8px;
+  }
+
+  .market-v3-table-wrap {
+    overflow-x: hidden;
+  }
+}
+
+/* The existing medium-desktop rule hides Exchange below 1250px. Keep all six
+   columns on ordinary desktop widths; narrow/mobile layouts remain unchanged. */
+@media (min-width: 981px) and (max-width: 1250px) {
+  .market-explorer-panel.market-v3 .market-v3-layout-wide .market-v3-table-head,
+  .market-explorer-panel.market-v3 .market-v3-layout-wide .market-v3-row {
+    grid-template-columns:
+      minmax(185px, 1.75fr)
+      minmax(56px, .52fr)
+      minmax(86px, .76fr)
+      minmax(76px, .66fr)
+      minmax(105px, .9fr)
+      minmax(64px, .58fr);
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-layout-wide .market-v3-table-head > :last-child,
+  .market-explorer-panel.market-v3 .market-v3-layout-wide .market-v3-row > :last-child {
+    display: block;
+  }
+}
