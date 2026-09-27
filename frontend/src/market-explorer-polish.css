@@ -565,3 +565,24 @@
   background-color: #171b20;
   color: #ffffff;
 }
+
+
+/* Align the inner Market Explorer workspace with the outer card edges. */
+@media (min-width: 981px) {
+  .market-explorer-panel.market-v3 .market-v3-content {
+    margin-inline: -18px !important;
+    width: calc(100% + 36px) !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-group-hero {
+    padding-inline: 18px !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-table-wrap {
+    margin-inline: 0 !important;
+    width: 100% !important;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-radius: 0 0 7px 7px;
+  }
+}
