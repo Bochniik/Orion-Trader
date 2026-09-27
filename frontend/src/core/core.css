@@ -6275,3 +6275,21 @@ button
     display: none;
   }
 }
+
+
+/* Correct #286: never paint the uploaded starfield across the dashboard grid.
+   The hero asset stops at the workspace seam; the inter-panel gutter remains
+   the dashboard's true-black canvas. */
+.dashboard-grid-starfield {
+  display: none !important;
+}
+
+.dashboard-grid {
+  background: #000 !important;
+}
+
+.dashboard-primary,
+.dashboard-side {
+  position: relative;
+  z-index: 1;
+}
