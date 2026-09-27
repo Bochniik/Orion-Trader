@@ -5775,3 +5775,82 @@ button
 .dashboard-side > .dashboard-orion-card {
   background-color: rgba(4, 7, 10, 0.88) !important;
 }
+
+
+/* Correct the dashboard canvas/artwork seam from the rendered #274 result:
+   true black everywhere, with the planet/mountains reaching both workspaces. */
+.dashboard-view,
+.dashboard-view::before,
+.dashboard-primary,
+.dashboard-side,
+.dashboard-grid {
+  background-color: #000 !important;
+}
+
+.dashboard-view::before {
+  inset: -34px calc(clamp(24px, 3vw, 46px) * -1) auto;
+  height: 360px;
+  background:
+    radial-gradient(
+      ellipse at 82% 18%,
+      rgba(255, 112, 18, 0.055) 0%,
+      rgba(255, 112, 18, 0.02) 24%,
+      transparent 48%
+    ),
+    #000 !important;
+}
+
+.dashboard-hero {
+  min-height: 214px;
+  padding-bottom: 22px !important;
+  background: #000 !important;
+}
+
+.dashboard-hero-planet-art {
+  top: -20px !important;
+  right: 12px !important;
+  width: min(48vw, 760px) !important;
+  height: 292px !important;
+  overflow: visible !important;
+  z-index: 1 !important;
+}
+
+.dashboard-hero-planet-art img {
+  object-fit: contain !important;
+  object-position: right bottom !important;
+}
+
+.dashboard-hero-planet-art::after {
+  left: -18% !important;
+  right: -5% !important;
+  bottom: -38px !important;
+  height: 116px !important;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0),
+    rgba(0, 0, 0, 0.58) 45%,
+    #000 92%
+  ) !important;
+}
+
+.dashboard-grid {
+  margin-top: -24px !important;
+}
+
+/* Let the mountain silhouette visually meet the top edge of both workspaces;
+   the cards stay readable but no secondary brown/gray canvas shows through. */
+.dashboard-primary > .market-explorer-panel.market-v3,
+.dashboard-side > .dashboard-orion-card {
+  background-color: rgba(3, 5, 7, 0.94) !important;
+}
+
+@media (max-width: 1180px) {
+  .dashboard-hero-planet-art {
+    width: min(58vw, 650px) !important;
+    height: 250px !important;
+  }
+
+  .dashboard-grid {
+    margin-top: -14px !important;
+  }
+}
