@@ -5529,3 +5529,82 @@ button
   object-fit: cover;
   border-radius: inherit;
 }
+
+
+/* Orion Analysis readability pass.
+   Logo.dev assets can contain transparent whitespace inside the bitmap itself;
+   scale the image past the tile bounds so the visible mark reads full-bleed. */
+.dashboard-orion-card .orion-snapshot-logo {
+  width: 68px;
+  height: 68px;
+}
+
+.dashboard-orion-card .orion-snapshot-stock {
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.dashboard-orion-card .orion-snapshot-logo > .stock-logo {
+  width: 68px !important;
+  height: 68px !important;
+  padding: 0 !important;
+}
+
+.dashboard-orion-card .orion-snapshot-logo > .stock-logo img {
+  width: 122% !important;
+  height: 122% !important;
+  max-width: none;
+  object-fit: cover;
+  transform: scale(1.08);
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > span,
+.dashboard-orion-card .orion-score-metrics span,
+.dashboard-orion-card .orion-probability-grid span,
+.dashboard-orion-card .orion-risk-row span,
+.dashboard-orion-card .orion-setup-summary small {
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > strong {
+  font-size: 16px;
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > small {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.dashboard-orion-card .orion-score-metrics strong {
+  font-size: 19px;
+}
+
+.dashboard-orion-card .orion-probability-grid strong {
+  font-size: 18px;
+}
+
+.dashboard-orion-card .orion-risk-row strong {
+  font-size: 12px;
+}
+
+.dashboard-orion-card .orion-setup-summary {
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+}
+
+.dashboard-orion-card .orion-summary-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.dashboard-orion-card .orion-setup-summary p {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.dashboard-orion-card .dashboard-primary-action {
+  font-size: 12px;
+  min-height: 42px;
+}
