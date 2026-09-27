@@ -514,3 +514,18 @@
     min-width: 250px;
   }
 }
+
+
+/* Market Explorer heading readability. */
+@media (min-width: 981px) {
+  .market-explorer-panel.market-v3 .market-explorer-header h2 {
+    font-size: 32px !important;
+    line-height: 1.15;
+    letter-spacing: -.55px;
+  }
+
+  .market-explorer-panel.market-v3 .market-explorer-header p {
+    font-size: 16px !important;
+    line-height: 1.5;
+  }
+}
