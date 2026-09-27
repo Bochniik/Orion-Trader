@@ -5636,3 +5636,13 @@ button
     gap: 16px;
   }
 }
+
+
+/* Dashboard cleanup: hide legacy decorative section captions requested for removal. */
+.dashboard-view .core-section-label,
+.dashboard-view .dashboard-section-kicker,
+.dashboard-view .dashboard-workspace-context,
+.dashboard-view .dashboard-live-research,
+.dashboard-view .dashboard-market-intelligence-label {
+  display: none !important;
+}
