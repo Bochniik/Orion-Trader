@@ -6046,3 +6046,105 @@ button
     width: 124%;
   }
 }
+
+
+/* Approved Orion cosmic hero: replace the planet artwork with a restrained,
+   CSS-only orange starfield/nebula that dissolves into the black workspace. */
+.dashboard-hero {
+  position: relative;
+  min-height: 276px !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
+
+.dashboard-hero-content {
+  position: relative;
+  z-index: 3;
+}
+
+.dashboard-hero-starfield {
+  position: absolute;
+  z-index: 1;
+  inset: 0 -2% -18px 0;
+  pointer-events: none;
+  opacity: .92;
+  background-image:
+    radial-gradient(circle at 73% 23%, rgba(255, 188, 112, .98) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 86% 34%, rgba(255, 130, 42, .92) 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 63% 55%, rgba(255, 221, 178, .88) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 91% 65%, rgba(255, 150, 62, .95) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 54% 31%, rgba(255, 128, 35, .78) 0 .8px, transparent 1.6px),
+    radial-gradient(circle at 77% 78%, rgba(255, 205, 146, .82) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 97% 18%, rgba(255, 112, 24, .9) 0 1px, transparent 2px),
+    radial-gradient(circle at 44% 69%, rgba(255, 184, 108, .72) 0 .8px, transparent 1.5px),
+    radial-gradient(circle at 68% 42%, rgba(255, 116, 26, .82) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 82% 51%, rgba(255, 236, 198, .9) 0 .9px, transparent 1.7px),
+    radial-gradient(circle at 58% 84%, rgba(255, 135, 42, .74) 0 .8px, transparent 1.6px),
+    radial-gradient(ellipse at 80% 54%, rgba(255, 101, 18, .18) 0%, rgba(255, 92, 12, .075) 28%, transparent 61%),
+    radial-gradient(ellipse at 66% 30%, rgba(255, 139, 42, .10) 0%, transparent 46%);
+  background-size:
+    149px 131px, 223px 179px, 181px 157px, 269px 211px,
+    197px 167px, 251px 193px, 307px 227px, 173px 143px,
+    283px 199px, 211px 173px, 239px 187px, 100% 100%, 100% 100%;
+  background-position:
+    0 0, 31px 17px, 71px 39px, 11px 83px, 97px 13px,
+    41px 67px, 5px 29px, 121px 53px, 61px 7px, 17px 101px,
+    89px 73px, center, center;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.2) 27%, #000 47%, #000 100%),
+                      linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.2) 27%, #000 47%, #000 100%),
+              linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.dashboard-hero-starfield::before,
+.dashboard-hero-starfield::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.dashboard-hero-starfield::before {
+  width: 46%;
+  height: 68%;
+  right: 5%;
+  top: 9%;
+  background:
+    radial-gradient(ellipse at 52% 48%, rgba(255, 121, 29, .22), rgba(255, 92, 12, .08) 35%, transparent 68%);
+  filter: blur(28px);
+}
+
+.dashboard-hero-starfield::after {
+  width: 34%;
+  height: 46%;
+  right: 19%;
+  top: 30%;
+  background:
+    radial-gradient(ellipse, rgba(255, 169, 76, .13), transparent 67%);
+  filter: blur(34px);
+}
+
+.dashboard-hero-planet-art {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-hero-starfield {
+    animation: orion-starfield-breathe 9s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes orion-starfield-breathe {
+  from { opacity: .84; filter: brightness(.94); }
+  to { opacity: .98; filter: brightness(1.08); }
+}
+
+@media (max-width: 980px) {
+  .dashboard-hero-starfield {
+    opacity: .72;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.72), #000 55%, transparent 100%);
+    mask-image: linear-gradient(180deg, rgba(0,0,0,.72), #000 55%, transparent 100%);
+  }
+}
