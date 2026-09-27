@@ -167,10 +167,19 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     feature_input_diagnostics = {}
     feature_input_reason_codes = []
     source_event_time_reason_codes = []
+    optional_context_reason_codes = []
     feature_source_diagnostics = {
-        "stock": {"status": "not_evaluated", "features": [], "reason_codes": []},
+        "stock": {
+            "required": True, "status": "not_evaluated",
+            "features": [], "reason_codes": [],
+        },
         "market_benchmark": {
-            "status": "not_evaluated", "features": [], "reason_codes": [],
+            "required": True, "status": "not_evaluated",
+            "features": [], "reason_codes": [],
+        },
+        "sector_benchmark": {
+            "required": False, "status": "not_evaluated",
+            "features": [], "reason_codes": [],
         },
     }
     if prediction.get("core_validation") is not None:
@@ -222,10 +231,20 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         explicit_source_times = (
             snapshot.get("source_event_time_contract") == "explicit-v1"
         )
+        source_feature_sets = {
+            "stock": [
+                name for name in required if feature_sources[name] == "stock"
+            ],
+            "market_benchmark": [
+                name for name in required
+                if feature_sources[name] == "market_benchmark"
+            ],
+            "sector_benchmark": [
+                "sector_momentum", "relative_strength_sector",
+            ],
+        }
         for source, diagnostics in feature_source_diagnostics.items():
-            source_features = [
-                name for name in required if feature_sources[name] == source
-            ]
+            source_features = source_feature_sets[source]
             source_event_time = (
                 _temporal_layer_diagnostic(
                     f"{source}_source",
@@ -241,13 +260,16 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
                 source_event_time is not None
                 and source_event_time["reason_code"] is not None
             ):
-                source_event_time_reason_codes.append(
-                    source_event_time["reason_code"]
-                )
+                (
+                    source_event_time_reason_codes
+                    if diagnostics["required"]
+                    else optional_context_reason_codes
+                ).append(source_event_time["reason_code"])
             source_reason_codes = list(dict.fromkeys([
                 *(
                     ["invalid_feature_freshness_contract"]
-                    if snapshot.get("freshness_contract") != "source-specific-v2"
+                    if diagnostics["required"]
+                    and snapshot.get("freshness_contract") != "source-specific-v2"
                     else []
                 ),
                 *(
@@ -259,17 +281,25 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
                 *(
                     code
                     for name in source_features
+                    if name in feature_input_diagnostics
                     for code in feature_input_diagnostics[name]["reason_codes"]
                 ),
             ]))
             diagnostics.update({
-                "status": "blocked" if source_reason_codes else "fresh",
+                "status": (
+                    "blocked" if source_reason_codes and diagnostics["required"]
+                    else "unavailable" if source_reason_codes
+                    else "fresh"
+                ),
                 "features": source_features,
                 "event_time": source_event_time,
                 "reason_codes": source_reason_codes,
             })
         source_event_time_reason_codes = list(dict.fromkeys(
             source_event_time_reason_codes
+        ))
+        optional_context_reason_codes = list(dict.fromkeys(
+            optional_context_reason_codes
         ))
         no_trade_reason_codes.extend([
             *feature_input_reason_codes,
@@ -342,6 +372,9 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     directional_diagnostics["source_event_time_reason_codes"] = (
         source_event_time_reason_codes
     )
+    directional_diagnostics["optional_context_reason_codes"] = (
+        optional_context_reason_codes
+    )
     ev = number(expected.get("EV_LONG_bps" if model_direction == "UP" else "EV_SHORT_bps"))
     cost = number((prediction.get("execution_costs") or {}).get("round_trip_cost_bps"))
     if ev is None or ev <= 0 or cost is None or cost < 0:
@@ -407,6 +440,7 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         "feature_input_diagnostics": feature_input_diagnostics,
         "feature_source_diagnostics": feature_source_diagnostics,
         "source_event_time_reason_codes": source_event_time_reason_codes,
+        "optional_context_reason_codes": optional_context_reason_codes,
         "model_agreement": (prediction.get("strategy_consensus") or {}).get("agreement_score"),
         "model_outputs": prediction,
         "confidence_unavailable_reasons": directional_diagnostics["missing_inputs"],

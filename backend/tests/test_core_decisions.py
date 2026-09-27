@@ -292,6 +292,60 @@ def test_explicit_source_event_times_flow_from_feature_audit_to_decision():
     )
 
 
+def test_missing_sector_source_is_reported_without_blocking_required_evidence():
+    observed = (NOW - timedelta(seconds=20)).isoformat()
+    required = (
+        "price_momentum", "atr_14", "realized_volatility",
+        "relative_volume", "index_momentum", "relative_strength_market",
+    )
+    snapshot = {
+        "timestamp": observed,
+        "freshness_contract": "source-specific-v2",
+        "source_event_time_contract": "explicit-v1",
+        "source_event_times": {
+            "stock": {"timestamp": observed, "max_age_seconds": 120},
+            "market_benchmark": {
+                "timestamp": observed, "max_age_seconds": 120,
+            },
+            "sector_benchmark": {
+                "timestamp": None, "max_age_seconds": 120,
+            },
+        },
+        "features": {name: 1.0 for name in required},
+        "feature_provenance": {
+            name: {"status": "fresh", "as_of": observed}
+            for name in required
+        },
+    }
+
+    result = decision_from_prediction(
+        prediction(
+            core_validation={"ready": True},
+            feature_snapshot=snapshot,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is True
+    assert result["source_event_time_reason_codes"] == []
+    assert result["optional_context_reason_codes"] == [
+        "missing_sector_benchmark_source_timestamp"
+    ]
+    sources = result["feature_source_diagnostics"]
+    assert sources["stock"]["required"] is True
+    assert sources["stock"]["status"] == "fresh"
+    assert sources["market_benchmark"]["required"] is True
+    assert sources["market_benchmark"]["status"] == "fresh"
+    assert sources["sector_benchmark"]["required"] is False
+    assert sources["sector_benchmark"]["status"] == "unavailable"
+    assert sources["sector_benchmark"]["event_time"]["status"] == "missing"
+    assert (
+        result["directional_diagnostics"]["optional_context_reason_codes"]
+        == result["optional_context_reason_codes"]
+    )
+
+
 def test_closed_market_and_short_risk_geometry():
     assert not decision_from_prediction(prediction(), now=NOW)["actionable"]
     result = decision_from_prediction(prediction(direction="DOWN"), now=NOW, market_open=True)
