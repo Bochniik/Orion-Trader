@@ -74,6 +74,30 @@ def _observation_window_reason(value, now, seconds):
     return None
 
 
+def _temporal_layer_diagnostic(layer, value, now, max_age_seconds):
+    """Return one stable freshness result for a required timestamped data layer."""
+    parsed = timestamp(value)
+    if value is None:
+        status = "missing"
+    elif parsed is None:
+        status = "invalid"
+    else:
+        age_seconds = (now - parsed).total_seconds()
+        status = (
+            "future" if age_seconds < 0
+            else "stale" if age_seconds > max_age_seconds
+            else "fresh"
+        )
+    return {
+        "status": status,
+        "reason_code": (
+            None if status == "fresh" else f"{status}_{layer}_timestamp"
+        ),
+        "timestamp": value,
+        "max_age_seconds": max_age_seconds,
+    }
+
+
 def board_predictions(board):
     return [row for key in BOARD_SECTIONS for row in (board.get(key) or [])]
 
@@ -152,6 +176,22 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         ):
             warnings.append("Required stock or benchmark feature evidence is stale or unavailable.")
     history_time = snapshot.get("history_timestamp") or snapshot.get("timestamp")
+    data_freshness_diagnostics = {
+        "prediction": _temporal_layer_diagnostic(
+            "prediction", prediction.get("timestamp"), now, max_age
+        ),
+        "feature_bars": _temporal_layer_diagnostic(
+            "feature_bars", history_time, now, max_age
+        ),
+        "quote": _temporal_layer_diagnostic(
+            "quote", prediction.get("quote_as_of"), now, 60
+        ),
+    }
+    data_layer_reason_codes = [
+        diagnostics["reason_code"]
+        for diagnostics in data_freshness_diagnostics.values()
+        if diagnostics["reason_code"] is not None
+    ]
     observation_window_codes = list(dict.fromkeys(
         code for code in (
             _observation_window_reason(prediction.get("timestamp"), now, max_age),
@@ -192,6 +232,8 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     )
     directional_diagnostics["decision_evidence"] = decision_observation_evidence
     directional_diagnostics["no_trade_reason_codes"] = no_trade_reason_codes
+    directional_diagnostics["data_freshness"] = data_freshness_diagnostics
+    directional_diagnostics["data_layer_reason_codes"] = data_layer_reason_codes
     ev = number(expected.get("EV_LONG_bps" if model_direction == "UP" else "EV_SHORT_bps"))
     cost = number((prediction.get("execution_costs") or {}).get("round_trip_cost_bps"))
     if ev is None or ev <= 0 or cost is None or cost < 0:
@@ -251,6 +293,8 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         "reasons": [prediction.get("short_explanation") or "Deterministic model evidence evaluated."],
         "warnings": warnings,
         "no_trade_reason_codes": no_trade_reason_codes,
+        "data_layer_reason_codes": data_layer_reason_codes,
+        "data_freshness_diagnostics": data_freshness_diagnostics,
         "model_agreement": (prediction.get("strategy_consensus") or {}).get("agreement_score"),
         "model_outputs": prediction,
         "confidence_unavailable_reasons": directional_diagnostics["missing_inputs"],
