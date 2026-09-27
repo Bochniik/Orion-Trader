@@ -2421,6 +2421,17 @@ def predictive_model_detail(model_id: int, request: Request):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+def _sector_benchmark_manifest(symbols, profile_loader):
+    """Resolve only known sector ETFs; unknown sectors remain explicitly absent."""
+    manifest = {}
+    for symbol in symbols:
+        profile = profile_loader(symbol) or {}
+        benchmark = sector_benchmark(profile.get("sector"))
+        if benchmark:
+            manifest[symbol] = benchmark
+    return manifest
+
+
 def _merge_stream_snapshot(historical, stream_snapshot):
     merged = {
         **historical,
@@ -2507,8 +2518,19 @@ def scan_live_edge(request_body: LiveEdgeScanRequest, request: Request):
                 "The selected ticker is not an active tradable US equity in the connected Alpaca research universe"
             )
         checkpoint("Loading current features and market context")
+        def load_profile(symbol):
+            profile, _metadata = context_cache.load(
+                (symbol, "profile"),
+                lambda symbol=symbol: market.get_profile(symbol),
+            )
+            return profile or {}
+
+        sector_benchmarks = _sector_benchmark_manifest(symbols, load_profile)
+        history_symbols = list(dict.fromkeys([
+            *symbols, "SPY", *sector_benchmarks.values(),
+        ]))
         history_result = market.get_intraday_histories(
-            [*symbols, "SPY"], period="5d", interval="1m"
+            history_symbols, period="5d", interval="1m"
         )
         histories = history_result.get("histories") or {}
         if request_body.core_workflow:
@@ -2531,10 +2553,15 @@ def scan_live_edge(request_body: LiveEdgeScanRequest, request: Request):
                 errors.append(f"{symbol}: intraday feature history unavailable")
                 continue
             try:
+                sector_symbol = sector_benchmarks.get(symbol)
+                sector_history = histories.get(sector_symbol)
                 frame = build_intraday_feature_frame(
-                    history, market_history=market_history
+                    history,
+                    market_history=market_history,
+                    sector_history=sector_history,
                 )
                 snapshot = latest_historical_snapshot(frame)
+                snapshot["sector_benchmark_symbol"] = sector_symbol
                 try:
                     stream_snapshot = real_time_feature_engine.snapshot(
                         user_id, symbol,
@@ -2548,7 +2575,11 @@ def scan_live_edge(request_body: LiveEdgeScanRequest, request: Request):
                         "reason": "Fewer than two genuine stream observations",
                     }
                 if request_body.core_workflow:
-                    snapshot = audit_features(snapshot, market_history=market_history)
+                    snapshot = audit_features(
+                        snapshot,
+                        market_history=market_history,
+                        sector_history=sector_history,
+                    )
                 for horizon in request_body.horizons:
                     horizon_artifact = (artifact.get("horizons") or {}).get(horizon) or {}
                     if not horizon_artifact.get("probabilities_available"):
