@@ -221,11 +221,18 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
             source_features = [
                 name for name in required if feature_sources[name] == source
             ]
-            source_reason_codes = list(dict.fromkeys(
-                code
-                for name in source_features
-                for code in feature_input_diagnostics[name]["reason_codes"]
-            ))
+            source_reason_codes = list(dict.fromkeys([
+                *(
+                    ["invalid_feature_freshness_contract"]
+                    if snapshot.get("freshness_contract") != "source-specific-v2"
+                    else []
+                ),
+                *(
+                    code
+                    for name in source_features
+                    for code in feature_input_diagnostics[name]["reason_codes"]
+                ),
+            ]))
             diagnostics.update({
                 "status": "blocked" if source_reason_codes else "fresh",
                 "features": source_features,
