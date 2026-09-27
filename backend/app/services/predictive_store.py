@@ -432,6 +432,58 @@ class PredictiveIntelligenceStore:
                 return row["id"]
         return cursor.lastrowid
 
+
+    def audit_prediction_registry(self):
+        """Verify persisted fingerprints without mutating or backfilling evidence."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT id, model_id, ticker, model_version, horizon, "
+                "source_observation_timestamp, feature_json, result_json, "
+                "prediction_fingerprint FROM live_predictions "
+                "WHERE evaluation_eligible=1 ORDER BY id"
+            ).fetchall()
+
+        verified_ids = []
+        corrupted_ids = []
+        unverifiable_ids = []
+        for row in rows:
+            fingerprint = row["prediction_fingerprint"]
+            if not fingerprint:
+                unverifiable_ids.append(row["id"])
+                continue
+            expected = _prediction_fingerprint(
+                model_id=row["model_id"],
+                ticker=row["ticker"],
+                model_version=row["model_version"],
+                horizon=row["horizon"],
+                source_timestamp=row["source_observation_timestamp"],
+                feature_json=row["feature_json"],
+                result_json=row["result_json"],
+            )
+            if fingerprint == expected:
+                verified_ids.append(row["id"])
+            else:
+                corrupted_ids.append(row["id"])
+
+        if not rows:
+            status = "empty"
+        elif corrupted_ids:
+            status = "failed"
+        elif unverifiable_ids:
+            status = "partial"
+        else:
+            status = "verified"
+        return {
+            "status": status,
+            "evaluation_prediction_count": len(rows),
+            "verified_count": len(verified_ids),
+            "corrupted_count": len(corrupted_ids),
+            "unverifiable_count": len(unverifiable_ids),
+            "corrupted_prediction_ids": corrupted_ids,
+            "unverifiable_prediction_ids": unverifiable_ids,
+            "policy": "read_only_no_backfill",
+        }
+
     def list_predictions(self, limit=100, *, outcome_status=None):
         safe_limit = max(1, min(int(limit), 1_000))
         query = "SELECT * FROM live_predictions"
