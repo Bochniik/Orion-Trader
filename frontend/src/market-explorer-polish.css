@@ -430,3 +430,44 @@
     max-width: 720px;
   }
 }
+
+
+/* Strong readability override for the desktop Market Explorer.
+   Use high-specificity selectors so older compact-density rules cannot shrink
+   the company and theme copy back down. */
+@media (min-width: 981px) {
+  .market-explorer-panel.market-v3 .market-v3-company strong {
+    font-size: 21px !important;
+    font-weight: 700 !important;
+    line-height: 1.3 !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-company small {
+    font-size: 15px !important;
+    line-height: 1.45 !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-group-hero .core-eyebrow,
+  .market-explorer-panel.market-v3 .market-v3-group-hero > div > span:first-child {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
+    letter-spacing: .14em !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-group-hero strong {
+    font-size: 24px !important;
+    font-weight: 720 !important;
+    line-height: 1.25 !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-group-hero p {
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    max-width: 760px;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-row {
+    min-height: 78px;
+  }
+}
