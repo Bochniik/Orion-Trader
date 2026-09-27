@@ -154,6 +154,52 @@ def _aggregate_direction_verdict(by_direction):
     }
 
 
+def _extract_liquidity_tier(row):
+    """Read only an explicitly persisted A-D tier; never infer one at evaluation."""
+    features = row.get("feature_snapshot") or {}
+    liquidity = features.get("liquidity")
+    candidates = (
+        row.get("liquidity_tier"),
+        features.get("liquidity_tier"),
+        features.get("liquidity_bucket"),
+        liquidity.get("tier") if isinstance(liquidity, dict) else None,
+    )
+    for value in candidates:
+        normalized = str(value or "").strip().upper()
+        if normalized in {"A", "B", "C", "D"}:
+            return normalized
+    return None
+
+
+def _aggregate_liquidity_verdict(by_tier, *, total_count, missing_count):
+    """Fail closed when any settled row lacks an explicitly persisted tier."""
+    tier_verdicts = {
+        tier: metrics["score_improvement_uncertainty"][
+            "overall_probabilistic_verdict"
+        ]["verdict"]
+        for tier, metrics in sorted(by_tier.items())
+    }
+    verdicts = tuple(tier_verdicts.values())
+    if total_count <= 0 or missing_count > 0 or not verdicts:
+        verdict = "insufficient_sample"
+    elif "insufficient_sample" in verdicts:
+        verdict = "insufficient_sample"
+    elif all(value == "better" for value in verdicts):
+        verdict = "better"
+    elif all(value == "worse" for value in verdicts):
+        verdict = "worse"
+    else:
+        verdict = "inconclusive"
+    return {
+        "verdict": verdict,
+        "tier_verdicts": tier_verdicts,
+        "tier_coverage": round((total_count - missing_count) / total_count, 8)
+                         if total_count else None,
+        "missing_tier_count": missing_count,
+        "policy": "all_rows_tiered_and_all_liquidity_tiers_must_agree",
+    }
+
+
 def _wilson_interval(successes, total, z=1.959963984540054):
     """Return a two-sided Wilson score interval for a binomial success rate."""
     if total <= 0:
@@ -292,7 +338,10 @@ def _metrics(rows, include_groups=True):
                 "class_distribution": {}, "confidence_buckets": [],
                 "horizon_probabilistic_verdict": _aggregate_horizon_verdict({}),
                 "direction_probabilistic_verdict": _aggregate_direction_verdict({}),
-                "by_direction": {}, "by_horizon": {},
+                "liquidity_probabilistic_verdict": _aggregate_liquidity_verdict(
+                    {}, total_count=0, missing_count=0
+                ),
+                "by_direction": {}, "by_horizon": {}, "by_liquidity_tier": {},
                 "baselines": {"chronological_prior": _chronological_prior_baseline([])}}
     actual = [row["actual_direction"] for row in rows]
     probs = [[float(row[f"p_{name.lower()}"]) for name in CLASSES] for row in rows]
@@ -352,6 +401,19 @@ def _metrics(rows, include_groups=True):
                             max(CLASSES, key=lambda n: row[f"p_{n.lower()}"]))
                     if include_groups else {})
     by_horizon = grouped(lambda row: row.get("horizon")) if include_groups else {}
+    liquidity_groups = defaultdict(list)
+    missing_liquidity_tier = 0
+    if include_groups:
+        for row in rows:
+            tier = _extract_liquidity_tier(row)
+            if tier is None:
+                missing_liquidity_tier += 1
+            else:
+                liquidity_groups[tier].append(row)
+    by_liquidity_tier = {
+        tier: _metrics(group, include_groups=False)
+        for tier, group in sorted(liquidity_groups.items())
+    }
 
     return {
         "sample_count": len(rows),
@@ -392,8 +454,16 @@ def _metrics(rows, include_groups=True):
                                             if include_groups else None),
         "direction_probabilistic_verdict": (_aggregate_direction_verdict(by_direction)
                                               if include_groups else None),
+        "liquidity_probabilistic_verdict": (
+            _aggregate_liquidity_verdict(
+                by_liquidity_tier,
+                total_count=len(rows),
+                missing_count=missing_liquidity_tier,
+            ) if include_groups else None
+        ),
         "by_direction": by_direction,
         "by_horizon": by_horizon,
+        "by_liquidity_tier": by_liquidity_tier,
     }
 
 
