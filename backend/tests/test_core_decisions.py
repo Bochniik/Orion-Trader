@@ -46,6 +46,11 @@ def test_preserves_model_numbers_and_calculates_conservative_rr_without_mutation
     assert result["risk_reward"] == 2
     assert result["confidence"] == 80
     assert result["model_outputs"] == original
+    assert result["data_layer_reason_codes"] == []
+    assert all(
+        item["status"] == "fresh"
+        for item in result["data_freshness_diagnostics"].values()
+    )
     assert source == original
 
 
@@ -92,6 +97,34 @@ def test_valid_but_out_of_window_observation_time_has_exact_reason_code(
     diagnostics = result["directional_diagnostics"]["decision_evidence"]
     assert diagnostics["freshness_status"] == "outside_live_window"
     assert diagnostics["window_reason_codes"] == [reason_code]
+
+
+def test_data_freshness_diagnostics_identify_each_blocking_layer():
+    stale = "2026-09-01T13:00:00+00:00"
+    result = decision_from_prediction(
+        prediction(
+            timestamp=stale,
+            feature_snapshot={"timestamp": stale},
+            quote_as_of=None,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["data_layer_reason_codes"] == [
+        "stale_prediction_timestamp",
+        "stale_feature_bars_timestamp",
+        "missing_quote_timestamp",
+    ]
+    diagnostics = result["data_freshness_diagnostics"]
+    assert diagnostics["prediction"]["status"] == "stale"
+    assert diagnostics["feature_bars"]["status"] == "stale"
+    assert diagnostics["quote"]["status"] == "missing"
+    assert (
+        result["directional_diagnostics"]["data_layer_reason_codes"]
+        == result["data_layer_reason_codes"]
+    )
 
 
 def test_closed_market_and_short_risk_geometry():
