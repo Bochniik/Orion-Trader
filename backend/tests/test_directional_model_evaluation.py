@@ -8,6 +8,7 @@ from backend.evals.evaluate_directional_model import (
     _combined_improvement_verdict,
     _extract_liquidity_tier,
     _improvement_interval,
+    _model_evidence_verdict,
     _registry_integrity,
     _stored_prediction_fingerprint,
     evaluate,
@@ -423,3 +424,37 @@ def test_registry_integrity_gate_distinguishes_verified_missing_and_corrupt_rows
     assert corrupt_audit["status"] == "corrupted"
     assert corrupt_audit["corrupted_count"] == 1
     assert corrupt_audit["policy"] == "fail_closed_no_backfill"
+
+
+def test_model_evidence_verdict_requires_consensus_across_all_audited_slices():
+    def metrics(overall, horizons, directions, liquidity):
+        return {
+            "sample_count": 120,
+            "score_improvement_uncertainty": {
+                "overall_probabilistic_verdict": {"verdict": overall}
+            },
+            "horizon_probabilistic_verdict": {"verdict": horizons},
+            "direction_probabilistic_verdict": {"verdict": directions},
+            "liquidity_probabilistic_verdict": {"verdict": liquidity},
+        }
+
+    integrity = {"status": "verified"}
+    better = _model_evidence_verdict(
+        metrics("better", "better", "better", "better"), integrity
+    )
+    mixed = _model_evidence_verdict(
+        metrics("better", "better", "worse", "better"), integrity
+    )
+    sparse = _model_evidence_verdict(
+        metrics("better", "better", "better", "insufficient_sample"), integrity
+    )
+    worse = _model_evidence_verdict(
+        metrics("worse", "worse", "worse", "worse"), integrity
+    )
+
+    assert better["verdict"] == "better"
+    assert worse["verdict"] == "worse"
+    assert mixed["verdict"] == "inconclusive"
+    assert sparse["verdict"] == "insufficient_evidence"
+    assert sparse["component_verdicts"]["liquidity_tiers"] == "insufficient_sample"
+    assert better["policy"] == "integrity_and_all_audited_slices_must_agree"
