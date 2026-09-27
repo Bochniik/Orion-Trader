@@ -7,6 +7,7 @@ from starlette.testclient import TestClient
 
 from app import main
 from app.api import core_routes as api
+from app.api import routes as legacy_api
 from app.services.auth_store import AuthStore
 from app.services.core_readiness import audit_features
 from app.services.decision_engine import decision_from_prediction, decisions_from_board, technical_decision, today_from_board
@@ -37,6 +38,23 @@ def prediction(ticker="AAPL", direction="UP", now=NOW, **changes):
 
 def board(*rows, **extra):
     return {"highest_statistical_edge": list(rows), "liquidity_candidates_ranked": 80, **extra}
+
+
+def test_sector_benchmark_manifest_uses_known_profiles_only():
+    profiles = {
+        "AAPL": {"sector": "Technology"},
+        "JPM": {"sector": "Financial Services"},
+        "UNKNOWN": {"sector": "Unmapped Sector"},
+    }
+    calls = []
+
+    result = legacy_api._sector_benchmark_manifest(
+        ["AAPL", "JPM", "UNKNOWN"],
+        lambda symbol: calls.append(symbol) or profiles[symbol],
+    )
+
+    assert calls == ["AAPL", "JPM", "UNKNOWN"]
+    assert result == {"AAPL": "XLK", "JPM": "XLF"}
 
 
 def test_preserves_model_numbers_and_calculates_conservative_rr_without_mutation():
