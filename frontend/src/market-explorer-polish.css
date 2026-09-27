@@ -586,3 +586,27 @@
     border-radius: 0 0 7px 7px;
   }
 }
+
+
+/* Inner-frame-only correction: match the outer Explorer card's content width. */
+@media (min-width: 981px) {
+  .market-explorer-panel.market-v3 .market-v3-content {
+    box-sizing: border-box !important;
+    margin-inline: 0 !important;
+    width: 100% !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-group-hero {
+    padding-inline: 0 !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-table-wrap,
+  .market-explorer-panel.market-v3 .market-v3-layout-wide .market-v3-table-wrap {
+    box-sizing: border-box !important;
+    margin-inline: 0 !important;
+    width: 100% !important;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-radius: 7px;
+  }
+}
