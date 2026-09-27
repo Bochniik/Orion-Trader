@@ -151,6 +151,28 @@ def test_evaluation_record_preserves_raw_calibrated_features_version_and_duplica
     assert row["final_decision"] == "HOLD"
 
 
+def test_conflicting_duplicate_evaluation_prediction_is_rejected_without_overwrite(tmp_path):
+    store = PredictiveIntelligenceStore(tmp_path / "orion.db")
+    original = _evaluation_prediction()
+    prediction_id = store.save_prediction(original)
+
+    conflicting = _evaluation_prediction()
+    conflicting["P_UP"] = 0.70
+    conflicting["P_NEUTRAL"] = 0.12
+    with pytest.raises(ValueError, match="immutable evaluation prediction"):
+        store.save_prediction(conflicting)
+
+    with store._connect() as connection:
+        rows = connection.execute(
+            "SELECT id, p_up, p_neutral, result_json FROM live_predictions"
+        ).fetchall()
+    assert len(rows) == 1
+    assert rows[0]["id"] == prediction_id
+    assert rows[0]["p_up"] == 0.72
+    assert rows[0]["p_neutral"] == 0.10
+    assert json.loads(rows[0]["result_json"])["P_UP"] == 0.72
+
+
 def test_prediction_snapshot_persists_only_explicit_liquidity_tier_without_mutating_input(tmp_path):
     store = PredictiveIntelligenceStore(tmp_path / "orion.db")
     result = _evaluation_prediction()
