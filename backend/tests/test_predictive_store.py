@@ -177,6 +177,52 @@ def test_conflicting_duplicate_evaluation_prediction_is_rejected_without_overwri
     assert len(rows[0]["prediction_fingerprint"]) == 64
 
 
+def test_prediction_registry_audit_is_read_only_and_separates_unverifiable_from_corrupt(tmp_path):
+    store = PredictiveIntelligenceStore(tmp_path / "orion.db")
+    verified_id = store.save_prediction(_evaluation_prediction())
+    legacy_id = store.save_prediction(
+        _evaluation_prediction("2026-08-26T10:00:05+00:00")
+    )
+    corrupt_id = store.save_prediction(
+        _evaluation_prediction("2026-08-26T10:00:10+00:00")
+    )
+    assert store.audit_prediction_registry()["status"] == "verified"
+
+    with store._connect() as connection:
+        connection.execute(
+            "UPDATE live_predictions SET prediction_fingerprint=NULL WHERE id=?",
+            (legacy_id,),
+        )
+        connection.execute(
+            "UPDATE live_predictions SET result_json=? WHERE id=?",
+            ('{"tampered":true}', corrupt_id),
+        )
+        before = connection.execute(
+            "SELECT id, prediction_fingerprint, result_json "
+            "FROM live_predictions ORDER BY id"
+        ).fetchall()
+
+    audit = store.audit_prediction_registry()
+
+    with store._connect() as connection:
+        after = connection.execute(
+            "SELECT id, prediction_fingerprint, result_json "
+            "FROM live_predictions ORDER BY id"
+        ).fetchall()
+    assert [tuple(row) for row in after] == [tuple(row) for row in before]
+    assert audit == {
+        "status": "failed",
+        "evaluation_prediction_count": 3,
+        "verified_count": 1,
+        "corrupted_count": 1,
+        "unverifiable_count": 1,
+        "corrupted_prediction_ids": [corrupt_id],
+        "unverifiable_prediction_ids": [legacy_id],
+        "policy": "read_only_no_backfill",
+    }
+    assert verified_id not in audit["corrupted_prediction_ids"]
+
+
 def test_prediction_snapshot_persists_only_explicit_liquidity_tier_without_mutating_input(tmp_path):
     store = PredictiveIntelligenceStore(tmp_path / "orion.db")
     result = _evaluation_prediction()
