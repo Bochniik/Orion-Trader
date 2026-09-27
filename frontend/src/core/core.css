@@ -5626,3 +5626,13 @@ button
 .dashboard-orion-card .orion-snapshot-logo > .stock-logo {
   border: none !important;
 }
+
+
+/* Give Market Explorer more horizontal priority on desktop while retaining
+   a useful Orion Analysis rail. */
+@media (min-width: 1181px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 2.15fr) minmax(330px, 390px);
+    gap: 16px;
+  }
+}
