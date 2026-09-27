@@ -5608,3 +5608,14 @@ button
   font-size: 12px;
   min-height: 42px;
 }
+
+
+/* Balance the selected-stock mark after the readability pass:
+   keep the readable 68px slot, but give the artwork a natural inset. */
+.dashboard-orion-card .orion-snapshot-logo > .stock-logo img {
+  width: 86% !important;
+  height: 86% !important;
+  max-width: 86%;
+  object-fit: contain;
+  transform: none;
+}
