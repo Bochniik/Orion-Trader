@@ -1221,16 +1221,6 @@ export default function MarketExplorerPanel({
                   onAnalyze={onAnalyze}
                 />
 
-                <div className="market-v3-footer">
-                  Showing{" "}
-                  {groupRows.length}{" "}
-                  of{" "}
-                  {openedGroup.member_count ||
-                    openedGroup.items?.length ||
-                    0}{" "}
-                  classified stocks. Click any row to
-                  analyze it in Orion.
-                </div>
               </>
             ) : (
               <div className="market-explorer-empty">
