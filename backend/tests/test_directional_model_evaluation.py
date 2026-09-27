@@ -4,7 +4,9 @@ import sqlite3
 from backend.evals.evaluate_directional_model import (
     _aggregate_direction_verdict,
     _aggregate_horizon_verdict,
+    _aggregate_liquidity_verdict,
     _combined_improvement_verdict,
+    _extract_liquidity_tier,
     _improvement_interval,
     evaluate,
 )
@@ -64,6 +66,9 @@ def test_evaluator_uses_only_settled_rows_and_leakage_safe_baseline(tmp_path):
     assert metrics["baselines"]["evaluation_set_oracle_majority_use"] == "diagnostic_only_not_a_deployable_baseline"
     assert metrics["brier_improvement_vs_chronological_prior"] > 0
     assert "future labels" in report["benchmark_semantics"]
+    assert metrics["liquidity_probabilistic_verdict"]["verdict"] == "insufficient_sample"
+    assert metrics["liquidity_probabilistic_verdict"]["missing_tier_count"] == 5
+    assert metrics["liquidity_probabilistic_verdict"]["tier_coverage"] == 0.0
 
 
 def test_chronological_baseline_does_not_use_final_holdout_majority(tmp_path):
@@ -338,3 +343,50 @@ def test_direction_verdict_requires_all_predicted_classes_to_agree():
     }
     assert sparse["policy"] == "all_predicted_directions_must_agree"
     assert _aggregate_direction_verdict({})["verdict"] == "insufficient_sample"
+
+
+def test_liquidity_tier_audit_uses_only_explicit_persisted_values():
+    assert _extract_liquidity_tier({
+        "feature_snapshot": {"liquidity_tier": "a"}
+    }) == "A"
+    assert _extract_liquidity_tier({
+        "feature_snapshot": {"liquidity": {"tier": "C"}}
+    }) == "C"
+    assert _extract_liquidity_tier({
+        "feature_snapshot": {"liquidity_score": 99}
+    }) is None
+    assert _extract_liquidity_tier({
+        "feature_snapshot": {"liquidity_tier": "excellent"}
+    }) is None
+
+
+def test_liquidity_verdict_requires_complete_tier_coverage():
+    def metrics(verdict):
+        return {
+            "score_improvement_uncertainty": {
+                "overall_probabilistic_verdict": {"verdict": verdict}
+            }
+        }
+
+    complete = _aggregate_liquidity_verdict(
+        {"A": metrics("better"), "B": metrics("better")},
+        total_count=60,
+        missing_count=0,
+    )
+    missing = _aggregate_liquidity_verdict(
+        {"A": metrics("better")},
+        total_count=60,
+        missing_count=30,
+    )
+    mixed = _aggregate_liquidity_verdict(
+        {"A": metrics("better"), "B": metrics("worse")},
+        total_count=60,
+        missing_count=0,
+    )
+
+    assert complete["verdict"] == "better"
+    assert complete["tier_coverage"] == 1.0
+    assert missing["verdict"] == "insufficient_sample"
+    assert missing["tier_coverage"] == 0.5
+    assert mixed["verdict"] == "inconclusive"
+    assert complete["policy"] == "all_rows_tiered_and_all_liquidity_tiers_must_agree"
