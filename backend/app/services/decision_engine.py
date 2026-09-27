@@ -166,6 +166,12 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     snapshot = prediction.get("feature_snapshot") or {}
     feature_input_diagnostics = {}
     feature_input_reason_codes = []
+    feature_source_diagnostics = {
+        "stock": {"status": "not_evaluated", "features": [], "reason_codes": []},
+        "market_benchmark": {
+            "status": "not_evaluated", "features": [], "reason_codes": [],
+        },
+    }
     if prediction.get("core_validation") is not None:
         if prediction["core_validation"].get("ready") is not True:
             warnings.append("The model freshness or promotion gate failed.")
@@ -175,6 +181,14 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
             "price_momentum", "atr_14", "realized_volatility",
             "relative_volume", "index_momentum", "relative_strength_market",
         )
+        feature_sources = {
+            "price_momentum": "stock",
+            "atr_14": "stock",
+            "realized_volatility": "stock",
+            "relative_volume": "stock",
+            "index_momentum": "market_benchmark",
+            "relative_strength_market": "market_benchmark",
+        }
         if snapshot.get("freshness_contract") != "source-specific-v2":
             feature_input_reason_codes.append("invalid_feature_freshness_contract")
         for name in required:
@@ -192,6 +206,7 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
             if timestamp_diagnostic["reason_code"] is not None:
                 reason_codes.append(timestamp_diagnostic["reason_code"])
             feature_input_diagnostics[name] = {
+                "source": feature_sources[name],
                 "value_status": (
                     "available" if number(features.get(name)) is not None
                     else "missing"
@@ -202,6 +217,20 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
             }
             feature_input_reason_codes.extend(reason_codes)
         feature_input_reason_codes = list(dict.fromkeys(feature_input_reason_codes))
+        for source, diagnostics in feature_source_diagnostics.items():
+            source_features = [
+                name for name in required if feature_sources[name] == source
+            ]
+            source_reason_codes = list(dict.fromkeys(
+                code
+                for name in source_features
+                for code in feature_input_diagnostics[name]["reason_codes"]
+            ))
+            diagnostics.update({
+                "status": "blocked" if source_reason_codes else "fresh",
+                "features": source_features,
+                "reason_codes": source_reason_codes,
+            })
         no_trade_reason_codes.extend(feature_input_reason_codes)
         if feature_input_reason_codes:
             warnings.append("Required stock or benchmark feature evidence is stale or unavailable.")
@@ -266,6 +295,7 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     directional_diagnostics["data_layer_reason_codes"] = data_layer_reason_codes
     directional_diagnostics["feature_inputs"] = feature_input_diagnostics
     directional_diagnostics["feature_input_reason_codes"] = feature_input_reason_codes
+    directional_diagnostics["feature_sources"] = feature_source_diagnostics
     ev = number(expected.get("EV_LONG_bps" if model_direction == "UP" else "EV_SHORT_bps"))
     cost = number((prediction.get("execution_costs") or {}).get("round_trip_cost_bps"))
     if ev is None or ev <= 0 or cost is None or cost < 0:
@@ -329,6 +359,7 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         "data_freshness_diagnostics": data_freshness_diagnostics,
         "feature_input_reason_codes": feature_input_reason_codes,
         "feature_input_diagnostics": feature_input_diagnostics,
+        "feature_source_diagnostics": feature_source_diagnostics,
         "model_agreement": (prediction.get("strategy_consensus") or {}).get("agreement_score"),
         "model_outputs": prediction,
         "confidence_unavailable_reasons": directional_diagnostics["missing_inputs"],
