@@ -105,29 +105,19 @@ def audit_features(snapshot, market_history=None, sector_history=None, now=None)
         meta["status"] = "unavailable" if value is None else "fresh" if recent(meta.get("as_of"), now, meta["max_age_seconds"]) else "stale"
         features[name] = value if meta["status"] == "fresh" else None
         provenance[name] = meta
-def _source_event_time(value, now, max_age_seconds=120):
-    parsed = timestamp(value)
-    if value is None:
-        status = "missing"
-    elif parsed is None:
-        status = "invalid"
-    else:
-        age_seconds = (now - parsed).total_seconds()
-        status = (
-            "future" if age_seconds < 0
-            else "stale" if age_seconds > max_age_seconds
-            else "fresh"
-        )
-    return {
-        "timestamp": value,
-        "status": status,
-        "max_age_seconds": max_age_seconds,
+    source_event_times = {
+        "stock": _source_event_time(historical, now),
+        "market_benchmark": _source_event_time(_last_time(market_history), now),
+        "sector_benchmark": _source_event_time(_last_time(sector_history), now),
     }
-
-
-def audit_features(snapshot, market_history=None, sector_history=None, now=None):
-    now = now or datetime.now(timezone.utc)
-    features = dict(snapshot.get("features") or {})
+    snapshot = {
+        **snapshot,
+        "features": features,
+        "feature_provenance": provenance,
+        "freshness_contract": "source-specific-v2",
+        "source_event_time_contract": "explicit-v1",
+        "source_event_times": source_event_times,
+    }
     snapshot["feature_coverage_percent"] = round(sum(v is not None for v in features.values()) / len(FEATURE_SCHEMA) * 100, 2)
     return snapshot
 
