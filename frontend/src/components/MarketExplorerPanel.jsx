@@ -957,14 +957,11 @@ export default function MarketExplorerPanel({
           </p>
 
           <h2>
-            Explore the market
+            Market Explorer
           </h2>
 
           <p>
-            Browse the market first.
-            Send any stock to Orion
-            Engine only when you want
-            analysis.
+            Explore movers, activity, sectors and themes from Orion´s tracked global markets.
           </p>
         </div>
 
