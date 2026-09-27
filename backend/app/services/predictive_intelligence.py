@@ -173,7 +173,19 @@ def calculate_opportunity_score(probabilities, expected_value, liquidity_row,
     regime_points = _market_alignment(direction, regime) / 100 * 4
     features = feature_snapshot.get("features") or {}
     sector = _finite(features.get("sector_momentum"))
-    sector_points = 1 if sector is None else 2 if (direction == "UP" and sector > 0) or (direction == "DOWN" and sector < 0) else 0
+    sector_aligned = (
+        sector is not None
+        and (
+            (direction == "UP" and sector > 0)
+            or (direction == "DOWN" and sector < 0)
+        )
+    )
+    sector_points = 2 if sector_aligned else 0
+    sector_status = (
+        "unavailable" if sector is None
+        else "aligned" if sector_aligned
+        else "not_aligned"
+    )
     costs = expected_value.get("execution_cost")
     execution_points = 0 if costs is None else max(0, 2 - costs * 10_000 / 25 * 2)
     strategy_direction = (strategy_consensus or {}).get("consensus")
@@ -199,6 +211,14 @@ def calculate_opportunity_score(probabilities, expected_value, liquidity_row,
     return {
         "score": int(round(sum(components.values()))),
         "components": components,
+        "component_evidence": {
+            "sector_confirmation": {
+                "status": sector_status,
+                "value": sector,
+                "points": components["sector_confirmation"],
+                "missing_policy": "no_credit",
+            },
+        },
         "semantics": "Composite ranking of calibrated evidence, EV, liquidity and execution quality—not raw probability or certainty.",
     }
 

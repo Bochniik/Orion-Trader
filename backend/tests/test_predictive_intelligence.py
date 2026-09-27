@@ -30,6 +30,50 @@ def test_expected_value_subtracts_round_trip_execution_costs():
     assert "estimated round-trip" in result["formula"]
 
 
+def test_missing_sector_context_receives_no_neutral_score_credit():
+    common = {
+        "probabilities": {"P_UP": 0.6, "P_DOWN": 0.25, "P_NEUTRAL": 0.15},
+        "expected_value": {
+            "EV_LONG_bps": 10,
+            "EV_SHORT_bps": -10,
+            "execution_cost": 0.0004,
+        },
+        "liquidity_row": {"liquidity_score": 80},
+        "horizon_artifact": {
+            "holdout": {"expected_calibration_error": 0.05},
+        },
+        "regime": {"regime": "bullish_trend"},
+        "direction": "UP",
+        "strategy_consensus": {"consensus": "LONG", "agreement_score": 80},
+        "learning_memory": {"decision_influence": "cold_start"},
+    }
+
+    missing = service.calculate_opportunity_score(
+        feature_snapshot={
+            "feature_coverage_percent": 90,
+            "features": {"sector_momentum": None},
+        },
+        **common,
+    )
+    aligned = service.calculate_opportunity_score(
+        feature_snapshot={
+            "feature_coverage_percent": 90,
+            "features": {"sector_momentum": 0.01},
+        },
+        **common,
+    )
+
+    assert missing["components"]["sector_confirmation"] == 0
+    assert missing["component_evidence"]["sector_confirmation"] == {
+        "status": "unavailable",
+        "value": None,
+        "points": 0,
+        "missing_policy": "no_credit",
+    }
+    assert aligned["components"]["sector_confirmation"] == 2
+    assert aligned["component_evidence"]["sector_confirmation"]["status"] == "aligned"
+
+
 def test_live_prediction_returns_no_trade_when_reliability_fails(monkeypatch):
     monkeypatch.setattr(service, "predict_probabilities", lambda *_args: {
         "P_UP": 0.82, "P_DOWN": 0.10, "P_NEUTRAL": 0.08,
