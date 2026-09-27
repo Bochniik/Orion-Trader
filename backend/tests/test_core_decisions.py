@@ -127,6 +127,52 @@ def test_data_freshness_diagnostics_identify_each_blocking_layer():
     )
 
 
+def test_required_feature_diagnostics_identify_exact_missing_input():
+    observed = (NOW - timedelta(seconds=20)).isoformat()
+    required = (
+        "price_momentum", "atr_14", "realized_volatility",
+        "relative_volume", "index_momentum", "relative_strength_market",
+    )
+    snapshot = {
+        "timestamp": observed,
+        "freshness_contract": "source-specific-v2",
+        "features": {name: 1.0 for name in required},
+        "feature_provenance": {
+            name: {"status": "fresh", "as_of": observed} for name in required
+        },
+    }
+    snapshot["features"].pop("relative_volume")
+
+    result = decision_from_prediction(
+        prediction(
+            core_validation={"ready": True},
+            feature_snapshot=snapshot,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["decision"] == "WAIT"
+    assert result["feature_input_reason_codes"] == [
+        "missing_feature_value_relative_volume"
+    ]
+    diagnostics = result["feature_input_diagnostics"]
+    assert diagnostics["relative_volume"]["value_status"] == "missing"
+    assert diagnostics["relative_volume"]["reason_codes"] == [
+        "missing_feature_value_relative_volume"
+    ]
+    assert all(
+        not item["reason_codes"]
+        for name, item in diagnostics.items()
+        if name != "relative_volume"
+    )
+    assert (
+        result["directional_diagnostics"]["feature_input_reason_codes"]
+        == result["feature_input_reason_codes"]
+    )
+
+
 def test_closed_market_and_short_risk_geometry():
     assert not decision_from_prediction(prediction(), now=NOW)["actionable"]
     result = decision_from_prediction(prediction(direction="DOWN"), now=NOW, market_open=True)
