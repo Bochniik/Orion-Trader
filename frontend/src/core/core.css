@@ -5854,3 +5854,70 @@ button
     margin-top: -14px !important;
   }
 }
+
+
+/* Final Today canvas correction from the rendered dashboard:
+   make the entire workspace black and scale the hero artwork up. */
+.core-workspace:has(.dashboard-view),
+.core-main:has(.dashboard-view),
+.core-view.dashboard-view,
+.dashboard-view,
+.dashboard-view::before,
+.dashboard-grid,
+.dashboard-primary,
+.dashboard-side {
+  background: #000 !important;
+  background-color: #000 !important;
+}
+
+.core-shell:has(.dashboard-view)::before {
+  background: #000 !important;
+}
+
+.dashboard-view::before {
+  background: #000 !important;
+}
+
+.dashboard-hero {
+  min-height: 250px !important;
+  background: #000 !important;
+}
+
+.dashboard-hero-planet-art {
+  top: -34px !important;
+  right: -12px !important;
+  width: min(58vw, 920px) !important;
+  height: 338px !important;
+}
+
+.dashboard-hero-planet-art img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: right bottom !important;
+}
+
+.dashboard-hero-planet-art::after {
+  left: -22% !important;
+  right: -3% !important;
+  bottom: -30px !important;
+  height: 104px !important;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0),
+    rgba(0, 0, 0, 0.5) 42%,
+    #000 94%
+  ) !important;
+}
+
+.dashboard-grid {
+  margin-top: -34px !important;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-planet-art {
+    width: min(62vw, 1020px) !important;
+    height: 360px !important;
+    right: -20px !important;
+  }
+}
