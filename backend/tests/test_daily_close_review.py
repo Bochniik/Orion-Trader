@@ -75,3 +75,42 @@ def test_default_session_is_none_when_no_valid_settled_evidence_exists():
     assert report["session_date"] is None
     assert report["metrics"]["sample_size"] == 0
     assert report["metrics"]["brier_score"] is None
+
+
+def test_sector_context_slices_use_only_explicit_point_in_time_status():
+    report = build_daily_close_review(
+        [
+            {
+                "probability_up": 0.8,
+                "actual_up": 1,
+                "resolved_at": "2026-09-18T20:00:00Z",
+                "forecast_horizon": "30m",
+                "sector_context_availability": "available",
+            },
+            {
+                "probability_up": 0.8,
+                "actual_up": 0,
+                "resolved_at": "2026-09-18T20:05:00Z",
+                "forecast_horizon": "30m",
+                "sector_context_availability": "unavailable",
+            },
+            {
+                "probability_up": 0.6,
+                "actual_up": 1,
+                "resolved_at": "2026-09-18T20:10:00Z",
+                "forecast_horizon": "30m",
+            },
+        ],
+        session_date="2026-09-18",
+    )
+
+    slices = report["by_sector_context_availability"]
+    assert report["metrics"]["sample_size"] == 3
+    assert slices["available"]["sample_size"] == 1
+    assert slices["available"]["brier_score"] == 0.03999999999999998
+    assert slices["unavailable"]["sample_size"] == 1
+    assert slices["unavailable"]["brier_score"] == 0.6400000000000001
+    assert report["diagnostics"]["missing_sector_context_status"] == 1
+    assert report["sector_slice_policy"].startswith(
+        "explicit_point_in_time_status_only"
+    )
