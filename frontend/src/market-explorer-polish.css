@@ -471,3 +471,46 @@
     min-height: 78px;
   }
 }
+
+
+/* Market Explorer asset + control readability pass. */
+@media (min-width: 981px) {
+  .market-explorer-panel.market-v3 .market-v3-company .stock-logo {
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-company .stock-logo img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    display: block;
+    object-fit: cover;
+    border-radius: inherit;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-controls {
+    gap: 14px;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-controls label {
+    gap: 6px;
+    font-size: 14px !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-controls label > span {
+    font-size: 13px !important;
+    font-weight: 750;
+    letter-spacing: .08em;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-controls select {
+    min-height: 48px;
+    padding: 9px 14px;
+    font-size: 15px !important;
+  }
+
+  .market-explorer-panel.market-v3 .market-v3-group-select select {
+    min-width: 250px;
+  }
+}
