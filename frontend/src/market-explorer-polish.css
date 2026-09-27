@@ -547,3 +547,21 @@
     border-radius: 9px;
   }
 }
+
+
+/* Keep native Market Explorer selects consistent with Orion's dark UI. */
+.market-explorer-panel.market-v3 .market-v3-controls select {
+  color-scheme: dark;
+  background-color: #090c0f !important;
+  color: #f5f7fa !important;
+}
+
+.market-explorer-panel.market-v3 .market-v3-controls select option {
+  background-color: #090c0f;
+  color: #f5f7fa;
+}
+
+.market-explorer-panel.market-v3 .market-v3-controls select option:checked {
+  background-color: #171b20;
+  color: #ffffff;
+}
