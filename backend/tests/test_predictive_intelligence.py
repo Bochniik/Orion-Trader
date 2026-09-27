@@ -108,3 +108,51 @@ def test_trusted_adverse_memory_can_veto_but_never_rewrite_probabilities(monkeyp
     assert result["P_UP"] == 0.82
     assert result["learning_memory"]["probabilities_modified"] is False
     assert any("Outcome memory" in blocker for blocker in result["blockers"])
+
+def test_live_prediction_fails_closed_without_point_in_time_timestamp(monkeypatch):
+    monkeypatch.setattr(service, "predict_probabilities", lambda *_args: {
+        "P_UP": 0.82, "P_DOWN": 0.10, "P_NEUTRAL": 0.08,
+        "strongest_logistic_contributors": [
+            {"feature": "return_5m", "contribution": 1.0, "direction": "supports"},
+        ],
+    })
+    snapshot = {
+        "price": 100,
+        "feature_coverage_percent": 90,
+        "features": {"spread_percent": 0.0002, "atr_14": 1, "relative_volume": 2},
+    }
+    liquidity = {
+        "liquidity_score": 95, "liquidity_tier": "A", "liquidity_percentile": 99,
+        "metrics": {"spread_percent": 0.02},
+    }
+    horizon = {
+        "reliable": True,
+        "holdout": {"expected_calibration_error": 0.02},
+        "conditional_return_statistics": {
+            "UP": {"mean": 0.02}, "DOWN": {"mean": -0.006}, "NEUTRAL": {"mean": 0},
+        },
+    }
+    regime = {"regime": "bullish_trend", "label": "Bullish Trend", "status": "classified"}
+    strategies = {
+        "consensus": "LONG", "agreement_score": 82,
+        "available_strategies": 12, "strategies": [],
+    }
+
+    result = service.build_live_prediction(
+        "AAPL", "5m", snapshot, liquidity, horizon, regime, strategies
+    )
+
+    assert result["direction"] == "NO_TRADE"
+    assert result["decision"] == "HOLD"
+    assert result["timestamp"] is None
+    assert result["due_at"] is None
+    assert result["market_data_timestamp"] is None
+    assert result["observation_time_diagnostics"] == {
+        "status": "unavailable",
+        "source": None,
+        "timestamp": None,
+        "missing_inputs": ["timezone-aware point-in-time observation timestamp"],
+        "policy": "missing_or_invalid_observation_time_forces_no_trade",
+    }
+    assert any("observation timestamp" in blocker for blocker in result["blockers"])
+
