@@ -259,7 +259,9 @@ def build_live_prediction(symbol, horizon, feature_snapshot, liquidity_row,
         or feature_snapshot.get("history_timestamp")
     )
     parsed_observation_timestamp = None
+    observation_time_reason_code = None
     if observation_timestamp is None:
+        observation_time_reason_code = "missing_observation_timestamp"
         blockers.append("Point-in-time observation timestamp is unavailable")
     else:
         try:
@@ -270,6 +272,7 @@ def build_live_prediction(symbol, horizon, feature_snapshot, liquidity_row,
                 raise ValueError("timezone is required")
         except (TypeError, ValueError):
             observation_timestamp = None
+            observation_time_reason_code = "invalid_observation_timestamp"
             blockers.append("Point-in-time observation timestamp is invalid or lacks a timezone")
     if not horizon_artifact.get("reliable"):
         blockers.append("Model has not passed the minimum out-of-sample reliability gates")
@@ -353,6 +356,7 @@ def build_live_prediction(symbol, horizon, feature_snapshot, liquidity_row,
             else None
         ),
         "timestamp": timestamp,
+        "reason_code": observation_time_reason_code,
         "missing_inputs": (
             [] if parsed_observation_timestamp is not None
             else ["timezone-aware point-in-time observation timestamp"]
