@@ -6148,3 +6148,43 @@ button
     mask-image: linear-gradient(180deg, rgba(0,0,0,.72), #000 55%, transparent 100%);
   }
 }
+
+
+/* Use the approved generated starfield artwork uploaded to src/assets.
+   These rules intentionally override the previous CSS-generated starfield. */
+.dashboard-hero-starfield {
+  inset: 0 -2% -22px 0 !important;
+  opacity: 1 !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center 46% !important;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 74%,
+    rgba(0, 0, 0, .82) 86%,
+    transparent 100%
+  ) !important;
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 74%,
+    rgba(0, 0, 0, .82) 86%,
+    transparent 100%
+  ) !important;
+  filter: none !important;
+  animation: none !important;
+}
+
+.dashboard-hero-starfield::before,
+.dashboard-hero-starfield::after {
+  display: none !important;
+}
+
+@media (max-width: 980px) {
+  .dashboard-hero-starfield {
+    background-position: 64% center !important;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%) !important;
+    mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%) !important;
+  }
+}
