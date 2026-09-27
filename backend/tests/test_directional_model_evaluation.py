@@ -2,6 +2,7 @@ import json
 import sqlite3
 
 from backend.evals.evaluate_directional_model import (
+    _aggregate_horizon_verdict,
     _combined_improvement_verdict,
     _improvement_interval,
     evaluate,
@@ -188,6 +189,7 @@ def test_score_uncertainty_uses_deterministic_chronological_blocks(tmp_path):
 
     assert first["score_uncertainty"] == second["score_uncertainty"]
     assert first["score_improvement_uncertainty"] == second["score_improvement_uncertainty"]
+    assert first["horizon_probabilistic_verdict"]["horizon_verdicts"]["1m"] == first["by_horizon"]["1m"]["score_improvement_uncertainty"]["overall_probabilistic_verdict"]["verdict"]
     for metric_name, point_name in (
         ("brier_score_ci_95", "brier_score"),
         ("log_loss_ci_95", "log_loss"),
@@ -269,3 +271,35 @@ def test_overall_probabilistic_verdict_requires_metric_consensus():
         "log_loss": "insufficient_sample",
     }
     assert insufficient["policy"] == "brier_and_log_loss_must_agree"
+
+
+def test_horizon_verdict_requires_all_horizons_to_agree():
+    def metrics(verdict):
+        return {
+            "score_improvement_uncertainty": {
+                "overall_probabilistic_verdict": {"verdict": verdict}
+            }
+        }
+
+    better = _aggregate_horizon_verdict({
+        "1m": metrics("better"),
+        "5m": metrics("better"),
+    })
+    mixed = _aggregate_horizon_verdict({
+        "1m": metrics("better"),
+        "5m": metrics("worse"),
+    })
+    sparse = _aggregate_horizon_verdict({
+        "1m": metrics("better"),
+        "5m": metrics("insufficient_sample"),
+    })
+
+    assert better["verdict"] == "better"
+    assert mixed["verdict"] == "inconclusive"
+    assert sparse["verdict"] == "insufficient_sample"
+    assert sparse["horizon_verdicts"] == {
+        "1m": "better",
+        "5m": "insufficient_sample",
+    }
+    assert sparse["policy"] == "all_horizons_must_agree"
+    assert _aggregate_horizon_verdict({})["verdict"] == "insufficient_sample"
