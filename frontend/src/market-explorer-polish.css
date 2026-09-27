@@ -529,3 +529,21 @@
     line-height: 1.5;
   }
 }
+
+
+/* Market Explorer navigation: wider, lower-profile desktop tabs. */
+@media (min-width: 981px) {
+  .market-explorer-panel.market-v3 .market-explorer-tabs {
+    gap: 10px;
+  }
+
+  .market-explorer-panel.market-v3 .market-explorer-tabs button {
+    width: 190px;
+    min-width: 190px;
+    min-height: 44px;
+    padding: 8px 18px;
+    justify-content: center;
+    font-size: 17px;
+    border-radius: 9px;
+  }
+}
