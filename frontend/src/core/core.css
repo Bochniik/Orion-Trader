@@ -6004,3 +6004,45 @@ button
     top: 24px !important;
   }
 }
+
+
+/* Hero artwork lighting: move the existing planet left and let its orange light
+   softly illuminate the surrounding true-black dashboard canvas. */
+.dashboard-hero-planet-art {
+  right: 118px !important;
+  filter:
+    drop-shadow(0 0 16px rgba(255, 119, 28, 0.22))
+    drop-shadow(-34px 10px 54px rgba(255, 105, 16, 0.10));
+}
+
+.dashboard-hero-planet-art::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -24%;
+  top: 4%;
+  width: 118%;
+  height: 94%;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 62% 46%,
+    rgba(255, 126, 35, 0.20) 0%,
+    rgba(255, 103, 18, 0.11) 25%,
+    rgba(255, 92, 10, 0.045) 48%,
+    transparent 72%
+  );
+  filter: blur(24px);
+  opacity: .92;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-planet-art {
+    right: 148px !important;
+  }
+
+  .dashboard-hero-planet-art::before {
+    left: -28%;
+    width: 124%;
+  }
+}
