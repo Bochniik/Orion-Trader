@@ -1,5 +1,6 @@
 """Per-user persistence for deterministic predictive-intelligence artifacts."""
 
+import copy
 import json
 import math
 import sqlite3
@@ -335,6 +336,9 @@ class PredictiveIntelligenceStore:
         calibrated_values = [calibrated.get(key) for key in ("P_UP", "P_DOWN", "P_NEUTRAL")]
         complete_probability_vector = all(_number(value) is not None for value in raw_values + calibrated_values)
         feature_snapshot = result.get("feature_snapshot")
+        persisted_feature_snapshot = _with_persisted_liquidity_tier(
+            feature_snapshot, result.get("liquidity_tier")
+        )
         source_timestamp = result.get("market_data_timestamp") or result.get("timestamp")
         evaluation_eligible = int(bool(
             complete_probability_vector and isinstance(feature_snapshot, dict)
@@ -359,7 +363,7 @@ class PredictiveIntelligenceStore:
                     int(model_id) if model_id is not None else None,
                     result["timestamp"], result["due_at"], result["ticker"],
                     float(result["price"]), result["horizon"],
-                    json.dumps(result.get("feature_snapshot") or {}, default=str, sort_keys=True),
+                    json.dumps(persisted_feature_snapshot or {}, default=str, sort_keys=True),
                     float(result["P_UP"]), float(result["P_DOWN"]),
                     float(result["P_NEUTRAL"]),
                     _number(expected.get("predicted_return")),
@@ -710,6 +714,21 @@ class PredictiveIntelligenceStore:
         with self._lock, self._connect() as connection:
             cursor = connection.execute("DELETE FROM live_predictions")
         return cursor.rowcount
+
+
+def _with_persisted_liquidity_tier(feature_snapshot, liquidity_tier):
+    """Copy an explicit A-D tier into the immutable prediction-time snapshot."""
+    if not isinstance(feature_snapshot, dict):
+        return feature_snapshot
+    snapshot = copy.deepcopy(feature_snapshot)
+    normalized = str(liquidity_tier or "").strip().upper()
+    if normalized not in {"A", "B", "C", "D"}:
+        return snapshot
+    existing = snapshot.get("liquidity_tier")
+    if existing is not None and str(existing).strip().upper() != normalized:
+        raise ValueError("Conflicting liquidity tiers in prediction and feature snapshot")
+    snapshot["liquidity_tier"] = normalized
+    return snapshot
 
 
 def _number(value):
