@@ -151,6 +151,42 @@ def test_evaluation_record_preserves_raw_calibrated_features_version_and_duplica
     assert row["final_decision"] == "HOLD"
 
 
+def test_prediction_snapshot_persists_only_explicit_liquidity_tier_without_mutating_input(tmp_path):
+    store = PredictiveIntelligenceStore(tmp_path / "orion.db")
+    result = _evaluation_prediction()
+    result["liquidity_tier"] = "b"
+    original_snapshot = json.loads(json.dumps(result["feature_snapshot"]))
+
+    prediction_id = store.save_prediction(result)
+
+    with store._connect() as connection:
+        row = connection.execute(
+            "SELECT feature_json FROM live_predictions WHERE id=?", (prediction_id,)
+        ).fetchone()
+    persisted = json.loads(row["feature_json"])
+    assert persisted["liquidity_tier"] == "B"
+    assert result["feature_snapshot"] == original_snapshot
+    assert "liquidity_tier" not in result["feature_snapshot"]
+
+
+def test_prediction_snapshot_does_not_infer_invalid_tier_and_rejects_conflict(tmp_path):
+    store = PredictiveIntelligenceStore(tmp_path / "orion.db")
+    invalid = _evaluation_prediction()
+    invalid["liquidity_tier"] = "high"
+    invalid_id = store.save_prediction(invalid)
+    with store._connect() as connection:
+        row = connection.execute(
+            "SELECT feature_json FROM live_predictions WHERE id=?", (invalid_id,)
+        ).fetchone()
+    assert "liquidity_tier" not in json.loads(row["feature_json"])
+
+    conflicting = _evaluation_prediction("2026-08-26T10:00:05+00:00")
+    conflicting["liquidity_tier"] = "A"
+    conflicting["feature_snapshot"]["liquidity_tier"] = "D"
+    with pytest.raises(ValueError, match="Conflicting liquidity tiers"):
+        store.save_prediction(conflicting)
+
+
 def test_incomplete_output_is_stored_only_as_non_evaluable_legacy_record(tmp_path):
     store = PredictiveIntelligenceStore(tmp_path / "orion.db")
     result = _evaluation_prediction()
