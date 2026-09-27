@@ -395,3 +395,38 @@
     font-size: 13px;
   }
 }
+
+
+/* Primary-copy readability pass: emphasize company identity and theme context
+   without changing the fitted six-column table geometry. */
+@media (min-width: 981px) {
+  .market-v3-company strong {
+    font-size: 18px;
+    font-weight: 680;
+    line-height: 1.28;
+  }
+
+  .market-v3-company small {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .market-v3-group-hero .core-eyebrow,
+  .market-v3-group-hero > div > span:first-child {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .16em;
+  }
+
+  .market-v3-group-hero strong {
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .market-v3-group-hero p {
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 720px;
+  }
+}
