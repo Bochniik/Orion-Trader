@@ -1,0 +1,110 @@
+name: Safe UI auto-merge
+
+on:
+  workflow_run:
+    workflows: ["Frontend regression"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  merge:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Merge eligible UI pull request after all checks settle
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const prs = run.pull_requests || [];
+            if (prs.length !== 1) {
+              core.info(`Expected exactly one pull request, found ${prs.length}; nothing to merge.`);
+              return;
+            }
+
+            const prNumber = prs[0].number;
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const eligible =
+              pr.state === 'open' &&
+              !pr.draft &&
+              pr.base.ref === 'main' &&
+              pr.head.ref.startsWith('ui/') &&
+              pr.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}` &&
+              pr.user?.login === context.repo.owner;
+
+            if (!eligible) {
+              core.info(`PR #${prNumber} is not an eligible owner UI PR; nothing to merge.`);
+              return;
+            }
+
+            // Wait for other checks on the same head SHA to settle. This avoids
+            // merging while a second relevant CI workflow is still pending.
+            const deadline = Date.now() + 15 * 60 * 1000;
+            let checks = [];
+            while (Date.now() < deadline) {
+              const response = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: pr.head.sha,
+                per_page: 100,
+              });
+              checks = response.data.check_runs.filter(
+                check => check.name !== 'Merge eligible UI pull request after all checks settle'
+              );
+
+              const pending = checks.filter(check => check.status !== 'completed');
+              if (pending.length === 0) break;
+
+              core.info(`Waiting for checks: ${pending.map(check => check.name).join(', ')}`);
+              await new Promise(resolve => setTimeout(resolve, 30000));
+            }
+
+            const pending = checks.filter(check => check.status !== 'completed');
+            if (pending.length) {
+              core.info('Checks are still pending after 15 minutes; leaving the PR open.');
+              return;
+            }
+
+            const acceptable = new Set(['success', 'neutral', 'skipped']);
+            const failed = checks.filter(check => !acceptable.has(check.conclusion));
+            if (failed.length) {
+              core.info(`Not merging because checks are not green: ${failed.map(check => `${check.name}=${check.conclusion}`).join(', ')}`);
+              return;
+            }
+
+            // Re-fetch immediately before merge so a changed head cannot race
+            // the checks we just validated.
+            const { data: fresh } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+            if (fresh.head.sha !== pr.head.sha || fresh.state !== 'open') {
+              core.info('PR changed while checks were settling; refusing this merge attempt.');
+              return;
+            }
+
+            const result = await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              merge_method: 'squash',
+              sha: fresh.head.sha,
+            });
+
+            if (!result.data.merged) {
+              core.setFailed(`GitHub declined merge for PR #${prNumber}: ${result.data.message}`);
+            } else {
+              core.info(`Squash-merged UI PR #${prNumber}.`);
+            }
