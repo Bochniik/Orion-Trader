@@ -8,6 +8,8 @@ from backend.evals.evaluate_directional_model import (
     _combined_improvement_verdict,
     _extract_liquidity_tier,
     _improvement_interval,
+    _registry_integrity,
+    _stored_prediction_fingerprint,
     evaluate,
 )
 
@@ -69,6 +71,8 @@ def test_evaluator_uses_only_settled_rows_and_leakage_safe_baseline(tmp_path):
     assert metrics["liquidity_probabilistic_verdict"]["verdict"] == "insufficient_sample"
     assert metrics["liquidity_probabilistic_verdict"]["missing_tier_count"] == 5
     assert metrics["liquidity_probabilistic_verdict"]["tier_coverage"] == 0.0
+    assert report["data_inventory"]["registry_integrity"]["status"] == "unverifiable"
+    assert report["model_evidence_verdict"]["verdict"] == "insufficient_evidence"
 
 
 def test_chronological_baseline_does_not_use_final_holdout_majority(tmp_path):
@@ -390,3 +394,32 @@ def test_liquidity_verdict_requires_complete_tier_coverage():
     assert missing["tier_coverage"] == 0.5
     assert mixed["verdict"] == "inconclusive"
     assert complete["policy"] == "all_rows_tiered_and_all_liquidity_tiers_must_agree"
+
+
+def test_registry_integrity_gate_distinguishes_verified_missing_and_corrupt_rows():
+    row = {
+        "model_id": 7,
+        "ticker": "AAPL",
+        "model_version": "model-v1",
+        "horizon": "5m",
+        "source_observation_timestamp": "2026-09-26T14:30:00+00:00",
+        "feature_json": '{"liquidity_tier":"A"}',
+        "result_json": '{"P_UP":0.7,"P_DOWN":0.2,"P_NEUTRAL":0.1}',
+    }
+    columns = set(row) | {"prediction_fingerprint"}
+    verified = dict(row)
+    verified["prediction_fingerprint"] = _stored_prediction_fingerprint(row)
+    missing = dict(row)
+    missing["prediction_fingerprint"] = None
+    corrupt = dict(row)
+    corrupt["prediction_fingerprint"] = "0" * 64
+
+    assert _registry_integrity([verified], columns)["status"] == "verified"
+    missing_audit = _registry_integrity([verified, missing], columns)
+    assert missing_audit["status"] == "unverifiable"
+    assert missing_audit["verified_count"] == 1
+    assert missing_audit["unverifiable_count"] == 1
+    corrupt_audit = _registry_integrity([verified, corrupt], columns)
+    assert corrupt_audit["status"] == "corrupted"
+    assert corrupt_audit["corrupted_count"] == 1
+    assert corrupt_audit["policy"] == "fail_closed_no_backfill"
