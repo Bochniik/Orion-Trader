@@ -6304,3 +6304,22 @@ button
     transform: translateY(-16px);
   }
 }
+
+
+/* Join the two desktop dashboard workspaces edge-to-edge.
+   Remove only the inter-column gutter; keep both panel widths/content intact. */
+@media (min-width: 981px) {
+  .dashboard-grid {
+    column-gap: 0 !important;
+  }
+
+  .dashboard-primary > .market-explorer-panel.market-v3 {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  .dashboard-side > .dashboard-orion-card {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+  }
+}
