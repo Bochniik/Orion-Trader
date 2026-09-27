@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 REVIEW_VERSION = "orion-daily-close-review-v1"
 _NEW_YORK = ZoneInfo("America/New_York")
 _EPSILON = 1e-15
+MIN_SECTOR_CONTEXT_SLICE_SIZE = 30
 
 
 def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
@@ -210,6 +211,20 @@ def build_daily_close_review(
         if sector_context is not None:
             by_sector_context[sector_context].append(row)
 
+    sector_slices = {
+        status: _score(rows)
+        for status, rows in sorted(by_sector_context.items())
+    }
+    sector_sample_sizes = {
+        status: sector_slices.get(status, {}).get("sample_size", 0)
+        for status in ("available", "unavailable")
+    }
+    underpowered = [
+        status
+        for status, size in sector_sample_sizes.items()
+        if size < MIN_SECTOR_CONTEXT_SLICE_SIZE
+    ]
+
     return {
         "version": REVIEW_VERSION,
         "session_date": effective_session,
@@ -218,9 +233,18 @@ def build_daily_close_review(
             horizon: _score(rows)
             for horizon, rows in sorted(by_horizon.items())
         },
-        "by_sector_context_availability": {
-            status: _score(rows)
-            for status, rows in sorted(by_sector_context.items())
+        "by_sector_context_availability": sector_slices,
+        "sector_context_comparison": {
+            "status": "insufficient_evidence" if underpowered else "ready",
+            "minimum_sample_size_per_group": MIN_SECTOR_CONTEXT_SLICE_SIZE,
+            "sample_sizes": sector_sample_sizes,
+            "underpowered_groups": underpowered,
+            "interpretation": (
+                "descriptive_metrics_only"
+                if underpowered
+                else "eligible_for_descriptive_comparison"
+            ),
+            "promotion_eligible": False,
         },
         "diagnostics": dict(sorted(diagnostics.items())),
         "scoring_policy": "settled_evidence_only",

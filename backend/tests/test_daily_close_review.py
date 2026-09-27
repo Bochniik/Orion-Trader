@@ -114,3 +114,42 @@ def test_sector_context_slices_use_only_explicit_point_in_time_status():
     assert report["sector_slice_policy"].startswith(
         "explicit_point_in_time_status_only"
     )
+    comparison = report["sector_context_comparison"]
+    assert comparison["status"] == "insufficient_evidence"
+    assert comparison["minimum_sample_size_per_group"] == 30
+    assert comparison["sample_sizes"] == {"available": 1, "unavailable": 1}
+    assert comparison["underpowered_groups"] == ["available", "unavailable"]
+    assert comparison["interpretation"] == "descriptive_metrics_only"
+    assert comparison["promotion_eligible"] is False
+
+
+def test_sector_context_comparison_is_ready_only_when_both_groups_reach_gate():
+    evidence = []
+    for availability, probability, actual in (
+        ("available", 0.7, 1),
+        ("unavailable", 0.3, 0),
+    ):
+        evidence.extend(
+            {
+                "probability_up": probability,
+                "actual_up": actual,
+                "resolved_at": "2026-09-18T20:00:00Z",
+                "forecast_horizon": "30m",
+                "sector_context_availability": availability,
+            }
+            for _ in range(30)
+        )
+
+    report = build_daily_close_review(
+        evidence,
+        session_date="2026-09-18",
+    )
+
+    comparison = report["sector_context_comparison"]
+    assert comparison["status"] == "ready"
+    assert comparison["sample_sizes"] == {"available": 30, "unavailable": 30}
+    assert comparison["underpowered_groups"] == []
+    assert comparison["interpretation"] == (
+        "eligible_for_descriptive_comparison"
+    )
+    assert comparison["promotion_eligible"] is False
