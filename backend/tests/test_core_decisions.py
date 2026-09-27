@@ -173,6 +173,56 @@ def test_required_feature_diagnostics_identify_exact_missing_input():
     )
 
 
+def test_stale_benchmark_feed_isolated_from_fresh_stock_features():
+    observed = (NOW - timedelta(seconds=20)).isoformat()
+    stale_benchmark = (NOW - timedelta(minutes=5)).isoformat()
+    stock_features = (
+        "price_momentum", "atr_14", "realized_volatility", "relative_volume",
+    )
+    benchmark_features = ("index_momentum", "relative_strength_market")
+    required = (*stock_features, *benchmark_features)
+    snapshot = {
+        "timestamp": observed,
+        "freshness_contract": "source-specific-v2",
+        "features": {name: 1.0 for name in required},
+        "feature_provenance": {
+            name: {
+                "status": "fresh",
+                "as_of": (
+                    stale_benchmark if name in benchmark_features else observed
+                ),
+            }
+            for name in required
+        },
+    }
+
+    result = decision_from_prediction(
+        prediction(
+            core_validation={"ready": True},
+            feature_snapshot=snapshot,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["feature_input_reason_codes"] == [
+        "stale_feature_index_momentum_timestamp",
+        "stale_feature_relative_strength_market_timestamp",
+    ]
+    sources = result["feature_source_diagnostics"]
+    assert sources["stock"]["status"] == "fresh"
+    assert sources["stock"]["reason_codes"] == []
+    assert sources["market_benchmark"]["status"] == "blocked"
+    assert sources["market_benchmark"]["reason_codes"] == (
+        result["feature_input_reason_codes"]
+    )
+    assert (
+        result["directional_diagnostics"]["feature_sources"]
+        == result["feature_source_diagnostics"]
+    )
+
+
 def test_closed_market_and_short_risk_geometry():
     assert not decision_from_prediction(prediction(), now=NOW)["actionable"]
     result = decision_from_prediction(prediction(direction="DOWN"), now=NOW, market_open=True)
