@@ -665,7 +665,6 @@ export default function TodayView(props) {
       </section>
 
       <div className="dashboard-grid">
-        <div className="dashboard-grid-starfield" aria-hidden="true" style={{ backgroundImage: `url(${heroStarfield})` }} />
         <div className="dashboard-primary">
           {isPremarket && (
             <PremarketResearchStrip
