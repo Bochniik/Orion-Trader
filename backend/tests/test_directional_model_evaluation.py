@@ -458,3 +458,70 @@ def test_model_evidence_verdict_requires_consensus_across_all_audited_slices():
     assert sparse["verdict"] == "insufficient_evidence"
     assert sparse["component_verdicts"]["liquidity_tiers"] == "insufficient_sample"
     assert better["policy"] == "integrity_and_all_audited_slices_must_agree"
+
+
+def test_end_to_end_evidence_verdict_requires_untampered_fingerprinted_rows(tmp_path):
+    database = tmp_path / "orion.db"
+    connection = sqlite3.connect(database)
+    connection.execute("CREATE TABLE predictive_model_runs (id INTEGER)")
+    connection.execute("""
+        CREATE TABLE live_predictions (
+            id INTEGER PRIMARY KEY,
+            model_id INTEGER,
+            ticker TEXT,
+            model_version TEXT,
+            source_observation_timestamp TEXT,
+            outcome_status TEXT,
+            result_json TEXT,
+            feature_json TEXT,
+            p_up REAL,
+            p_down REAL,
+            p_neutral REAL,
+            actual_direction TEXT,
+            horizon TEXT,
+            model_direction TEXT,
+            prediction_fingerprint TEXT
+        )
+    """)
+    rows = []
+    for index in range(60):
+        actual = "UP" if index % 2 == 0 else "DOWN"
+        p_up, p_down = ((0.90, 0.05) if actual == "UP" else (0.05, 0.90))
+        raw = {
+            "model_id": 3,
+            "ticker": "AAPL",
+            "model_version": "model-v1",
+            "horizon": "5m",
+            "source_observation_timestamp": f"2026-09-26T14:{index:02d}:00+00:00",
+            "feature_json": '{"liquidity_tier":"A"}',
+            "result_json": json.dumps({"sequence": index}, sort_keys=True),
+        }
+        fingerprint = _stored_prediction_fingerprint(raw)
+        rows.append((
+            index + 1, raw["model_id"], raw["ticker"], raw["model_version"],
+            raw["source_observation_timestamp"], "settled", raw["result_json"],
+            raw["feature_json"], p_up, p_down, 0.05, actual, raw["horizon"],
+            actual, fingerprint,
+        ))
+    connection.executemany(
+        "INSERT INTO live_predictions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows
+    )
+    connection.commit()
+
+    verified = evaluate(database)
+    assert verified["data_inventory"]["registry_integrity"]["status"] == "verified"
+    assert verified["model_evidence_verdict"]["verdict"] == "better"
+
+    connection.execute(
+        "UPDATE live_predictions SET result_json=? WHERE id=1",
+        ('{"tampered":true}',),
+    )
+    connection.commit()
+    connection.close()
+
+    tampered = evaluate(database)
+    assert tampered["data_inventory"]["registry_integrity"]["status"] == "corrupted"
+    assert tampered["model_evidence_verdict"]["verdict"] == "insufficient_evidence"
+    assert tampered["model_evidence_verdict"]["reason"] == (
+        "prediction_registry_integrity_not_verified"
+    )
