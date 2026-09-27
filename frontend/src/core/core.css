@@ -5619,3 +5619,10 @@ button
   object-fit: contain;
   transform: none;
 }
+
+
+/* Remove only the decorative frame around the selected company logo. */
+.dashboard-orion-card .orion-snapshot-logo,
+.dashboard-orion-card .orion-snapshot-logo > .stock-logo {
+  border: none !important;
+}
