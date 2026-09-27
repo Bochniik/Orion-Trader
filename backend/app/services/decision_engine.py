@@ -166,6 +166,7 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     snapshot = prediction.get("feature_snapshot") or {}
     feature_input_diagnostics = {}
     feature_input_reason_codes = []
+    source_event_time_reason_codes = []
     feature_source_diagnostics = {
         "stock": {"status": "not_evaluated", "features": [], "reason_codes": []},
         "market_benchmark": {
@@ -217,14 +218,42 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
             }
             feature_input_reason_codes.extend(reason_codes)
         feature_input_reason_codes = list(dict.fromkeys(feature_input_reason_codes))
+        source_event_times = snapshot.get("source_event_times") or {}
+        explicit_source_times = (
+            snapshot.get("source_event_time_contract") == "explicit-v1"
+        )
         for source, diagnostics in feature_source_diagnostics.items():
             source_features = [
                 name for name in required if feature_sources[name] == source
             ]
+            source_event_time = (
+                _temporal_layer_diagnostic(
+                    f"{source}_source",
+                    (source_event_times.get(source) or {}).get("timestamp"),
+                    now,
+                    (source_event_times.get(source) or {}).get(
+                        "max_age_seconds", 120
+                    ),
+                )
+                if explicit_source_times else None
+            )
+            if (
+                source_event_time is not None
+                and source_event_time["reason_code"] is not None
+            ):
+                source_event_time_reason_codes.append(
+                    source_event_time["reason_code"]
+                )
             source_reason_codes = list(dict.fromkeys([
                 *(
                     ["invalid_feature_freshness_contract"]
                     if snapshot.get("freshness_contract") != "source-specific-v2"
+                    else []
+                ),
+                *(
+                    [source_event_time["reason_code"]]
+                    if source_event_time is not None
+                    and source_event_time["reason_code"] is not None
                     else []
                 ),
                 *(
@@ -236,10 +265,17 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
             diagnostics.update({
                 "status": "blocked" if source_reason_codes else "fresh",
                 "features": source_features,
+                "event_time": source_event_time,
                 "reason_codes": source_reason_codes,
             })
-        no_trade_reason_codes.extend(feature_input_reason_codes)
-        if feature_input_reason_codes:
+        source_event_time_reason_codes = list(dict.fromkeys(
+            source_event_time_reason_codes
+        ))
+        no_trade_reason_codes.extend([
+            *feature_input_reason_codes,
+            *source_event_time_reason_codes,
+        ])
+        if feature_input_reason_codes or source_event_time_reason_codes:
             warnings.append("Required stock or benchmark feature evidence is stale or unavailable.")
     history_time = snapshot.get("history_timestamp") or snapshot.get("timestamp")
     data_freshness_diagnostics = {
@@ -303,6 +339,9 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     directional_diagnostics["feature_inputs"] = feature_input_diagnostics
     directional_diagnostics["feature_input_reason_codes"] = feature_input_reason_codes
     directional_diagnostics["feature_sources"] = feature_source_diagnostics
+    directional_diagnostics["source_event_time_reason_codes"] = (
+        source_event_time_reason_codes
+    )
     ev = number(expected.get("EV_LONG_bps" if model_direction == "UP" else "EV_SHORT_bps"))
     cost = number((prediction.get("execution_costs") or {}).get("round_trip_cost_bps"))
     if ev is None or ev <= 0 or cost is None or cost < 0:
@@ -367,6 +406,7 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         "feature_input_reason_codes": feature_input_reason_codes,
         "feature_input_diagnostics": feature_input_diagnostics,
         "feature_source_diagnostics": feature_source_diagnostics,
+        "source_event_time_reason_codes": source_event_time_reason_codes,
         "model_agreement": (prediction.get("strategy_consensus") or {}).get("agreement_score"),
         "model_outputs": prediction,
         "confidence_unavailable_reasons": directional_diagnostics["missing_inputs"],
