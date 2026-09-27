@@ -164,16 +164,46 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         warnings.append("The regular market session is closed or could not be verified.")
     max_age = min(120, HORIZON_SECONDS.get(horizon, 60))
     snapshot = prediction.get("feature_snapshot") or {}
+    feature_input_diagnostics = {}
+    feature_input_reason_codes = []
     if prediction.get("core_validation") is not None:
         if prediction["core_validation"].get("ready") is not True:
             warnings.append("The model freshness or promotion gate failed.")
+        features = snapshot.get("features") or {}
         provenance = snapshot.get("feature_provenance") or {}
-        required = {"price_momentum", "atr_14", "realized_volatility", "relative_volume", "index_momentum", "relative_strength_market"}
-        if snapshot.get("freshness_contract") != "source-specific-v2" or any(
-            (provenance.get(name) or {}).get("status") != "fresh"
-            or not recent((provenance.get(name) or {}).get("as_of"), now, 120)
-            or number((snapshot.get("features") or {}).get(name)) is None for name in required
-        ):
+        required = (
+            "price_momentum", "atr_14", "realized_volatility",
+            "relative_volume", "index_momentum", "relative_strength_market",
+        )
+        if snapshot.get("freshness_contract") != "source-specific-v2":
+            feature_input_reason_codes.append("invalid_feature_freshness_contract")
+        for name in required:
+            metadata = provenance.get(name) or {}
+            reason_codes = []
+            if number(features.get(name)) is None:
+                reason_codes.append(f"missing_feature_value_{name}")
+            if not isinstance(provenance.get(name), dict):
+                reason_codes.append(f"missing_feature_provenance_{name}")
+            elif metadata.get("status") != "fresh":
+                reason_codes.append(f"nonfresh_feature_provenance_{name}")
+            timestamp_diagnostic = _temporal_layer_diagnostic(
+                f"feature_{name}", metadata.get("as_of"), now, 120
+            )
+            if timestamp_diagnostic["reason_code"] is not None:
+                reason_codes.append(timestamp_diagnostic["reason_code"])
+            feature_input_diagnostics[name] = {
+                "value_status": (
+                    "available" if number(features.get(name)) is not None
+                    else "missing"
+                ),
+                "provenance_status": metadata.get("status"),
+                "timestamp": timestamp_diagnostic,
+                "reason_codes": reason_codes,
+            }
+            feature_input_reason_codes.extend(reason_codes)
+        feature_input_reason_codes = list(dict.fromkeys(feature_input_reason_codes))
+        no_trade_reason_codes.extend(feature_input_reason_codes)
+        if feature_input_reason_codes:
             warnings.append("Required stock or benchmark feature evidence is stale or unavailable.")
     history_time = snapshot.get("history_timestamp") or snapshot.get("timestamp")
     data_freshness_diagnostics = {
@@ -234,6 +264,8 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     directional_diagnostics["no_trade_reason_codes"] = no_trade_reason_codes
     directional_diagnostics["data_freshness"] = data_freshness_diagnostics
     directional_diagnostics["data_layer_reason_codes"] = data_layer_reason_codes
+    directional_diagnostics["feature_inputs"] = feature_input_diagnostics
+    directional_diagnostics["feature_input_reason_codes"] = feature_input_reason_codes
     ev = number(expected.get("EV_LONG_bps" if model_direction == "UP" else "EV_SHORT_bps"))
     cost = number((prediction.get("execution_costs") or {}).get("round_trip_cost_bps"))
     if ev is None or ev <= 0 or cost is None or cost < 0:
@@ -295,6 +327,8 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         "no_trade_reason_codes": no_trade_reason_codes,
         "data_layer_reason_codes": data_layer_reason_codes,
         "data_freshness_diagnostics": data_freshness_diagnostics,
+        "feature_input_reason_codes": feature_input_reason_codes,
+        "feature_input_diagnostics": feature_input_diagnostics,
         "model_agreement": (prediction.get("strategy_consensus") or {}).get("agreement_score"),
         "model_outputs": prediction,
         "confidence_unavailable_reasons": directional_diagnostics["missing_inputs"],
