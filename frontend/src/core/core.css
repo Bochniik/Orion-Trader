@@ -5661,3 +5661,39 @@ button
     grid-template-columns: minmax(0, 3.1fr) minmax(320px, 360px);
   }
 }
+
+
+/* Borderless dashboard hero on a unified deep-black canvas. */
+.dashboard-view {
+  background: #030405 !important;
+}
+
+.dashboard-hero {
+  border: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background:
+    radial-gradient(
+      ellipse at 73% 55%,
+      rgba(255, 116, 18, 0.09),
+      transparent 22rem
+    ),
+    #030405 !important;
+}
+
+.dashboard-hero::after {
+  display: none !important;
+}
+
+.dashboard-view,
+.dashboard-primary,
+.dashboard-side {
+  --dashboard-canvas: #030405;
+}
+
+.dashboard-primary,
+.dashboard-side {
+  background-color: #030405;
+}
