@@ -931,41 +931,6 @@ export default function TodayView(props) {
             </button>
           </section>
 
-          <section className="dashboard-side-card dashboard-watchlist-card">
-            <header className="dashboard-card-heading">
-              <div>
-                <span className="dashboard-heading-icon">
-                  <Star size={16} />
-                </span>
-                <h2>My Watchlist</h2>
-              </div>
-              <span className="dashboard-watch-count">{saved.length}</span>
-            </header>
-
-            {saved.length ? (
-              <div className="dashboard-watchlist">
-                {saved.slice(0, 6).map((savedTicker) => (
-                  <button
-                    type="button"
-                    key={savedTicker}
-                    onClick={() => runQuickAnalysis(savedTicker)}
-                  >
-                    <span className="dashboard-watch-symbol">
-                      {savedTicker.slice(0, 1)}
-                    </span>
-                    <strong>{savedTicker}</strong>
-                    <span>Analyze</span>
-                    <ArrowRight size={13} />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="dashboard-watchlist-empty">
-                <Star size={21} />
-                <p>Your saved stocks will appear here.</p>
-              </div>
-            )}
-          </section>
         </aside>
       </div>
 
