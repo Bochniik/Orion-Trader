@@ -102,6 +102,39 @@ def test_blocked_prediction_preserves_directional_model_confidence():
     assert result["directional_result"]["direction"] == "UP"
 
 
+def test_observation_time_reason_code_reaches_no_trade_decision():
+    result = decision_from_prediction(
+        prediction(
+            direction="NO_TRADE",
+            model_direction="UP",
+            blockers=[],
+            observation_time_diagnostics={
+                "status": "unavailable",
+                "source": None,
+                "timestamp": None,
+                "reason_code": "missing_observation_timestamp",
+                "missing_inputs": [
+                    "timezone-aware point-in-time observation timestamp"
+                ],
+                "policy": "missing_or_invalid_observation_time_forces_no_trade",
+            },
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["decision"] == "WAIT"
+    assert result["no_trade_reason_codes"] == ["missing_observation_timestamp"]
+    assert (
+        result["directional_diagnostics"]["decision_evidence"]["reason_code"]
+        == "missing_observation_timestamp"
+    )
+    assert result["directional_result"]["diagnostics"]["no_trade_reason_codes"] == [
+        "missing_observation_timestamp"
+    ]
+
+
 def test_technical_fallback_returns_exact_directional_diagnostics():
     result = technical_decision(
         "AAPL",

@@ -151,8 +151,23 @@ def test_live_prediction_fails_closed_without_point_in_time_timestamp(monkeypatc
         "status": "unavailable",
         "source": None,
         "timestamp": None,
+        "reason_code": "missing_observation_timestamp",
         "missing_inputs": ["timezone-aware point-in-time observation timestamp"],
         "policy": "missing_or_invalid_observation_time_forces_no_trade",
     }
     assert any("observation timestamp" in blocker for blocker in result["blockers"])
+
+    snapshot["timestamp"] = "2026-08-26T14:00:00"
+    invalid = service.build_live_prediction(
+        "AAPL", "5m", snapshot, liquidity, horizon, regime, strategies
+    )
+
+    assert invalid["direction"] == "NO_TRADE"
+    assert invalid["timestamp"] is None
+    assert invalid["due_at"] is None
+    assert invalid["observation_time_diagnostics"]["status"] == "unavailable"
+    assert (
+        invalid["observation_time_diagnostics"]["reason_code"]
+        == "invalid_observation_timestamp"
+    )
 
