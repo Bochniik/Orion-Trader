@@ -1,6 +1,7 @@
 """Per-user persistence for deterministic predictive-intelligence artifacts."""
 
 import copy
+import hashlib
 import json
 import math
 import sqlite3
@@ -93,6 +94,7 @@ class PredictiveIntelligenceStore:
                     directional_confidence REAL,
                     final_decision TEXT,
                     evaluation_eligible INTEGER NOT NULL DEFAULT 0,
+                    prediction_fingerprint TEXT,
                     FOREIGN KEY(model_id) REFERENCES predictive_model_runs(id)
                 )
             """)
@@ -104,6 +106,7 @@ class PredictiveIntelligenceStore:
                 "raw_p_neutral": "REAL", "calibration_temperature": "REAL",
                 "model_direction": "TEXT", "directional_confidence": "REAL",
                 "final_decision": "TEXT", "evaluation_eligible": "INTEGER NOT NULL DEFAULT 0",
+                "prediction_fingerprint": "TEXT",
             }
             for column, definition in migrations.items():
                 if column not in existing:
@@ -349,6 +352,18 @@ class PredictiveIntelligenceStore:
             and result.get("model_version") and result.get("model_direction") in {"UP", "DOWN"}
             and source_timestamp and result.get("horizon")
         ))
+        prediction_fingerprint = (
+            _prediction_fingerprint(
+                model_id=model_id,
+                ticker=result["ticker"],
+                model_version=result.get("model_version"),
+                horizon=result["horizon"],
+                source_timestamp=source_timestamp,
+                feature_json=encoded_feature_snapshot,
+                result_json=encoded_result,
+            )
+            if evaluation_eligible else None
+        )
         with self._lock, self._connect() as connection:
             cursor = connection.execute(
                 """
@@ -360,8 +375,8 @@ class PredictiveIntelligenceStore:
                     market_data_timestamp, model_version, data_provider, data_freshness,
                     data_quality_json, raw_p_up, raw_p_down, raw_p_neutral,
                     calibration_temperature, model_direction, directional_confidence,
-                    final_decision, evaluation_eligible
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    final_decision, evaluation_eligible, prediction_fingerprint
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(model_id) if model_id is not None else None,
@@ -382,12 +397,13 @@ class PredictiveIntelligenceStore:
                     _number(raw.get("P_UP")), _number(raw.get("P_DOWN")), _number(raw.get("P_NEUTRAL")),
                     _number(result.get("calibration_temperature")), result.get("model_direction"),
                     _number(result.get("directional_confidence")), result.get("decision") or result.get("direction"),
-                    evaluation_eligible,
+                    evaluation_eligible, prediction_fingerprint,
                 ),
             )
             if cursor.rowcount == 0 and evaluation_eligible:
                 row = connection.execute(
-                    "SELECT id, model_id, feature_json, result_json FROM live_predictions "
+                    "SELECT id, model_id, feature_json, result_json, prediction_fingerprint "
+                    "FROM live_predictions "
                     "WHERE ticker=? AND model_version=? AND horizon=? "
                     "AND source_observation_timestamp=?",
                     (
@@ -398,6 +414,13 @@ class PredictiveIntelligenceStore:
                 expected_model_id = int(model_id) if model_id is not None else None
                 if row is None:
                     raise RuntimeError("Prediction uniqueness conflict could not be resolved")
+                if (
+                    row["prediction_fingerprint"] is not None
+                    and row["prediction_fingerprint"] != prediction_fingerprint
+                ):
+                    raise ValueError(
+                        "Conflicting payload for immutable evaluation prediction"
+                    )
                 if (
                     row["model_id"] != expected_model_id
                     or row["feature_json"] != encoded_feature_snapshot
@@ -734,6 +757,21 @@ class PredictiveIntelligenceStore:
         with self._lock, self._connect() as connection:
             cursor = connection.execute("DELETE FROM live_predictions")
         return cursor.rowcount
+
+
+def _prediction_fingerprint(*, model_id, ticker, model_version, horizon,
+                            source_timestamp, feature_json, result_json):
+    """Return a deterministic integrity digest for one forward-only observation."""
+    payload = json.dumps({
+        "model_id": int(model_id) if model_id is not None else None,
+        "ticker": str(ticker).upper(),
+        "model_version": model_version,
+        "horizon": horizon,
+        "source_observation_timestamp": source_timestamp,
+        "feature_json": feature_json,
+        "result_json": result_json,
+    }, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _with_persisted_liquidity_tier(feature_snapshot, liquidity_tier):
