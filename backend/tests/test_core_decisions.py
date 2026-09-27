@@ -73,6 +73,27 @@ def test_missing_stale_conflicting_and_unsafe_inputs_fail_closed(changes):
     assert result["warnings"]
 
 
+@pytest.mark.parametrize(("observed", "reason_code"), [
+    ("2026-09-01T13:00:00+00:00", "stale_observation_timestamp"),
+    ("2026-09-01T14:01:00+00:00", "future_observation_timestamp"),
+])
+def test_valid_but_out_of_window_observation_time_has_exact_reason_code(
+    observed, reason_code
+):
+    result = decision_from_prediction(
+        prediction(timestamp=observed),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["decision"] == "WAIT"
+    assert result["no_trade_reason_codes"] == [reason_code]
+    diagnostics = result["directional_diagnostics"]["decision_evidence"]
+    assert diagnostics["freshness_status"] == "outside_live_window"
+    assert diagnostics["window_reason_codes"] == [reason_code]
+
+
 def test_closed_market_and_short_risk_geometry():
     assert not decision_from_prediction(prediction(), now=NOW)["actionable"]
     result = decision_from_prediction(prediction(direction="DOWN"), now=NOW, market_open=True)

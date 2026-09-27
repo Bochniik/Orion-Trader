@@ -61,6 +61,19 @@ def recent(value, now, seconds):
     return parsed is not None and 0 <= (now - parsed).total_seconds() <= seconds
 
 
+def _observation_window_reason(value, now, seconds):
+    """Classify only parseable observation times outside the causal live window."""
+    parsed = timestamp(value)
+    if parsed is None:
+        return None
+    age_seconds = (now - parsed).total_seconds()
+    if age_seconds < 0:
+        return "future_observation_timestamp"
+    if age_seconds > seconds:
+        return "stale_observation_timestamp"
+    return None
+
+
 def board_predictions(board):
     return [row for key in BOARD_SECTIONS for row in (board.get(key) or [])]
 
@@ -139,6 +152,17 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         ):
             warnings.append("Required stock or benchmark feature evidence is stale or unavailable.")
     history_time = snapshot.get("history_timestamp") or snapshot.get("timestamp")
+    observation_window_codes = list(dict.fromkeys(
+        code for code in (
+            _observation_window_reason(prediction.get("timestamp"), now, max_age),
+            _observation_window_reason(history_time, now, max_age),
+        )
+        if code is not None
+    ))
+    no_trade_reason_codes.extend(
+        code for code in observation_window_codes
+        if code not in no_trade_reason_codes
+    )
     if not recent(prediction.get("timestamp"), now, max_age) or not recent(history_time, now, max_age):
         warnings.append("The price or underlying feature bars are stale or undated.")
     if not recent(prediction.get("quote_as_of"), now, 60):
@@ -157,11 +181,16 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         probabilities=probabilities,
         horizon=horizon,
     )
-    directional_diagnostics["decision_evidence"] = (
-        observation_time_diagnostics
+    decision_observation_evidence = (
+        dict(observation_time_diagnostics)
         if isinstance(observation_time_diagnostics, dict)
         else {"status": "legacy_contract", "reason_code": None}
     )
+    decision_observation_evidence["window_reason_codes"] = observation_window_codes
+    decision_observation_evidence["freshness_status"] = (
+        "outside_live_window" if observation_window_codes else "within_live_window"
+    )
+    directional_diagnostics["decision_evidence"] = decision_observation_evidence
     directional_diagnostics["no_trade_reason_codes"] = no_trade_reason_codes
     ev = number(expected.get("EV_LONG_bps" if model_direction == "UP" else "EV_SHORT_bps"))
     cost = number((prediction.get("execution_costs") or {}).get("round_trip_cost_bps"))
