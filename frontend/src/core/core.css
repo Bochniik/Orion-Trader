@@ -6233,3 +6233,45 @@ button
     background-position: 62% center !important;
   }
 }
+
+
+/* Continue the uploaded starfield through the narrow gutter between the two
+   dashboard workspaces without moving or resizing either panel. */
+.dashboard-grid-starfield {
+  position: absolute;
+  z-index: 0;
+  top: -78px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center top;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0,
+    rgba(0, 0, 0, .96) 82px,
+    rgba(0, 0, 0, .78) 150px,
+    transparent 290px
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0,
+    rgba(0, 0, 0, .96) 82px,
+    rgba(0, 0, 0, .78) 150px,
+    transparent 290px
+  );
+}
+
+.dashboard-primary,
+.dashboard-side {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 980px) {
+  .dashboard-grid-starfield {
+    display: none;
+  }
+}
