@@ -93,6 +93,20 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     direction = prediction.get("direction")
     horizon = prediction.get("horizon")
     warnings = list(prediction.get("blockers") or [])
+    observation_time_diagnostics = prediction.get("observation_time_diagnostics")
+    no_trade_reason_codes = []
+    if (
+        isinstance(observation_time_diagnostics, dict)
+        and observation_time_diagnostics.get("status") != "ready"
+    ):
+        reason_code = (
+            observation_time_diagnostics.get("reason_code")
+            or "observation_time_unavailable"
+        )
+        no_trade_reason_codes.append(reason_code)
+        warnings.append(
+            "Point-in-time observation evidence is unavailable or invalid."
+        )
     supplied_model_direction = prediction.get("model_direction")
     model_direction = (
         supplied_model_direction
@@ -143,6 +157,12 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         probabilities=probabilities,
         horizon=horizon,
     )
+    directional_diagnostics["decision_evidence"] = (
+        observation_time_diagnostics
+        if isinstance(observation_time_diagnostics, dict)
+        else {"status": "legacy_contract", "reason_code": None}
+    )
+    directional_diagnostics["no_trade_reason_codes"] = no_trade_reason_codes
     ev = number(expected.get("EV_LONG_bps" if model_direction == "UP" else "EV_SHORT_bps"))
     cost = number((prediction.get("execution_costs") or {}).get("round_trip_cost_bps"))
     if ev is None or ev <= 0 or cost is None or cost < 0:
@@ -201,6 +221,7 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         "market_regime": (prediction.get("market_regime") or {}).get("label"),
         "reasons": [prediction.get("short_explanation") or "Deterministic model evidence evaluated."],
         "warnings": warnings,
+        "no_trade_reason_codes": no_trade_reason_codes,
         "model_agreement": (prediction.get("strategy_consensus") or {}).get("agreement_score"),
         "model_outputs": prediction,
         "confidence_unavailable_reasons": directional_diagnostics["missing_inputs"],
