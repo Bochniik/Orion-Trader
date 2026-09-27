@@ -24,6 +24,7 @@ import useCoreJob from "./useCoreJob";
 import MarketExplorerPanel from "../components/MarketExplorerPanel";
 import { MarketSessionBadge, PremarketResearchStrip } from "./SessionAwareOrionMetrics";
 import StockLogo from "../components/StockLogo";
+import heroStarfield from "../assets/orion-starfield-hero.png";
 
 export function TodayResults({
   result,
@@ -660,7 +661,7 @@ export default function TodayView(props) {
             Spot opportunity. Research smarter.
           </p>
         </div>
-        <div className="dashboard-hero-starfield" aria-hidden="true" />
+        <div className="dashboard-hero-starfield" aria-hidden="true" style={{ backgroundImage: `url(${heroStarfield})` }} />
       </section>
 
       <div className="dashboard-grid">
