@@ -5697,3 +5697,81 @@ button
 .dashboard-side {
   background-color: #030405;
 }
+
+
+/* Seamless dashboard composition: let the hero artwork dissolve into both
+   workspaces instead of ending as a separate banner/card. */
+.dashboard-view {
+  position: relative;
+  isolation: isolate;
+  background: #010203 !important;
+}
+
+.dashboard-view::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -34px calc(clamp(24px, 3vw, 46px) * -1) auto;
+  height: 430px;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse at 78% 26%,
+      rgba(255, 112, 18, 0.12) 0%,
+      rgba(255, 112, 18, 0.055) 25%,
+      transparent 58%
+    ),
+    linear-gradient(
+      180deg,
+      #010203 0%,
+      #010203 58%,
+      rgba(1, 2, 3, 0.96) 74%,
+      #010203 100%
+    );
+}
+
+.dashboard-hero {
+  margin-bottom: 0 !important;
+  padding-bottom: 46px !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+.dashboard-hero-planet-art {
+  z-index: 1;
+}
+
+.dashboard-hero-planet-art::after {
+  content: "";
+  position: absolute;
+  left: -12%;
+  right: -8%;
+  bottom: -72px;
+  height: 150px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(1, 2, 3, 0),
+    rgba(1, 2, 3, 0.72) 52%,
+    #010203 100%
+  );
+}
+
+.dashboard-grid {
+  position: relative;
+  z-index: 2;
+  margin-top: -8px;
+  background: transparent !important;
+}
+
+.dashboard-primary,
+.dashboard-side {
+  background: transparent !important;
+}
+
+/* Keep the two functional workspaces readable while allowing the surrounding
+   canvas/artwork to feel continuous rather than boxed into a second backdrop. */
+.dashboard-primary > .market-explorer-panel.market-v3,
+.dashboard-side > .dashboard-orion-card {
+  background-color: rgba(4, 7, 10, 0.88) !important;
+}
