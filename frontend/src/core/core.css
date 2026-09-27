@@ -5646,3 +5646,18 @@ button
 .dashboard-view .dashboard-market-intelligence-label {
   display: none !important;
 }
+
+
+/* Wider desktop Market Explorer: prioritize the six-column market workspace. */
+@media (min-width: 1181px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 2.8fr) minmax(300px, 350px);
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1500px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 3.1fr) minmax(320px, 360px);
+  }
+}
