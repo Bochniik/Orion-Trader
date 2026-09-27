@@ -5955,3 +5955,38 @@ button
     margin-top: -62px !important;
   }
 }
+
+
+/* Improve dashboard Orion Analysis metric readability without resizing the card. */
+.dashboard-orion-card .orion-score-ring strong {
+  font-size: 34px !important;
+  line-height: 1 !important;
+}
+
+.dashboard-orion-card .orion-score-ring span {
+  font-size: 11px !important;
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child > span,
+.dashboard-orion-card .orion-probability-grid > div > span {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child > strong {
+  font-size: 20px !important;
+}
+
+.dashboard-orion-card .orion-probability-grid > div > strong {
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+}
+
+.dashboard-orion-card .orion-risk-row,
+.dashboard-orion-card .orion-risk-row span {
+  font-size: 14px !important;
+}
+
+.dashboard-orion-card .orion-risk-row strong {
+  font-size: 18px !important;
+}
