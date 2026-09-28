@@ -193,3 +193,58 @@ def test_backtest_rejects_invalid_spread_assumptions():
         engine.run("AAPL", history([100] * 40), "breakout", spread_bps=-1)
     with pytest.raises(ValueError, match="friction assumptions"):
         engine.run("AAPL", history([100] * 40), "breakout", spread_bps=1_001)
+
+
+def test_liquidity_spread_scenarios_are_hypothetical_and_cost_sensitive():
+    engine = BacktestEngine()
+    bars = history([100] * 40)
+
+    def signals(frame, kind, parameters):
+        entry = pd.Series(False, index=frame.index)
+        exit_signal = pd.Series(False, index=frame.index)
+        entry.iloc[0] = True
+        exit_signal.iloc[1] = True
+        return entry, exit_signal
+
+    engine._signals = signals
+    result = engine.run_liquidity_spread_scenarios(
+        "AAPL",
+        bars,
+        "breakout",
+        {"A": 2, "D": 100},
+        commission_bps=0,
+        slippage_bps=0,
+    )
+
+    assert result["evidence_type"] == "hypothetical_cost_sensitivity"
+    assert result["historical_quotes_used"] is False
+    assert result["promotion_eligible"] is False
+    assert result["scenarios"]["A"]["spread_bps"] == 2
+    assert result["scenarios"]["D"]["spread_bps"] == 100
+    assert (
+        result["scenarios"]["D"]["metrics"]["final_equity"]
+        < result["scenarios"]["A"]["metrics"]["final_equity"]
+    )
+
+
+@pytest.mark.parametrize(
+    "scenarios",
+    [
+        {},
+        {"E": 10},
+        {"A": "unknown"},
+        {"A": float("inf")},
+        {"A": -1},
+        {"A": 1_001},
+        {"a": 5, "A": 10},
+    ],
+)
+def test_liquidity_spread_scenarios_fail_closed(scenarios):
+    engine = BacktestEngine()
+    with pytest.raises(ValueError, match="Liquidity spread"):
+        engine.run_liquidity_spread_scenarios(
+            "AAPL",
+            history([100] * 40),
+            "breakout",
+            scenarios,
+        )
