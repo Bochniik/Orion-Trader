@@ -203,6 +203,7 @@ def build_daily_close_review(
     )
     input_rows_by_horizon = defaultdict(int)
     scorable_rows_by_horizon = defaultdict(int)
+    scorable_rows_with_known_horizon = 0
     input_rows = 0
 
     for row in evidence:
@@ -213,7 +214,9 @@ def build_daily_close_review(
         probability = _finite_probability(row.get("probability_up"))
         actual = _actual_up(row.get("actual_up"))
         resolved_session = _session_date(row.get("resolved_at"))
-        horizon = str(row.get("forecast_horizon") or "unknown")
+        raw_horizon = row.get("forecast_horizon")
+        known_horizon = str(raw_horizon).strip() if raw_horizon is not None else ""
+        horizon = known_horizon or "unknown"
         input_rows_by_horizon[horizon] += 1
 
         rejection_reason = None
@@ -236,6 +239,10 @@ def build_daily_close_review(
             diagnostics["missing_sector_context_status"] += 1
 
         scorable_rows_by_horizon[horizon] += 1
+        if known_horizon:
+            scorable_rows_with_known_horizon += 1
+        else:
+            diagnostics["missing_forecast_horizon"] += 1
         normalized.append(
             {
                 "probability_up": probability,
@@ -315,6 +322,26 @@ def build_daily_close_review(
             input_rows_by_horizon.items()
         )
     }
+    missing_horizon_rows = scorable_rows - scorable_rows_with_known_horizon
+    horizon_attribution = {
+        "status": (
+            "no_evidence" if scorable_rows == 0
+            else "complete" if missing_horizon_rows == 0
+            else "partial"
+        ),
+        "structurally_scorable_rows": scorable_rows,
+        "attributed_rows": scorable_rows_with_known_horizon,
+        "missing_or_blank_horizon_rows": missing_horizon_rows,
+        "attribution_ratio": (
+            None
+            if scorable_rows == 0
+            else scorable_rows_with_known_horizon / scorable_rows
+        ),
+        "policy": (
+            "unknown-horizon rows remain in overall settled metrics and are "
+            "reported in the unknown horizon bucket"
+        ),
+    }
     evidence_coverage = {
         "status": (
             "no_evidence" if input_rows == 0
@@ -359,6 +386,7 @@ def build_daily_close_review(
         "diagnostics": dict(sorted(diagnostics.items())),
         "evidence_coverage": evidence_coverage,
         "coverage_by_horizon": coverage_by_horizon,
+        "horizon_attribution": horizon_attribution,
         "rejection_breakdown": rejection_breakdown,
         "probability_scale_diagnostics": dict(
             sorted(probability_scale_diagnostics.items())
