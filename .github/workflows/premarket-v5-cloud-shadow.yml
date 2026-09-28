@@ -2,6 +2,10 @@ name: Premarket v5 cloud shadow
 run-name: Premarket V5 ${{ github.event_name }} ${{ github.event.schedule || 'manual' }}
 
 on:
+  # One-time, branch-scoped immediate research acquisition; remove after first run.
+  push:
+    branches: [fix/premarket-manual-current-collection]
+    paths: [.github/workflows/premarket-v5-cloud-shadow.yml]
   workflow_call:
   workflow_dispatch:
     inputs:
@@ -45,7 +49,7 @@ jobs:
           MANUAL_COLLECTION_MODE: ${{ inputs.collection_mode }}
         run: |
           EXTRA_ARGS=()
-          if [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$MANUAL_COLLECTION_MODE" = 'current' ]; then
+          if { [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$MANUAL_COLLECTION_MODE" = 'current' ]; } || [ "$GITHUB_EVENT_NAME" = 'push' ]; then
             EXTRA_ARGS+=(--manual-current)
           fi
           python scripts/resolve_premarket_v5_snapshot.py \
