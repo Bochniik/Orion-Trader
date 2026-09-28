@@ -301,3 +301,24 @@ def test_forward_readiness_stays_score_blind():
     assert changed["forward_acquisition"]["artifact_count"] == baseline["forward_acquisition"]["artifact_count"]
     assert changed["forward_acquisition"]["forward_eligible_artifact_count"] == baseline["forward_acquisition"]["forward_eligible_artifact_count"]
     assert changed["forward_acquisition"]["horizon_forward_eligible_artifact_counts"] == baseline["forward_acquisition"]["horizon_forward_eligible_artifact_counts"]
+
+
+def test_timely_scheduled_empty_collection_is_not_forward_evidence():
+    payload = _base_payload(date(2026, 9, 28), "early")
+    payload["predictions"] = [
+        {"ticker": symbol, "available": False, "reason": "insufficient_causal_bars_or_previous_close"}
+        for symbol in payload["symbols"]
+    ]
+    as_of = datetime.fromisoformat(payload["as_of_utc"])
+    attested = attestation.finalize_payload(
+        payload,
+        collection_started_at=as_of + timedelta(minutes=1),
+        collection_completed_at=as_of + timedelta(minutes=2),
+        event_name="schedule",
+        run_id="123456",
+        run_attempt=1,
+        github_head_sha=HEAD_SHA,
+    )
+    assert attested["acquisition_provenance"]["forward_eligible"] is False
+    assert attested["acquisition_provenance"]["eligibility_reason"] == "no_evaluable_predictions"
+    assert readiness.validate_acquisition(attested)["decision_grade_complete"] is False
