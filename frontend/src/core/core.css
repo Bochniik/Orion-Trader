@@ -6346,3 +6346,48 @@ button
     box-sizing: border-box;
   }
 }
+
+
+/* Keep premarket Analysis metric labels/values readable inside the narrow side card. */
+.dashboard-orion-card .orion-score-metrics {
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-orion-card .orion-probability-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 18px;
+}
+
+.dashboard-orion-card .orion-probability-grid > div {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-orion-card .orion-probability-grid > div > span {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  line-height: 1.25 !important;
+}
+
+.dashboard-orion-card .orion-probability-grid > div > strong {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.12 !important;
+}
+
+@media (min-width: 981px) and (max-width: 1380px) {
+  .dashboard-orion-card .orion-probability-grid {
+    grid-template-columns: 1fr;
+    row-gap: 12px;
+  }
+
+  .dashboard-orion-card .orion-probability-grid > div > strong {
+    font-size: 18px !important;
+  }
+}
