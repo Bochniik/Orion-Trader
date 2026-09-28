@@ -104,3 +104,42 @@ def test_backtest_uses_conservative_stop_first_policy_for_intrabar_conflict():
         result["assumptions"]["intrabar_stop_take_conflict"]
         == "stop_loss_first_conservative"
     )
+
+
+@pytest.mark.parametrize(
+    ("gap_open", "bar_low", "bar_high", "expected_reason", "expected_price"),
+    [
+        (120, 80, 121, "take_profit", 120),
+        (80, 79, 120, "stop_loss", 80),
+    ],
+)
+def test_backtest_executes_opening_gap_before_intrabar_range(
+    gap_open, bar_low, bar_high, expected_reason, expected_price
+):
+    engine = BacktestEngine()
+    bars = history([100] * 40)
+    bars.iloc[2, bars.columns.get_loc("Open")] = gap_open
+    bars.iloc[2, bars.columns.get_loc("Low")] = bar_low
+    bars.iloc[2, bars.columns.get_loc("High")] = bar_high
+
+    def signals(frame, kind, parameters):
+        entry = pd.Series(False, index=frame.index)
+        entry.iloc[0] = True
+        return entry, pd.Series(False, index=frame.index)
+
+    engine._signals = signals
+    result = engine.run(
+        "AAPL",
+        bars,
+        "breakout",
+        {"stop_loss_percent": 10, "take_profit_percent": 10},
+        commission_bps=0,
+        slippage_bps=0,
+    )
+
+    assert result["trades"][0]["exit_reason"] == expected_reason
+    assert result["trades"][0]["exit_price"] == expected_price
+    assert (
+        result["assumptions"]["gap_execution"]
+        == "opening_price_before_intrabar_range"
+    )

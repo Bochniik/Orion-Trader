@@ -72,12 +72,27 @@ class BacktestEngine:
             timestamp = frame.index[index]
             should_exit = bool(exit_signal.iloc[prior])
             reason = "signal"
-            if shares and stop_loss and float(row["Low"]) <= entry_cost * (1 - stop_loss):
-                execution_price = min(execution_price, entry_cost * (1 - stop_loss))
-                should_exit, reason = True, "stop_loss"
-            elif shares and take_profit and float(row["High"]) >= entry_cost * (1 + take_profit):
-                execution_price = max(execution_price, entry_cost * (1 + take_profit))
-                should_exit, reason = True, "take_profit"
+            if shares:
+                stop_price = entry_cost * (1 - stop_loss) if stop_loss else None
+                take_profit_price = (
+                    entry_cost * (1 + take_profit) if take_profit else None
+                )
+                if stop_price is not None and execution_price <= stop_price:
+                    should_exit, reason = True, "stop_loss"
+                elif (
+                    take_profit_price is not None
+                    and execution_price >= take_profit_price
+                ):
+                    should_exit, reason = True, "take_profit"
+                elif stop_price is not None and float(row["Low"]) <= stop_price:
+                    execution_price = stop_price
+                    should_exit, reason = True, "stop_loss"
+                elif (
+                    take_profit_price is not None
+                    and float(row["High"]) >= take_profit_price
+                ):
+                    execution_price = take_profit_price
+                    should_exit, reason = True, "take_profit"
 
             if shares and should_exit:
                 proceeds = shares * execution_price * (1 - friction)
@@ -101,7 +116,7 @@ class BacktestEngine:
         final_equity = cash + shares * final_close
         metrics = self._metrics(curve, trades, initial_cash, final_equity)
         buy_hold = (final_close / float(frame["Close"].iloc[0]) - 1) * 100
-        return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "intrabar_stop_take_conflict": "stop_loss_first_conservative", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "initial_cash": initial_cash}}
+        return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "intrabar_stop_take_conflict": "stop_loss_first_conservative", "gap_execution": "opening_price_before_intrabar_range", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "initial_cash": initial_cash}}
 
     def _signals(self, frame, kind, parameters):
         close = frame["Close"]
