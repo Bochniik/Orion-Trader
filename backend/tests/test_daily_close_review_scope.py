@@ -63,6 +63,7 @@ def test_settled_evidence_reader_enforces_user_scope_in_sql():
 
     assert len(alice) == 1
     assert alice[0]["probability_up"] == 0.8
+    assert alice[0]["probability_storage_scale"] == "unit"
     assert alice[0]["sector_context_availability"] is None
     assert len(bob) == 1
     assert bob[0]["probability_up"] == 0.1
@@ -95,6 +96,9 @@ def test_user_scoped_evidence_remains_compatible_with_daily_review():
     assert review["metrics"]["sample_size"] == 1
     assert review["metrics"]["directional_accuracy"] == 1.0
     assert review["by_horizon"]["30m"]["sample_size"] == 1
+    assert review["probability_scale_diagnostics"] == {
+        "percent_normalized": 1
+    }
 
 
 def test_settled_evidence_reader_extracts_explicit_sector_context_status():
@@ -126,6 +130,7 @@ def test_settled_evidence_reader_extracts_explicit_sector_context_status():
     evidence = read_user_settled_evidence(db, "alice")
 
     assert evidence[0]["probability_up"] == 0.75
+    assert evidence[0]["probability_storage_scale"] == "unit"
     assert evidence[0]["sector_context_availability"] == "available"
     assert "snapshot_json" not in evidence[0]
 
@@ -156,5 +161,7 @@ def test_settled_reader_rejects_probability_outside_known_storage_scales():
     )
 
     assert evidence[0]["probability_up"] is None
+    assert evidence[0]["probability_storage_scale"] == "invalid"
     assert review["metrics"]["sample_size"] == 0
     assert review["diagnostics"]["invalid_probability"] == 1
+    assert review["probability_scale_diagnostics"] == {"invalid": 1}
