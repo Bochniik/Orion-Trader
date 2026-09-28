@@ -197,6 +197,10 @@ def build_daily_close_review(
     normalized: List[Dict[str, Any]] = []
     diagnostics = defaultdict(int)
     probability_scale_diagnostics = defaultdict(int)
+    rejection_reasons = defaultdict(int)
+    rejections_by_horizon: Dict[str, Dict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
     input_rows = 0
 
     for row in evidence:
@@ -207,15 +211,20 @@ def build_daily_close_review(
         probability = _finite_probability(row.get("probability_up"))
         actual = _actual_up(row.get("actual_up"))
         resolved_session = _session_date(row.get("resolved_at"))
+        horizon = str(row.get("forecast_horizon") or "unknown")
 
+        rejection_reason = None
         if probability is None:
-            diagnostics["invalid_probability"] += 1
-            continue
-        if actual is None:
-            diagnostics["missing_or_invalid_outcome"] += 1
-            continue
-        if resolved_session is None:
-            diagnostics["invalid_resolved_at"] += 1
+            rejection_reason = "invalid_probability"
+        elif actual is None:
+            rejection_reason = "missing_or_invalid_outcome"
+        elif resolved_session is None:
+            rejection_reason = "invalid_resolved_at"
+
+        if rejection_reason is not None:
+            diagnostics[rejection_reason] += 1
+            rejection_reasons[rejection_reason] += 1
+            rejections_by_horizon[horizon][rejection_reason] += 1
             continue
 
         sector_context = row.get("sector_context_availability")
@@ -227,7 +236,7 @@ def build_daily_close_review(
             {
                 "probability_up": probability,
                 "actual_up": actual,
-                "horizon": str(row.get("forecast_horizon") or "unknown"),
+                "horizon": horizon,
                 "session_date": resolved_session,
                 "sector_context_availability": sector_context,
             }
@@ -268,6 +277,21 @@ def build_daily_close_review(
 
     scorable_rows = len(normalized)
     rejected_rows = input_rows - scorable_rows
+    rejection_breakdown = {
+        "total": rejected_rows,
+        "by_reason": dict(sorted(rejection_reasons.items())),
+        "by_horizon": {
+            horizon: {
+                "total": sum(reasons.values()),
+                "by_reason": dict(sorted(reasons.items())),
+            }
+            for horizon, reasons in sorted(rejections_by_horizon.items())
+        },
+        "policy": (
+            "each rejected row is counted once under its first failing "
+            "structural check; session filtering is not rejection"
+        ),
+    }
     evidence_coverage = {
         "status": (
             "no_evidence" if input_rows == 0
@@ -311,6 +335,7 @@ def build_daily_close_review(
         },
         "diagnostics": dict(sorted(diagnostics.items())),
         "evidence_coverage": evidence_coverage,
+        "rejection_breakdown": rejection_breakdown,
         "probability_scale_diagnostics": dict(
             sorted(probability_scale_diagnostics.items())
         ),
