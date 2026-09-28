@@ -26,6 +26,20 @@ def test_scores_settled_evidence_and_horizons():
             "excluded from selected-session metrics"
         ),
     }
+    assert report["coverage_by_horizon"] == {
+        "1h": {
+            "input_rows": 1,
+            "structurally_scorable_rows": 1,
+            "rejected_unscorable_rows": 0,
+            "scorable_ratio": 1.0,
+        },
+        "30m": {
+            "input_rows": 1,
+            "structurally_scorable_rows": 1,
+            "rejected_unscorable_rows": 0,
+            "scorable_ratio": 1.0,
+        },
+    }
     assert report["scoring_policy"] == "settled_evidence_only"
 
 
@@ -51,6 +65,20 @@ def test_rejects_invalid_or_unsettled_rows_without_fabricating_metrics():
     assert report["evidence_coverage"]["structurally_scorable_rows"] == 0
     assert report["evidence_coverage"]["rejected_unscorable_rows"] == 3
     assert report["evidence_coverage"]["scorable_ratio"] == 0.0
+    assert report["coverage_by_horizon"] == {
+        "1h": {
+            "input_rows": 2,
+            "structurally_scorable_rows": 0,
+            "rejected_unscorable_rows": 2,
+            "scorable_ratio": 0.0,
+        },
+        "30m": {
+            "input_rows": 1,
+            "structurally_scorable_rows": 0,
+            "rejected_unscorable_rows": 1,
+            "scorable_ratio": 0.0,
+        },
+    }
     assert report["rejection_breakdown"] == {
         "total": 3,
         "by_reason": {
@@ -75,6 +103,51 @@ def test_rejects_invalid_or_unsettled_rows_without_fabricating_metrics():
             "each rejected row is counted once under its first failing "
             "structural check; session filtering is not rejection"
         ),
+    }
+
+
+def test_horizon_coverage_uses_all_structural_inputs_as_denominator():
+    report = build_daily_close_review(
+        [
+            {
+                "probability_up": 0.8,
+                "actual_up": 1,
+                "resolved_at": "2026-09-18T20:00:00Z",
+                "forecast_horizon": "30m",
+            },
+            {
+                "probability_up": 1.2,
+                "actual_up": 1,
+                "resolved_at": "2026-09-18T20:05:00Z",
+                "forecast_horizon": "30m",
+            },
+            {
+                "probability_up": 0.7,
+                "actual_up": 1,
+                "resolved_at": "2026-09-18T20:10:00Z",
+                "forecast_horizon": "1h",
+            },
+        ],
+        session_date="2026-09-18",
+    )
+
+    assert report["coverage_by_horizon"] == {
+        "1h": {
+            "input_rows": 1,
+            "structurally_scorable_rows": 1,
+            "rejected_unscorable_rows": 0,
+            "scorable_ratio": 1.0,
+        },
+        "30m": {
+            "input_rows": 2,
+            "structurally_scorable_rows": 1,
+            "rejected_unscorable_rows": 1,
+            "scorable_ratio": 0.5,
+        },
+    }
+    assert report["rejection_breakdown"]["by_horizon"]["30m"] == {
+        "total": 1,
+        "by_reason": {"invalid_probability": 1},
     }
 
 
