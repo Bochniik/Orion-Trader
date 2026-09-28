@@ -29,6 +29,18 @@ class BacktestEngine:
         for column in ["Open", "High", "Low", "Close"]:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
         frame = frame.dropna(subset=["Open", "High", "Low", "Close"])
+        prices = frame[["Open", "High", "Low", "Close"]]
+        finite = prices.map(math.isfinite).all(axis=1)
+        positive = prices.gt(0).all(axis=1)
+        consistent = (
+            frame["High"].ge(frame[["Open", "Close"]].max(axis=1))
+            & frame["Low"].le(frame[["Open", "Close"]].min(axis=1))
+            & frame["High"].ge(frame["Low"])
+        )
+        if not bool((finite & positive & consistent).all()):
+            raise ValueError(
+                "Backtests require finite, positive, internally consistent OHLC bars"
+            )
         if len(frame) < 30:
             raise ValueError("Backtests require at least 30 price bars")
 
@@ -89,7 +101,7 @@ class BacktestEngine:
         final_equity = cash + shares * final_close
         metrics = self._metrics(curve, trades, initial_cash, final_equity)
         buy_hold = (final_close / float(frame["Close"].iloc[0]) - 1) * 100
-        return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "initial_cash": initial_cash}}
+        return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "intrabar_stop_take_conflict": "stop_loss_first_conservative", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "initial_cash": initial_cash}}
 
     def _signals(self, frame, kind, parameters):
         close = frame["Close"]
