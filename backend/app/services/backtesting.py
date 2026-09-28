@@ -22,6 +22,10 @@ class BacktestEngine:
         if history is None or history.empty or not {"Open", "High", "Low", "Close"}.issubset(history.columns):
             raise ValueError("Backtests require non-empty OHLC history")
         frame = history.copy()
+        if not frame.index.is_monotonic_increasing or not frame.index.is_unique:
+            raise ValueError(
+                "Backtests require strictly increasing unique price-bar timestamps"
+            )
         for column in ["Open", "High", "Low", "Close"]:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
         frame = frame.dropna(subset=["Open", "High", "Low", "Close"])
