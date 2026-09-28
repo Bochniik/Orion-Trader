@@ -143,3 +143,53 @@ def test_backtest_executes_opening_gap_before_intrabar_range(
         result["assumptions"]["gap_execution"]
         == "opening_price_before_intrabar_range"
     )
+
+
+def test_backtest_audits_commission_slippage_and_spread_separately():
+    bars = history([100] * 40)
+
+    def run_with_costs(**costs):
+        engine = BacktestEngine()
+
+        def signals(frame, kind, parameters):
+            entry = pd.Series(False, index=frame.index)
+            exit_signal = pd.Series(False, index=frame.index)
+            entry.iloc[0] = True
+            exit_signal.iloc[1] = True
+            return entry, exit_signal
+
+        engine._signals = signals
+        cost_assumptions = {
+            "commission_bps": 0,
+            "slippage_bps": 0,
+            "spread_bps": 0,
+        }
+        cost_assumptions.update(costs)
+        return engine.run(
+            "AAPL",
+            bars,
+            "breakout",
+            **cost_assumptions,
+        )
+
+    no_cost = run_with_costs()
+    commission_only = run_with_costs(commission_bps=10)
+    slippage_only = run_with_costs(slippage_bps=10)
+    spread_only = run_with_costs(spread_bps=20)
+
+    assert commission_only["metrics"]["final_equity"] < no_cost["metrics"]["final_equity"]
+    assert commission_only["metrics"]["final_equity"] == slippage_only["metrics"]["final_equity"]
+    assert commission_only["metrics"]["final_equity"] == spread_only["metrics"]["final_equity"]
+    assert spread_only["assumptions"]["commission_bps"] == 0
+    assert spread_only["assumptions"]["slippage_bps"] == 0
+    assert spread_only["assumptions"]["spread_bps"] == 20
+    assert spread_only["assumptions"]["spread_application"] == "half_spread_each_side"
+    assert spread_only["assumptions"]["per_side_friction_bps"] == 10
+
+
+def test_backtest_rejects_invalid_spread_assumptions():
+    engine = BacktestEngine()
+    with pytest.raises(ValueError, match="friction assumptions"):
+        engine.run("AAPL", history([100] * 40), "breakout", spread_bps=-1)
+    with pytest.raises(ValueError, match="friction assumptions"):
+        engine.run("AAPL", history([100] * 40), "breakout", spread_bps=1_001)

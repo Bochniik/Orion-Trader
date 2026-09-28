@@ -15,7 +15,17 @@ class BacktestEngine:
         rs = gain / loss.replace(0, float("nan"))
         return (100 - 100 / (1 + rs)).fillna(50)
 
-    def run(self, ticker, history, kind, parameters=None, initial_cash=10_000, commission_bps=5, slippage_bps=5):
+    def run(
+        self,
+        ticker,
+        history,
+        kind,
+        parameters=None,
+        initial_cash=10_000,
+        commission_bps=5,
+        slippage_bps=5,
+        spread_bps=0,
+    ):
         if kind not in self.KINDS:
             raise ValueError("Unsupported strategy kind")
         parameters = parameters or {}
@@ -52,12 +62,21 @@ class BacktestEngine:
             raise ValueError("Allocation percent must be between 0 and 100")
         if not 0 <= stop_loss_value < 100 or take_profit_value < 0:
             raise ValueError("Stop loss and take profit parameters are invalid")
-        if float(initial_cash) <= 0 or not 0 <= float(commission_bps) <= 1_000 or not 0 <= float(slippage_bps) <= 1_000:
+        if (
+            float(initial_cash) <= 0
+            or not 0 <= float(commission_bps) <= 1_000
+            or not 0 <= float(slippage_bps) <= 1_000
+            or not 0 <= float(spread_bps) <= 1_000
+        ):
             raise ValueError("Backtest cash and friction assumptions are invalid")
         allocation = allocation_value / 100
         stop_loss = stop_loss_value / 100
         take_profit = take_profit_value / 100
-        friction = (float(commission_bps) + float(slippage_bps)) / 10_000
+        half_spread_bps = float(spread_bps) / 2
+        per_side_friction_bps = (
+            float(commission_bps) + float(slippage_bps) + half_spread_bps
+        )
+        friction = per_side_friction_bps / 10_000
         cash = float(initial_cash)
         shares = 0
         entry_cost = None
@@ -116,7 +135,7 @@ class BacktestEngine:
         final_equity = cash + shares * final_close
         metrics = self._metrics(curve, trades, initial_cash, final_equity)
         buy_hold = (final_close / float(frame["Close"].iloc[0]) - 1) * 100
-        return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "intrabar_stop_take_conflict": "stop_loss_first_conservative", "gap_execution": "opening_price_before_intrabar_range", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "initial_cash": initial_cash}}
+        return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "intrabar_stop_take_conflict": "stop_loss_first_conservative", "gap_execution": "opening_price_before_intrabar_range", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "spread_bps": spread_bps, "spread_application": "half_spread_each_side", "per_side_friction_bps": per_side_friction_bps, "initial_cash": initial_cash}}
 
     def _signals(self, frame, kind, parameters):
         close = frame["Close"]
