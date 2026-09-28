@@ -159,13 +159,17 @@ def test_backtest_audits_commission_slippage_and_spread_separately():
             return entry, exit_signal
 
         engine._signals = signals
+        cost_assumptions = {
+            "commission_bps": 0,
+            "slippage_bps": 0,
+            "spread_bps": 0,
+        }
+        cost_assumptions.update(costs)
         return engine.run(
             "AAPL",
             bars,
             "breakout",
-            commission_bps=0,
-            slippage_bps=0,
-            **costs,
+            **cost_assumptions,
         )
 
     no_cost = run_with_costs()
