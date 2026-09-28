@@ -8,6 +8,12 @@ on:
         description: Market session to reconcile
         required: true
         type: string
+      phase:
+        description: Session collection phase
+        required: true
+        type: choice
+        options: [open, close]
+        default: close
       symbols:
         description: Space-separated frozen symbol basket
         required: false
@@ -29,7 +35,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: market-session-data-${{ inputs.session }}
+  group: market-session-data-${{ inputs.session }}-${{ inputs.phase }}
   cancel-in-progress: false
 
 jobs:
@@ -47,6 +53,7 @@ jobs:
         shell: bash
         env:
           SESSION: ${{ inputs.session }}
+          PHASE: ${{ inputs.phase }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
@@ -56,10 +63,13 @@ jobs:
           fi
           LOCAL_HOUR="$(TZ=America/New_York date +'%H')"
           LOCAL_MINUTE="$(TZ=America/New_York date +'%M')"
-          case "$SESSION" in
-            premarket) TARGET_HOUR=09; TARGET_MINUTE=47 ;;
-            regular) TARGET_HOUR=16; TARGET_MINUTE=17 ;;
-            after_hours) TARGET_HOUR=20; TARGET_MINUTE=17 ;;
+          case "${SESSION}:${PHASE}" in
+            premarket:open) TARGET_HOUR=04; TARGET_MINUTE=07 ;;
+            regular:open) TARGET_HOUR=09; TARGET_MINUTE=37 ;;
+            after_hours:open) TARGET_HOUR=16; TARGET_MINUTE=07 ;;
+            premarket:close) TARGET_HOUR=09; TARGET_MINUTE=47 ;;
+            regular:close) TARGET_HOUR=16; TARGET_MINUTE=17 ;;
+            after_hours:close) TARGET_HOUR=20; TARGET_MINUTE=17 ;;
             *) echo "Unsupported session: $SESSION" >&2; exit 2 ;;
           esac
           if [ "$LOCAL_HOUR" = "$TARGET_HOUR" ] && [ $((10#$LOCAL_MINUTE)) -ge $((10#$TARGET_MINUTE)) ]; then
@@ -90,24 +100,26 @@ jobs:
         shell: bash
         env:
           SESSION: ${{ inputs.session }}
+          PHASE: ${{ inputs.phase }}
           SYMBOLS: ${{ inputs.symbols }}
         run: |
           set -euo pipefail
           SESSION_DATE="$(TZ=America/New_York date +'%Y-%m-%d')"
           OUTPUT_DIR="backend/data/cloud_shadow/market_sessions/${SESSION_DATE}"
-          OUTPUT="${OUTPUT_DIR}/${SESSION}-iex-${GITHUB_RUN_ID}.csv"
+          OUTPUT="${OUTPUT_DIR}/${SESSION}-${PHASE}-iex-${GITHUB_RUN_ID}.csv"
           mkdir -p "$OUTPUT_DIR"
           python scripts/collect_alpaca_session_data.py \
             --session "$SESSION" \
             --session-date "$SESSION_DATE" \
             --symbols $SYMBOLS \
             --feed iex \
+            --phase "$PHASE" \
             --output "$OUTPUT"
       - name: Upload immutable session dataset and receipt
         if: steps.schedule_gate.outputs.active == 'true' && always()
         uses: actions/upload-artifact@v4
         with:
-          name: market-session-${{ inputs.session }}-${{ github.run_id }}
+          name: market-session-${{ inputs.session }}-${{ inputs.phase }}-${{ github.run_id }}
           path: backend/data/cloud_shadow/market_sessions/**/*
           if-no-files-found: warn
           retention-days: 90
