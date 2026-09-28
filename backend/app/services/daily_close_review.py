@@ -201,6 +201,8 @@ def build_daily_close_review(
     rejections_by_horizon: Dict[str, Dict[str, int]] = defaultdict(
         lambda: defaultdict(int)
     )
+    input_rows_by_horizon = defaultdict(int)
+    scorable_rows_by_horizon = defaultdict(int)
     input_rows = 0
 
     for row in evidence:
@@ -212,6 +214,7 @@ def build_daily_close_review(
         actual = _actual_up(row.get("actual_up"))
         resolved_session = _session_date(row.get("resolved_at"))
         horizon = str(row.get("forecast_horizon") or "unknown")
+        input_rows_by_horizon[horizon] += 1
 
         rejection_reason = None
         if probability is None:
@@ -232,6 +235,7 @@ def build_daily_close_review(
             sector_context = None
             diagnostics["missing_sector_context_status"] += 1
 
+        scorable_rows_by_horizon[horizon] += 1
         normalized.append(
             {
                 "probability_up": probability,
@@ -292,6 +296,25 @@ def build_daily_close_review(
             "structural check; session filtering is not rejection"
         ),
     }
+    coverage_by_horizon = {
+        horizon: {
+            "input_rows": horizon_input_rows,
+            "structurally_scorable_rows": scorable_rows_by_horizon.get(
+                horizon, 0
+            ),
+            "rejected_unscorable_rows": (
+                horizon_input_rows
+                - scorable_rows_by_horizon.get(horizon, 0)
+            ),
+            "scorable_ratio": (
+                scorable_rows_by_horizon.get(horizon, 0)
+                / horizon_input_rows
+            ),
+        }
+        for horizon, horizon_input_rows in sorted(
+            input_rows_by_horizon.items()
+        )
+    }
     evidence_coverage = {
         "status": (
             "no_evidence" if input_rows == 0
@@ -335,6 +358,7 @@ def build_daily_close_review(
         },
         "diagnostics": dict(sorted(diagnostics.items())),
         "evidence_coverage": evidence_coverage,
+        "coverage_by_horizon": coverage_by_horizon,
         "rejection_breakdown": rejection_breakdown,
         "probability_scale_diagnostics": dict(
             sorted(probability_scale_diagnostics.items())
