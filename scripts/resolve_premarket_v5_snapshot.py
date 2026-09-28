@@ -81,8 +81,11 @@ def _cron_clock(schedule_cron: str) -> tuple[int, int]:
     return hour, minute
 
 
-def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None) -> SnapshotResolution:
+def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None, manual_current: bool = False) -> SnapshotResolution:
     reference = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+
+    if manual_current and schedule_cron:
+        raise ValueError('manual_current is incompatible with a scheduled cron slot')
 
     if schedule_cron:
         if schedule_cron in REGISTERED_CRON_SLOTS:
@@ -96,9 +99,15 @@ def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None) 
     else:
         # workflow_dispatch preserves the historical 09:15 ET behavior and never
         # masquerades as the scheduled recovery path.
-        snapshot, mode = "late", "manual"
+        snapshot, mode = ("current", "manual_current") if manual_current else ("late", "manual")
 
-    target_utc, target_et = _target_for_local_day(snapshot, reference=reference)
+    if manual_current:
+        # Capture the actual manual decision time, never a future registered slot.
+        # This is research-only: workflow_dispatch is always promotion-ineligible.
+        target_utc = reference.replace(second=0, microsecond=0)
+        target_et = target_utc.astimezone(NY)
+    else:
+        target_utc, target_et = _target_for_local_day(snapshot, reference=reference)
 
     if target_et.weekday() >= 5:
         return SnapshotResolution(False, "weekend", snapshot, mode, target_utc, target_et)
@@ -114,6 +123,8 @@ def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None) 
     reason = "registered_recovery" if mode == "recovery" else "registered_snapshot"
     if mode == "manual":
         reason = "manual_dispatch"
+    elif mode == "manual_current":
+        reason = "manual_current_research_only"
     return SnapshotResolution(True, reason, snapshot, mode, target_utc, target_et)
 
 
@@ -133,6 +144,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Resolve the pre-registered Premarket V5 cloud-shadow snapshot for a GitHub schedule slot.")
     parser.add_argument("--schedule-cron", default=None, help="Exact github.event.schedule string; omit for workflow_dispatch")
     parser.add_argument("--now", default=None, help="Testing/debug ISO timestamp; default is current UTC")
+    parser.add_argument("--manual-current", action="store_true", help="Manual research collection at the current minute, never forward eligible")
     parser.add_argument("--github-output", type=Path, default=None)
     args = parser.parse_args()
 
@@ -142,7 +154,7 @@ def main() -> int:
         if now.tzinfo is None:
             raise ValueError("--now must include a timezone offset")
 
-    resolution = resolve_snapshot(schedule_cron=args.schedule_cron or None, now=now)
+    resolution = resolve_snapshot(schedule_cron=args.schedule_cron or None, now=now, manual_current=args.manual_current)
     payload = {
         "active": resolution.active,
         "reason": resolution.reason,

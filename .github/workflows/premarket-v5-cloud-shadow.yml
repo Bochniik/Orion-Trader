@@ -5,6 +5,14 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
+      collection_mode:
+        description: "Manual collection time: current minute (research-only) or frozen 09:15 ET (research-only)"
+        required: true
+        default: current
+        type: choice
+        options:
+          - current
+          - registered_late
       symbols:
         description: "Space-separated symbols"
         required: false
@@ -34,9 +42,15 @@ jobs:
         shell: bash
         env:
           SCHEDULE_CRON: ${{ github.event.schedule }}
+          MANUAL_COLLECTION_MODE: ${{ inputs.collection_mode }}
         run: |
+          EXTRA_ARGS=()
+          if [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$MANUAL_COLLECTION_MODE" = 'current' ]; then
+            EXTRA_ARGS+=(--manual-current)
+          fi
           python scripts/resolve_premarket_v5_snapshot.py \
             --schedule-cron "$SCHEDULE_CRON" \
+            "${EXTRA_ARGS[@]}" \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Report inactive DST slot
