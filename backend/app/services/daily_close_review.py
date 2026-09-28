@@ -41,6 +41,9 @@ def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
     evidence = []
     for row in rows:
         item = dict(row)
+        item["probability_up"] = _stored_probability_to_unit(
+            item.get("probability_up")
+        )
         snapshot_json = item.pop("snapshot_json", None)
         try:
             snapshot = json.loads(snapshot_json) if snapshot_json else {}
@@ -51,6 +54,20 @@ def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
         )
         evidence.append(item)
     return evidence
+
+
+def _stored_probability_to_unit(value: Any) -> Optional[float]:
+    try:
+        probability = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(probability) or probability < 0.0:
+        return None
+    if probability <= 1.0:
+        return probability
+    if probability <= 100.0:
+        return probability / 100.0
+    return None
 
 
 def _sector_context_availability(snapshot: Any) -> Optional[str]:
