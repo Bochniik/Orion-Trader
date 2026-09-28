@@ -32,9 +32,9 @@ def test_scores_settled_evidence_and_horizons():
 def test_rejects_invalid_or_unsettled_rows_without_fabricating_metrics():
     report = build_daily_close_review(
         [
-            {"probability_up": 1.2, "actual_up": 1, "resolved_at": "2026-09-18T20:00:00Z"},
-            {"probability_up": 0.7, "actual_up": None, "resolved_at": "2026-09-18T20:00:00Z"},
-            {"probability_up": 0.7, "actual_up": 1, "resolved_at": "not-a-time"},
+            {"probability_up": 1.2, "actual_up": 1, "resolved_at": "2026-09-18T20:00:00Z", "forecast_horizon": "30m"},
+            {"probability_up": 0.7, "actual_up": None, "resolved_at": "2026-09-18T20:00:00Z", "forecast_horizon": "1h"},
+            {"probability_up": 0.7, "actual_up": 1, "resolved_at": "not-a-time", "forecast_horizon": "1h"},
         ],
         session_date="2026-09-18",
     )
@@ -51,6 +51,31 @@ def test_rejects_invalid_or_unsettled_rows_without_fabricating_metrics():
     assert report["evidence_coverage"]["structurally_scorable_rows"] == 0
     assert report["evidence_coverage"]["rejected_unscorable_rows"] == 3
     assert report["evidence_coverage"]["scorable_ratio"] == 0.0
+    assert report["rejection_breakdown"] == {
+        "total": 3,
+        "by_reason": {
+            "invalid_probability": 1,
+            "invalid_resolved_at": 1,
+            "missing_or_invalid_outcome": 1,
+        },
+        "by_horizon": {
+            "1h": {
+                "total": 2,
+                "by_reason": {
+                    "invalid_resolved_at": 1,
+                    "missing_or_invalid_outcome": 1,
+                },
+            },
+            "30m": {
+                "total": 1,
+                "by_reason": {"invalid_probability": 1},
+            },
+        },
+        "policy": (
+            "each rejected row is counted once under its first failing "
+            "structural check; session filtering is not rejection"
+        ),
+    }
 
 
 def test_uses_new_york_session_date_instead_of_utc_date():
@@ -73,6 +98,9 @@ def test_filters_rows_outside_requested_session():
     assert report["evidence_coverage"]["structurally_scorable_rows"] == 1
     assert report["evidence_coverage"]["selected_session_rows"] == 0
     assert report["evidence_coverage"]["outside_selected_session_rows"] == 1
+    assert report["rejection_breakdown"]["total"] == 0
+    assert report["rejection_breakdown"]["by_reason"] == {}
+    assert report["rejection_breakdown"]["by_horizon"] == {}
 
 
 def test_defaults_to_latest_settled_new_york_session_instead_of_all_history():
