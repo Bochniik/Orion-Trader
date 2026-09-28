@@ -13,6 +13,19 @@ def test_scores_settled_evidence_and_horizons():
     assert report["metrics"]["brier_score"] == 0.039999999999999994
     assert report["metrics"]["directional_accuracy"] == 1.0
     assert set(report["by_horizon"]) == {"30m", "1h"}
+    assert report["evidence_coverage"] == {
+        "status": "complete",
+        "input_rows": 2,
+        "structurally_scorable_rows": 2,
+        "rejected_unscorable_rows": 0,
+        "selected_session_rows": 2,
+        "outside_selected_session_rows": 0,
+        "scorable_ratio": 1.0,
+        "policy": (
+            "coverage is descriptive; outside-session rows are scorable but "
+            "excluded from selected-session metrics"
+        ),
+    }
     assert report["scoring_policy"] == "settled_evidence_only"
 
 
@@ -33,6 +46,11 @@ def test_rejects_invalid_or_unsettled_rows_without_fabricating_metrics():
         "invalid_resolved_at": 1,
         "missing_or_invalid_outcome": 1,
     }
+    assert report["evidence_coverage"]["status"] == "partial"
+    assert report["evidence_coverage"]["input_rows"] == 3
+    assert report["evidence_coverage"]["structurally_scorable_rows"] == 0
+    assert report["evidence_coverage"]["rejected_unscorable_rows"] == 3
+    assert report["evidence_coverage"]["scorable_ratio"] == 0.0
 
 
 def test_uses_new_york_session_date_instead_of_utc_date():
@@ -51,6 +69,10 @@ def test_filters_rows_outside_requested_session():
     )
     assert report["metrics"]["sample_size"] == 0
     assert report["diagnostics"]["outside_session"] == 1
+    assert report["evidence_coverage"]["status"] == "complete"
+    assert report["evidence_coverage"]["structurally_scorable_rows"] == 1
+    assert report["evidence_coverage"]["selected_session_rows"] == 0
+    assert report["evidence_coverage"]["outside_selected_session_rows"] == 1
 
 
 def test_defaults_to_latest_settled_new_york_session_instead_of_all_history():
