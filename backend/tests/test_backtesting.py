@@ -36,3 +36,19 @@ def test_backtest_validates_strategy_and_history():
         engine.run("AAPL", history([100] * 40), "sma_crossover", {"fast_period": 20, "slow_period": 10})
     with pytest.raises(ValueError, match="Allocation"):
         engine.run("AAPL", history([100] * 40), "breakout", {"allocation_percent": 0})
+
+
+def test_backtest_rejects_reversed_or_duplicate_bar_timestamps():
+    engine = BacktestEngine()
+    ordered = history([100] * 40)
+
+    reversed_history = ordered.iloc[::-1]
+    with pytest.raises(ValueError, match="strictly increasing unique"):
+        engine.run("AAPL", reversed_history, "breakout")
+
+    duplicate_history = ordered.copy()
+    duplicate_index = list(duplicate_history.index)
+    duplicate_index[-1] = duplicate_index[-2]
+    duplicate_history.index = duplicate_index
+    with pytest.raises(ValueError, match="strictly increasing unique"):
+        engine.run("AAPL", duplicate_history, "breakout")
