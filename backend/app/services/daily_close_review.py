@@ -197,8 +197,10 @@ def build_daily_close_review(
     normalized: List[Dict[str, Any]] = []
     diagnostics = defaultdict(int)
     probability_scale_diagnostics = defaultdict(int)
+    input_rows = 0
 
     for row in evidence:
+        input_rows += 1
         storage_scale = row.get("probability_storage_scale")
         if storage_scale in {"unit", "percent_normalized", "invalid"}:
             probability_scale_diagnostics[storage_scale] += 1
@@ -264,6 +266,28 @@ def build_daily_close_review(
         if size < MIN_SECTOR_CONTEXT_SLICE_SIZE
     ]
 
+    scorable_rows = len(normalized)
+    rejected_rows = input_rows - scorable_rows
+    evidence_coverage = {
+        "status": (
+            "no_evidence" if input_rows == 0
+            else "complete" if rejected_rows == 0
+            else "partial"
+        ),
+        "input_rows": input_rows,
+        "structurally_scorable_rows": scorable_rows,
+        "rejected_unscorable_rows": rejected_rows,
+        "selected_session_rows": len(accepted),
+        "outside_selected_session_rows": diagnostics.get("outside_session", 0),
+        "scorable_ratio": (
+            None if input_rows == 0 else scorable_rows / input_rows
+        ),
+        "policy": (
+            "coverage is descriptive; outside-session rows are scorable but "
+            "excluded from selected-session metrics"
+        ),
+    }
+
     return {
         "version": REVIEW_VERSION,
         "session_date": effective_session,
@@ -286,6 +310,7 @@ def build_daily_close_review(
             "promotion_eligible": False,
         },
         "diagnostics": dict(sorted(diagnostics.items())),
+        "evidence_coverage": evidence_coverage,
         "probability_scale_diagnostics": dict(
             sorted(probability_scale_diagnostics.items())
         ),
