@@ -41,8 +41,12 @@ def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
     evidence = []
     for row in rows:
         item = dict(row)
+        stored_probability = item.get("probability_up")
+        item["probability_storage_scale"] = _stored_probability_scale(
+            stored_probability
+        )
         item["probability_up"] = _stored_probability_to_unit(
-            item.get("probability_up")
+            stored_probability
         )
         snapshot_json = item.pop("snapshot_json", None)
         try:
@@ -54,6 +58,20 @@ def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
         )
         evidence.append(item)
     return evidence
+
+
+def _stored_probability_scale(value: Any) -> str:
+    try:
+        probability = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return "invalid"
+    if not math.isfinite(probability) or probability < 0.0:
+        return "invalid"
+    if probability <= 1.0:
+        return "unit"
+    if probability <= 100.0:
+        return "percent_normalized"
+    return "invalid"
 
 
 def _stored_probability_to_unit(value: Any) -> Optional[float]:
@@ -178,8 +196,12 @@ def build_daily_close_review(
     """Score settled evidence for one session; default to the latest settled session."""
     normalized: List[Dict[str, Any]] = []
     diagnostics = defaultdict(int)
+    probability_scale_diagnostics = defaultdict(int)
 
     for row in evidence:
+        storage_scale = row.get("probability_storage_scale")
+        if storage_scale in {"unit", "percent_normalized", "invalid"}:
+            probability_scale_diagnostics[storage_scale] += 1
         probability = _finite_probability(row.get("probability_up"))
         actual = _actual_up(row.get("actual_up"))
         resolved_session = _session_date(row.get("resolved_at"))
@@ -264,6 +286,13 @@ def build_daily_close_review(
             "promotion_eligible": False,
         },
         "diagnostics": dict(sorted(diagnostics.items())),
+        "probability_scale_diagnostics": dict(
+            sorted(probability_scale_diagnostics.items())
+        ),
+        "probability_scale_policy": (
+            "journal percentages normalized at read boundary; "
+            "unit-scale legacy rows preserved; unknown scales rejected"
+        ),
         "scoring_policy": "settled_evidence_only",
         "sector_slice_policy": (
             "explicit_point_in_time_status_only; unknown rows excluded from slices"
