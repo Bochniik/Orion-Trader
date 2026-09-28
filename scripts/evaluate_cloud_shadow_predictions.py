@@ -55,6 +55,8 @@ def horizon_minutes(label: str) -> int:
     if not match:
         raise ValueError(f"Unsupported horizon: {label}")
     value = int(match.group("value"))
+    if value <= 0:
+        raise ValueError(f"Horizon must be positive: {label}")
     return value if match.group("unit") == "m" else value * 60
 
 
