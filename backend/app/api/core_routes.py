@@ -408,6 +408,73 @@ def _informational_snapshot(ticker, company_name, research, mode):
     }
 
 
+
+def _premarket_forecast_projection(result):
+    """Project an existing premarket predictive signal into the core UI contract.
+
+    This is serialization only: no thresholds, probabilities or directions are
+    recalculated here. A below-gate signal remains WAIT, while its published
+    diagnostic confidence/window may still be shown as research evidence.
+    """
+    predictive = result.get("predictive_outlook") if isinstance(result, dict) else None
+    if not isinstance(predictive, dict):
+        return {
+            "forecast_available": False,
+            "forecast_actionable": False,
+            "opening_outlook": "WAIT",
+            "directional_conviction": None,
+            "forecast_horizon": None,
+            "forecast_target": None,
+        }
+
+    signals = predictive.get("signals")
+    if not isinstance(signals, dict):
+        signals = {}
+
+    labels = {
+        "open_5m": "OPEN -> FIRST 5 MIN",
+        "open_15m": "OPEN -> FIRST 15 MIN",
+        "open_30m": "OPEN -> FIRST 30 MIN",
+        "open_60m": "OPEN -> FIRST 60 MIN",
+    }
+    target = next((name for name in ("open_30m", "open_15m", "open_5m", "open_60m")
+                   if isinstance(signals.get(name), dict)), None)
+    signal = signals.get(target) if target else None
+    if not isinstance(signal, dict):
+        return {
+            "forecast_available": False,
+            "forecast_actionable": False,
+            "opening_outlook": "WAIT",
+            "directional_conviction": None,
+            "forecast_horizon": None,
+            "forecast_target": None,
+        }
+
+    confidence = signal.get("direction_confidence")
+    try:
+        conviction = float(confidence)
+        if not 0.0 <= conviction <= 1.0:
+            conviction = None
+    except (TypeError, ValueError, OverflowError):
+        conviction = None
+
+    available = conviction is not None
+    actionable = bool(signal.get("actionable")) and available
+    direction = str(signal.get("direction") or "").upper()
+    outlook = "UP BIAS" if actionable and direction == "UP" else (
+        "DOWN BIAS" if actionable and direction == "DOWN" else "WAIT"
+    )
+    return {
+        "forecast_available": available,
+        "forecast_actionable": actionable,
+        "opening_outlook": outlook,
+        "directional_conviction": round(conviction * 100.0, 2) if conviction is not None else None,
+        "forecast_horizon": labels.get(target),
+        "forecast_target": target,
+    }
+
+
+
 def _premarket_snapshot(ticker, request, company_name, research):
     try:
         from app.services.premarket_data_adapter import PremarketDataAdapter
@@ -450,6 +517,8 @@ def _premarket_snapshot(ticker, request, company_name, research):
             "fresh current premarket minute OHLCV is available."
         )
 
+    forecast = _premarket_forecast_projection(result)
+
     return {
         "ticker": ticker,
         "symbol": ticker,
@@ -476,6 +545,9 @@ def _premarket_snapshot(ticker, request, company_name, research):
         "reference_price": result.get("premarket_price") or nested.get("premarket_price"),
         "gap_pct": result.get("gap_pct") if result.get("gap_pct") is not None else nested.get("gap_pct"),
         "premarket": result,
+        "predictive_outlook": result.get("predictive_outlook"),
+        "feed": result.get("feed"),
+        **forecast,
         "evidence": research,
         "setup_summary": summary,
         "warnings": warnings,

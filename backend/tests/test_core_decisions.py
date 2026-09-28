@@ -526,3 +526,63 @@ def test_core_routes_inherit_auth_and_csrf(core_client, monkeypatch, tmp_path):
     assert core_client.get("/core/status").status_code == 200
     assert core_client.post("/core/today").status_code == 403
     assert core_client.post("/core/today", headers={"X-CSRF-Token": session["csrf_token"]}).status_code == 200
+
+
+def test_premarket_core_projection_exposes_existing_actionable_opening_forecast():
+    projected = api._premarket_forecast_projection({
+        "predictive_outlook": {
+            "available": True,
+            "actionable": True,
+            "signals": {
+                "open_30m": {
+                    "actionable": True,
+                    "direction": "UP",
+                    "direction_confidence": 0.634,
+                }
+            },
+        }
+    })
+    assert projected == {
+        "forecast_available": True,
+        "forecast_actionable": True,
+        "opening_outlook": "UP BIAS",
+        "directional_conviction": 63.4,
+        "forecast_horizon": "OPEN -> FIRST 30 MIN",
+        "forecast_target": "open_30m",
+    }
+
+
+def test_premarket_core_projection_keeps_below_gate_signal_as_wait_but_visible():
+    projected = api._premarket_forecast_projection({
+        "predictive_outlook": {
+            "available": True,
+            "actionable": False,
+            "signals": {
+                "open_30m": {
+                    "actionable": False,
+                    "direction": "NO_EDGE",
+                    "direction_confidence": 0.587,
+                    "reason": "below_validation_approved_gate",
+                }
+            },
+        }
+    })
+    assert projected["forecast_available"] is True
+    assert projected["forecast_actionable"] is False
+    assert projected["opening_outlook"] == "WAIT"
+    assert projected["directional_conviction"] == 58.7
+    assert projected["forecast_horizon"] == "OPEN -> FIRST 30 MIN"
+
+
+def test_premarket_core_projection_does_not_invent_forecast_without_signal():
+    projected = api._premarket_forecast_projection({
+        "predictive_outlook": {
+            "available": False,
+            "actionable": False,
+            "reason": "full_sip_minute_history_required",
+            "signals": {},
+        }
+    })
+    assert projected["forecast_available"] is False
+    assert projected["directional_conviction"] is None
+    assert projected["opening_outlook"] == "WAIT"
