@@ -9,10 +9,9 @@ on:
         required: true
         type: string
       phase:
-        description: Session collection phase
-        required: true
-        type: choice
-        options: [open, close]
+        description: Session collection phase (open probe or completed reconciliation)
+        required: false
+        type: string
         default: close
       symbols:
         description: Space-separated frozen symbol basket
@@ -26,6 +25,12 @@ on:
         required: true
         type: choice
         options: [premarket, regular, after_hours]
+      phase:
+        description: Session collection phase
+        required: true
+        type: choice
+        options: [open, close]
+        default: close
       symbols:
         description: Space-separated frozen symbol basket
         required: false
