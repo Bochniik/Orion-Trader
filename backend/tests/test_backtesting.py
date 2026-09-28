@@ -52,3 +52,55 @@ def test_backtest_rejects_reversed_or_duplicate_bar_timestamps():
     duplicate_history.index = duplicate_index
     with pytest.raises(ValueError, match="strictly increasing unique"):
         engine.run("AAPL", duplicate_history, "breakout")
+
+
+def test_backtest_rejects_non_finite_non_positive_or_inconsistent_ohlc():
+    engine = BacktestEngine()
+    valid = history([100] * 40)
+
+    invalid_histories = []
+
+    non_finite = valid.copy()
+    non_finite.iloc[0, non_finite.columns.get_loc("Open")] = float("inf")
+    invalid_histories.append(non_finite)
+
+    non_positive = valid.copy()
+    non_positive.iloc[0, non_positive.columns.get_loc("Low")] = 0
+    invalid_histories.append(non_positive)
+
+    inconsistent = valid.copy()
+    inconsistent.iloc[0, inconsistent.columns.get_loc("High")] = 99
+    invalid_histories.append(inconsistent)
+
+    for invalid in invalid_histories:
+        with pytest.raises(ValueError, match="finite, positive, internally consistent"):
+            engine.run("AAPL", invalid, "breakout")
+
+
+def test_backtest_uses_conservative_stop_first_policy_for_intrabar_conflict():
+    engine = BacktestEngine()
+    bars = history([100] * 40)
+    bars.iloc[2, bars.columns.get_loc("High")] = 120
+    bars.iloc[2, bars.columns.get_loc("Low")] = 80
+
+    def signals(frame, kind, parameters):
+        entry = pd.Series(False, index=frame.index)
+        entry.iloc[0] = True
+        return entry, pd.Series(False, index=frame.index)
+
+    engine._signals = signals
+    result = engine.run(
+        "AAPL",
+        bars,
+        "breakout",
+        {"stop_loss_percent": 10, "take_profit_percent": 10},
+        commission_bps=0,
+        slippage_bps=0,
+    )
+
+    assert result["trades"][0]["exit_reason"] == "stop_loss"
+    assert result["trades"][0]["exit_price"] == 90
+    assert (
+        result["assumptions"]["intrabar_stop_take_conflict"]
+        == "stop_loss_first_conservative"
+    )
