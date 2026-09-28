@@ -195,6 +195,7 @@ def main() -> int:
     parser.add_argument("--session-date", required=True, help="US market date YYYY-MM-DD")
     parser.add_argument("--symbols", nargs="+", required=True)
     parser.add_argument("--feed", choices=("iex", "sip"), default="iex")
+    parser.add_argument("--phase", choices=("open", "close"), default="close")
     parser.add_argument("--batch-size", type=int, default=10)
     parser.add_argument("--max-pages", type=int, default=100)
     parser.add_argument("--output", type=Path, required=True)
@@ -223,6 +224,17 @@ def main() -> int:
         if market_day:
             window = session_window_from_calendar(args.session, calendar_payload[0])
             start, end = utc_bounds(market_date, window)
+            if args.phase == "open":
+                # Opening probe: request only bars that can already exist.  This
+                # verifies feed availability without pretending the session is complete.
+                now_utc = datetime.now(timezone.utc)
+                start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+                session_end = datetime.fromisoformat(end.replace("Z", "+00:00"))
+                bounded_end = min(now_utc, session_end)
+                if bounded_end <= start_dt:
+                    end = start
+                else:
+                    end = bounded_end.isoformat().replace("+00:00", "Z")
             for symbol_batch in chunks(symbols, args.batch_size):
                 batch = alpaca_bars(
                     client,
@@ -251,6 +263,13 @@ def main() -> int:
         github_head_sha=os.getenv("GITHUB_SHA"),
         market_day=market_day,
     )
+    receipt["collection_phase"] = args.phase
+    if args.phase == "open":
+        # Opening probes are acquisition-health evidence only.  A partial
+        # session must never enter self-improvement as a completed dataset.
+        receipt["self_improvement_eligible"] = False
+        receipt["eligibility_reason"] = "session_open_probe" if receipt["row_count"] else "session_open_feed_not_ready"
+        receipt["valid"] = True
     receipt_path = args.output.with_suffix(".receipt.json")
     receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(receipt, sort_keys=True))
