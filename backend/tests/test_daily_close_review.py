@@ -40,6 +40,17 @@ def test_scores_settled_evidence_and_horizons():
             "scorable_ratio": 1.0,
         },
     }
+    assert report["horizon_attribution"] == {
+        "status": "complete",
+        "structurally_scorable_rows": 2,
+        "attributed_rows": 2,
+        "missing_or_blank_horizon_rows": 0,
+        "attribution_ratio": 1.0,
+        "policy": (
+            "unknown-horizon rows remain in overall settled metrics and are "
+            "reported in the unknown horizon bucket"
+        ),
+    }
     assert report["scoring_policy"] == "settled_evidence_only"
 
 
@@ -148,6 +159,53 @@ def test_horizon_coverage_uses_all_structural_inputs_as_denominator():
     assert report["rejection_breakdown"]["by_horizon"]["30m"] == {
         "total": 1,
         "by_reason": {"invalid_probability": 1},
+    }
+
+
+def test_horizon_attribution_audits_missing_and_blank_values():
+    report = build_daily_close_review(
+        [
+            {
+                "probability_up": 0.8,
+                "actual_up": 1,
+                "resolved_at": "2026-09-18T20:00:00Z",
+                "forecast_horizon": "30m",
+            },
+            {
+                "probability_up": 0.7,
+                "actual_up": 1,
+                "resolved_at": "2026-09-18T20:05:00Z",
+                "forecast_horizon": None,
+            },
+            {
+                "probability_up": 0.4,
+                "actual_up": 0,
+                "resolved_at": "2026-09-18T20:10:00Z",
+                "forecast_horizon": "   ",
+            },
+        ],
+        session_date="2026-09-18",
+    )
+
+    assert report["metrics"]["sample_size"] == 3
+    assert report["by_horizon"]["unknown"]["sample_size"] == 2
+    assert report["diagnostics"]["missing_forecast_horizon"] == 2
+    assert report["horizon_attribution"] == {
+        "status": "partial",
+        "structurally_scorable_rows": 3,
+        "attributed_rows": 1,
+        "missing_or_blank_horizon_rows": 2,
+        "attribution_ratio": 1 / 3,
+        "policy": (
+            "unknown-horizon rows remain in overall settled metrics and are "
+            "reported in the unknown horizon bucket"
+        ),
+    }
+    assert report["coverage_by_horizon"]["unknown"] == {
+        "input_rows": 2,
+        "structurally_scorable_rows": 2,
+        "rejected_unscorable_rows": 0,
+        "scorable_ratio": 1.0,
     }
 
 
