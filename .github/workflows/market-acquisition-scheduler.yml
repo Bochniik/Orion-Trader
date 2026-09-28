@@ -3,6 +3,14 @@ run-name: Market acquisition ${{ github.event_name }} ${{ github.event.schedule 
 
 on:
   schedule:
+    # Session-open acquisition probes. Register EDT + EST UTC equivalents;
+    # market-session-data-cloud gates on America/New_York wall clock.
+    - cron: "7 8 * * 1-5"
+    - cron: "7 9 * * 1-5"
+    - cron: "37 13 * * 1-5"
+    - cron: "37 14 * * 1-5"
+    - cron: "7 20 * * 1-5"
+    - cron: "7 21 * * 1-5"
     # Premarket V5 frozen decision timestamps 06:45 / 08:00 / 09:15 ET
     # plus the existing +10 minute recovery opportunities. Both EDT and EST
     # registrations are retained; the Premarket resolver activates only the
@@ -37,6 +45,30 @@ permissions:
   contents: read
 
 jobs:
+  premarket-session-open:
+    if: github.event.schedule == '7 8 * * 1-5' || github.event.schedule == '7 9 * * 1-5'
+    uses: ./.github/workflows/market-session-data-cloud.yml
+    with:
+      session: premarket
+      phase: open
+    secrets: inherit
+
+  regular-session-open:
+    if: github.event.schedule == '37 13 * * 1-5' || github.event.schedule == '37 14 * * 1-5'
+    uses: ./.github/workflows/market-session-data-cloud.yml
+    with:
+      session: regular
+      phase: open
+    secrets: inherit
+
+  after-hours-session-open:
+    if: github.event.schedule == '7 20 * * 1-5' || github.event.schedule == '7 21 * * 1-5'
+    uses: ./.github/workflows/market-session-data-cloud.yml
+    with:
+      session: after_hours
+      phase: open
+    secrets: inherit
+
   premarket-v5:
     if: >-
       github.event.schedule == '45 10 * * 1-5' ||
@@ -66,6 +98,7 @@ jobs:
     uses: ./.github/workflows/market-session-data-cloud.yml
     with:
       session: premarket
+      phase: close
     secrets: inherit
 
   regular-session-data:
@@ -75,6 +108,7 @@ jobs:
     uses: ./.github/workflows/market-session-data-cloud.yml
     with:
       session: regular
+      phase: close
     secrets: inherit
 
   after-hours-session-data:
@@ -84,4 +118,5 @@ jobs:
     uses: ./.github/workflows/market-session-data-cloud.yml
     with:
       session: after_hours
+      phase: close
     secrets: inherit
