@@ -74,6 +74,12 @@ def classify_forward_acquisition(
         return False, "collection_started_too_early", lag_minutes
     if lag_minutes > MAX_START_LAG_MINUTES:
         return False, "collection_started_too_late", lag_minutes
+    predictions = payload.get("predictions")
+    if not isinstance(predictions, list) or not any(
+        isinstance(row, dict) and row.get("available") is True and isinstance(row.get("forecasts"), dict) and row["forecasts"]
+        for row in predictions
+    ):
+        return False, "no_evaluable_predictions", lag_minutes
     return True, "scheduled_forward_window", lag_minutes
 
 
