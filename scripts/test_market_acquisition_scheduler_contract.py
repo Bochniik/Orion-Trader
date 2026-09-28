@@ -12,13 +12,14 @@ PREMARKET_CRONS = [
     "0 13 * * 1-5", "10 13 * * 1-5", "15 14 * * 1-5", "25 14 * * 1-5",
 ]
 REGULAR_CRON = "35 13-21 * * 1-5"
+OPEN_CRONS = ["7 8 * * 1-5", "7 9 * * 1-5", "37 13 * * 1-5", "37 14 * * 1-5", "7 20 * * 1-5", "7 21 * * 1-5"]
 SESSION_CRONS = {
     "premarket": ["47 13 * * 1-5", "47 14 * * 1-5"],
     "regular": ["17 20 * * 1-5", "17 21 * * 1-5"],
     "after_hours": ["17 0 * * 2-6", "17 1 * * 2-6"],
 }
 
-for cron in [*PREMARKET_CRONS, REGULAR_CRON, *(c for crons in SESSION_CRONS.values() for c in crons)]:
+for cron in [*OPEN_CRONS, *PREMARKET_CRONS, REGULAR_CRON, *(c for crons in SESSION_CRONS.values() for c in crons)]:
     needle = f'- cron: "{cron}"'
     assert scheduler.count(needle) == 1, f"missing or duplicate acquisition cron: {cron}"
 
@@ -28,7 +29,7 @@ for cron in PREMARKET_CRONS:
 assert "github.event.schedule != '35 13-21 * * 1-5'" not in scheduler
 assert "uses: ./.github/workflows/premarket-v5-cloud-shadow.yml" in scheduler
 assert "uses: ./.github/workflows/regular-hours-v3-1-cloud-shadow.yml" in scheduler
-assert scheduler.count("uses: ./.github/workflows/market-session-data-cloud.yml") == 3
+assert scheduler.count("uses: ./.github/workflows/market-session-data-cloud.yml") == 6
 assert 'timezone: "America/New_York"' not in scheduler
 
 for session, crons in SESSION_CRONS.items():
@@ -50,9 +51,12 @@ assert "retention-days: 90" in session_worker
 assert "Gate scheduled reconciliation on New York local time" in session_worker
 assert "TZ=America/New_York" in session_worker
 assert 'if [ "$EVENT_NAME" != "schedule" ]' in session_worker
-assert "premarket) TARGET_HOUR=09; TARGET_MINUTE=47" in session_worker
-assert "regular) TARGET_HOUR=16; TARGET_MINUTE=17" in session_worker
-assert "after_hours) TARGET_HOUR=20; TARGET_MINUTE=17" in session_worker
+assert "premarket:open) TARGET_HOUR=04; TARGET_MINUTE=07" in session_worker
+assert "regular:open) TARGET_HOUR=09; TARGET_MINUTE=37" in session_worker
+assert "after_hours:open) TARGET_HOUR=16; TARGET_MINUTE=07" in session_worker
+assert "premarket:close) TARGET_HOUR=09; TARGET_MINUTE=47" in session_worker
+assert "regular:close) TARGET_HOUR=16; TARGET_MINUTE=17" in session_worker
+assert "after_hours:close) TARGET_HOUR=20; TARGET_MINUTE=17" in session_worker
 assert "steps.schedule_gate.outputs.active == 'true'" in session_worker
 
 print("market acquisition scheduler contract: OK")
