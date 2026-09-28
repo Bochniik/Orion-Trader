@@ -360,7 +360,7 @@ class PremarketDataAdapter:
                 now=now,
             )
 
-            return self._analysis_payload(
+            payload = self._analysis_payload(
                 symbol=symbol,
                 analysis=analysis,
                 data_mode="iex_minute_history",
@@ -373,6 +373,67 @@ class PremarketDataAdapter:
                 news_score=news_score,
                 average_dollar_volume=average_dollar_volume,
             )
+
+            # The validated hierarchical directional model is SIP-trained and
+            # correctly refuses IEX input. Do not let the fresher IEX setup
+            # path short-circuit a model-compatible delayed SIP forecast.
+            predictive = payload.get("predictive_outlook") or {}
+            if predictive.get("reason") == "training_feed_mismatch_requires_sip":
+                try:
+                    predictive_sip_payload = self.broker.delayed_premarket_bars(
+                        user_id,
+                        [symbol],
+                        now=now,
+                        timeframe="1Min",
+                        safe_delay_seconds=960,
+                    )
+                    predictive_sip_rows = (
+                        (predictive_sip_payload.get("bars") or {}).get(symbol, [])
+                        if isinstance(predictive_sip_payload, dict)
+                        else []
+                    )
+                    predictive_sip_frame = alpaca_bars_to_frame(
+                        predictive_sip_rows
+                    )
+                    if (
+                        predictive_sip_frame is not None
+                        and len(predictive_sip_frame) >= 5
+                    ):
+                        predictive_as_of = predictive_sip_frame.index[-1]
+                        payload["predictive_outlook"] = (
+                            predict_gated_hierarchical_outlook(
+                                predictive_sip_frame,
+                                previous_close=analysis.get("previous_close"),
+                                feed="sip",
+                                as_of=predictive_as_of,
+                            )
+                        )
+                        payload["predictive_feed"] = "sip"
+                        payload["predictive_delayed"] = True
+                        payload["predictive_as_of"] = (
+                            predictive_as_of.isoformat()
+                        )
+                        payload["predictive_delay_minutes_nominal"] = (
+                            predictive_sip_payload.get(
+                                "delay_minutes_nominal"
+                            )
+                        )
+                        payload["warnings"] = list(dict.fromkeys(
+                            list(payload.get("warnings") or [])
+                            + list(
+                                predictive_sip_payload.get("limitations") or []
+                            )
+                        ))
+                except Exception as exc:
+                    payload["warnings"] = list(dict.fromkeys(
+                        list(payload.get("warnings") or [])
+                        + [
+                            "Model-compatible delayed SIP forecast fallback "
+                            f"unavailable: {type(exc).__name__}"
+                        ]
+                    ))
+
+            return payload
 
         # --------------------------------------------------------------
         # 2) Delayed historical consolidated SIP minute history.
