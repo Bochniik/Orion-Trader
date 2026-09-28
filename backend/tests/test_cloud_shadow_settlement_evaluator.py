@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 import pandas as pd
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,6 +29,15 @@ def test_horizon_parser_supports_both_engines():
     assert module.horizon_minutes("30m") == 30
     assert module.horizon_minutes("1h") == 60
     assert module.horizon_minutes("5h") == 300
+
+
+def test_horizon_parser_rejects_zero_length_targets():
+    with pytest.raises(ValueError, match="must be positive"):
+        module.horizon_minutes("0m")
+    with pytest.raises(ValueError, match="must be positive"):
+        module.horizon_minutes("premarket_0m")
+    with pytest.raises(ValueError, match="must be positive"):
+        module.horizon_minutes("0h")
 
 
 def test_premarket_regime_boundaries_are_dst_safe_and_match_sampling_cadence():
