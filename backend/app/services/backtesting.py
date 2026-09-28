@@ -6,6 +6,7 @@ import pandas as pd
 
 class BacktestEngine:
     KINDS = {"sma_crossover", "rsi_reversion", "breakout"}
+    LIQUIDITY_TIERS = {"A", "B", "C", "D"}
 
     @staticmethod
     def _rsi(close, period):
@@ -136,6 +137,65 @@ class BacktestEngine:
         metrics = self._metrics(curve, trades, initial_cash, final_equity)
         buy_hold = (final_close / float(frame["Close"].iloc[0]) - 1) * 100
         return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "intrabar_stop_take_conflict": "stop_loss_first_conservative", "gap_execution": "opening_price_before_intrabar_range", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "spread_bps": spread_bps, "spread_application": "half_spread_each_side", "per_side_friction_bps": per_side_friction_bps, "initial_cash": initial_cash}}
+
+    def run_liquidity_spread_scenarios(
+        self,
+        ticker,
+        history,
+        kind,
+        spread_scenarios,
+        parameters=None,
+        initial_cash=10_000,
+        commission_bps=5,
+        slippage_bps=5,
+    ):
+        if not isinstance(spread_scenarios, dict) or not spread_scenarios:
+            raise ValueError("Liquidity spread scenarios require a non-empty tier mapping")
+
+        normalized_scenarios = {}
+        for raw_tier, raw_spread_bps in spread_scenarios.items():
+            tier = str(raw_tier).strip().upper()
+            if tier not in self.LIQUIDITY_TIERS:
+                raise ValueError("Liquidity spread scenario tiers must be A, B, C, or D")
+            if tier in normalized_scenarios:
+                raise ValueError("Liquidity spread scenario tiers must be unique")
+            try:
+                spread_bps = float(raw_spread_bps)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Liquidity spread values must be numeric") from exc
+            if not math.isfinite(spread_bps) or not 0 <= spread_bps <= 1_000:
+                raise ValueError(
+                    "Liquidity spread values must be finite and between 0 and 1000 bps"
+                )
+            normalized_scenarios[tier] = spread_bps
+
+        scenarios = {}
+        for tier, spread_bps in normalized_scenarios.items():
+            result = self.run(
+                ticker,
+                history,
+                kind,
+                parameters=parameters,
+                initial_cash=initial_cash,
+                commission_bps=commission_bps,
+                slippage_bps=slippage_bps,
+                spread_bps=spread_bps,
+            )
+            scenarios[tier] = {
+                "spread_bps": spread_bps,
+                "metrics": result["metrics"],
+                "completed_trades": result["metrics"]["completed_trades"],
+                "open_position": result["open_position"],
+            }
+
+        return {
+            "ticker": str(ticker).upper(),
+            "kind": kind,
+            "evidence_type": "hypothetical_cost_sensitivity",
+            "historical_quotes_used": False,
+            "promotion_eligible": False,
+            "scenarios": scenarios,
+        }
 
     def _signals(self, frame, kind, parameters):
         close = frame["Close"]
