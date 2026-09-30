@@ -2,6 +2,8 @@ name: Market acquisition scheduler
 run-name: Market acquisition ${{ github.event_name }} ${{ github.event.schedule || 'manual' }}
 
 on:
+  issue_comment:
+    types: [created]
   schedule:
     # Session-open acquisition probes. Register EDT + EST UTC equivalents;
     # market-session-data-cloud gates on America/New_York wall clock.
@@ -45,6 +47,61 @@ permissions:
   contents: read
 
 jobs:
+  external-premarket-open:
+    if: github.event_name == 'issue_comment' && github.event.issue.number == 313 && github.actor == 'Bochniik' && github.event.comment.body == '/orion-acquire premarket-open'
+    uses: ./.github/workflows/market-session-data-cloud.yml
+    with:
+      session: premarket
+      phase: open
+    secrets: inherit
+
+  external-premarket-early:
+    if: github.event_name == 'issue_comment' && github.event.issue.number == 313 && github.actor == 'Bochniik' && github.event.comment.body == '/orion-acquire premarket early'
+    uses: ./.github/workflows/premarket-v5-cloud-shadow.yml
+    with:
+      external_snapshot: early
+      external_trigger_created_at: ${{ github.event.comment.created_at }}
+      external_actor: ${{ github.actor }}
+      external_issue: 313
+    secrets: inherit
+
+  external-premarket-mid:
+    if: github.event_name == 'issue_comment' && github.event.issue.number == 313 && github.actor == 'Bochniik' && github.event.comment.body == '/orion-acquire premarket mid'
+    uses: ./.github/workflows/premarket-v5-cloud-shadow.yml
+    with:
+      external_snapshot: mid
+      external_trigger_created_at: ${{ github.event.comment.created_at }}
+      external_actor: ${{ github.actor }}
+      external_issue: 313
+    secrets: inherit
+
+  external-premarket-late:
+    if: github.event_name == 'issue_comment' && github.event.issue.number == 313 && github.actor == 'Bochniik' && github.event.comment.body == '/orion-acquire premarket late'
+    uses: ./.github/workflows/premarket-v5-cloud-shadow.yml
+    with:
+      external_snapshot: late
+      external_trigger_created_at: ${{ github.event.comment.created_at }}
+      external_actor: ${{ github.actor }}
+      external_issue: 313
+    secrets: inherit
+
+  external-regular-open:
+    if: github.event_name == 'issue_comment' && github.event.issue.number == 313 && github.actor == 'Bochniik' && github.event.comment.body == '/orion-acquire regular-open'
+    uses: ./.github/workflows/market-session-data-cloud.yml
+    with:
+      session: regular
+      phase: open
+    secrets: inherit
+
+  external-regular-hours:
+    if: github.event_name == 'issue_comment' && github.event.issue.number == 313 && github.actor == 'Bochniik' && github.event.comment.body == '/orion-acquire regular'
+    uses: ./.github/workflows/regular-hours-v3-1-cloud-shadow.yml
+    with:
+      external_trigger_created_at: ${{ github.event.comment.created_at }}
+      external_actor: ${{ github.actor }}
+      external_issue: 313
+    secrets: inherit
+
   premarket-session-open:
     if: github.event.schedule == '7 8 * * 1-5' || github.event.schedule == '7 9 * * 1-5'
     uses: ./.github/workflows/market-session-data-cloud.yml
