@@ -113,7 +113,7 @@ jobs:
         run: python -m pip install -r backend/requirements.txt
 
       - name: Verify cloud credentials are configured
-        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
+        if: steps.target.outputs.active == 'true' && ((github.event_name != 'schedule' && github.event_name != 'issue_comment') || steps.claim.outputs.collect_allowed == 'true')
         shell: bash
         run: |
           if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
@@ -122,7 +122,7 @@ jobs:
           fi
 
       - name: Run and attest premarket v5 shadow prediction
-        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
+        if: steps.target.outputs.active == 'true' && ((github.event_name != 'schedule' && github.event_name != 'issue_comment') || steps.claim.outputs.collect_allowed == 'true')
         shell: bash
         run: |
           SYMBOLS="${{ github.event.inputs.symbols }}"
@@ -152,7 +152,7 @@ jobs:
             --external-issue "${{ inputs.external_issue }}"
 
       - name: Upload immutable shadow evidence
-        if: always() && steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
+        if: always() && steps.target.outputs.active == 'true' && ((github.event_name != 'schedule' && github.event_name != 'issue_comment') || steps.claim.outputs.collect_allowed == 'true')
         uses: actions/upload-artifact@v4
         with:
           name: premarket-v5-shadow-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}
