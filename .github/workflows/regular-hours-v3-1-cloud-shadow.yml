@@ -3,6 +3,19 @@ run-name: Regular-hours V3.1 ${{ github.event_name }} ${{ github.event.schedule 
 
 on:
   workflow_call:
+    inputs:
+      external_trigger_created_at:
+        required: false
+        type: string
+        default: ""
+      external_actor:
+        required: false
+        type: string
+        default: ""
+      external_issue:
+        required: false
+        type: number
+        default: 0
   workflow_dispatch:
     inputs:
       symbols:
@@ -58,7 +71,10 @@ jobs:
             --event-name "$GITHUB_EVENT_NAME" \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
-            --github-head-sha "$GITHUB_SHA"
+            --github-head-sha "$GITHUB_SHA" \
+            --external-trigger-created-at "${{ inputs.external_trigger_created_at }}" \
+            --external-actor "${{ inputs.external_actor }}" \
+            --external-issue "${{ inputs.external_issue }}"
       - name: Upload immutable shadow evidence and delivery diagnostics
         if: always()
         uses: actions/upload-artifact@v4

@@ -29,8 +29,12 @@ for cron in PREMARKET_CRONS:
 assert "github.event.schedule != '35 13-21 * * 1-5'" not in scheduler
 assert "uses: ./.github/workflows/premarket-v5-cloud-shadow.yml" in scheduler
 assert "uses: ./.github/workflows/regular-hours-v3-1-cloud-shadow.yml" in scheduler
-assert scheduler.count("uses: ./.github/workflows/market-session-data-cloud.yml") == 6
+assert scheduler.count("uses: ./.github/workflows/market-session-data-cloud.yml") == 8
 assert 'timezone: "America/New_York"' not in scheduler
+assert "issue_comment:" in scheduler
+assert "github.event.issue.number == 313" in scheduler
+for command in ("/orion-acquire premarket-open", "/orion-acquire premarket early", "/orion-acquire premarket mid", "/orion-acquire premarket late", "/orion-acquire regular-open", "/orion-acquire regular"):
+    assert command in scheduler
 
 for session, crons in SESSION_CRONS.items():
     for cron in crons:

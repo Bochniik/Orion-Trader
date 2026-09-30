@@ -105,3 +105,40 @@ def test_double_finalization_is_rejected() -> None:
     finalized, _ = _finalize(_payload())
     with pytest.raises(ForwardArtifactError, match="already finalized"):
         _finalize(finalized)
+
+
+def test_external_regular_scheduler_transport_is_forward_eligible_when_timed_and_authorized() -> None:
+    finalized, manifest = finalize_payload(
+        _payload(),
+        collection_started_at="2026-09-14T14:35:20Z",
+        collection_completed_at="2026-09-14T14:35:29Z",
+        event_name="issue_comment",
+        run_id=456,
+        run_attempt=1,
+        github_head_sha="b" * 40,
+        external_trigger_created_at="2026-09-14T14:35:05Z",
+        external_actor="Bochniik",
+        external_issue=313,
+    )
+    provenance = finalized["acquisition_provenance"]
+    assert provenance["forward_eligible"] is True
+    assert provenance["external_scheduler_verified"] is True
+    assert manifest["forward_eligible"] is True
+
+
+def test_external_regular_scheduler_transport_fails_closed_outside_registered_slot() -> None:
+    finalized, manifest = finalize_payload(
+        _payload(),
+        collection_started_at="2026-09-14T14:36:20Z",
+        collection_completed_at="2026-09-14T14:36:29Z",
+        event_name="issue_comment",
+        run_id=457,
+        run_attempt=1,
+        github_head_sha="c" * 40,
+        external_trigger_created_at="2026-09-14T14:36:05Z",
+        external_actor="Bochniik",
+        external_issue=313,
+    )
+    assert finalized["acquisition_provenance"]["forward_eligible"] is False
+    assert finalized["acquisition_provenance"]["external_scheduler_verified"] is False
+    assert manifest["forward_eligible"] is False
