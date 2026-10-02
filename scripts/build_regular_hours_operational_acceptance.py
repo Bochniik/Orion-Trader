@@ -95,7 +95,7 @@ def build_operational_acceptance_report(
     runs: list[dict[str, Any]],
     artifacts: list[dict[str, Any]],
     artifact_payloads: dict[str, dict[str, Any]],
-    match_window_minutes: float = 60.0,
+    match_window_minutes: float = 20.0,
 ) -> dict[str, Any]:
     reconciliation = reconcile_day(session_date=session_date, runs=runs, match_window_minutes=match_window_minutes)
     evidence = build_evidence_by_run_id(runs=runs, artifacts=artifacts, artifact_payloads=artifact_payloads)
@@ -123,7 +123,7 @@ def main() -> int:
     parser.add_argument("--artifacts-json", type=Path, required=True)
     parser.add_argument("--artifact-payloads-json", type=Path, required=True, help="JSON object keyed by GitHub artifact id containing extracted prediction payloads")
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--match-window-minutes", type=float, default=60.0)
+    parser.add_argument("--match-window-minutes", type=float, default=20.0)
     args = parser.parse_args()
 
     runs_payload = json.loads(args.runs_json.read_text(encoding="utf-8"))
