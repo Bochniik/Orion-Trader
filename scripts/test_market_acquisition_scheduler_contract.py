@@ -14,8 +14,8 @@ PREMARKET_CRONS = [
 REGULAR_CRON = "35,45,55 13-20 * * 1-5"
 OPEN_CRONS = ["7 8 * * 1-5", "7 9 * * 1-5", "37 13 * * 1-5", "37 14 * * 1-5", "7 20 * * 1-5", "7 21 * * 1-5"]
 SESSION_CRONS = {
-    "premarket": ["47 13 * * 1-5", "47 14 * * 1-5"],
-    "regular": ["17 20 * * 1-5", "17 21 * * 1-5"],
+    "premarket": ["47 13 * * 1-5", "57 13 * * 1-5", "7 14 * * 1-5", "47 14 * * 1-5", "57 14 * * 1-5", "7 15 * * 1-5"],
+    "regular": ["17 20 * * 1-5", "27 20 * * 1-5", "37 20 * * 1-5", "17 21 * * 1-5", "27 21 * * 1-5", "37 21 * * 1-5"],
     "after_hours": ["17 0 * * 2-6", "17 1 * * 2-6"],
 }
 
@@ -52,15 +52,17 @@ assert "retention-days: 90" in session_worker
 # Scheduled reconciliation must be guarded by the actual New York wall clock so
 # the inactive EDT/EST duplicate cannot collect an incomplete session. Manual
 # workflow_dispatch remains intentionally available for research/backfills.
-assert "Gate scheduled reconciliation on New York local time" in session_worker
+assert "Gate scheduled reconciliation on New York target window" in session_worker
 assert "TZ=America/New_York" in session_worker
 assert 'if [ "$EVENT_NAME" != "schedule" ]' in session_worker
-assert "premarket:open) TARGET_HOUR=04; TARGET_MINUTE=07" in session_worker
-assert "regular:open) TARGET_HOUR=09; TARGET_MINUTE=37" in session_worker
-assert "after_hours:open) TARGET_HOUR=16; TARGET_MINUTE=07" in session_worker
-assert "premarket:close) TARGET_HOUR=09; TARGET_MINUTE=47" in session_worker
-assert "regular:close) TARGET_HOUR=16; TARGET_MINUTE=17" in session_worker
-assert "after_hours:close) TARGET_HOUR=20; TARGET_MINUTE=17" in session_worker
+assert '("premarket", "open"): time(4, 7)' in session_worker
+assert '("regular", "open"): time(9, 37)' in session_worker
+assert '("after_hours", "open"): time(16, 7)' in session_worker
+assert '("premarket", "close"): time(9, 47)' in session_worker
+assert '("regular", "close"): time(16, 17)' in session_worker
+assert '("after_hours", "close"): time(20, 17)' in session_worker
+assert "market-session-success-" in session_worker
+assert "lag <= 20.0" in session_worker
 assert "steps.schedule_gate.outputs.active == 'true'" in session_worker
 
 print("market acquisition scheduler contract: OK")
