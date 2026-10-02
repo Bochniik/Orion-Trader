@@ -69,13 +69,14 @@ def audit_schedule_delivery(session_date: date, workflow_runs: list[dict[str, An
             slots.append(SlotDelivery(slot, target.isoformat().replace("+00:00", "Z"), "run_missing", None, None, None, ()))
             continue
 
-        created, primary = candidates[0]
+        successful = [(created, run) for created, run in candidates if str(run.get("conclusion") or "") == "success"]
+        created, primary = successful[0] if successful else candidates[0]
         primary_id = int(primary["id"])
-        used_run_ids.add(primary_id)
-        duplicate_ids = tuple(int(run["id"]) for _, run in candidates[1:])
-        used_run_ids.update(duplicate_ids)
+        all_ids = tuple(int(run["id"]) for _, run in candidates)
+        used_run_ids.update(all_ids)
+        duplicate_ids = tuple(run_id for run_id in all_ids if run_id != primary_id)
         conclusion = str(primary.get("conclusion") or "") or None
-        status = "run_created_success" if conclusion == "success" else "run_created_collector_failed"
+        status = "run_created_success" if successful else "run_created_collector_failed"
         lag = round((created - target).total_seconds() / 60.0, 6)
         slots.append(SlotDelivery(slot, target.isoformat().replace("+00:00", "Z"), status, primary_id, conclusion, lag, duplicate_ids))
 
