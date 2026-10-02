@@ -11,7 +11,7 @@ PREMARKET_CRONS = [
     "15 13 * * 1-5", "25 13 * * 1-5", "45 11 * * 1-5", "55 11 * * 1-5",
     "0 13 * * 1-5", "10 13 * * 1-5", "15 14 * * 1-5", "25 14 * * 1-5",
 ]
-REGULAR_CRON = "35 13-21 * * 1-5"
+REGULAR_CRON = "35,45,55 13-20 * * 1-5"
 OPEN_CRONS = ["7 8 * * 1-5", "7 9 * * 1-5", "37 13 * * 1-5", "37 14 * * 1-5", "7 20 * * 1-5", "7 21 * * 1-5"]
 SESSION_CRONS = {
     "premarket": ["47 13 * * 1-5", "47 14 * * 1-5"],
@@ -26,7 +26,7 @@ for cron in [*OPEN_CRONS, *PREMARKET_CRONS, REGULAR_CRON, *(c for crons in SESSI
 for cron in PREMARKET_CRONS:
     assert f"github.event.schedule == '{cron}'" in scheduler
 
-assert "github.event.schedule != '35 13-21 * * 1-5'" not in scheduler
+assert "github.event.schedule != '35,45,55 13-20 * * 1-5'" not in scheduler
 assert "uses: ./.github/workflows/premarket-v5-cloud-shadow.yml" in scheduler
 assert "uses: ./.github/workflows/regular-hours-v3-1-cloud-shadow.yml" in scheduler
 assert scheduler.count("uses: ./.github/workflows/market-session-data-cloud.yml") == 8
@@ -64,3 +64,8 @@ assert "after_hours:close) TARGET_HOUR=20; TARGET_MINUTE=17" in session_worker
 assert "steps.schedule_gate.outputs.active == 'true'" in session_worker
 
 print("market acquisition scheduler contract: OK")
+
+assert "resolve_regular_hours_collection.py" in (WORKFLOWS / "regular-hours-v3-1-cloud-shadow.yml").read_text(encoding="utf-8")
+assert "regular-hours-slot-" in (WORKFLOWS / "regular-hours-v3-1-cloud-shadow.yml").read_text(encoding="utf-8")
+assert 'cron: "5,15,25,35,45,55 8-11 * * 1-5"' in (WORKFLOWS / "early-premarket-observational.yml").read_text(encoding="utf-8")
+assert "early-premarket-slot-" in (WORKFLOWS / "early-premarket-observational.yml").read_text(encoding="utf-8")
