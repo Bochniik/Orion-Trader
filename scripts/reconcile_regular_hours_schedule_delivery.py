@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 NY = ZoneInfo("America/New_York")
 SLOT_TIMES_ET = tuple(time(hour, 35) for hour in range(9, 16))
-DEFAULT_MATCH_WINDOW_MINUTES = 60.0
+DEFAULT_MATCH_WINDOW_MINUTES = 20.0
 CONTRACT = "orion-regular-hours-daily-schedule-reconciliation-v1"
 
 
@@ -57,34 +57,32 @@ def reconcile_day(
             if slot <= run["_observed_at"] <= slot + window
         ]
 
-    run_to_slots: dict[int, list[int]] = {}
-    for slot_index, run_indexes in candidates.items():
-        for run_index in run_indexes:
-            run_to_slots.setdefault(run_index, []).append(slot_index)
-
     matched_run_indexes: set[int] = set()
     slot_reports: list[dict[str, Any]] = []
     for slot_index, slot in enumerate(slots):
         run_indexes = candidates[slot_index]
-        unambiguous = [index for index in run_indexes if len(run_to_slots.get(index, [])) == 1]
-        if len(run_indexes) == 1 and len(unambiguous) == 1:
-            run_index = unambiguous[0]
+        ordered = sorted(run_indexes, key=lambda index: scheduled[index]["_observed_at"])
+        successful = [index for index in ordered if str(scheduled[index].get("conclusion") or "") == "success"]
+
+        if successful:
+            run_index = successful[0]
             run = scheduled[run_index]
-            matched_run_indexes.add(run_index)
+            matched_run_indexes.update(ordered)
             status = "matched"
             run_id = run.get("id")
             delay = (run["_observed_at"] - slot).total_seconds() / 60.0
-            reason = "single scheduled run falls only within this slot's forward match window"
-        elif not run_indexes:
+            reason = "at least one scheduled delivery in the retry window completed successfully"
+        elif ordered:
+            matched_run_indexes.update(ordered)
+            status = "failed"
+            run_id = None
+            delay = None
+            reason = "scheduled delivery attempts existed in the retry window but none completed successfully"
+        else:
             status = "missing"
             run_id = None
             delay = None
-            reason = "no scheduled run falls within this slot's forward match window"
-        else:
-            status = "ambiguous"
-            run_id = None
-            delay = None
-            reason = "candidate runs overlap multiple slots or multiple runs compete for this slot"
+            reason = "no scheduled run falls within this slot's retry window"
 
         slot_reports.append(
             {
@@ -93,7 +91,8 @@ def reconcile_day(
                 "status": status,
                 "matched_run_id": run_id,
                 "delivery_delay_minutes": None if delay is None else round(delay, 3),
-                "candidate_run_ids": [scheduled[index].get("id") for index in run_indexes],
+                "candidate_run_ids": [scheduled[index].get("id") for index in ordered],
+                "successful_candidate_run_ids": [scheduled[index].get("id") for index in successful],
                 "reason": reason,
             }
         )
@@ -107,7 +106,7 @@ def reconcile_day(
         for index, run in enumerate(scheduled)
         if index not in matched_run_indexes
     ]
-    counts = {status: sum(item["status"] == status for item in slot_reports) for status in ("matched", "missing", "ambiguous")}
+    counts = {status: sum(item["status"] == status for item in slot_reports) for status in ("matched", "missing", "failed")}
     return {
         "contract": CONTRACT,
         "session_date_et": session_date.isoformat(),
@@ -116,8 +115,8 @@ def reconcile_day(
         "counts": counts,
         "slots": slot_reports,
         "unmatched_scheduled_runs": unmatched_runs,
-        "healthy": counts["missing"] == 0 and counts["ambiguous"] == 0,
-        "warning": "Matching uses run creation time as delivery evidence, never as proof of the originating cron occurrence. Ambiguous mappings remain unresolved rather than being guessed.",
+        "healthy": counts["missing"] == 0 and counts["failed"] == 0,
+        "warning": "Matching uses run creation time as delivery evidence. Retry windows are intentionally capped below the one-hour slot spacing, and a slot is healthy when any attempt in its window succeeds.",
     }
 
 
