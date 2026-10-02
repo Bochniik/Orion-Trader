@@ -44,7 +44,7 @@ def test_market_workflow_cadence_contracts_remain_registered():
     for cron in expected_premarket_crons:
         assert scheduler.count(cron) == 1
 
-    assert scheduler.count('cron: "35 13-21 * * 1-5"') == 1
+    assert scheduler.count('cron: "35,45,55 13-20 * * 1-5"') == 1
     assert "workflow_call:" in premarket
     assert "workflow_call:" in regular
     assert "  schedule:" not in premarket
