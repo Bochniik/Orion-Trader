@@ -47,7 +47,8 @@ def reconcile_day(
 ) -> dict[str, Any]:
     slots = expected_slots_utc(session_date)
     scheduled = _scheduled_runs(runs)
-    window = timedelta(minutes=match_window_minutes)
+    effective_match_window_minutes = min(float(match_window_minutes), DEFAULT_MATCH_WINDOW_MINUTES)
+    window = timedelta(minutes=effective_match_window_minutes)
 
     candidates: dict[int, list[int]] = {}
     for slot_index, slot in enumerate(slots):
@@ -110,7 +111,8 @@ def reconcile_day(
     return {
         "contract": CONTRACT,
         "session_date_et": session_date.isoformat(),
-        "match_window_minutes": match_window_minutes,
+        "match_window_minutes": effective_match_window_minutes,
+        "requested_match_window_minutes": match_window_minutes,
         "slot_count": len(slots),
         "counts": counts,
         "slots": slot_reports,
