@@ -8,6 +8,15 @@ from pathlib import Path
 from typing import Any, Mapping
 
 CONTRACT = "orion-adaptive-challenger-registry-v1"
+LIFECYCLE_CONTRACT = "orion-signal-lifecycle-v1"
+LIFECYCLE_TRANSITIONS = {
+    "proposed": {"shadow", "rejected"},
+    "shadow": {"eligible", "rejected"},
+    "eligible": {"promoted", "rejected"},
+    "promoted": {"retired"},
+    "rejected": {"retired"},
+    "retired": set(),
+}
 REQUIRED_PROTOCOL_FIELDS = (
     "hypothesis",
     "change_summary",
@@ -116,6 +125,72 @@ def validate_registration(payload: Mapping[str, Any]) -> dict[str, Any]:
     if registered > cutoff:
         raise ValueError("candidate registration occurred after forward cutoff")
     return dict(payload)
+
+
+
+def _lifecycle_event_hash(event: Mapping[str, Any]) -> str:
+    material = {key: value for key, value in event.items() if key != "event_sha256"}
+    return _sha256(material)
+
+
+def append_lifecycle_event(
+    registration: Mapping[str, Any],
+    history: list[Mapping[str, Any]],
+    *,
+    to_status: str,
+    reason_code: str,
+    occurred_at_utc: str,
+    evidence_sha256: str | None = None,
+) -> list[dict[str, Any]]:
+    validated = validate_registration(registration)
+    status = str(to_status).strip().lower()
+    reason = str(reason_code).strip()
+    if status not in LIFECYCLE_TRANSITIONS:
+        raise ValueError("unsupported lifecycle status")
+    if not reason:
+        raise ValueError("reason_code is required")
+    occurred = _parse_utc(occurred_at_utc, field="occurred_at_utc")
+    normalized = [dict(event) for event in history]
+    previous_hash = None
+    previous_time = None
+    current_status = None
+    for event in normalized:
+        if event.get("contract") != LIFECYCLE_CONTRACT:
+            raise ValueError("unsupported lifecycle event contract")
+        if event.get("candidate_id") != validated["candidate_id"]:
+            raise ValueError("lifecycle candidate_id mismatch")
+        if event.get("previous_event_sha256") != previous_hash:
+            raise ValueError("lifecycle hash chain mismatch")
+        if event.get("event_sha256") != _lifecycle_event_hash(event):
+            raise ValueError("lifecycle event integrity mismatch")
+        event_time = _parse_utc(event.get("occurred_at_utc"), field="occurred_at_utc")
+        if previous_time is not None and event_time <= previous_time:
+            raise ValueError("lifecycle events must be strictly chronological")
+        previous_hash = event["event_sha256"]
+        previous_time = event_time
+        current_status = str(event.get("to_status") or "").lower()
+    if previous_time is not None and occurred <= previous_time:
+        raise ValueError("new lifecycle event must be later than prior event")
+    if current_status is None:
+        if status != "proposed":
+            raise ValueError("first lifecycle event must be proposed")
+        from_status = None
+    else:
+        if status not in LIFECYCLE_TRANSITIONS.get(current_status, set()):
+            raise ValueError(f"invalid lifecycle transition: {current_status} -> {status}")
+        from_status = current_status
+    event = {
+        "contract": LIFECYCLE_CONTRACT,
+        "candidate_id": validated["candidate_id"],
+        "occurred_at_utc": occurred.isoformat(),
+        "from_status": from_status,
+        "to_status": status,
+        "reason_code": reason,
+        "evidence_sha256": str(evidence_sha256).strip() or None if evidence_sha256 is not None else None,
+        "previous_event_sha256": previous_hash,
+    }
+    event["event_sha256"] = _lifecycle_event_hash(event)
+    return normalized + [event]
 
 
 def assert_forward_evidence_eligible(
