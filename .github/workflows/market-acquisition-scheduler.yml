@@ -33,12 +33,21 @@ on:
     # delivery opportunities. The reusable worker resolves the ET slot and
     # skips retries once a successful slot marker exists.
     - cron: "35,45,55 13-20 * * 1-5"
-    # Completed-session reconciliation. GitHub cron is UTC, so register both
-    # EDT and EST equivalents; the called workflow gates on New York local time.
+    # Completed-session reconciliation with retry windows. Premarket and
+    # regular-hours close collections get target/+10m/+20m opportunities in
+    # both EDT and EST. The called workflow deduplicates successful slots.
     - cron: "47 13 * * 1-5"
+    - cron: "57 13 * * 1-5"
+    - cron: "7 14 * * 1-5"
     - cron: "47 14 * * 1-5"
+    - cron: "57 14 * * 1-5"
+    - cron: "7 15 * * 1-5"
     - cron: "17 20 * * 1-5"
+    - cron: "27 20 * * 1-5"
+    - cron: "37 20 * * 1-5"
     - cron: "17 21 * * 1-5"
+    - cron: "27 21 * * 1-5"
+    - cron: "37 21 * * 1-5"
     # 20:17 ET lands on the following UTC day.
     - cron: "17 0 * * 2-6"
     - cron: "17 1 * * 2-6"
@@ -152,7 +161,11 @@ jobs:
   premarket-session-data:
     if: >-
       github.event.schedule == '47 13 * * 1-5' ||
-      github.event.schedule == '47 14 * * 1-5'
+      github.event.schedule == '57 13 * * 1-5' ||
+      github.event.schedule == '7 14 * * 1-5' ||
+      github.event.schedule == '47 14 * * 1-5' ||
+      github.event.schedule == '57 14 * * 1-5' ||
+      github.event.schedule == '7 15 * * 1-5'
     uses: ./.github/workflows/market-session-data-cloud.yml
     with:
       session: premarket
@@ -162,7 +175,11 @@ jobs:
   regular-session-data:
     if: >-
       github.event.schedule == '17 20 * * 1-5' ||
-      github.event.schedule == '17 21 * * 1-5'
+      github.event.schedule == '27 20 * * 1-5' ||
+      github.event.schedule == '37 20 * * 1-5' ||
+      github.event.schedule == '17 21 * * 1-5' ||
+      github.event.schedule == '27 21 * * 1-5' ||
+      github.event.schedule == '37 21 * * 1-5'
     uses: ./.github/workflows/market-session-data-cloud.yml
     with:
       session: regular
