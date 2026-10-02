@@ -735,7 +735,13 @@ export default function TodayView(props) {
               </div>
             </div>
 
-            <div className="orion-score-area">
+            <div className={`orion-score-area ${analysisBusy ? "is-loading" : ""}`} aria-busy={analysisBusy ? "true" : undefined}>
+              {analysisBusy && (
+                <div className="orion-score-loading-bars" role="status" aria-label="Orion Score is loading">
+                  <i /><i /><i />
+                  <span className="sr-only">Orion Score is loading</span>
+                </div>
+              )}
               <div
                 className="orion-score-ring"
                 style={{
