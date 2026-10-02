@@ -890,3 +890,58 @@
     grid-template-columns: 76px minmax(0, 1fr);
   }
 }
+
+
+/* Orion Score loading telemetry: indeterminate bars reflect engine activity
+   without implying a fabricated percentage of model completion. */
+.dashboard-orion-card .orion-score-area {
+  position: relative;
+}
+
+.dashboard-orion-card .orion-score-loading-bars {
+  position: absolute;
+  z-index: 3;
+  inset: auto 7px -3px 7px;
+  height: 4px;
+  display: grid;
+  grid-template-columns: 1.15fr .8fr .55fr;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.dashboard-orion-card .orion-score-loading-bars i {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 122, 26, .12);
+  box-shadow: inset 0 0 0 1px rgba(255, 148, 71, .08);
+}
+
+.dashboard-orion-card .orion-score-loading-bars i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 46%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(255, 122, 26, .96), rgba(255, 177, 92, .72), transparent);
+  box-shadow: 0 0 10px rgba(255, 122, 26, .36);
+  animation: orion-score-loading-sweep 1.05s ease-in-out infinite;
+}
+
+.dashboard-orion-card .orion-score-loading-bars i:nth-child(2)::after { animation-delay: .12s; }
+.dashboard-orion-card .orion-score-loading-bars i:nth-child(3)::after { animation-delay: .24s; }
+
+@keyframes orion-score-loading-sweep {
+  from { transform: translateX(-115%); }
+  to { transform: translateX(230%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-orion-card .orion-score-loading-bars i::after {
+    animation: none;
+    width: 100%;
+    opacity: .72;
+  }
+}
