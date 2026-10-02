@@ -9,12 +9,14 @@ on:
         required: false
         default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
   schedule:
-    # Broad DST-safe envelope. The resolver activates only the preregistered
-    # 04:05/04:35/05:05/05:35/06:05/06:35 America/New_York slots and rejects
-    # inactive EDT/EST duplicates and deliveries more than 20 minutes late.
-    - cron: "5,35 8-11 * * 1-5"
+    # Redundant DST-safe envelope. Each preregistered 04:05/04:35/05:05/05:35/
+    # 06:05/06:35 America/New_York slot gets up to three delivery opportunities
+    # (target, +10m, +20m). A success-marker dedupe gate below makes retries
+    # idempotent, so only the first successful attempt collects data.
+    - cron: "5,15,25,35,45,55 8-11 * * 1-5"
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -38,8 +40,27 @@ jobs:
         run: |
           python scripts/resolve_early_premarket_observation.py --github-output "$GITHUB_OUTPUT"
 
+      - name: Check for prior successful collection of this slot
+        id: dedupe
+        if: steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
+        shell: bash
+        env:
+          SESSION_DATE: ${{ steps.target.outputs.session_date }}
+          TARGET_SLOT: ${{ steps.target.outputs.slot }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          MARKER="early-premarket-slot-${SESSION_DATE}-${TARGET_SLOT}"
+          COUNT="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${MARKER}&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | length')"
+          if [ "${COUNT}" -gt 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Successful artifact already exists for ${SESSION_DATE} ${TARGET_SLOT}; retry is idempotently skipped."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Export resolved slot identity
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
         shell: bash
         env:
           TARGET_SLOT: ${{ steps.target.outputs.slot }}
@@ -74,18 +95,18 @@ jobs:
           echo "Resolved slot: ${{ steps.target.outputs.slot }}"
 
       - uses: actions/setup-python@v5
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
       - name: Install focused collection dependencies
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
         run: python -m pip install httpx python-dotenv
 
       - name: Verify existing Alpaca data credentials
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
         shell: bash
         run: |
           if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
@@ -121,7 +142,7 @@ jobs:
           echo "completed=$COLLECTION_COMPLETED_AT_UTC" >> "$GITHUB_OUTPUT"
 
       - name: Write observational-only provenance
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
         shell: bash
         env:
           CSV_PATH: ${{ steps.collect.outputs.csv }}
@@ -176,8 +197,17 @@ jobs:
           print(json.dumps({"status": "observed", "row_count": len(rows), "csv_sha256": digest}, sort_keys=True))
           PY
 
+      - name: Publish successful slot marker
+        if: success() && steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: early-premarket-slot-${{ steps.target.outputs.session_date }}-${{ steps.target.outputs.slot }}
+          path: ${{ runner.temp }}/early-premarket-run-identity.txt
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Upload immutable observational evidence
-        if: always() && steps.target.outputs.active == 'true'
+        if: always() && steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: early-premarket-observation-${{ steps.target.outputs.slot }}-${{ github.run_id }}
