@@ -24,6 +24,7 @@ on:
         default: "AAPL MSFT NVDA AMZN META GOOGL TSLA AMD SPY QQQ"
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -36,14 +37,61 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve retry-safe regular-hours collection slot
+        id: target
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            python scripts/resolve_regular_hours_collection.py --github-output "$GITHUB_OUTPUT"
+          else
+            echo "active=true" >> "$GITHUB_OUTPUT"
+            echo "reason=manual_or_external_trigger" >> "$GITHUB_OUTPUT"
+            echo "session_date=$(TZ=America/New_York date +%F)" >> "$GITHUB_OUTPUT"
+            echo "slot=manual" >> "$GITHUB_OUTPUT"
+            echo "target_et=" >> "$GITHUB_OUTPUT"
+            echo "target_utc=" >> "$GITHUB_OUTPUT"
+            echo "lag_minutes=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for prior successful collection of this slot
+        id: dedupe
+        if: github.event_name == 'schedule' && steps.target.outputs.active == 'true'
+        shell: bash
+        env:
+          SESSION_DATE: ${{ steps.target.outputs.session_date }}
+          TARGET_SLOT: ${{ steps.target.outputs.slot }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          MARKER="regular-hours-slot-${SESSION_DATE}-${TARGET_SLOT}"
+          COUNT="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${MARKER}&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | length')"
+          if [ "${COUNT}" -gt 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Successful regular-hours artifact already exists for ${SESSION_DATE} ${TARGET_SLOT}; retry skipped."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report inactive or already-completed slot
+        if: steps.target.outputs.active != 'true' || steps.dedupe.outputs.exists == 'true'
+        run: |
+          echo "active=${{ steps.target.outputs.active }} reason=${{ steps.target.outputs.reason }} slot=${{ steps.target.outputs.slot }} dedupe=${{ steps.dedupe.outputs.exists }}"
+
       - uses: actions/setup-python@v5
+        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.dedupe.outputs.exists != 'true')
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - name: Install backend dependencies
+        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.dedupe.outputs.exists != 'true')
         run: python -m pip install -r backend/requirements.txt
       - name: Audit schedule delivery
+        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.dedupe.outputs.exists != 'true')
         shell: bash
         run: |
           python scripts/audit_regular_hours_schedule_delivery.py \
@@ -51,6 +99,8 @@ jobs:
             --scheduled-cron "${{ github.event.schedule }}" \
             --output backend/data/cloud_shadow/regular_hours_v3_1/schedule-delivery-${{ github.run_id }}.json
       - name: Run and attest regular-hours V3.1 shadow prediction
+        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.dedupe.outputs.exists != 'true')
+        id: collect
         shell: bash
         run: |
           set -euo pipefail
@@ -75,8 +125,30 @@ jobs:
             --external-trigger-created-at "${{ inputs.external_trigger_created_at }}" \
             --external-actor "${{ inputs.external_actor }}" \
             --external-issue "${{ inputs.external_issue }}"
+      - name: Write successful slot marker
+        if: success() && github.event_name == 'schedule' && steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
+        shell: bash
+        run: |
+          printf '%s\n' \
+            "session_date=${{ steps.target.outputs.session_date }}" \
+            "slot_et=${{ steps.target.outputs.slot }}" \
+            "target_et=${{ steps.target.outputs.target_et }}" \
+            "target_utc=${{ steps.target.outputs.target_utc }}" \
+            "github_run_id=$GITHUB_RUN_ID" \
+            "github_run_attempt=$GITHUB_RUN_ATTEMPT" \
+            > "$RUNNER_TEMP/regular-hours-success.txt"
+
+      - name: Publish successful slot marker
+        if: success() && github.event_name == 'schedule' && steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: regular-hours-slot-${{ steps.target.outputs.session_date }}-${{ steps.target.outputs.slot }}
+          path: ${{ runner.temp }}/regular-hours-success.txt
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Upload immutable shadow evidence and delivery diagnostics
-        if: always()
+        if: always() && steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.dedupe.outputs.exists != 'true')
         uses: actions/upload-artifact@v4
         with:
           name: regular-hours-v3-1-shadow-${{ github.run_id }}
