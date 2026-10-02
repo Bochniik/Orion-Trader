@@ -61,3 +61,22 @@ def test_audit_has_no_expected_slots_on_nyse_holiday() -> None:
     assert report["trading_day"] is False
     assert report["expected_slots"] == 0
     assert report["healthy"] is True
+
+
+def test_failed_primary_is_recovered_by_successful_retry() -> None:
+    report = audit_schedule_delivery(
+        date(2026, 9, 22),
+        [
+            _run(1, "2026-09-22T08:05:10Z", "failure"),
+            _run(2, "2026-09-22T08:15:10Z", "success"),
+            _run(3, "2026-09-22T08:35:10Z"),
+            _run(4, "2026-09-22T09:05:10Z"),
+            _run(5, "2026-09-22T09:35:10Z"),
+            _run(6, "2026-09-22T10:05:10Z"),
+            _run(7, "2026-09-22T10:35:10Z"),
+        ],
+    )
+    assert report["healthy"] is True
+    assert report["slots"][0]["run_id"] == 2
+    assert report["slots"][0]["status"] == "run_created_success"
+    assert 1 in report["slots"][0]["duplicate_run_ids"]
