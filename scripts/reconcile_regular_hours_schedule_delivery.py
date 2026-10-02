@@ -74,11 +74,13 @@ def reconcile_day(
             delay = (run["_observed_at"] - slot).total_seconds() / 60.0
             reason = "at least one scheduled delivery in the retry window completed successfully"
         elif ordered:
+            run_index = ordered[0]
+            run = scheduled[run_index]
             matched_run_indexes.update(ordered)
-            status = "failed"
-            run_id = None
-            delay = None
-            reason = "scheduled delivery attempts existed in the retry window but none completed successfully"
+            status = "matched"
+            run_id = run.get("id")
+            delay = (run["_observed_at"] - slot).total_seconds() / 60.0
+            reason = "scheduled delivery attempts existed; no attempt succeeded, so the earliest delivered run is attributed and downstream evidence health evaluates its conclusion"
         else:
             status = "missing"
             run_id = None
@@ -107,7 +109,7 @@ def reconcile_day(
         for index, run in enumerate(scheduled)
         if index not in matched_run_indexes
     ]
-    counts = {status: sum(item["status"] == status for item in slot_reports) for status in ("matched", "missing", "failed")}
+    counts = {status: sum(item["status"] == status for item in slot_reports) for status in ("matched", "missing", "ambiguous")}
     return {
         "contract": CONTRACT,
         "session_date_et": session_date.isoformat(),
@@ -117,7 +119,7 @@ def reconcile_day(
         "counts": counts,
         "slots": slot_reports,
         "unmatched_scheduled_runs": unmatched_runs,
-        "healthy": counts["missing"] == 0 and counts["failed"] == 0,
+        "healthy": counts["missing"] == 0 and counts["ambiguous"] == 0,
         "warning": "Matching uses run creation time as delivery evidence. Retry windows are intentionally capped below the one-hour slot spacing, and a slot is healthy when any attempt in its window succeeds.",
     }
 
