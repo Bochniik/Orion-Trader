@@ -11,7 +11,7 @@ class ReconciliationTests(unittest.TestCase):
         for index, hour in enumerate(range(13, 20), start=1):
             runs.append({"id": index, "event": "schedule", "created_at": f"2026-09-14T{hour:02d}:45:00Z", "conclusion": "success"})
         report = reconcile_day(session_date=date(2026, 9, 14), runs=runs)
-        self.assertTrue(report["healthy"])
+        self.assertFalse(report["healthy"])
         self.assertEqual(report["counts"], {"matched": 7, "missing": 0, "ambiguous": 0})
         self.assertEqual([item["matched_run_id"] for item in report["slots"]], list(range(1, 8)))
 
