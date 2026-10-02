@@ -742,27 +742,6 @@ export default function TodayView(props) {
                   <span className="sr-only">Orion Score is loading</span>
                 </div>
               )}
-              <div
-                className="orion-score-ring"
-                style={{
-                  "--orion-score-progress": `${Math.max(
-                    0,
-                    Math.min(100, Number(animatedOrionScore ?? 0))
-                  )}%`,
-                }}
-              >
-                <div>
-                  <strong>
-                    {analysisBusy
-                      ? "..."
-                      : isClosedSession || isAfterHours
-                        ? "N/A"
-                        : displayNumber(animatedOrionScore)}
-                  </strong>
-                  <span>/100</span>
-                </div>
-              </div>
-
               <div className="orion-score-metrics">
                 <div>
                   <span>

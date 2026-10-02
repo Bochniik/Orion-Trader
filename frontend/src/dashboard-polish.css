@@ -983,3 +983,14 @@
 @media (prefers-reduced-motion: reduce) {
   .dashboard-orion-card .orion-metric-progress i { transition: none; }
 }
+
+
+/* Dashboard Orion Analysis no longer displays the standalone /100 score ring.
+   Let the evidence metrics use the full card width. */
+.dashboard-orion-card .orion-score-area {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.dashboard-orion-card .orion-score-metrics {
+  width: 100%;
+}
