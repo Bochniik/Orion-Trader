@@ -781,6 +781,11 @@ export default function TodayView(props) {
                           ? "PAUSED"
                           : displayNumber(animatedAdjustedScore)}
                   </strong>
+                  {!isPremarket && !isClosedSession && !isAfterHours && (
+                    <div className="orion-metric-progress adjusted" aria-hidden="true">
+                      <i style={{ width: `${riskWidth(animatedAdjustedScore)}%` }} />
+                    </div>
+                  )}
                 </div>
 
                 <div className="orion-probability-grid">
@@ -806,6 +811,11 @@ export default function TodayView(props) {
                               ? "AFTER HOURS"
                               : displayProbability(animatedUpProbability)}
                     </strong>
+                    {!isPremarket && !isClosedSession && !isAfterHours && (
+                      <div className="orion-metric-progress up" aria-hidden="true">
+                        <i style={{ width: `${riskWidth(animatedUpProbability)}%` }} />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -828,6 +838,11 @@ export default function TodayView(props) {
                             ? "RESEARCH ONLY"
                             : displayProbability(animatedDownProbability)}
                     </strong>
+                    {!isPremarket && !isClosedSession && !isAfterHours && (
+                      <div className="orion-metric-progress down" aria-hidden="true">
+                        <i style={{ width: `${riskWidth(animatedDownProbability)}%` }} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
