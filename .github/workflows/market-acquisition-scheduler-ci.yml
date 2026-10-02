@@ -4,11 +4,18 @@ on:
   pull_request:
     paths:
       - ".github/workflows/market-acquisition-scheduler.yml"
+      - ".github/workflows/early-premarket-observational.yml"
       - ".github/workflows/premarket-v5-cloud-shadow.yml"
       - ".github/workflows/regular-hours-v3-1-cloud-shadow.yml"
       - ".github/workflows/market-session-data-cloud.yml"
       - ".github/workflows/market-acquisition-scheduler-ci.yml"
       - "scripts/test_market_acquisition_scheduler_contract.py"
+      - "scripts/resolve_regular_hours_collection.py"
+      - "backend/tests/test_resolve_regular_hours_collection.py"
+      - "scripts/audit_premarket_schedule_delivery.py"
+      - "backend/tests/test_audit_premarket_schedule_delivery.py"
+      - "scripts/reconcile_regular_hours_schedule_delivery.py"
+      - "scripts/test_regular_hours_schedule_reconciliation.py"
   workflow_dispatch:
 
 permissions:
