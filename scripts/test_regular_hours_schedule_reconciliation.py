@@ -24,14 +24,33 @@ class ReconciliationTests(unittest.TestCase):
         self.assertEqual(report["slots"][1]["status"], "missing")
         self.assertFalse(report["healthy"])
 
-    def test_boundary_run_is_ambiguous_not_guessed(self):
-        # 14:35 is both exactly 60m after 13:35 and exactly the next slot.
-        runs = [{"id": 9, "event": "schedule", "created_at": "2026-09-14T14:35:00Z"}]
+    def test_next_slot_boundary_belongs_only_to_next_slot(self):
+        runs = [{"id": 9, "event": "schedule", "created_at": "2026-09-14T14:35:00Z", "conclusion": "success"}]
         report = reconcile_day(session_date=date(2026, 9, 14), runs=runs)
-        self.assertEqual(report["slots"][0]["status"], "ambiguous")
-        self.assertEqual(report["slots"][1]["status"], "ambiguous")
-        self.assertIn(9, report["slots"][0]["candidate_run_ids"])
+        self.assertEqual(report["slots"][0]["status"], "missing")
+        self.assertEqual(report["slots"][1]["status"], "matched")
+        self.assertNotIn(9, report["slots"][0]["candidate_run_ids"])
         self.assertIn(9, report["slots"][1]["candidate_run_ids"])
+
+    def test_failed_primary_is_recovered_by_successful_retry(self):
+        runs = [
+            {"id": 1, "event": "schedule", "created_at": "2026-09-14T13:35:00Z", "conclusion": "failure"},
+            {"id": 2, "event": "schedule", "created_at": "2026-09-14T13:45:00Z", "conclusion": "success"},
+        ]
+        report = reconcile_day(session_date=date(2026, 9, 14), runs=runs)
+        self.assertEqual(report["slots"][0]["status"], "matched")
+        self.assertEqual(report["slots"][0]["matched_run_id"], 2)
+        self.assertEqual(report["slots"][0]["candidate_run_ids"], [1, 2])
+
+    def test_all_attempts_failed_still_records_delivered_slot_for_evidence_health(self):
+        runs = [
+            {"id": 1, "event": "schedule", "created_at": "2026-09-14T13:35:00Z", "conclusion": "failure"},
+            {"id": 2, "event": "schedule", "created_at": "2026-09-14T13:45:00Z", "conclusion": "cancelled"},
+        ]
+        report = reconcile_day(session_date=date(2026, 9, 14), runs=runs)
+        self.assertEqual(report["slots"][0]["status"], "matched")
+        self.assertEqual(report["slots"][0]["matched_run_id"], 1)
+        self.assertFalse(report["healthy"])
 
     def test_manual_dispatch_is_ignored(self):
         runs = [{"id": 99, "event": "workflow_dispatch", "created_at": "2026-09-14T13:40:00Z"}]
