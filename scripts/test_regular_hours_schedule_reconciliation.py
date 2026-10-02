@@ -11,7 +11,7 @@ class ReconciliationTests(unittest.TestCase):
         for index, hour in enumerate(range(13, 20), start=1):
             runs.append({"id": index, "event": "schedule", "created_at": f"2026-09-14T{hour:02d}:45:00Z", "conclusion": "success"})
         report = reconcile_day(session_date=date(2026, 9, 14), runs=runs)
-        self.assertFalse(report["healthy"])
+        self.assertTrue(report["healthy"])
         self.assertEqual(report["counts"], {"matched": 7, "missing": 0, "ambiguous": 0})
         self.assertEqual([item["matched_run_id"] for item in report["slots"]], list(range(1, 8)))
 
@@ -50,7 +50,7 @@ class ReconciliationTests(unittest.TestCase):
         report = reconcile_day(session_date=date(2026, 9, 14), runs=runs)
         self.assertEqual(report["slots"][0]["status"], "matched")
         self.assertEqual(report["slots"][0]["matched_run_id"], 1)
-        self.assertTrue(report["healthy"])
+        self.assertFalse(report["healthy"])
 
     def test_manual_dispatch_is_ignored(self):
         runs = [{"id": 99, "event": "workflow_dispatch", "created_at": "2026-09-14T13:40:00Z"}]
