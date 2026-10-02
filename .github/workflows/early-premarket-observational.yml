@@ -42,7 +42,7 @@ jobs:
 
       - name: Check for prior successful collection of this slot
         id: dedupe
-        if: steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
+        if: steps.target.outputs.active == 'true'
         shell: bash
         env:
           SESSION_DATE: ${{ steps.target.outputs.session_date }}
@@ -115,7 +115,7 @@ jobs:
           fi
 
       - name: Collect raw early-premarket observation
-        if: steps.target.outputs.active == 'true'
+        if: steps.target.outputs.active == 'true' && steps.dedupe.outputs.exists != 'true'
         id: collect
         shell: bash
         run: |
