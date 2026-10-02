@@ -945,3 +945,41 @@
     opacity: .72;
   }
 }
+
+
+/* Value bars for completed Orion metrics. Widths come only from returned
+   Adjusted Score / Up Probability / Down Probability values. */
+.dashboard-orion-card .orion-metric-progress {
+  width: 100%;
+  height: 3px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .055);
+}
+
+.dashboard-orion-card .orion-metric-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 420ms cubic-bezier(.2,.8,.2,1);
+}
+
+.dashboard-orion-card .orion-metric-progress.adjusted i {
+  background: linear-gradient(90deg, rgba(255,122,26,.48), rgba(255,158,68,.98));
+  box-shadow: 0 0 9px rgba(255,122,26,.24);
+}
+
+.dashboard-orion-card .orion-metric-progress.up i {
+  background: linear-gradient(90deg, rgba(61,214,145,.44), rgba(61,231,151,.96));
+  box-shadow: 0 0 9px rgba(61,214,145,.18);
+}
+
+.dashboard-orion-card .orion-metric-progress.down i {
+  background: linear-gradient(90deg, rgba(255,91,91,.42), rgba(255,104,104,.96));
+  box-shadow: 0 0 9px rgba(255,91,91,.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-orion-card .orion-metric-progress i { transition: none; }
+}
