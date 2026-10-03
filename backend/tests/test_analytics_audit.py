@@ -16,14 +16,22 @@ def test_unified_audit_passes_only_with_complete_explicit_evidence():
 def test_unified_audit_fails_closed_when_required_section_is_missing():
     evidence = _passing_evidence()
     del evidence["execution_backtest"]
-
     report = build_unified_audit_report(evidence)
-
     assert report["status"] == "INSUFFICIENT_DATA"
     assert report["decision"] == "NO_TRADE"
     assert report["promotion_eligible"] is False
     assert "execution_backtest:INSUFFICIENT_DATA" in report["diagnostics"]
     assert "execution_backtest:missing_audit_evidence" in report["diagnostics"]
+
+
+def test_unified_audit_requires_causal_and_point_in_time_provenance():
+    for section in ("causal_news", "promotion_evaluator", "point_in_time_universe"):
+        evidence = _passing_evidence()
+        del evidence[section]
+        report = build_unified_audit_report(evidence)
+        assert report["decision"] == "NO_TRADE"
+        assert report["promotion_eligible"] is False
+        assert f"{section}:INSUFFICIENT_DATA" in report["diagnostics"]
 
 
 def test_unified_audit_preserves_failure_diagnostics_without_fabricating_metrics():
@@ -32,9 +40,7 @@ def test_unified_audit_preserves_failure_diagnostics_without_fabricating_metrics
         "status": "FAIL",
         "diagnostics": ["challenger_did_not_beat_baseline"],
     }
-
     report = build_unified_audit_report(evidence)
-
     assert report["decision"] == "NO_TRADE"
     assert "untouched_test_benchmark:FAIL" in report["diagnostics"]
     assert "untouched_test_benchmark:challenger_did_not_beat_baseline" in report["diagnostics"]

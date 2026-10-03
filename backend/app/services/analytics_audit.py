@@ -1,9 +1,4 @@
-"""Deterministic fail-closed aggregation for analytical audit evidence.
-
-This module deliberately does not calculate research metrics.  It only combines
-already-produced evidence so a missing or failed critical section can never be
-silently interpreted as approval.
-"""
+"""Deterministic fail-closed aggregation for analytical audit evidence."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,10 +7,13 @@ from typing import Any, Mapping, Sequence
 REQUIRED_SECTIONS = (
     "causal_validation",
     "experiment_lineage",
+    "causal_news",
     "signal_registry",
+    "promotion_evaluator",
     "auxiliary_models",
     "untouched_test_benchmark",
     "execution_backtest",
+    "point_in_time_universe",
 )
 
 
@@ -38,12 +36,7 @@ def build_unified_audit_report(
     *,
     required_sections: Sequence[str] = REQUIRED_SECTIONS,
 ) -> dict[str, Any]:
-    """Aggregate audit evidence without inventing missing measurements.
-
-    PASS is possible only when every required section explicitly reports PASS.
-    Any missing, malformed, failed, or insufficient section makes the overall
-    decision NO_TRADE and promotion_eligible False.
-    """
+    """Aggregate evidence without inventing missing measurements."""
     sections: list[AuditSection] = []
     diagnostics: list[str] = []
 
@@ -67,11 +60,7 @@ def build_unified_audit_report(
         "promotion_eligible": complete,
         "required_sections": list(required_sections),
         "sections": [
-            {
-                "name": section.name,
-                "status": section.status,
-                "diagnostics": list(section.diagnostics),
-            }
+            {"name": section.name, "status": section.status, "diagnostics": list(section.diagnostics)}
             for section in sections
         ],
         "diagnostics": diagnostics,
