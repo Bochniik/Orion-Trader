@@ -77,13 +77,61 @@ def test_learning_engine_builds_chronological_challenger(tmp_path):
 
     report = artifact["horizons"]["5m"]
     assert report["status"] == "evaluated"
+    assert report["candidate_train_sample_count"] == 60
     assert report["train_sample_count"] == 60
+    assert report["purged_training_sample_count"] == 0
     assert report["validation_sample_count"] == 20
-    assert report["train_end_prediction_time_utc"] < report["validation_start_prediction_time_utc"]
+    assert report["train_end_target_time_utc"] < report["validation_start_prediction_time_utc"]
+    assert report["model_version"] == "model-a"
     assert 0.50 <= report["no_trade_policy"]["confidence_threshold"] <= 0.75
     assert report["validation"]["raw_brier"] is not None
     assert report["validation"]["calibrated_brier"] is not None
     assert len(report["calibration_bins"]) == 10
+    assert report["promotion_gate"]["maturity_purge_applied"] is True
+
+
+def test_learning_engine_purges_training_outcome_that_matures_in_validation(tmp_path):
+    database = tmp_path / "simulated.db"
+    rows = _rows(40)
+    # With a 25% validation split, row 30 starts validation. Force row 29 to
+    # mature after that boundary; it must not be available to training.
+    rows[29]["target_time_utc"] = "2026-01-02T08:00:00+00:00"
+    rows[29]["settled_at_utc"] = "2026-01-02T08:00:00+00:00"
+    _seed_database(database, rows)
+
+    artifact = OrionLearningEngine(
+        database,
+        config=LearningConfig(min_samples_per_horizon=20, validation_fraction=0.25),
+    ).build_challenger()
+
+    report = artifact["horizons"]["5m"]
+    assert report["status"] == "evaluated"
+    assert report["candidate_train_sample_count"] == 30
+    assert report["train_sample_count"] == 29
+    assert report["purged_training_sample_count"] == 1
+    assert report["train_end_target_time_utc"] < report["validation_start_prediction_time_utc"]
+
+
+def test_learning_engine_isolates_model_versions(tmp_path):
+    database = tmp_path / "simulated.db"
+    rows = [*_rows(40, model_version="model-a"), *_rows(40, model_version="model-b")]
+    _seed_database(database, rows)
+
+    artifact = OrionLearningEngine(
+        database,
+        config=LearningConfig(min_samples_per_horizon=20, validation_fraction=0.25),
+    ).build_challenger()
+
+    report = artifact["horizons"]["5m"]
+    assert report["status"] == "multiple_model_versions"
+    assert report["promotion_recommended"] is False
+    assert report["promotion_blocker"] == "model_versions_are_evaluated_separately"
+    assert set(report["models"]) == {"model-a", "model-b"}
+    assert report["models"]["model-a"]["sample_count"] == 40
+    assert report["models"]["model-b"]["sample_count"] == 40
+    assert report["models"]["model-a"]["model_version"] == "model-a"
+    assert report["models"]["model-b"]["model_version"] == "model-b"
+    assert "5m" not in artifact["promotable_horizons"]
 
 
 def test_learning_engine_reports_insufficient_samples(tmp_path):
