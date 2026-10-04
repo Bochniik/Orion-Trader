@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import pandas as pd
 import pytest
@@ -64,6 +65,8 @@ def test_runner_batches_universe_and_writes_checkpoint(tmp_path):
 
     assert result["scope"] == SIMULATED_FORWARD
     assert result["requested_symbol_count"] == 3
+    assert result["resumed_symbol_count"] == 0
+    assert result["processed_symbol_count"] == 3
     assert result["successful_symbol_count"] == 3
     assert result["prediction_count"] == 6
     assert result["settled_prediction_count"] == 6
@@ -77,6 +80,134 @@ def test_runner_batches_universe_and_writes_checkpoint(tmp_path):
     text = checkpoint.read_text(encoding="utf-8")
     assert '"scope": "SIMULATED_FORWARD"' in text
     assert '"prediction_count": 6' in text
+    assert '"period": "60d"' in text
+
+
+def test_runner_resumes_checkpoint_without_reprocessing_completed_symbols(tmp_path):
+    frames = {symbol: _frame() for symbol in ("SPY", "AAPL", "MSFT", "NVDA")}
+    loaded = []
+
+    def loader(symbol, **kwargs):
+        loaded.append(symbol)
+        return frames[symbol]
+
+    checkpoint = tmp_path / "replay-checkpoint.json"
+    first_arena = FakeArena()
+    first = HistoricalUniverseRunner(
+        arena=first_arena,
+        loader=loader,
+        config=UniverseRunnerConfig(batch_size=2),
+        checkpoint_path=checkpoint,
+    ).run(["AAPL", "MSFT"], run_id="first")
+    assert first["prediction_count"] == 4
+
+    loaded.clear()
+    resumed_arena = FakeArena()
+    resumed = HistoricalUniverseRunner(
+        arena=resumed_arena,
+        loader=loader,
+        config=UniverseRunnerConfig(batch_size=2),
+        checkpoint_path=checkpoint,
+    ).run(["AAPL", "MSFT", "NVDA"], run_id="second")
+
+    assert resumed["requested_symbol_count"] == 3
+    assert resumed["resumed_symbol_count"] == 2
+    assert resumed["processed_symbol_count"] == 1
+    assert resumed["successful_symbol_count"] == 3
+    assert resumed["prediction_count"] == 6
+    assert resumed["settled_prediction_count"] == 6
+    assert resumed["mean_brier_up"] == pytest.approx(0.2)
+    assert resumed["directional_accuracy"] == pytest.approx(0.75)
+    assert resumed_arena.calls == [(["NVDA"], "second:batch-1", None)]
+    assert loaded == ["SPY", "NVDA"]
+
+    payload = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert payload["completed_symbols"] == ["AAPL", "MSFT", "NVDA"]
+    assert payload["prediction_count"] == 6
+    assert payload["settled_prediction_count"] == 6
+    assert payload["brier_count"] == 6
+    assert payload["direction_count"] == 6
+
+
+def test_runner_all_completed_is_noop_and_does_not_load_market_data(tmp_path):
+    frames = {symbol: _frame() for symbol in ("SPY", "AAPL")}
+
+    def loader(symbol, **kwargs):
+        return frames[symbol]
+
+    checkpoint = tmp_path / "replay-checkpoint.json"
+    HistoricalUniverseRunner(
+        arena=FakeArena(),
+        loader=loader,
+        checkpoint_path=checkpoint,
+    ).run(["AAPL"], run_id="first")
+
+    def forbidden_loader(symbol, **kwargs):
+        raise AssertionError("no market data should be loaded for a completed replay universe")
+
+    arena = FakeArena()
+    result = HistoricalUniverseRunner(
+        arena=arena,
+        loader=forbidden_loader,
+        checkpoint_path=checkpoint,
+    ).run(["AAPL"], run_id="second")
+
+    assert result["resumed_symbol_count"] == 1
+    assert result["processed_symbol_count"] == 0
+    assert result["prediction_count"] == 2
+    assert result["settled_prediction_count"] == 2
+    assert result["batches"] == []
+    assert arena.calls == []
+
+
+def test_runner_rejects_checkpoint_from_incompatible_configuration(tmp_path):
+    checkpoint = tmp_path / "replay-checkpoint.json"
+    checkpoint.write_text(json.dumps({
+        "runner_id": "historical-universe-runner-v1",
+        "scope": SIMULATED_FORWARD,
+        "period": "30d",
+        "interval": "5m",
+        "prepost": False,
+        "benchmark_symbol": "SPY",
+        "completed_symbols": ["AAPL"],
+    }), encoding="utf-8")
+
+    runner = HistoricalUniverseRunner(
+        arena=FakeArena(),
+        loader=lambda symbol, **kwargs: _frame(),
+        config=UniverseRunnerConfig(period="60d"),
+        checkpoint_path=checkpoint,
+    )
+
+    with pytest.raises(ValueError, match="checkpoint configuration mismatch: period"):
+        runner.run(["AAPL"])
+
+
+def test_runner_can_disable_checkpoint_resume(tmp_path):
+    frames = {symbol: _frame() for symbol in ("SPY", "AAPL")}
+
+    def loader(symbol, **kwargs):
+        return frames[symbol]
+
+    checkpoint = tmp_path / "replay-checkpoint.json"
+    HistoricalUniverseRunner(
+        arena=FakeArena(),
+        loader=loader,
+        checkpoint_path=checkpoint,
+    ).run(["AAPL"], run_id="first")
+
+    arena = FakeArena()
+    result = HistoricalUniverseRunner(
+        arena=arena,
+        loader=loader,
+        config=UniverseRunnerConfig(resume_from_checkpoint=False),
+        checkpoint_path=checkpoint,
+    ).run(["AAPL"], run_id="fresh")
+
+    assert result["resumed_symbol_count"] == 0
+    assert result["processed_symbol_count"] == 1
+    assert result["prediction_count"] == 2
+    assert len(arena.calls) == 1
 
 
 def test_runner_continues_after_symbol_download_failure():
