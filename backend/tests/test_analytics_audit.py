@@ -4,6 +4,14 @@ from app.services.analytics_audit import REQUIRED_SECTIONS, build_unified_audit_
 def _passing_evidence():
     evidence = {name: {"status": "PASS", "diagnostics": []} for name in REQUIRED_SECTIONS}
     evidence["causal_validation"]["horizons"] = ["1D"]
+    evidence["experiment_lineage"].update({
+        "dataset_sha256": "a" * 64,
+        "feature_set_sha256": "b" * 64,
+        "experiment_sha256": "c" * 64,
+        "code_sha": "deadbeef",
+        "horizon": "1D",
+        "split_config": {"mode": "expanding", "purge": 1, "embargo": 1},
+    })
     return evidence
 
 
@@ -106,3 +114,32 @@ def test_duplicate_required_sections_fail_closed():
     assert report["promotion_eligible"] is False
     assert report["evidence_sha256"] is None
     assert "duplicate_required_section" in report["diagnostics"]
+
+
+def test_unified_audit_rejects_placeholder_or_missing_lineage_hashes():
+    evidence = _passing_evidence()
+    evidence["experiment_lineage"]["dataset_sha256"] = "not-a-hash"
+    del evidence["experiment_lineage"]["feature_set_sha256"]
+    report = build_unified_audit_report(evidence)
+    assert report["decision"] == "NO_TRADE"
+    assert report["evidence_sha256"] is None
+    assert "experiment_lineage:invalid_dataset_sha256" in report["diagnostics"]
+    assert "experiment_lineage:invalid_feature_set_sha256" in report["diagnostics"]
+
+
+def test_unified_audit_requires_lineage_horizon_to_match_required_horizon():
+    evidence = _passing_evidence()
+    evidence["experiment_lineage"]["horizon"] = "1h"
+    report = build_unified_audit_report(evidence)
+    assert report["decision"] == "NO_TRADE"
+    assert "experiment_lineage:unexpected_horizon:1h" in report["diagnostics"]
+
+
+def test_unified_audit_requires_code_and_split_provenance():
+    evidence = _passing_evidence()
+    evidence["experiment_lineage"]["code_sha"] = ""
+    evidence["experiment_lineage"]["split_config"] = {}
+    report = build_unified_audit_report(evidence)
+    assert report["decision"] == "NO_TRADE"
+    assert "experiment_lineage:missing_code_sha" in report["diagnostics"]
+    assert "experiment_lineage:missing_split_config" in report["diagnostics"]
