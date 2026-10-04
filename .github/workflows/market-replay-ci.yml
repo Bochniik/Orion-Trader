@@ -33,6 +33,7 @@ on:
       - "backend/tests/test_live_forward_promotion_cli.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
+      - ".github/workflows/cloud-accelerated-learning.yml"
       - ".github/workflows/market-replay-ci.yml"
   push:
     branches: [main]
@@ -67,6 +68,7 @@ on:
       - "backend/tests/test_live_forward_promotion_cli.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
+      - ".github/workflows/cloud-accelerated-learning.yml"
       - ".github/workflows/market-replay-ci.yml"
 
 permissions:
