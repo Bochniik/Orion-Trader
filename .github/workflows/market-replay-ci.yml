@@ -6,10 +6,15 @@ on:
       - "backend/app/services/market_replay_engine.py"
       - "backend/app/services/prediction_arena.py"
       - "backend/app/services/historical_universe_runner.py"
+      - "backend/app/services/replay_universe_selector.py"
+      - "backend/app/services/replay_universe_orchestrator.py"
+      - "backend/app/services/liquidity_engine.py"
+      - "backend/app/services/market_universe_db.py"
       - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
       - "backend/tests/test_market_replay_engine.py"
       - "backend/tests/test_prediction_arena.py"
       - "backend/tests/test_historical_universe_runner.py"
+      - "backend/tests/test_replay_universe_selector.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
       - ".github/workflows/market-replay-ci.yml"
@@ -19,10 +24,15 @@ on:
       - "backend/app/services/market_replay_engine.py"
       - "backend/app/services/prediction_arena.py"
       - "backend/app/services/historical_universe_runner.py"
+      - "backend/app/services/replay_universe_selector.py"
+      - "backend/app/services/replay_universe_orchestrator.py"
+      - "backend/app/services/liquidity_engine.py"
+      - "backend/app/services/market_universe_db.py"
       - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
       - "backend/tests/test_market_replay_engine.py"
       - "backend/tests/test_prediction_arena.py"
       - "backend/tests/test_historical_universe_runner.py"
+      - "backend/tests/test_replay_universe_selector.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
       - ".github/workflows/market-replay-ci.yml"
@@ -52,8 +62,11 @@ jobs:
           python -m py_compile app/services/market_replay_engine.py
           python -m py_compile app/services/prediction_arena.py
           python -m py_compile app/services/historical_universe_runner.py
+          python -m py_compile app/services/replay_universe_selector.py
+          python -m py_compile app/services/replay_universe_orchestrator.py
           python -m py_compile tests/test_market_replay_engine.py
           python -m py_compile tests/test_prediction_arena.py
           python -m py_compile tests/test_historical_universe_runner.py
+          python -m py_compile tests/test_replay_universe_selector.py
       - name: Run replay regression tests
-        run: python -m pytest tests/test_market_replay_engine.py tests/test_prediction_arena.py tests/test_historical_universe_runner.py -q
+        run: python -m pytest tests/test_market_replay_engine.py tests/test_prediction_arena.py tests/test_historical_universe_runner.py tests/test_replay_universe_selector.py -q
