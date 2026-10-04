@@ -2,7 +2,9 @@ from app.services.analytics_audit import REQUIRED_SECTIONS, build_unified_audit_
 
 
 def _passing_evidence():
-    return {name: {"status": "PASS", "diagnostics": []} for name in REQUIRED_SECTIONS}
+    evidence = {name: {"status": "PASS", "diagnostics": []} for name in REQUIRED_SECTIONS}
+    evidence["causal_validation"]["horizons"] = ["1D"]
+    return evidence
 
 
 def test_unified_audit_passes_only_with_complete_explicit_evidence():
@@ -10,6 +12,7 @@ def test_unified_audit_passes_only_with_complete_explicit_evidence():
     assert report["status"] == "PASS"
     assert report["decision"] == "ELIGIBLE"
     assert report["promotion_eligible"] is True
+    assert report["required_horizons"] == ["1D"]
     assert report["diagnostics"] == []
     assert len(report["evidence_sha256"]) == 64
 
@@ -33,6 +36,34 @@ def test_unified_audit_requires_causal_and_point_in_time_provenance():
         assert report["decision"] == "NO_TRADE"
         assert report["promotion_eligible"] is False
         assert f"{section}:INSUFFICIENT_DATA" in report["diagnostics"]
+
+
+def test_unified_audit_requires_1d_horizon_evidence():
+    evidence = _passing_evidence()
+    evidence["causal_validation"]["horizons"] = ["1m", "5m", "1h"]
+    report = build_unified_audit_report(evidence)
+    assert report["decision"] == "NO_TRADE"
+    assert report["promotion_eligible"] is False
+    assert report["evidence_sha256"] is None
+    assert "causal_validation:missing_required_horizon:1D" in report["diagnostics"]
+
+
+def test_unified_audit_rejects_missing_horizon_metadata():
+    evidence = _passing_evidence()
+    del evidence["causal_validation"]["horizons"]
+    report = build_unified_audit_report(evidence)
+    assert report["decision"] == "NO_TRADE"
+    assert "causal_validation:missing_required_horizon:1D" in report["diagnostics"]
+
+
+def test_required_horizons_are_configurable_without_fabricating_coverage():
+    evidence = _passing_evidence()
+    evidence["causal_validation"]["horizons"] = ["1D", "1h"]
+    report = build_unified_audit_report(evidence, required_horizons=("1D", "1h"))
+    assert report["decision"] == "ELIGIBLE"
+    missing = build_unified_audit_report(evidence, required_horizons=("1D", "1h", "15m"))
+    assert missing["decision"] == "NO_TRADE"
+    assert "causal_validation:missing_required_horizon:15m" in missing["diagnostics"]
 
 
 def test_unified_audit_preserves_failure_diagnostics_without_fabricating_metrics():
