@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from app.services.historical_universe_runner import HistoricalUniverseRunner, UniverseRunnerConfig
 from app.services.market_replay_engine import SIMULATED_FORWARD
@@ -66,8 +67,8 @@ def test_runner_batches_universe_and_writes_checkpoint(tmp_path):
     assert result["successful_symbol_count"] == 3
     assert result["prediction_count"] == 6
     assert result["settled_prediction_count"] == 6
-    assert result["mean_brier_up"] == 0.2
-    assert result["directional_accuracy"] == 0.75
+    assert result["mean_brier_up"] == pytest.approx(0.2)
+    assert result["directional_accuracy"] == pytest.approx(0.75)
     assert result["live_forward_mutated"] is False
     assert len(arena.calls) == 2
     assert arena.calls[0][1] == "run-1:batch-1"
