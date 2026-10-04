@@ -66,12 +66,50 @@ jobs:
           unzip -o /tmp/orion-learning-state.zip -d data/cloud-learning
           echo "Restored persistent SIMULATED_FORWARD state from run ${PREVIOUS_RUN_ID}."
 
+      - name: Bootstrap cloud replay universe
+        env:
+          ORION_MARKET_UNIVERSE_DB: data/cloud-learning/market_universe.db
+        run: |
+          python - <<'PY'
+          from app.services.market_universe_db import MarketUniverseDatabase
+
+          # Cloud runners are ephemeral. Seed a conservative liquid-US-equity
+          # candidate catalogue for SIMULATED_FORWARD replay only; the selector
+          # still applies Orion's live ADV/history eligibility gates.
+          symbols = [
+              "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "GOOG", "TSLA",
+              "AVGO", "AMD", "NFLX", "ORCL", "CRM", "ADBE", "QCOM", "INTC",
+              "MU", "AMAT", "LRCX", "KLAC", "TXN", "PANW", "PLTR", "UBER",
+              "JPM", "BAC", "WFC", "GS", "MS", "C", "V", "MA",
+              "XOM", "CVX", "COP", "SLB", "LLY", "UNH", "JNJ", "ABBV",
+              "WMT", "COST", "HD", "LOW", "DIS", "BA", "CAT", "GE", "F", "GM",
+          ]
+          db = MarketUniverseDatabase()
+          db.upsert_assets(
+              [
+                  {
+                      "symbol": symbol,
+                      "class": "us_equity",
+                      "tradable": True,
+                      "status": "active",
+                  }
+                  for symbol in symbols
+              ],
+              source="cloud-replay-bootstrap",
+          )
+          counts = db.counts()
+          if counts["tradable"] < 1:
+              raise RuntimeError("Cloud replay universe bootstrap produced no tradable symbols")
+          print("Cloud replay universe ready:", counts)
+          PY
+
       - name: Reset per-run replay checkpoint
         run: rm -f data/cloud-learning/replay_checkpoint.json
 
       - name: Run end-to-end accelerated learning
         env:
           PYTHONUNBUFFERED: "1"
+          ORION_MARKET_UNIVERSE_DB: data/cloud-learning/market_universe.db
         run: |
           python -m app.services.accelerated_learning_job \
             --simulated-db data/cloud-learning/simulated_forward.db \
