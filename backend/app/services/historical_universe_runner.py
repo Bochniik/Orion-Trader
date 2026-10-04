@@ -76,6 +76,7 @@ class UniverseRunnerConfig:
     batch_size: int = 10
     prepost: bool = False
     continue_on_symbol_error: bool = True
+    resume_from_checkpoint: bool = True
 
     def __post_init__(self) -> None:
         if int(self.batch_size) < 1:
@@ -113,6 +114,31 @@ class HistoricalUniverseRunner:
         )
         return _validate_history(frame, symbol=symbol)
 
+    def _checkpoint_signature(self) -> dict[str, Any]:
+        return {
+            "runner_id": RUNNER_ID,
+            "scope": SIMULATED_FORWARD,
+            "period": self.config.period,
+            "interval": self.config.interval,
+            "prepost": self.config.prepost,
+            "benchmark_symbol": self.config.benchmark_symbol.strip().upper(),
+        }
+
+    def _read_checkpoint(self) -> dict[str, Any] | None:
+        if not self.config.resume_from_checkpoint or self.checkpoint_path is None or not self.checkpoint_path.exists():
+            return None
+        try:
+            payload = json.loads(self.checkpoint_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"invalid replay checkpoint: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("invalid replay checkpoint: expected JSON object")
+        expected = self._checkpoint_signature()
+        mismatches = [key for key, value in expected.items() if payload.get(key) != value]
+        if mismatches:
+            raise ValueError(f"replay checkpoint configuration mismatch: {', '.join(mismatches)}")
+        return payload
+
     def _write_checkpoint(self, payload: Mapping[str, Any]) -> None:
         if self.checkpoint_path is None:
             return
@@ -128,23 +154,28 @@ class HistoricalUniverseRunner:
         run_id: str | None = None,
         decision_times_by_symbol: Mapping[str, Iterable[Any]] | None = None,
     ) -> dict[str, Any]:
-        universe_symbols = _normalize_symbols(symbols)
-        if not universe_symbols:
+        requested_symbols = _normalize_symbols(symbols)
+        if not requested_symbols:
             raise ValueError("symbols must contain at least one valid ticker")
 
         benchmark_symbol = self.config.benchmark_symbol.strip().upper()
         run_id = str(run_id or uuid.uuid4())
-        benchmark = self._load(benchmark_symbol)
+        checkpoint = self._read_checkpoint()
+        resumed_symbols = sorted(set(checkpoint.get("completed_symbols") or [])) if checkpoint else []
+        resumed_symbol_set = set(resumed_symbols)
+        universe_symbols = [symbol for symbol in requested_symbols if symbol not in resumed_symbol_set]
 
         batches: list[dict[str, Any]] = []
-        symbol_failures: list[dict[str, str]] = []
-        successful_symbols: list[str] = []
-        total_predictions = 0
-        total_settled = 0
-        weighted_brier_numerator = 0.0
-        weighted_brier_count = 0
-        weighted_direction_numerator = 0.0
-        weighted_direction_count = 0
+        symbol_failures: list[dict[str, str]] = list(checkpoint.get("failures") or []) if checkpoint else []
+        successful_symbols: list[str] = list(resumed_symbols)
+        total_predictions = int(checkpoint.get("prediction_count") or 0) if checkpoint else 0
+        total_settled = int(checkpoint.get("settled_prediction_count") or 0) if checkpoint else 0
+        weighted_brier_numerator = float(checkpoint.get("brier_numerator") or 0.0) if checkpoint else 0.0
+        weighted_brier_count = int(checkpoint.get("brier_count") or 0) if checkpoint else 0
+        weighted_direction_numerator = float(checkpoint.get("direction_numerator") or 0.0) if checkpoint else 0.0
+        weighted_direction_count = int(checkpoint.get("direction_count") or 0) if checkpoint else 0
+
+        benchmark = self._load(benchmark_symbol) if universe_symbols else None
 
         for offset in range(0, len(universe_symbols), self.config.batch_size):
             batch_symbols = universe_symbols[offset : offset + self.config.batch_size]
@@ -162,11 +193,16 @@ class HistoricalUniverseRunner:
 
             if not frames:
                 self._write_checkpoint({
-                    "runner_id": RUNNER_ID,
-                    "scope": SIMULATED_FORWARD,
+                    **self._checkpoint_signature(),
                     "run_id": run_id,
-                    "completed_symbols": successful_symbols,
+                    "completed_symbols": sorted(set(successful_symbols)),
                     "failures": symbol_failures,
+                    "prediction_count": total_predictions,
+                    "settled_prediction_count": total_settled,
+                    "brier_numerator": weighted_brier_numerator,
+                    "brier_count": weighted_brier_count,
+                    "direction_numerator": weighted_direction_numerator,
+                    "direction_count": weighted_direction_count,
                     "updated_at": _utc_now(),
                 })
                 continue
@@ -213,14 +249,17 @@ class HistoricalUniverseRunner:
                     weighted_direction_count += settled_count
 
             self._write_checkpoint({
-                "runner_id": RUNNER_ID,
-                "scope": SIMULATED_FORWARD,
+                **self._checkpoint_signature(),
                 "run_id": run_id,
                 "completed_symbols": sorted(set(successful_symbols)),
                 "failures": symbol_failures,
-                "batch_count": len(batches),
+                "batch_count": int(checkpoint.get("batch_count") or 0) + len(batches) if checkpoint else len(batches),
                 "prediction_count": total_predictions,
                 "settled_prediction_count": total_settled,
+                "brier_numerator": weighted_brier_numerator,
+                "brier_count": weighted_brier_count,
+                "direction_numerator": weighted_direction_numerator,
+                "direction_count": weighted_direction_count,
                 "updated_at": _utc_now(),
             })
 
@@ -232,7 +271,9 @@ class HistoricalUniverseRunner:
             "interval": self.config.interval,
             "prepost": self.config.prepost,
             "benchmark_symbol": benchmark_symbol,
-            "requested_symbol_count": len(universe_symbols),
+            "requested_symbol_count": len(requested_symbols),
+            "resumed_symbol_count": len([symbol for symbol in requested_symbols if symbol in resumed_symbol_set]),
+            "processed_symbol_count": len(universe_symbols),
             "successful_symbol_count": len(set(successful_symbols)),
             "failed_symbol_count": len(symbol_failures),
             "prediction_count": total_predictions,
