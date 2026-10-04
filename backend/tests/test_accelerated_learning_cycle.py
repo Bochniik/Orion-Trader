@@ -90,6 +90,7 @@ def test_walk_forward_cycle_uses_only_simulated_unseen_evidence(tmp_path):
     assert report["keep_challenger"] is True
     for fold in report["folds"]:
         if fold["status"] == "evaluated":
+            assert fold["train_sample_count"] >= 40
             assert fold["train_end_target_time_utc"] < fold["evaluation_start_prediction_time_utc"]
             assert fold["maturity_purge_applied"] is True
 
@@ -109,9 +110,12 @@ def test_walk_forward_cycle_purges_outcome_not_mature_at_fold_start(tmp_path):
         ),
     )
     result = cycle.run()
-    first_fold = result["reports"]["5m::model-a"]["folds"][0]
+    report = result["reports"]["5m::model-a"]
+    first_fold = report["folds"][0]
 
-    assert first_fold["evaluation_start_prediction_time_utc"].endswith("15:10:00+00:00")
+    assert report["first_evaluation_index"] > 40
+    assert first_fold["status"] == "evaluated"
+    assert first_fold["train_sample_count"] >= 40
     assert first_fold["purged_training_sample_count"] >= 1
     assert first_fold["train_end_target_time_utc"] < first_fold["evaluation_start_prediction_time_utc"]
 
