@@ -1,0 +1,2 @@
+GitHub connector write test on 2026-10-04.
+This file is temporary and exists only to verify isolated write access outside main and active development branches.
