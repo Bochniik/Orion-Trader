@@ -11,6 +11,9 @@ on:
       - "backend/app/services/replay_job.py"
       - "backend/app/services/orion_learning_engine.py"
       - "backend/app/services/model_registry.py"
+      - "backend/app/services/live_forward_validation_report.py"
+      - "backend/app/services/live_forward_promotion.py"
+      - "backend/app/services/predictive_store.py"
       - "backend/app/services/liquidity_engine.py"
       - "backend/app/services/market_universe_db.py"
       - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
@@ -21,6 +24,7 @@ on:
       - "backend/tests/test_replay_job.py"
       - "backend/tests/test_orion_learning_engine.py"
       - "backend/tests/test_model_registry.py"
+      - "backend/tests/test_live_forward_validation_report.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
       - ".github/workflows/market-replay-ci.yml"
@@ -35,6 +39,9 @@ on:
       - "backend/app/services/replay_job.py"
       - "backend/app/services/orion_learning_engine.py"
       - "backend/app/services/model_registry.py"
+      - "backend/app/services/live_forward_validation_report.py"
+      - "backend/app/services/live_forward_promotion.py"
+      - "backend/app/services/predictive_store.py"
       - "backend/app/services/liquidity_engine.py"
       - "backend/app/services/market_universe_db.py"
       - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
@@ -45,6 +52,7 @@ on:
       - "backend/tests/test_replay_job.py"
       - "backend/tests/test_orion_learning_engine.py"
       - "backend/tests/test_model_registry.py"
+      - "backend/tests/test_live_forward_validation_report.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
       - ".github/workflows/market-replay-ci.yml"
@@ -79,6 +87,8 @@ jobs:
           python -m py_compile app/services/replay_job.py
           python -m py_compile app/services/orion_learning_engine.py
           python -m py_compile app/services/model_registry.py
+          python -m py_compile app/services/live_forward_validation_report.py
+          python -m py_compile app/services/live_forward_promotion.py
           python -m py_compile tests/test_market_replay_engine.py
           python -m py_compile tests/test_prediction_arena.py
           python -m py_compile tests/test_historical_universe_runner.py
@@ -86,5 +96,6 @@ jobs:
           python -m py_compile tests/test_replay_job.py
           python -m py_compile tests/test_orion_learning_engine.py
           python -m py_compile tests/test_model_registry.py
+          python -m py_compile tests/test_live_forward_validation_report.py
       - name: Run replay regression tests
-        run: python -m pytest tests/test_market_replay_engine.py tests/test_prediction_arena.py tests/test_historical_universe_runner.py tests/test_replay_universe_selector.py tests/test_replay_job.py tests/test_orion_learning_engine.py tests/test_model_registry.py -q
+        run: python -m pytest tests/test_market_replay_engine.py tests/test_prediction_arena.py tests/test_historical_universe_runner.py tests/test_replay_universe_selector.py tests/test_replay_job.py tests/test_orion_learning_engine.py tests/test_model_registry.py tests/test_live_forward_validation_report.py -q
