@@ -23,6 +23,13 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _parse_utc(value: str) -> datetime:
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def _clip_probability(value: float) -> float:
     return min(1.0 - 1e-9, max(1e-9, float(value)))
 
@@ -60,7 +67,7 @@ class LearningConfig:
 
 
 class OrionLearningEngine:
-    """Build a chronological calibration challenger from settled replay evidence."""
+    """Build chronological, maturity-purged calibration challengers from replay evidence."""
 
     def __init__(self, database_path: str | Path, *, config: LearningConfig | None = None) -> None:
         self.database_path = Path(database_path)
@@ -212,6 +219,84 @@ class OrionLearningEngine:
             "trade_directional_accuracy": (trade_correct / trade_count) if trade_count else None,
         }
 
+    def _build_model_report(self, bucket: list[dict[str, Any]], *, horizon: str, model_version: str) -> dict[str, Any]:
+        if len(bucket) < self.config.min_samples_per_horizon:
+            return {
+                "status": "insufficient_samples",
+                "sample_count": len(bucket),
+                "minimum_required": self.config.min_samples_per_horizon,
+                "model_version": model_version,
+                "promotion_recommended": False,
+            }
+
+        validation_count = max(1, int(math.ceil(len(bucket) * self.config.validation_fraction)))
+        candidate_train_rows = bucket[:-validation_count]
+        validation_rows = bucket[-validation_count:]
+        if not candidate_train_rows:
+            return {
+                "status": "insufficient_training_samples",
+                "sample_count": len(bucket),
+                "model_version": model_version,
+                "promotion_recommended": False,
+            }
+
+        validation_start = _parse_utc(validation_rows[0]["prediction_time_utc"])
+        train_rows = [
+            row for row in candidate_train_rows
+            if _parse_utc(row["target_time_utc"]) < validation_start
+        ]
+        purged_count = len(candidate_train_rows) - len(train_rows)
+        if not train_rows:
+            return {
+                "status": "insufficient_training_samples_after_purge",
+                "sample_count": len(bucket),
+                "candidate_train_sample_count": len(candidate_train_rows),
+                "purged_training_sample_count": purged_count,
+                "validation_sample_count": len(validation_rows),
+                "model_version": model_version,
+                "promotion_recommended": False,
+            }
+
+        fitted_bins = self._fit_bins(train_rows)
+        threshold = self._select_threshold(train_rows, fitted_bins)
+        validation = self._evaluate(
+            validation_rows, fitted_bins, float(threshold["confidence_threshold"])
+        )
+        brier_ok = (
+            validation.get("brier_improvement") is not None
+            and float(validation["brier_improvement"]) >= self.config.minimum_brier_improvement
+        )
+        accuracy_ok = (
+            validation.get("calibrated_directional_accuracy") is not None
+            and validation.get("raw_directional_accuracy") is not None
+            and float(validation["calibrated_directional_accuracy"])
+            >= float(validation["raw_directional_accuracy"]) - self.config.max_accuracy_degradation
+        )
+        promotion_recommended = bool(brier_ok and accuracy_ok)
+        return {
+            "status": "evaluated",
+            "sample_count": len(bucket),
+            "candidate_train_sample_count": len(candidate_train_rows),
+            "train_sample_count": len(train_rows),
+            "purged_training_sample_count": purged_count,
+            "validation_sample_count": len(validation_rows),
+            "train_end_prediction_time_utc": train_rows[-1]["prediction_time_utc"],
+            "train_end_target_time_utc": train_rows[-1]["target_time_utc"],
+            "validation_start_prediction_time_utc": validation_rows[0]["prediction_time_utc"],
+            "model_version": model_version,
+            "calibration_bins": fitted_bins,
+            "no_trade_policy": threshold,
+            "validation": validation,
+            "promotion_gate": {
+                "minimum_brier_improvement": self.config.minimum_brier_improvement,
+                "max_accuracy_degradation": self.config.max_accuracy_degradation,
+                "brier_gate_passed": brier_ok,
+                "accuracy_gate_passed": accuracy_ok,
+                "maturity_purge_applied": True,
+            },
+            "promotion_recommended": promotion_recommended,
+        }
+
     def build_challenger(self, *, output_path: str | Path | None = None) -> dict[str, Any]:
         rows = self._load_rows()
         by_horizon: dict[str, list[dict[str, Any]]] = {}
@@ -221,63 +306,32 @@ class OrionLearningEngine:
         horizon_reports: dict[str, Any] = {}
         promotable_horizons: list[str] = []
         for horizon, bucket in sorted(by_horizon.items()):
-            if len(bucket) < self.config.min_samples_per_horizon:
-                horizon_reports[horizon] = {
-                    "status": "insufficient_samples",
-                    "sample_count": len(bucket),
-                    "minimum_required": self.config.min_samples_per_horizon,
-                    "promotion_recommended": False,
-                }
-                continue
+            model_buckets: dict[str, list[dict[str, Any]]] = {}
+            for row in bucket:
+                model_version = str(row.get("model_version") or "unknown")
+                model_buckets.setdefault(model_version, []).append(row)
 
-            validation_count = max(1, int(math.ceil(len(bucket) * self.config.validation_fraction)))
-            train_rows = bucket[:-validation_count]
-            validation_rows = bucket[-validation_count:]
-            if not train_rows:
-                horizon_reports[horizon] = {
-                    "status": "insufficient_training_samples",
-                    "sample_count": len(bucket),
-                    "promotion_recommended": False,
-                }
-                continue
-
-            fitted_bins = self._fit_bins(train_rows)
-            threshold = self._select_threshold(train_rows, fitted_bins)
-            validation = self._evaluate(
-                validation_rows, fitted_bins, float(threshold["confidence_threshold"])
-            )
-            brier_ok = (
-                validation.get("brier_improvement") is not None
-                and float(validation["brier_improvement"]) >= self.config.minimum_brier_improvement
-            )
-            accuracy_ok = (
-                validation.get("calibrated_directional_accuracy") is not None
-                and validation.get("raw_directional_accuracy") is not None
-                and float(validation["calibrated_directional_accuracy"])
-                >= float(validation["raw_directional_accuracy"]) - self.config.max_accuracy_degradation
-            )
-            promotion_recommended = bool(brier_ok and accuracy_ok)
-            if promotion_recommended:
-                promotable_horizons.append(horizon)
-            horizon_reports[horizon] = {
-                "status": "evaluated",
-                "sample_count": len(bucket),
-                "train_sample_count": len(train_rows),
-                "validation_sample_count": len(validation_rows),
-                "train_end_prediction_time_utc": train_rows[-1]["prediction_time_utc"],
-                "validation_start_prediction_time_utc": validation_rows[0]["prediction_time_utc"],
-                "model_versions": sorted({str(row.get("model_version") or "unknown") for row in bucket}),
-                "calibration_bins": fitted_bins,
-                "no_trade_policy": threshold,
-                "validation": validation,
-                "promotion_gate": {
-                    "minimum_brier_improvement": self.config.minimum_brier_improvement,
-                    "max_accuracy_degradation": self.config.max_accuracy_degradation,
-                    "brier_gate_passed": brier_ok,
-                    "accuracy_gate_passed": accuracy_ok,
-                },
-                "promotion_recommended": promotion_recommended,
+            model_reports = {
+                model_version: self._build_model_report(
+                    model_rows, horizon=horizon, model_version=model_version
+                )
+                for model_version, model_rows in sorted(model_buckets.items())
             }
+
+            if len(model_reports) == 1:
+                only_report = next(iter(model_reports.values()))
+                horizon_reports[horizon] = only_report
+                if only_report.get("promotion_recommended"):
+                    promotable_horizons.append(horizon)
+            else:
+                horizon_reports[horizon] = {
+                    "status": "multiple_model_versions",
+                    "sample_count": len(bucket),
+                    "model_versions": sorted(model_reports),
+                    "models": model_reports,
+                    "promotion_recommended": False,
+                    "promotion_blocker": "model_versions_are_evaluated_separately",
+                }
 
         artifact = {
             "learning_engine_id": LEARNING_ENGINE_ID,
