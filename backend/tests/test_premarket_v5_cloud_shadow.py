@@ -136,3 +136,45 @@ def test_hybrid_payload_builds_expected_model():
     assert model.impute.shape == (n,)
     assert np.isclose(model.return_bias, 0.1)
     assert np.isclose(model.direction_temperature, 1.0)
+
+
+def _raw_frame(rows):
+    return module.normalize_columns(pd.DataFrame(rows))
+
+
+def test_prediction_reports_missing_previous_regular_close_separately():
+    raw = _raw_frame([
+        {"ticker": "AAPL", "timestamp": "2026-09-30T08:00:00Z", "open": 100, "high": 101, "low": 99, "close": 100.2, "volume": 1000},
+        {"ticker": "AAPL", "timestamp": "2026-09-30T08:01:00Z", "open": 100.2, "high": 101, "low": 100, "close": 100.4, "volume": 1100},
+        {"ticker": "AAPL", "timestamp": "2026-09-30T08:02:00Z", "open": 100.4, "high": 101, "low": 100, "close": 100.5, "volume": 1200},
+    ])
+    result = module.prediction_for_symbol(
+        ticker="AAPL",
+        raw=raw,
+        as_of=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+        models={},
+    )
+    assert result["available"] is False
+    assert result["reason"] == "missing_previous_regular_close"
+    assert result["diagnostics"]["observed_bar_count"] == 3
+    assert result["diagnostics"]["previous_regular_close_available"] is False
+    assert result["diagnostics"]["last_observed_bar_utc"].startswith("2026-09-30T08:02:00")
+
+
+def test_prediction_reports_insufficient_current_premarket_bars_separately():
+    raw = _raw_frame([
+        {"ticker": "AAPL", "timestamp": "2026-09-29T19:59:00Z", "open": 99, "high": 100, "low": 98, "close": 99.5, "volume": 1000},
+        {"ticker": "AAPL", "timestamp": "2026-09-30T08:00:00Z", "open": 100, "high": 101, "low": 99, "close": 100.2, "volume": 1000},
+        {"ticker": "AAPL", "timestamp": "2026-09-30T08:01:00Z", "open": 100.2, "high": 101, "low": 100, "close": 100.4, "volume": 1100},
+    ])
+    result = module.prediction_for_symbol(
+        ticker="AAPL",
+        raw=raw,
+        as_of=datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc),
+        models={},
+    )
+    assert result["available"] is False
+    assert result["reason"] == "insufficient_current_premarket_bars"
+    assert result["diagnostics"]["observed_bar_count"] == 2
+    assert result["diagnostics"]["previous_regular_close_available"] is True
+    assert result["diagnostics"]["history_row_count"] == 3
