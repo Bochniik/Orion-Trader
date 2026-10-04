@@ -1,0 +1,131 @@
+name: Orion cloud accelerated learning
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: orion-cloud-accelerated-learning
+  cancel-in-progress: false
+
+jobs:
+  accelerated-learning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Restore latest persistent simulated-learning state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mkdir -p data/cloud-learning
+          WORKFLOW_ID="$(gh api "repos/${REPOSITORY}/actions/workflows/cloud-accelerated-learning.yml" --jq '.id' 2>/dev/null || true)"
+          if [ -z "$WORKFLOW_ID" ]; then
+            echo "No previous workflow metadata yet; starting with a fresh SIMULATED_FORWARD store."
+            exit 0
+          fi
+
+          PREVIOUS_RUN_ID="$(gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW_ID}/runs?status=success&branch=main&per_page=10" --jq '.workflow_runs[0].id // empty' 2>/dev/null || true)"
+          if [ -z "$PREVIOUS_RUN_ID" ]; then
+            echo "No previous successful cloud-learning run; starting fresh."
+            exit 0
+          fi
+
+          ARTIFACT_ID="$(gh api "repos/${REPOSITORY}/actions/runs/${PREVIOUS_RUN_ID}/artifacts" --jq '.artifacts[] | select(.name == "orion-accelerated-learning-state") | .id' 2>/dev/null | head -n 1 || true)"
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "Previous successful run has no persisted state artifact; starting fresh."
+            exit 0
+          fi
+
+          gh api "repos/${REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/orion-learning-state.zip
+          unzip -o /tmp/orion-learning-state.zip -d data/cloud-learning
+          echo "Restored persistent SIMULATED_FORWARD state from run ${PREVIOUS_RUN_ID}."
+
+      - name: Reset per-run replay checkpoint
+        run: rm -f data/cloud-learning/replay_checkpoint.json
+
+      - name: Run end-to-end accelerated learning
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python -m app.services.accelerated_learning_job \
+            --simulated-db data/cloud-learning/simulated_forward.db \
+            --checkpoint data/cloud-learning/replay_checkpoint.json \
+            --learning-artifact data/cloud-learning/learning_challenger.json \
+            --cycle-artifact data/cloud-learning/accelerated_learning_cycle.json \
+            --top-n 50 \
+            --candidate-limit 500 \
+            --minimum-adv 25000000 \
+            --period 60d \
+            --interval 5m \
+            --batch-size 10 \
+            --run-id "cloud-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            > data/cloud-learning/job_summary.json
+
+      - name: Validate simulation-only output
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data/cloud-learning/job_summary.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          assert payload["scope"] == "SIMULATED_FORWARD", payload.get("scope")
+          assert payload["live_forward_mutated"] is False
+          assert payload["automatic_live_promotion"] is False
+          assert payload["replay"]["scope"] == "SIMULATED_FORWARD"
+          assert payload["learning"]["scope"] == "SIMULATED_FORWARD"
+          assert payload["walk_forward"]["scope"] == "SIMULATED_FORWARD"
+          print(
+              "Orion cloud learning complete:",
+              "settled=", payload["learning"].get("settled_sample_count"),
+              "kept=", payload.get("kept_challenger_count"),
+          )
+          PY
+
+      - name: Checkpoint SQLite WAL before persistence
+        if: always()
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from pathlib import Path
+
+          path = Path("data/cloud-learning/simulated_forward.db")
+          if path.exists():
+              with sqlite3.connect(path) as connection:
+                  connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+          PY
+
+      - name: Persist accelerated-learning state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orion-accelerated-learning-state
+          path: |
+            backend/data/cloud-learning/simulated_forward.db
+            backend/data/cloud-learning/learning_challenger.json
+            backend/data/cloud-learning/accelerated_learning_cycle.json
+            backend/data/cloud-learning/job_summary.json
+          if-no-files-found: warn
+          retention-days: 30

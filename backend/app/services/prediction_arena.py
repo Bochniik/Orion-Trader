@@ -41,6 +41,8 @@ class SimulatedForwardStore:
 
     The schema deliberately uses names that cannot collide semantically with
     ``live_predictions`` / ``prediction_outcomes`` in PredictiveIntelligenceStore.
+    Evidence is globally deduplicated by symbol/horizon/prediction time/model version
+    so repeated rolling cloud replays add only genuinely new simulated observations.
     """
 
     def __init__(self, database_path: str | Path):
@@ -113,6 +115,26 @@ class SimulatedForwardStore:
             )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_sim_forward_model_horizon ON simulated_forward_predictions(model_version, horizon, id)"
+            )
+            # Older stores may contain the same historical prediction from multiple replay
+            # sessions. Collapse those rows once before enforcing cloud-run idempotency.
+            connection.execute(
+                """
+                DELETE FROM simulated_forward_predictions
+                WHERE id NOT IN (
+                    SELECT MIN(id)
+                    FROM simulated_forward_predictions
+                    GROUP BY symbol, horizon, prediction_time_utc, COALESCE(model_version, '')
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_sim_forward_evidence_unique
+                ON simulated_forward_predictions(
+                    symbol, horizon, prediction_time_utc, COALESCE(model_version, '')
+                )
+                """
             )
 
     def start_session(self, *, session_id: str, config: Mapping[str, Any]) -> None:

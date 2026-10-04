@@ -23,7 +23,6 @@ def _frame(start="2026-01-05 14:30:00+00:00", periods=8, base=100.0):
 
 
 def _predictor(stock, benchmark, *, symbol, as_of):
-    # Verify the hard causal boundary survives the arena layer.
     assert stock.index.max() <= pd.Timestamp(as_of)
     assert benchmark.index.max() <= pd.Timestamp(as_of)
     target = pd.Timestamp(as_of) + pd.Timedelta(minutes=5)
@@ -34,6 +33,7 @@ def _predictor(stock, benchmark, *, symbol, as_of):
         "available": True,
         "design_id": "stub-v1",
         "forward_adapter_id": "stub-forward",
+        "model_version": "model-a",
         "as_of": pd.Timestamp(as_of).isoformat(),
         "horizons": {
             "5m": {
@@ -80,6 +80,35 @@ def test_arena_runs_multiple_symbols_and_persists_separately(tmp_path):
     assert "simulated_forward_sessions" in tables
     assert "live_predictions" not in tables
     assert "prediction_outcomes" not in tables
+
+
+def test_store_deduplicates_same_evidence_across_replay_sessions(tmp_path):
+    benchmark = _frame(base=500.0)
+    universe = {"AAA": _frame(base=100.0)}
+    engine = MarketReplayEngine(predictor=_predictor, config=ReplayConfig(stride_bars=2, warmup_bars=2))
+    store_path = tmp_path / "simulated-forward.sqlite3"
+    store = SimulatedForwardStore(store_path)
+    arena = PredictionArena(replay_engine=engine, store=store)
+
+    first = arena.run(universe, benchmark, session_id="cloud-run-1")
+    second = arena.run(universe, benchmark, session_id="cloud-run-2")
+
+    assert first["prediction_count"] > 0
+    assert first["persisted_prediction_count"] == first["prediction_count"]
+    assert second["prediction_count"] == first["prediction_count"]
+    assert second["persisted_prediction_count"] == 0
+    assert store.session_predictions("cloud-run-1")
+    assert store.session_predictions("cloud-run-2") == []
+
+    with sqlite3.connect(store_path) as connection:
+        persisted_count = connection.execute(
+            "SELECT COUNT(*) FROM simulated_forward_predictions"
+        ).fetchone()[0]
+        unique_index = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_sim_forward_evidence_unique'"
+        ).fetchone()
+    assert persisted_count == first["prediction_count"]
+    assert unique_index is not None
 
 
 def test_store_rejects_live_forward_rows(tmp_path):
