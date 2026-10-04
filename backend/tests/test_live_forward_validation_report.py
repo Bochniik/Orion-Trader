@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from app.services.live_forward_promotion import LiveForwardPromotionService
 from app.services.live_forward_validation_report import LiveForwardValidationReportBuilder
 from app.services.market_replay_engine import LIVE_FORWARD, SIMULATED_FORWARD
@@ -116,10 +118,10 @@ def test_builder_reads_only_matching_settled_live_evidence(tmp_path):
     assert report["evaluation_prediction_count"] == 4
     assert report["settled_sample_count"] == 3
     assert report["unsettled_sample_count"] == 1
-    assert report["directional_accuracy"] == 2 / 3
-    assert report["mean_brier_up"] == (0.04 + 0.04 + 0.36) / 3
+    assert report["directional_accuracy"] == pytest.approx(2 / 3)
+    assert report["mean_brier_up"] == pytest.approx((0.04 + 0.04 + 0.36) / 3)
     assert report["trade_count"] == 2
-    assert report["trade_coverage"] == 2 / 3
+    assert report["trade_coverage"] == pytest.approx(2 / 3)
     assert report["simulated_forward_included"] is False
     assert report["live_forward_mutated"] is False
     assert before == after
