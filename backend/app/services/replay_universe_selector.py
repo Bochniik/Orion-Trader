@@ -20,7 +20,7 @@ HistoryLoader = Callable[..., pd.DataFrame]
 def yfinance_daily_history_loader(symbol: str, *, period: str = "1mo") -> pd.DataFrame:
     import yfinance as yf
 
-    return yf.download(
+    history = yf.download(
         str(symbol).strip().upper(),
         period=period,
         interval="1d",
@@ -29,6 +29,12 @@ def yfinance_daily_history_loader(symbol: str, *, period: str = "1mo") -> pd.Dat
         progress=False,
         threads=False,
     )
+    # yfinance 1.x returns MultiIndex columns even for a single ticker.
+    # Orion's liquidity engine consumes the provider-neutral OHLCV shape.
+    if isinstance(history.columns, pd.MultiIndex):
+        history = history.copy()
+        history.columns = history.columns.get_level_values(0)
+    return history
 
 
 @dataclass(frozen=True)
