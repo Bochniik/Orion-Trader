@@ -4,8 +4,10 @@ on:
   pull_request:
     paths:
       - "backend/app/services/market_replay_engine.py"
+      - "backend/app/services/prediction_arena.py"
       - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
       - "backend/tests/test_market_replay_engine.py"
+      - "backend/tests/test_prediction_arena.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
       - ".github/workflows/market-replay-ci.yml"
@@ -13,8 +15,10 @@ on:
     branches: [main]
     paths:
       - "backend/app/services/market_replay_engine.py"
+      - "backend/app/services/prediction_arena.py"
       - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
       - "backend/tests/test_market_replay_engine.py"
+      - "backend/tests/test_prediction_arena.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
       - ".github/workflows/market-replay-ci.yml"
@@ -39,9 +43,11 @@ jobs:
             backend/requirements-dev.txt
       - name: Install backend and test dependencies
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
-      - name: Compile replay service and tests
+      - name: Compile replay and arena services/tests
         run: |
           python -m py_compile app/services/market_replay_engine.py
+          python -m py_compile app/services/prediction_arena.py
           python -m py_compile tests/test_market_replay_engine.py
-      - name: Run market replay regression tests
-        run: python -m pytest tests/test_market_replay_engine.py -q
+          python -m py_compile tests/test_prediction_arena.py
+      - name: Run market replay and prediction arena regression tests
+        run: python -m pytest tests/test_market_replay_engine.py tests/test_prediction_arena.py -q
