@@ -60,6 +60,24 @@ class AcceleratedLearningCycle:
         self.config = config or AcceleratedLearningCycleConfig()
         self.engine = OrionLearningEngine(self.database_path, config=learning_config)
 
+    def _mature_train_rows(
+        self,
+        prior_rows: list[dict[str, Any]],
+        evaluation_start: datetime,
+    ) -> list[dict[str, Any]]:
+        return [
+            row for row in prior_rows
+            if _parse_utc(row["target_time_utc"]) < evaluation_start
+        ]
+
+    def _first_evaluable_start(self, rows: list[dict[str, Any]]) -> int | None:
+        for start in range(self.config.min_train_samples, len(rows)):
+            evaluation_start = _parse_utc(rows[start]["prediction_time_utc"])
+            mature = self._mature_train_rows(rows[:start], evaluation_start)
+            if len(mature) >= self.config.min_train_samples:
+                return start
+        return None
+
     def _fold_report(
         self,
         *,
@@ -68,10 +86,7 @@ class AcceleratedLearningCycle:
         fold_index: int,
     ) -> dict[str, Any]:
         evaluation_start = _parse_utc(evaluation_rows[0]["prediction_time_utc"])
-        train_rows = [
-            row for row in prior_rows
-            if _parse_utc(row["target_time_utc"]) < evaluation_start
-        ]
+        train_rows = self._mature_train_rows(prior_rows, evaluation_start)
         purged = len(prior_rows) - len(train_rows)
         base = {
             "fold_index": fold_index,
@@ -117,7 +132,7 @@ class AcceleratedLearningCycle:
         }
 
     def _model_report(self, rows: list[dict[str, Any]], *, horizon: str, model_version: str) -> dict[str, Any]:
-        minimum_total = self.config.min_train_samples + self.config.fold_size
+        minimum_total = self.config.min_train_samples + 1
         if len(rows) < minimum_total:
             return {
                 "status": "insufficient_samples",
@@ -128,8 +143,18 @@ class AcceleratedLearningCycle:
                 "keep_challenger": False,
             }
 
+        start = self._first_evaluable_start(rows)
+        if start is None:
+            return {
+                "status": "insufficient_mature_training_samples",
+                "sample_count": len(rows),
+                "minimum_mature_training_required": self.config.min_train_samples,
+                "horizon": horizon,
+                "model_version": model_version,
+                "keep_challenger": False,
+            }
+
         folds: list[dict[str, Any]] = []
-        start = self.config.min_train_samples
         fold_index = 0
         while start < len(rows):
             evaluation_rows = rows[start : start + self.config.fold_size]
@@ -188,6 +213,7 @@ class AcceleratedLearningCycle:
             "sample_count": len(rows),
             "horizon": horizon,
             "model_version": model_version,
+            "first_evaluation_index": folds[0]["candidate_train_sample_count"] if folds else None,
             "fold_count": len(folds),
             "evaluated_fold_count": len(evaluated),
             "passed_fold_count": len(passed),
