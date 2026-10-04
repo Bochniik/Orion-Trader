@@ -11,6 +11,7 @@ def test_unified_audit_passes_only_with_complete_explicit_evidence():
     assert report["decision"] == "ELIGIBLE"
     assert report["promotion_eligible"] is True
     assert report["diagnostics"] == []
+    assert len(report["evidence_sha256"]) == 64
 
 
 def test_unified_audit_fails_closed_when_required_section_is_missing():
@@ -45,3 +46,32 @@ def test_unified_audit_preserves_failure_diagnostics_without_fabricating_metrics
     assert "untouched_test_benchmark:FAIL" in report["diagnostics"]
     assert "untouched_test_benchmark:challenger_did_not_beat_baseline" in report["diagnostics"]
     assert "metrics" not in report
+
+
+def test_evidence_fingerprint_is_order_invariant_and_content_sensitive():
+    evidence = _passing_evidence()
+    first = build_unified_audit_report(evidence)["evidence_sha256"]
+    reversed_evidence = dict(reversed(list(evidence.items())))
+    assert build_unified_audit_report(reversed_evidence)["evidence_sha256"] == first
+    changed = _passing_evidence()
+    changed["causal_news"]["source"] = "different"
+    assert build_unified_audit_report(changed)["evidence_sha256"] != first
+
+
+def test_noncanonical_evidence_fails_closed_without_hash():
+    evidence = _passing_evidence()
+    evidence["causal_news"]["opaque"] = object()
+    report = build_unified_audit_report(evidence)
+    assert report["decision"] == "NO_TRADE"
+    assert report["promotion_eligible"] is False
+    assert report["evidence_sha256"] is None
+    assert "audit_evidence_not_canonicalizable" in report["diagnostics"]
+
+
+def test_duplicate_required_sections_fail_closed():
+    required = list(REQUIRED_SECTIONS) + ["causal_news"]
+    report = build_unified_audit_report(_passing_evidence(), required_sections=required)
+    assert report["decision"] == "NO_TRADE"
+    assert report["promotion_eligible"] is False
+    assert report["evidence_sha256"] is None
+    assert "duplicate_required_section" in report["diagnostics"]
