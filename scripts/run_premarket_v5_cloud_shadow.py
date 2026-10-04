@@ -203,7 +203,9 @@ def prediction_for_symbol(*, ticker: str, raw: pd.DataFrame, as_of: datetime, mo
     local_dates = ticker_frame.index.tz_convert(NY).date
     day = as_of.astimezone(NY).date()
     history = ticker_frame.loc[local_dates <= day]
-    prior_close = previous_regular_close(history, day)
+    history_for_close = history.copy()
+    history_for_close.index = history_for_close.index.tz_convert(NY)
+    prior_close = previous_regular_close(history_for_close, day)
     current = history.loc[history.index.tz_convert(NY).date == day]
     current = current.loc[(current.index.tz_convert(NY).time >= PREMARKET_START) & (current.index.tz_convert(NY).time < REGULAR_OPEN)]
     cutoff = pd.Timestamp(as_of).tz_convert("UTC")
