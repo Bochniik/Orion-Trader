@@ -1,2 +1,0 @@
-GitHub write probe for OrionTrader autonomous development.
-Safe to delete.
