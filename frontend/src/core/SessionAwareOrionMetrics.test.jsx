@@ -88,7 +88,7 @@ describe("SessionAwareOrionMetrics premarket states", () => {
     expect(html).toContain("MODEL NOT LOADED");
   });
 
-  it("surfaces V5 short-horizon research without relabelling it as an opening signal", () => {
+  it("surfaces V5 short-horizon research in the primary panel without relabelling it as an opening signal", () => {
     const html = renderToStaticMarkup(
       <SessionAwareOrionMetrics
         session="premarket"
@@ -125,11 +125,12 @@ describe("SessionAwareOrionMetrics premarket states", () => {
       />
     );
 
-    expect(html).toContain("Premarket directional research");
+    expect(html).toContain("Short-horizon premarket forecast · research only");
+    expect(html).toContain("Primary premarket research forecast");
+    expect(html).toContain("Premarket direction");
     expect(html).toContain("NEXT 5 MIN (PREMARKET)");
     expect(html).toContain("63% / 37%");
     expect(html).toContain("+0.12%");
-    expect(html).toContain("research only");
     expect(html).toContain("VALIDATED MODEL PENDING");
     expect(html).not.toContain("OPEN -&gt; FIRST 5 MIN");
   });

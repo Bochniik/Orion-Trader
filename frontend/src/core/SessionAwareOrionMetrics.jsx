@@ -18,6 +18,12 @@ const probability = (value) => {
   return `${Math.round((Math.abs(number) <= 1 ? number * 100 : number))}%`;
 };
 
+const signedPercent = (value) => {
+  const number = finite(value);
+  if (number === null) return "N/A";
+  return `${number >= 0 ? "+" : ""}${number.toFixed(2)}%`;
+};
+
 const riskLabel = (value) => {
   if (value === null || value === undefined || value === "") return "N/A";
   if (typeof value === "string") return value;
@@ -120,6 +126,11 @@ function PremarketMetrics({ analysis }) {
   const conviction = finite(analysis?.directional_conviction ?? premarket?.directional_conviction);
   const predictive = analysis?.predictive_outlook || premarket?.predictive_outlook || {};
   const open5m = predictive?.signals?.open_5m || null;
+  const research = predictive?.premarket_research || analysis?.premarket_short_horizon_outlook || null;
+  const researchSignals = research?.signals || {};
+  const researchSignal = researchSignals?.premarket_5m || researchSignals?.premarket_15m || researchSignals?.premarket_30m || null;
+  const researchAvailable = research?.available === true && Boolean(researchSignal);
+  const researchDirection = researchSignal ? String(researchSignal?.direction || "NO_TRADE").replaceAll("_", " ").toUpperCase() : "N/A";
   const forecastAvailable = analysis?.forecast_available === true || premarket?.forecast_available === true || (predictive?.available === true && Boolean(open5m));
   const horizon = analysis?.forecast_horizon || premarket?.forecast_horizon || (open5m ? "OPEN -> FIRST 5 MIN" : null);
   const pmPrice = finite(analysis?.premarket_price) ?? finite(premarket?.premarket_price) ?? finite(analysis?.analysis?.premarket_price);
@@ -142,6 +153,17 @@ function PremarketMetrics({ analysis }) {
         <div><small>Forecast window</small><strong>{horizonLabel}</strong></div>
         <div><small>Premarket price</small><strong>{pmPrice === null ? "N/A" : `$${pmPrice.toFixed(2)}`}</strong></div>
       </div>
+      {researchAvailable && (
+        <>
+          <div className="orion-session-message"><Zap size={18} /><div><strong>Short-horizon premarket forecast · research only</strong><p>{researchSignal?.research_gate_passed === true ? `${researchDirection} research bias passed the current V5 research gate.` : `Current V5 state is ${researchDirection}; the research gate has not been passed.`} This does not replace the opening model.</p></div></div>
+          <div className="orion-mini-metric-grid" aria-label="Primary premarket research forecast">
+            <div><small>Premarket direction</small><strong>{researchDirection}</strong></div>
+            <div><small>UP / DOWN probability</small><strong>{`${probability(researchSignal?.probability_up)} / ${probability(researchSignal?.probability_down)}`}</strong></div>
+            <div><small>Research confidence</small><strong>{probability(researchSignal?.direction_confidence)}</strong></div>
+            <div><small>{researchSignal?.window_label || "PREMARKET WINDOW"}</small><strong>{signedPercent(researchSignal?.predicted_return_pct)}</strong></div>
+          </div>
+        </>
+      )}
       <div className="orion-session-message"><ShieldCheck size={18} /><div><strong>Validated predictive model · Open → 5 min</strong><p>{actionable ? `${direction} signal passed the validated EDGE + DIRECTION gate.` : `No actionable model signal. ${state}.`}</p></div></div>
       <div className="orion-mini-metric-grid">
         <div><small>Model direction</small><strong>{open5m ? direction : state}</strong></div>
