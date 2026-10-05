@@ -94,35 +94,57 @@ function ClosedMetrics({ analysis, afterHours = false }) {
   );
 }
 
+function premarketState(analysis, predictive, open5m) {
+  const premarket = analysis?.premarket || {};
+  const fullHistory = analysis?.full_intraday_history === true || premarket?.full_intraday_history === true;
+  const pointSnapshot = analysis?.status === "limited_point_snapshot" || premarket?.analysis_status === "limited_point_snapshot";
+  const reason = predictive?.reason || open5m?.reason || "";
+
+  if (open5m && predictive?.available === true) {
+    return open5m?.actionable === true ? "VALIDATED SIGNAL" : "BELOW VALIDATED GATE";
+  }
+  if (reason === "trained_hierarchical_model_artifact_missing") return "MODEL NOT LOADED";
+  if (reason === "sip_prediction_history_unavailable" || reason === "usable_sip_minute_history_required" || reason === "full_sip_minute_history_required") {
+    return fullHistory ? "AWAITING SIP PREDICTION DATA" : "WAITING FOR USABLE PREMARKET DATA";
+  }
+  if (reason === "training_feed_mismatch_requires_sip") return "SIP PREDICTION DATA REQUIRED";
+  if (pointSnapshot) return "LIMITED PREMARKET DATA";
+  if (fullHistory) return "PREMARKET DATA ACTIVE";
+  return "WAITING FOR USABLE PREMARKET DATA";
+}
+
 function PremarketMetrics({ analysis }) {
-  const pmScore = analysis?.premarket_score ?? analysis?.premarket?.analysis?.score ?? analysis?.analysis?.score ?? analysis?.orion_score ?? null;
-  const outlook = analysis?.opening_outlook || (analysis?.direction === "bullish" ? "UP BIAS" : analysis?.direction === "bearish" ? "DOWN BIAS" : "WAIT");
-  const conviction = finite(analysis?.directional_conviction);
-  const forecastAvailable = analysis?.forecast_available === true;
-  const horizon = analysis?.forecast_horizon || "OPEN -> FIRST 30 MIN";
-  const pmPrice = finite(analysis?.premarket_price) ?? finite(analysis?.premarket?.premarket_price) ?? finite(analysis?.analysis?.premarket_price);
-  const predictive = analysis?.predictive_outlook || {};
+  const premarket = analysis?.premarket || {};
+  const pmScore = analysis?.premarket_score ?? premarket?.premarket_score ?? premarket?.analysis?.score ?? analysis?.analysis?.score ?? analysis?.orion_score ?? null;
+  const outlook = analysis?.opening_outlook || premarket?.opening_outlook || (analysis?.direction === "bullish" ? "UP BIAS" : analysis?.direction === "bearish" ? "DOWN BIAS" : "WAIT");
+  const conviction = finite(analysis?.directional_conviction ?? premarket?.directional_conviction);
+  const predictive = analysis?.predictive_outlook || premarket?.predictive_outlook || {};
   const open5m = predictive?.signals?.open_5m || null;
-  const available = predictive?.available === true && Boolean(open5m);
+  const forecastAvailable = analysis?.forecast_available === true || premarket?.forecast_available === true || (predictive?.available === true && Boolean(open5m));
+  const horizon = analysis?.forecast_horizon || premarket?.forecast_horizon || (open5m ? "OPEN -> FIRST 5 MIN" : null);
+  const pmPrice = finite(analysis?.premarket_price) ?? finite(premarket?.premarket_price) ?? finite(analysis?.analysis?.premarket_price);
   const actionable = open5m?.actionable === true;
   const direction = actionable ? String(open5m?.direction || "NO_EDGE").toUpperCase() : "NO EDGE";
-  const status = predictive?.reason === "training_feed_mismatch_requires_sip" ? "SIP DATA REQUIRED" : predictive?.reason === "trained_hierarchical_model_artifact_missing" ? "MODEL NOT LOADED" : !available ? "UNAVAILABLE" : actionable ? "VALIDATED SIGNAL" : "BELOW VALIDATED GATE";
+  const state = premarketState(analysis, predictive, open5m);
+  const hasPremarketContext = pmScore !== null || pmPrice !== null || analysis?.full_intraday_history === true || premarket?.full_intraday_history === true;
+  const outlookLabel = forecastAvailable ? outlook : hasPremarketContext ? "OBSERVING" : "INSUFFICIENT DATA";
+  const horizonLabel = forecastAvailable ? (horizon || "OPEN -> FIRST 5 MIN") : hasPremarketContext ? "VALIDATED MODEL PENDING" : "WAIT FOR DATA";
 
   return (
     <div className="orion-session-metrics orion-session-metrics-premarket">
       <div className="orion-premarket-score">
         <div className="orion-score-ring" style={scoreRingStyle(pmScore)}><div><strong>{score(pmScore)}</strong><span>/100</span></div></div>
-        <div><small>Premarket Orion Score</small><strong>{forecastAvailable ? outlook : "WAIT"}</strong><p>Setup quality plus directional opening outlook; not probability of profit.</p></div>
+        <div><small>Premarket Orion Score</small><strong>{forecastAvailable ? outlook : hasPremarketContext ? "OBSERVING" : "WAIT"}</strong><p>Setup quality plus directional opening outlook; not probability of profit.</p></div>
       </div>
       <div className="orion-mini-metric-grid">
-        <div><small>Opening outlook</small><strong>{forecastAvailable ? outlook : "INSUFFICIENT DATA"}</strong></div>
+        <div><small>Opening outlook</small><strong>{outlookLabel}</strong></div>
         <div><small>Directional conviction</small><strong>{conviction === null ? "N/A" : `${Math.round(conviction)} / 100`}</strong></div>
-        <div><small>Forecast window</small><strong>{forecastAvailable ? horizon : "WAIT FOR DATA"}</strong></div>
+        <div><small>Forecast window</small><strong>{horizonLabel}</strong></div>
         <div><small>Premarket price</small><strong>{pmPrice === null ? "N/A" : `$${pmPrice.toFixed(2)}`}</strong></div>
       </div>
-      <div className="orion-session-message"><ShieldCheck size={18} /><div><strong>Validated predictive model · Open → 5 min</strong><p>{actionable ? `${direction} signal passed the validated EDGE + DIRECTION gate.` : `No actionable model signal. ${status}.`}</p></div></div>
+      <div className="orion-session-message"><ShieldCheck size={18} /><div><strong>Validated predictive model · Open → 5 min</strong><p>{actionable ? `${direction} signal passed the validated EDGE + DIRECTION gate.` : `No actionable model signal. ${state}.`}</p></div></div>
       <div className="orion-mini-metric-grid">
-        <div><small>Model direction</small><strong>{available ? direction : status}</strong></div>
+        <div><small>Model direction</small><strong>{open5m ? direction : state}</strong></div>
         <div><small>Edge probability</small><strong>{open5m ? probability(open5m.edge_probability) : "N/A"}</strong></div>
         <div><small>Direction confidence</small><strong>{open5m ? probability(open5m.direction_confidence) : "N/A"}</strong></div>
         <div><small>UP / DOWN given edge</small><strong>{open5m ? `${probability(open5m.up_given_edge)} / ${probability(open5m.down_given_edge)}` : "N/A"}</strong></div>
