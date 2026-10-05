@@ -1,4 +1,5 @@
 name: Orion cloud accelerated learning
+# Trigger-safe workflow marker; functional behavior unchanged.
 
 on:
   schedule:
