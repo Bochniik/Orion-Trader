@@ -20,6 +20,13 @@ function clamp(value, low = 0, high = 100) {
   return Math.max(low, Math.min(high, value));
 }
 
+function probabilityPercent(value) {
+  const number = finite(value);
+  if (number === null) return null;
+  const normalized = Math.abs(number) <= 1 ? number * 100 : number;
+  return clamp(normalized, 0, 100);
+}
+
 function premarketDirectionalLayer(result) {
   const mode = String(
     result?.session_mode || result?.market_session || result?.session || ""
@@ -27,58 +34,88 @@ function premarketDirectionalLayer(result) {
 
   if (mode !== "premarket") return {};
 
-  const source = result?.premarket?.analysis || result?.premarket || result?.analysis || {};
-  const status = String(result?.status || source?.analysis_status || "").toLowerCase();
-  const hasFullHistory =
-    result?.premarket?.full_intraday_history === true ||
-    source?.full_intraday_history === true ||
-    status === "full_premarket_analysis";
-
-  const direction = String(
-    result?.direction || source?.direction || "neutral"
-  ).toLowerCase();
-
-  const score = finite(result?.premarket_score ?? result?.orion_score ?? source?.score);
-  const technical = finite(source?.technical_component);
-  const quality = finite(source?.data_quality_component);
-  const volume = finite(source?.volume_component);
-
-  if (!hasFullHistory || score === null || score <= 0) {
+  // Never replace a real backend opening forecast with a client-side heuristic.
+  // The backend is the authority for validated opening-model semantics.
+  if (result?.forecast_available === true) {
     return {
-      opening_outlook: "WAIT",
-      directional_conviction: null,
-      forecast_horizon: "OPEN -> FIRST 30 MIN",
-      forecast_available: false,
+      forecast_scope: result?.forecast_scope || "opening",
       forecast_semantics:
-        "A directional premarket outlook requires usable current premarket minute OHLCV. A point snapshot is not treated as a forecast.",
+        result?.forecast_semantics ||
+        "Validated opening-model forecast supplied by the Orion backend.",
     };
   }
 
-  const evidence = [
-    [technical, 0.50],
-    [quality, 0.20],
-    [volume, 0.15],
-    [score, 0.15],
-  ].filter(([value]) => value !== null);
+  const predictive =
+    result?.predictive_outlook || result?.premarket?.predictive_outlook || {};
+  const research = predictive?.premarket_research || {};
+  const signals = research?.signals && typeof research.signals === "object"
+    ? research.signals
+    : {};
 
-  const weight = evidence.reduce((sum, [, w]) => sum + w, 0);
-  let conviction = weight
-    ? evidence.reduce((sum, [value, w]) => sum + value * w, 0) / weight
-    : score;
+  const target = ["premarket_5m", "premarket_15m", "premarket_30m"]
+    .find((name) => signals?.[name] && typeof signals[name] === "object");
+  const signal = target ? signals[target] : null;
 
-  if (direction === "neutral") conviction = Math.min(conviction, 49);
-  conviction = Math.round(clamp(conviction, 0, 95));
+  if (research?.available === true && signal) {
+    const confidence = probabilityPercent(signal?.direction_confidence);
+    const probabilityUp = probabilityPercent(signal?.probability_up);
+    const probabilityDown = probabilityPercent(signal?.probability_down);
+    const rawDirection = String(
+      signal?.raw_direction || signal?.direction || ""
+    ).toUpperCase();
+    const direction = rawDirection === "UP" || rawDirection === "DOWN"
+      ? rawDirection
+      : "NEUTRAL";
+    const horizon =
+      signal?.window_label ||
+      (target === "premarket_5m"
+        ? "NEXT 5 MIN (PREMARKET)"
+        : target === "premarket_15m"
+          ? "NEXT 15 MIN (PREMARKET)"
+          : "NEXT 30 MIN (PREMARKET)");
+    const predictedReturn = finite(signal?.predicted_return_pct);
+    const probabilityText =
+      probabilityUp !== null && probabilityDown !== null
+        ? `UP ${Math.round(probabilityUp)}% / DOWN ${Math.round(probabilityDown)}%`
+        : "directional probabilities available in model diagnostics";
+    const moveText = predictedReturn === null
+      ? ""
+      : `; expected move ${predictedReturn >= 0 ? "+" : ""}${predictedReturn.toFixed(2)}%`;
 
+    return {
+      // Dashboard compatibility fields. Scope/actionability explicitly prevent
+      // this research forecast from being treated as an opening trade signal.
+      forecast_available: true,
+      forecast_actionable: false,
+      forecast_scope: "premarket_research",
+      forecast_target: target,
+      opening_outlook: `PREMARKET ${direction}`,
+      directional_conviction:
+        confidence === null ? null : Math.round(confidence * 100) / 100,
+      forecast_horizon: horizon,
+      premarket_probability_up: probabilityUp,
+      premarket_probability_down: probabilityDown,
+      premarket_predicted_return_pct: predictedReturn,
+      forecast_semantics:
+        "Research-only Premarket V5 short-horizon forecast. It does not replace or imply a validated opening forecast.",
+      setup_summary:
+        `Premarket V5 research currently leans ${direction} over ${horizon}. ` +
+        `${probabilityText}${moveText}. Research only; the opening forecast remains fail-closed until separately validated.`,
+    };
+  }
+
+  // No model output: remain fail-closed. In particular, do not manufacture a
+  // directional conviction from Premarket Orion Score components.
   return {
-    opening_outlook:
-      direction === "bullish" ? "UP BIAS" :
-      direction === "bearish" ? "DOWN BIAS" :
-      "NEUTRAL",
-    directional_conviction: conviction,
-    forecast_horizon: "OPEN -> FIRST 30 MIN",
-    forecast_available: direction !== "neutral",
+    opening_outlook: result?.opening_outlook || "WAIT",
+    directional_conviction: result?.directional_conviction ?? null,
+    forecast_horizon: result?.forecast_horizon ?? null,
+    forecast_available: false,
+    forecast_actionable: false,
+    forecast_scope: "unavailable",
     forecast_semantics:
-      "Directional conviction is a 0-100 evidence-strength score from premarket structure, data quality, activity and setup quality. It is not a calibrated probability of profit.",
+      result?.forecast_semantics ||
+      "No validated opening or Premarket V5 research forecast is currently available.",
   };
 }
 
