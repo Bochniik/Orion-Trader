@@ -207,3 +207,27 @@ def test_iex_without_sip_keeps_setup_but_fails_closed_for_prediction(monkeypatch
     assert result["predictive_outlook"]["available"] is False
     assert result["predictive_outlook"]["reason"] == "sip_prediction_history_unavailable"
     assert calls == []
+
+
+def test_sip_payload_exposes_v5_research_even_when_opening_artifact_is_missing():
+    result = PremarketDataAdapter(FakeSipBroker(), FakeMarket()).build(
+        "demo",
+        "NVDA",
+        now=datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc),
+        previous_close_override=99.5,
+    )
+
+    opening = result["predictive_outlook"]
+    research = opening["premarket_research"]
+
+    assert opening["available"] is False
+    assert opening["actionable"] is False
+    assert opening["reason"] == "trained_hierarchical_model_artifact_missing"
+    assert opening["opening_forecast_eligible"] is False
+
+    assert research["available"] is True
+    assert research["actionable"] is False
+    assert research["research_only"] is True
+    assert research["forecast_scope"] == "premarket_short_horizon"
+    assert set(research["signals"]) == {"premarket_5m", "premarket_15m", "premarket_30m"}
+    assert all(signal["actionable"] is False for signal in research["signals"].values())
