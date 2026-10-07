@@ -64,11 +64,11 @@ def test_central_scheduler_primary_satisfies_logical_snapshot():
     row = report["deliveries"][0]
     assert report["summary"]["delivered_count"] == 1
     assert report["summary"]["successful_count"] == 1
-    assert row["primary_successful"] is True
+    assert row["successful"] is True
     assert row["recovered"] is False
 
 
-def test_successful_recovery_satisfies_missing_primary_without_backdating():
+def test_successful_recovery_preserves_primary_incident_without_backdating():
     day = date(2026, 10, 6)
     target, primary_cron = _target(day, "early")
     recovery_cron = _recovery_cron(primary_cron, "early")
@@ -87,11 +87,15 @@ def test_successful_recovery_satisfies_missing_primary_without_backdating():
     report = delivery.build_schedule_delivery_report([run], start_date=day, as_of=as_of)
     row = report["deliveries"][0]
     assert row["schedule_cron"] == primary_cron
-    assert row["observed_crons"] == [recovery_cron]
-    assert row["primary_successful"] is False
+    assert row["run_ids"] == []
+    assert row["recovery_run_ids"] == ["101"]
+    assert row["recovery_crons"] == [recovery_cron]
+    assert row["recovery_successful"] is True
     assert row["recovered"] is True
     assert report["summary"]["recovered_delivery_count"] == 1
-    assert report["summary"]["missing_count"] == 0
+    # Recovery can preserve evidence, but must never erase the historical
+    # primary scheduler delivery incident.
+    assert report["summary"]["missing_count"] == 1
 
 
 def test_wrong_dst_transport_remains_inactive_and_does_not_fake_delivery():
