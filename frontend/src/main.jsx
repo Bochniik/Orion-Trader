@@ -63,6 +63,7 @@ import "./analysis-pending-density.css";
 import "./analysis-commandbar.css";
 import "./analysis-interaction-polish.css";
 import "./analysis-workspace-orientation.css";
+import "./analysis-hero-planet.css";
 import "./analyze-chart-cohesion.css";
 import "./analysis-chart-decision-continuity.css";
 import "./watchlist-polish.css";
