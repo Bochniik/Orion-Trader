@@ -15,7 +15,7 @@ import uuid
 
 import pandas as pd
 
-from app.services.market_replay_engine import SIMULATED_FORWARD
+from app.services.market_replay_engine import REPLAY_ENGINE_ID, SIMULATED_FORWARD
 from app.services.prediction_arena import PredictionArena
 
 RUNNER_ID = "historical-universe-runner-v1"
@@ -117,6 +117,7 @@ class HistoricalUniverseRunner:
     def _checkpoint_signature(self) -> dict[str, Any]:
         return {
             "runner_id": RUNNER_ID,
+            "replay_engine_id": REPLAY_ENGINE_ID,
             "scope": SIMULATED_FORWARD,
             "period": self.config.period,
             "interval": self.config.interval,
@@ -135,6 +136,12 @@ class HistoricalUniverseRunner:
             raise ValueError("invalid replay checkpoint: expected JSON object")
         expected = self._checkpoint_signature()
         mismatches = [key for key, value in expected.items() if payload.get(key) != value]
+        # A replay-engine upgrade changes the semantics of already-completed
+        # symbols. Treat the old checkpoint as stale and replay the requested
+        # shard from scratch, while leaving SIMULATED_FORWARD persistence intact
+        # so cross-session dedupe still protects any valid prior evidence.
+        if "replay_engine_id" in mismatches:
+            return None
         if mismatches:
             raise ValueError(f"replay checkpoint configuration mismatch: {', '.join(mismatches)}")
         return payload
@@ -265,6 +272,7 @@ class HistoricalUniverseRunner:
 
         return {
             "runner_id": RUNNER_ID,
+            "replay_engine_id": REPLAY_ENGINE_ID,
             "scope": SIMULATED_FORWARD,
             "run_id": run_id,
             "period": self.config.period,
