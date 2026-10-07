@@ -8,6 +8,14 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/cloud-accelerated-learning.yml"
+      - "backend/app/services/market_replay_engine.py"
+      - "backend/app/services/historical_universe_runner.py"
+      - "backend/app/services/prediction_arena.py"
+      - "backend/app/services/replay_job.py"
+      - "backend/app/services/accelerated_learning_job.py"
+      - "backend/app/services/orion_learning_engine.py"
+      - "backend/app/services/accelerated_learning_cycle.py"
+      - "backend/app/services/cloud_learning_shards.py"
 
 permissions:
   contents: read
