@@ -15,6 +15,7 @@ on:
       - "backend/app/services/accelerated_learning_job.py"
       - "backend/app/services/orion_learning_engine.py"
       - "backend/app/services/accelerated_learning_cycle.py"
+      - "backend/app/services/simulated_learning_diagnostics.py"
       - "backend/app/services/cloud_learning_shards.py"
 
 permissions:
@@ -216,14 +217,13 @@ jobs:
           from app.services.accelerated_learning_cycle import AcceleratedLearningCycle
           from app.services.orion_learning_engine import OrionLearningEngine
           from app.services.prediction_arena import SimulatedForwardStore
+          from app.services.simulated_learning_diagnostics import SimulatedLearningDiagnostics
 
           root = Path("data/cloud-learning")
           database = root / "simulated_forward.db"
           if not database.exists():
               raise RuntimeError("simulated_forward.db is required for accumulated learning research")
 
-          # Opening the store applies idempotent evidence-contract migrations, including
-          # canonical bullish/bearish -> UP/DOWN outcomes consumed by the learning engine.
           SimulatedForwardStore(database)
           learning = OrionLearningEngine(database).build_challenger(
               output_path=root / "learning_challenger.json"
@@ -231,12 +231,18 @@ jobs:
           cycle = AcceleratedLearningCycle(database).run(
               output_path=root / "accelerated_learning_cycle.json"
           )
+          diagnostics = SimulatedLearningDiagnostics(database).build_report(
+              output_path=root / "learning_error_diagnostics.json"
+          )
           assert learning["scope"] == "SIMULATED_FORWARD"
           assert cycle["scope"] == "SIMULATED_FORWARD"
+          assert diagnostics["scope"] == "SIMULATED_FORWARD"
           assert learning["live_forward_mutated"] is False
           assert cycle["live_forward_mutated"] is False
+          assert diagnostics["safety"]["live_forward_mutated"] is False
           assert learning["automatic_live_promotion"] is False
           assert cycle["automatic_live_promotion"] is False
+          assert diagnostics["safety"]["automatic_live_promotion"] is False
 
           summary = {
               "scope": "SIMULATED_FORWARD",
@@ -245,6 +251,8 @@ jobs:
               "promotable_horizons": learning.get("promotable_horizons", []),
               "kept_challengers": cycle.get("kept_challengers", []),
               "kept_challenger_count": len(cycle.get("kept_challengers", [])),
+              "failure_pattern_count": len(diagnostics.get("candidate_failure_patterns", [])),
+              "calibration_pattern_count": len(diagnostics.get("candidate_calibration_patterns", [])),
               "automatic_live_promotion": False,
               "live_forward_mutated": False,
           }
@@ -268,9 +276,15 @@ jobs:
               assert checkpoint["scope"] == "SIMULATED_FORWARD", checkpoint.get("scope")
 
           research = json.loads((root / "learning_research_summary.json").read_text(encoding="utf-8"))
+          diagnostics = json.loads((root / "learning_error_diagnostics.json").read_text(encoding="utf-8"))
           assert research["scope"] == "SIMULATED_FORWARD"
           assert research["live_forward_mutated"] is False
           assert research["automatic_live_promotion"] is False
+          assert diagnostics["scope"] == "SIMULATED_FORWARD"
+          assert diagnostics["safety"]["research_only"] is True
+          assert diagnostics["safety"]["same_evidence_approval_forbidden"] is True
+          assert diagnostics["safety"]["requires_later_unseen_evidence"] is True
+          assert diagnostics["safety"]["live_forward_mutated"] is False
 
           summary_path = root / "job_summary.json"
           if status["full_summary_available"]:
@@ -285,6 +299,7 @@ jobs:
                   "Full Orion cloud learning cycle complete:",
                   "settled=", payload["learning"].get("settled_sample_count"),
                   "kept=", payload.get("kept_challenger_count"),
+                  "failure_patterns=", research["failure_pattern_count"],
               )
           else:
               assert status["soft_timeout"] is True
@@ -294,6 +309,8 @@ jobs:
                   "remaining=", ",".join(status["remaining_symbols"]),
                   "settled=", research["settled_sample_count"],
                   "kept=", research["kept_challenger_count"],
+                  "failure_patterns=", research["failure_pattern_count"],
+                  "calibration_patterns=", research["calibration_pattern_count"],
               )
           PY
 
@@ -320,6 +337,7 @@ jobs:
             backend/data/cloud-learning/replay_checkpoint.json
             backend/data/cloud-learning/learning_challenger.json
             backend/data/cloud-learning/accelerated_learning_cycle.json
+            backend/data/cloud-learning/learning_error_diagnostics.json
             backend/data/cloud-learning/learning_research_summary.json
             backend/data/cloud-learning/job_summary.json
             backend/data/cloud-learning/shard_metadata.json
