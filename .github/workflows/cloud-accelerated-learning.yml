@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: orion-cloud-accelerated-learning
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   accelerated-learning:
@@ -115,9 +115,6 @@ jobs:
                   "resumed": False,
                   "completed_before_run": [],
               }
-              # A completed shard checkpoint must not suppress symbols when the rotation
-              # returns to them later. The SIMULATED_FORWARD DB itself remains persistent
-              # and globally deduplicated.
               checkpoint_path.unlink(missing_ok=True)
               print("Starting new replay shard:", metadata)
 
