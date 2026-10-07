@@ -9,7 +9,12 @@ from zoneinfo import ZoneInfo
 
 NY = ZoneInfo("America/New_York")
 REGULAR_COLLECTION_SLOTS = tuple((hour, 35) for hour in range(9, 16))
-MAX_SCHEDULE_LAG_MINUTES = 20.0
+# GitHub scheduled runs have recently arrived 20-25 minutes after their nominal
+# trigger. Keep a small transport grace so those runs can still create genuinely
+# forward observations instead of being discarded. The prediction/evidence
+# timestamp remains the actual collection time; this never backdates evidence to
+# the nominal :35 slot.
+MAX_SCHEDULE_LAG_MINUTES = 30.0
 
 
 @dataclass(frozen=True)
