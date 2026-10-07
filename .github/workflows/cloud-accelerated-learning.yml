@@ -1,5 +1,4 @@
 name: Orion cloud accelerated learning
-# Trigger-safe workflow marker; functional behavior unchanged.
 
 on:
   schedule:
@@ -51,7 +50,7 @@ jobs:
             exit 0
           fi
 
-          PREVIOUS_RUN_ID="$(gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW_ID}/runs?status=success&branch=main&per_page=10" --jq '.workflow_runs[0].id // empty' 2>/dev/null || true)"
+          PREVIOUS_RUN_ID="$(gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW_ID}/runs?status=success&branch=main&per_page=20" --jq '.workflow_runs[0].id // empty' 2>/dev/null || true)"
           if [ -z "$PREVIOUS_RUN_ID" ]; then
             echo "No previous successful cloud-learning run; starting fresh."
             exit 0
@@ -67,24 +66,21 @@ jobs:
           unzip -o /tmp/orion-learning-state.zip -d data/cloud-learning
           echo "Restored persistent SIMULATED_FORWARD state from run ${PREVIOUS_RUN_ID}."
 
-      - name: Bootstrap cloud replay universe
+      - name: Bootstrap rotating cloud replay shard
         env:
           ORION_MARKET_UNIVERSE_DB: data/cloud-learning/market_universe.db
+          CLOUD_RUN_NUMBER: ${{ github.run_number }}
         run: |
+          rm -f data/cloud-learning/market_universe.db
           python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from app.services.cloud_learning_shards import select_cloud_replay_shard
           from app.services.market_universe_db import MarketUniverseDatabase
 
-          # Cloud runners are ephemeral. Seed a conservative liquid-US-equity
-          # candidate catalogue for SIMULATED_FORWARD replay only; the selector
-          # still applies Orion's live ADV/history eligibility gates.
-          symbols = [
-              "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "GOOG", "TSLA",
-              "AVGO", "AMD", "NFLX", "ORCL", "CRM", "ADBE", "QCOM", "INTC",
-              "MU", "AMAT", "LRCX", "KLAC", "TXN", "PANW", "PLTR", "UBER",
-              "JPM", "BAC", "WFC", "GS", "MS", "C", "V", "MA",
-              "XOM", "CVX", "COP", "SLB", "LLY", "UNH", "JNJ", "ABBV",
-              "WMT", "COST", "HD", "LOW", "DIS", "BA", "CAT", "GE", "F", "GM",
-          ]
+          shard = select_cloud_replay_shard(int(os.environ["CLOUD_RUN_NUMBER"]), shard_size=10)
           db = MarketUniverseDatabase()
           db.upsert_assets(
               [
@@ -94,14 +90,25 @@ jobs:
                       "tradable": True,
                       "status": "active",
                   }
-                  for symbol in symbols
+                  for symbol in shard.symbols
               ],
-              source="cloud-replay-bootstrap",
+              source="cloud-replay-shard",
           )
           counts = db.counts()
-          if counts["tradable"] < 1:
-              raise RuntimeError("Cloud replay universe bootstrap produced no tradable symbols")
-          print("Cloud replay universe ready:", counts)
+          if counts["tradable"] != len(shard.symbols):
+              raise RuntimeError(
+                  f"Cloud replay shard bootstrap mismatch: expected {len(shard.symbols)}, got {counts['tradable']}"
+              )
+          metadata = {
+              "run_number": int(os.environ["CLOUD_RUN_NUMBER"]),
+              "shard_index": shard.shard_index,
+              "shard_count": shard.shard_count,
+              "symbols": list(shard.symbols),
+          }
+          Path("data/cloud-learning/shard_metadata.json").write_text(
+              json.dumps(metadata, sort_keys=True, indent=2), encoding="utf-8"
+          )
+          print("Cloud replay shard ready:", metadata)
           PY
 
       - name: Reset per-run replay checkpoint
@@ -117,12 +124,12 @@ jobs:
             --checkpoint data/cloud-learning/replay_checkpoint.json \
             --learning-artifact data/cloud-learning/learning_challenger.json \
             --cycle-artifact data/cloud-learning/accelerated_learning_cycle.json \
-            --top-n 50 \
-            --candidate-limit 500 \
+            --top-n 10 \
+            --candidate-limit 10 \
             --minimum-adv 25000000 \
             --period 60d \
             --interval 5m \
-            --batch-size 10 \
+            --batch-size 5 \
             --run-id "cloud-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             > data/cloud-learning/job_summary.json
 
@@ -140,8 +147,11 @@ jobs:
           assert payload["replay"]["scope"] == "SIMULATED_FORWARD"
           assert payload["learning"]["scope"] == "SIMULATED_FORWARD"
           assert payload["walk_forward"]["scope"] == "SIMULATED_FORWARD"
+          shard = json.loads(Path("data/cloud-learning/shard_metadata.json").read_text(encoding="utf-8"))
           print(
               "Orion cloud learning complete:",
+              "shard=", f"{shard['shard_index'] + 1}/{shard['shard_count']}",
+              "symbols=", ",".join(shard["symbols"]),
               "settled=", payload["learning"].get("settled_sample_count"),
               "kept=", payload.get("kept_challenger_count"),
           )
@@ -170,5 +180,6 @@ jobs:
             backend/data/cloud-learning/learning_challenger.json
             backend/data/cloud-learning/accelerated_learning_cycle.json
             backend/data/cloud-learning/job_summary.json
+            backend/data/cloud-learning/shard_metadata.json
           if-no-files-found: warn
           retention-days: 30
