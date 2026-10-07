@@ -100,9 +100,8 @@ def _run_projection(run: dict[str, Any]) -> dict[str, Any] | None:
         return None
     created = _parse_timestamp(run.get("created_at"), field="workflow run created_at")
     resolution = resolver.resolve_snapshot(schedule_cron=cron, now=created)
-    local_day = resolution.as_of_et.date()
     return {
-        "session": local_day.isoformat(),
+        "session": resolution.as_of_et.date().isoformat(),
         "snapshot": resolution.snapshot,
         "schedule_cron": cron,
         "transport_mode": resolution.mode,
@@ -122,40 +121,40 @@ def build_schedule_delivery_report(
     observed = [projection for run in runs if (projection := _run_projection(run)) is not None]
     observed_active = [row for row in observed if row["active_slot"]]
 
-    # Primary and +10m recovery transports serve the same frozen logical
-    # decision slot. Group by session/snapshot so a successful recovery proves
-    # delivery without pretending that the primary transport fired.
-    by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    primary_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    recovery_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in observed_active:
-        by_key.setdefault((row["session"], row["snapshot"]), []).append(row)
+        target = recovery_by_key if row["transport_mode"] == "recovery" else primary_by_key
+        target.setdefault((row["session"], row["snapshot"]), []).append(row)
 
     delivery_rows: list[dict[str, Any]] = []
     for target in expected:
-        matches = by_key.get((target["session"], target["snapshot"]), [])
-        conclusions = sorted({str(row.get("conclusion") or "pending") for row in matches})
-        delivered = bool(matches)
-        successful_rows = [row for row in matches if row.get("conclusion") == "success"]
-        successful = bool(successful_rows)
-        primary_success = any(
-            row.get("conclusion") == "success" and row.get("transport_mode") == "primary"
-            for row in matches
-        )
-        recovery_success = any(
-            row.get("conclusion") == "success" and row.get("transport_mode") == "recovery"
-            for row in matches
-        )
+        key = (target["session"], target["snapshot"])
+        primary_matches = primary_by_key.get(key, [])
+        recovery_matches = recovery_by_key.get(key, [])
+        conclusions = sorted({str(row.get("conclusion") or "pending") for row in primary_matches})
+        recovery_conclusions = sorted({str(row.get("conclusion") or "pending") for row in recovery_matches})
+        delivered = bool(primary_matches)
+        successful = any(row.get("conclusion") == "success" for row in primary_matches)
+        recovery_success = any(row.get("conclusion") == "success" for row in recovery_matches)
         delivery_rows.append(
             {
                 **target,
+                # Delivery fields intentionally describe PRIMARY transport only.
+                # Recovery may preserve forward evidence but must not erase a
+                # historical primary GitHub delivery incident.
                 "delivered": delivered,
                 "successful": successful,
-                "primary_successful": primary_success,
-                "recovered": recovery_success and not primary_success,
-                "run_count": len(matches),
-                "run_ids": sorted(row["run_id"] for row in matches if row["run_id"]),
-                "observed_crons": sorted({row["schedule_cron"] for row in matches}),
-                "transport_modes": sorted({row["transport_mode"] for row in matches}),
+                "run_count": len(primary_matches),
+                "run_ids": sorted(row["run_id"] for row in primary_matches if row["run_id"]),
                 "conclusions": conclusions,
+                "recovery_delivered": bool(recovery_matches),
+                "recovery_successful": recovery_success,
+                "recovery_run_count": len(recovery_matches),
+                "recovery_run_ids": sorted(row["run_id"] for row in recovery_matches if row["run_id"]),
+                "recovery_crons": sorted({row["schedule_cron"] for row in recovery_matches}),
+                "recovery_conclusions": recovery_conclusions,
+                "recovered": recovery_success and not successful,
             }
         )
 
