@@ -30,6 +30,17 @@ def _json(value: Any) -> str:
     return json.dumps(value, default=str, sort_keys=True, separators=(",", ":"))
 
 
+def _canonical_direction(value: Any) -> str | None:
+    text = str(value or "").strip().upper()
+    if text in {"UP", "BULLISH"}:
+        return "UP"
+    if text in {"DOWN", "BEARISH"}:
+        return "DOWN"
+    if text in {"NEUTRAL", "FLAT"}:
+        return "NEUTRAL"
+    return text or None
+
+
 @dataclass(frozen=True)
 class ArenaConfig:
     persist_predictions: bool = True
@@ -110,6 +121,22 @@ class SimulatedForwardStore:
                 )
                 """
             )
+            # Canonicalize legacy replay outcomes. MarketReplayEngine historically emitted
+            # bullish/bearish while the learning layer intentionally consumes UP/DOWN.
+            # Running this migration on store open makes restored cloud artifacts immediately
+            # learnable without touching LIVE_FORWARD persistence.
+            connection.execute(
+                "UPDATE simulated_forward_predictions SET actual_direction='UP' "
+                "WHERE UPPER(COALESCE(actual_direction, '')) IN ('UP', 'BULLISH')"
+            )
+            connection.execute(
+                "UPDATE simulated_forward_predictions SET actual_direction='DOWN' "
+                "WHERE UPPER(COALESCE(actual_direction, '')) IN ('DOWN', 'BEARISH')"
+            )
+            connection.execute(
+                "UPDATE simulated_forward_predictions SET actual_direction='NEUTRAL' "
+                "WHERE UPPER(COALESCE(actual_direction, '')) IN ('NEUTRAL', 'FLAT')"
+            )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_sim_forward_session ON simulated_forward_predictions(session_id, id)"
             )
@@ -171,7 +198,7 @@ class SimulatedForwardStore:
                         row.get("model_version"), row.get("design_id"), row.get("forward_adapter_id"),
                         row.get("training_samples"), row.get("training_cutoff"), row.get("max_training_timestamp"),
                         row.get("status") or "unknown", row.get("settled_at_utc"), row.get("future_price"),
-                        row.get("realized_return"), row.get("actual_direction"),
+                        row.get("realized_return"), _canonical_direction(row.get("actual_direction")),
                         None if row.get("direction_correct") is None else int(bool(row.get("direction_correct"))),
                         row.get("brier_up"), _json(dict(row)), created_at,
                     ),
