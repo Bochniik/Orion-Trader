@@ -1,1 +1,0 @@
-Cloud workflow checkpoint contract is exercised by historical_universe_runner regression coverage; this marker ensures the workflow-only persistence change remains visible to review.
