@@ -4,11 +4,14 @@ run-name: Scheduler canary ${{ github.event_name }} ${{ github.event.schedule ||
 on:
   workflow_dispatch:
   schedule:
-    # Lightweight repository-level liveness probe. It intentionally does not touch
-    # market data, model state, secrets, or decision-grade evidence.
+    # Lightweight repository-level liveness probe. This independent hourly
+    # trigger also provides a second delivery path for regular-hours evidence.
+    # The recovery gate aligns execution just after :35 ET, so a delayed GitHub
+    # cron event can still produce a causally valid forward observation.
     - cron: "17 10-21 * * 1-5"
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -52,3 +55,37 @@ jobs:
           path: scheduler-canary/*.json
           if-no-files-found: error
           retention-days: 7
+
+  regular-recovery-gate:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      ready: ${{ steps.align.outputs.ready }}
+    steps:
+      - name: Align independent recovery path just after minute 35
+        id: align
+        shell: bash
+        run: |
+          set -euo pipefail
+          minute=$(date -u +%M)
+          second=$(date -u +%S)
+
+          # New York and UTC differ only by whole hours, so the minute is the
+          # same in both zones. If this hourly canary arrived before :36, wait
+          # until :36. If it arrived after :36, run immediately. A late event
+          # near the top of the next hour waits for that hour's :36 checkpoint.
+          if [ "$minute" -le 35 ]; then
+            wait_seconds=$(( (36 - 10#$minute) * 60 - 10#$second ))
+            if [ "$wait_seconds" -gt 0 ]; then
+              echo "Waiting ${wait_seconds}s for the :36 recovery checkpoint"
+              sleep "$wait_seconds"
+            fi
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+  regular-hours-recovery:
+    needs: regular-recovery-gate
+    if: needs.regular-recovery-gate.outputs.ready == 'true'
+    uses: ./.github/workflows/regular-hours-v3-1-cloud-shadow.yml
+    secrets: inherit
