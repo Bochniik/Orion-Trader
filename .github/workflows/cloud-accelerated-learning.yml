@@ -207,6 +207,53 @@ jobs:
               raise SystemExit(exit_code)
           PY
 
+      - name: Evaluate accumulated simulated evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from app.services.accelerated_learning_cycle import AcceleratedLearningCycle
+          from app.services.orion_learning_engine import OrionLearningEngine
+          from app.services.prediction_arena import SimulatedForwardStore
+
+          root = Path("data/cloud-learning")
+          database = root / "simulated_forward.db"
+          if not database.exists():
+              raise RuntimeError("simulated_forward.db is required for accumulated learning research")
+
+          # Opening the store applies idempotent evidence-contract migrations, including
+          # canonical bullish/bearish -> UP/DOWN outcomes consumed by the learning engine.
+          SimulatedForwardStore(database)
+          learning = OrionLearningEngine(database).build_challenger(
+              output_path=root / "learning_challenger.json"
+          )
+          cycle = AcceleratedLearningCycle(database).run(
+              output_path=root / "accelerated_learning_cycle.json"
+          )
+          assert learning["scope"] == "SIMULATED_FORWARD"
+          assert cycle["scope"] == "SIMULATED_FORWARD"
+          assert learning["live_forward_mutated"] is False
+          assert cycle["live_forward_mutated"] is False
+          assert learning["automatic_live_promotion"] is False
+          assert cycle["automatic_live_promotion"] is False
+
+          summary = {
+              "scope": "SIMULATED_FORWARD",
+              "settled_sample_count": learning.get("settled_sample_count", 0),
+              "horizon_count": learning.get("horizon_count", 0),
+              "promotable_horizons": learning.get("promotable_horizons", []),
+              "kept_challengers": cycle.get("kept_challengers", []),
+              "kept_challenger_count": len(cycle.get("kept_challengers", [])),
+              "automatic_live_promotion": False,
+              "live_forward_mutated": False,
+          }
+          (root / "learning_research_summary.json").write_text(
+              json.dumps(summary, sort_keys=True, indent=2), encoding="utf-8"
+          )
+          print("Accumulated learning research:", summary)
+          PY
+
       - name: Validate simulation-only output
         run: |
           python - <<'PY'
@@ -219,6 +266,11 @@ jobs:
           if checkpoint_path.exists():
               checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
               assert checkpoint["scope"] == "SIMULATED_FORWARD", checkpoint.get("scope")
+
+          research = json.loads((root / "learning_research_summary.json").read_text(encoding="utf-8"))
+          assert research["scope"] == "SIMULATED_FORWARD"
+          assert research["live_forward_mutated"] is False
+          assert research["automatic_live_promotion"] is False
 
           summary_path = root / "job_summary.json"
           if status["full_summary_available"]:
@@ -237,9 +289,11 @@ jobs:
           else:
               assert status["soft_timeout"] is True
               print(
-                  "Partial replay progress safely persisted:",
+                  "Partial replay progress safely persisted and researched:",
                   "completed=", ",".join(status["completed_symbols"]),
                   "remaining=", ",".join(status["remaining_symbols"]),
+                  "settled=", research["settled_sample_count"],
+                  "kept=", research["kept_challenger_count"],
               )
           PY
 
@@ -266,6 +320,7 @@ jobs:
             backend/data/cloud-learning/replay_checkpoint.json
             backend/data/cloud-learning/learning_challenger.json
             backend/data/cloud-learning/accelerated_learning_cycle.json
+            backend/data/cloud-learning/learning_research_summary.json
             backend/data/cloud-learning/job_summary.json
             backend/data/cloud-learning/shard_metadata.json
             backend/data/cloud-learning/run_status.json
