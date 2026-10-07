@@ -30,6 +30,7 @@ on:
       - "backend/tests/test_accelerated_learning_cycle.py"
       - "backend/tests/test_accelerated_learning_job.py"
       - "backend/tests/test_cloud_learning_shards.py"
+      - "backend/tests/test_cloud_resume_contract.py"
       - "backend/tests/test_model_registry.py"
       - "backend/tests/test_live_forward_validation_report.py"
       - "backend/tests/test_live_forward_promotion_cli.py"
@@ -67,6 +68,7 @@ on:
       - "backend/tests/test_accelerated_learning_cycle.py"
       - "backend/tests/test_accelerated_learning_job.py"
       - "backend/tests/test_cloud_learning_shards.py"
+      - "backend/tests/test_cloud_resume_contract.py"
       - "backend/tests/test_model_registry.py"
       - "backend/tests/test_live_forward_validation_report.py"
       - "backend/tests/test_live_forward_promotion_cli.py"
@@ -120,8 +122,9 @@ jobs:
           python -m py_compile tests/test_accelerated_learning_cycle.py
           python -m py_compile tests/test_accelerated_learning_job.py
           python -m py_compile tests/test_cloud_learning_shards.py
+          python -m py_compile tests/test_cloud_resume_contract.py
           python -m py_compile tests/test_model_registry.py
           python -m py_compile tests/test_live_forward_validation_report.py
           python -m py_compile tests/test_live_forward_promotion_cli.py
       - name: Run replay regression tests
-        run: python -m pytest tests/test_market_replay_engine.py tests/test_prediction_arena.py tests/test_historical_universe_runner.py tests/test_replay_universe_selector.py tests/test_replay_job.py tests/test_orion_learning_engine.py tests/test_accelerated_learning_cycle.py tests/test_accelerated_learning_job.py tests/test_cloud_learning_shards.py tests/test_model_registry.py tests/test_live_forward_validation_report.py tests/test_live_forward_promotion_cli.py -q
+        run: python -m pytest tests/test_market_replay_engine.py tests/test_prediction_arena.py tests/test_historical_universe_runner.py tests/test_replay_universe_selector.py tests/test_replay_job.py tests/test_orion_learning_engine.py tests/test_accelerated_learning_cycle.py tests/test_accelerated_learning_job.py tests/test_cloud_learning_shards.py tests/test_cloud_resume_contract.py tests/test_model_registry.py tests/test_live_forward_validation_report.py tests/test_live_forward_promotion_cli.py -q
