@@ -162,3 +162,43 @@ def test_arena_can_run_without_persistence():
     result = arena.run({"AAA": _frame(base=100.0)}, benchmark)
     assert result["persisted_prediction_count"] == 0
     assert result["prediction_count"] > 0
+
+
+def test_store_canonicalizes_learning_direction_and_migrates_legacy_rows(tmp_path):
+    path = tmp_path / "sim.sqlite3"
+    store = SimulatedForwardStore(path)
+    store.start_session(session_id="canonical", config={})
+    row = {
+        "scope": SIMULATED_FORWARD,
+        "symbol": "AAA",
+        "horizon": "5m",
+        "prediction_time_utc": "2026-01-01T00:00:00+00:00",
+        "target_time_utc": "2026-01-01T00:05:00+00:00",
+        "reference_price": 100.0,
+        "probability_up": 0.7,
+        "probability_down": 0.3,
+        "direction": "bullish",
+        "model_version": "model-a",
+        "status": "settled",
+        "settled_at_utc": "2026-01-01T00:05:00+00:00",
+        "future_price": 101.0,
+        "realized_return": 0.01,
+        "actual_direction": "bullish",
+        "direction_correct": True,
+        "brier_up": 0.09,
+    }
+    assert store.save_predictions("canonical", [row]) == 1
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT actual_direction FROM simulated_forward_predictions"
+        ).fetchone()[0] == "UP"
+        connection.execute(
+            "UPDATE simulated_forward_predictions SET actual_direction='bearish'"
+        )
+
+    SimulatedForwardStore(path)
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT actual_direction FROM simulated_forward_predictions"
+        ).fetchone()[0] == "DOWN"
