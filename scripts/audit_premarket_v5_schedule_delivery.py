@@ -5,7 +5,6 @@ from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
-import re
 import sys
 from typing import Any, Iterable
 
@@ -16,8 +15,11 @@ if str(ROOT) not in sys.path:
 import scripts.resolve_premarket_v5_snapshot as resolver
 
 
-REPORT_CONTRACT = "orion-premarket-v5-schedule-delivery-v1"
-RUN_NAME_PREFIX = "Premarket V5 schedule "
+REPORT_CONTRACT = "orion-premarket-v5-schedule-delivery-v2"
+RUN_NAME_PREFIX = "Premarket V5 schedule "  # Backward compatibility.
+LEGACY_RUN_NAME_PREFIX = RUN_NAME_PREFIX
+SCHEDULER_RUN_NAME_PREFIX = "Market acquisition schedule "
+RUN_NAME_PREFIXES = (LEGACY_RUN_NAME_PREFIX, SCHEDULER_RUN_NAME_PREFIX)
 MATURE_AFTER_MINUTES = 20
 
 
@@ -35,11 +37,15 @@ def _parse_timestamp(value: Any, *, field: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _all_cron_slots() -> dict[str, str]:
+    return {**resolver.REGISTERED_CRON_SLOTS, **resolver.RECOVERY_CRON_SLOTS}
+
+
 def _active_cron_for_target(target_utc: datetime, snapshot: str) -> str:
     candidate = f"{target_utc.minute} {target_utc.hour} * * 1-5"
     if resolver.REGISTERED_CRON_SLOTS.get(candidate) != snapshot:
         raise ScheduleDeliveryError(
-            f"no preregistered cron slot matches {snapshot} target {target_utc.isoformat()}"
+            f"no preregistered primary cron slot matches {snapshot} target {target_utc.isoformat()}"
         )
     return candidate
 
@@ -79,10 +85,13 @@ def _extract_schedule_cron(run: dict[str, Any]) -> str | None:
     if str(run.get("event") or "") != "schedule":
         return None
     title = str(run.get("display_title") or run.get("name") or "")
-    if not title.startswith(RUN_NAME_PREFIX):
-        return None
-    cron = title[len(RUN_NAME_PREFIX) :].strip()
-    return cron if cron in resolver.REGISTERED_CRON_SLOTS else None
+    valid = _all_cron_slots()
+    for prefix in RUN_NAME_PREFIXES:
+        if not title.startswith(prefix):
+            continue
+        cron = title[len(prefix) :].strip()
+        return cron if cron in valid else None
+    return None
 
 
 def _run_projection(run: dict[str, Any]) -> dict[str, Any] | None:
@@ -90,13 +99,13 @@ def _run_projection(run: dict[str, Any]) -> dict[str, Any] | None:
     if cron is None:
         return None
     created = _parse_timestamp(run.get("created_at"), field="workflow run created_at")
-    local_day = created.astimezone(resolver.NY).date()
-    snapshot = resolver.REGISTERED_CRON_SLOTS[cron]
     resolution = resolver.resolve_snapshot(schedule_cron=cron, now=created)
+    local_day = resolution.as_of_et.date()
     return {
         "session": local_day.isoformat(),
-        "snapshot": snapshot,
+        "snapshot": resolution.snapshot,
         "schedule_cron": cron,
+        "transport_mode": resolution.mode,
         "active_slot": bool(resolution.active),
         "status": str(run.get("status") or "unknown"),
         "conclusion": None if run.get("conclusion") is None else str(run.get("conclusion")),
@@ -113,23 +122,39 @@ def build_schedule_delivery_report(
     observed = [projection for run in runs if (projection := _run_projection(run)) is not None]
     observed_active = [row for row in observed if row["active_slot"]]
 
+    # Primary and +10m recovery transports serve the same frozen logical
+    # decision slot. Group by session/snapshot so a successful recovery proves
+    # delivery without pretending that the primary transport fired.
     by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in observed_active:
-        by_key.setdefault((row["session"], row["schedule_cron"]), []).append(row)
+        by_key.setdefault((row["session"], row["snapshot"]), []).append(row)
 
     delivery_rows: list[dict[str, Any]] = []
     for target in expected:
-        matches = by_key.get((target["session"], target["schedule_cron"]), [])
+        matches = by_key.get((target["session"], target["snapshot"]), [])
         conclusions = sorted({str(row.get("conclusion") or "pending") for row in matches})
         delivered = bool(matches)
-        successful = any(row.get("conclusion") == "success" for row in matches)
+        successful_rows = [row for row in matches if row.get("conclusion") == "success"]
+        successful = bool(successful_rows)
+        primary_success = any(
+            row.get("conclusion") == "success" and row.get("transport_mode") == "primary"
+            for row in matches
+        )
+        recovery_success = any(
+            row.get("conclusion") == "success" and row.get("transport_mode") == "recovery"
+            for row in matches
+        )
         delivery_rows.append(
             {
                 **target,
                 "delivered": delivered,
                 "successful": successful,
+                "primary_successful": primary_success,
+                "recovered": recovery_success and not primary_success,
                 "run_count": len(matches),
                 "run_ids": sorted(row["run_id"] for row in matches if row["run_id"]),
+                "observed_crons": sorted({row["schedule_cron"] for row in matches}),
+                "transport_modes": sorted({row["transport_mode"] for row in matches}),
                 "conclusions": conclusions,
             }
         )
@@ -137,6 +162,7 @@ def build_schedule_delivery_report(
     missing = [row for row in delivery_rows if not row["delivered"]]
     unsuccessful = [row for row in delivery_rows if row["delivered"] and not row["successful"]]
     duplicates = [row for row in delivery_rows if row["run_count"] > 1]
+    recovered = [row for row in delivery_rows if row["recovered"]]
     per_snapshot: dict[str, dict[str, int]] = {}
     for snapshot in resolver.SNAPSHOT_CLOCKS:
         rows = [row for row in delivery_rows if row["snapshot"] == snapshot]
@@ -144,6 +170,7 @@ def build_schedule_delivery_report(
             "expected": len(rows),
             "delivered": sum(1 for row in rows if row["delivered"]),
             "successful": sum(1 for row in rows if row["successful"]),
+            "recovered": sum(1 for row in rows if row["recovered"]),
             "missing": sum(1 for row in rows if not row["delivered"]),
             "unsuccessful": sum(1 for row in rows if row["delivered"] and not row["successful"]),
         }
@@ -162,12 +189,15 @@ def build_schedule_delivery_report(
         },
         "workflow_identity": {
             "run_name_prefix": RUN_NAME_PREFIX,
+            "run_name_prefixes": list(RUN_NAME_PREFIXES),
             "registered_cron_slots": dict(resolver.REGISTERED_CRON_SLOTS),
+            "recovery_cron_slots": dict(resolver.RECOVERY_CRON_SLOTS),
         },
         "summary": {
             "expected_delivery_count": len(delivery_rows),
             "delivered_count": sum(1 for row in delivery_rows if row["delivered"]),
             "successful_count": sum(1 for row in delivery_rows if row["successful"]),
+            "recovered_delivery_count": len(recovered),
             "missing_count": len(missing),
             "unsuccessful_count": len(unsuccessful),
             "duplicate_delivery_count": len(duplicates),
@@ -179,6 +209,7 @@ def build_schedule_delivery_report(
         "deliveries": delivery_rows,
         "missing_deliveries": missing,
         "unsuccessful_deliveries": unsuccessful,
+        "recovered_deliveries": recovered,
         "duplicate_deliveries": duplicates,
     }
 
