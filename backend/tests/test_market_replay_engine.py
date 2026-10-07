@@ -27,6 +27,12 @@ def _bars(count: int = 8) -> pd.DataFrame:
     )
 
 
+def _yahoo_bars(symbol: str, count: int = 8) -> pd.DataFrame:
+    frame = _bars(count)
+    frame.columns = pd.MultiIndex.from_tuples([(column, symbol) for column in frame.columns])
+    return frame
+
+
 def test_replay_predictor_never_receives_future_rows():
     stock = _bars()
     benchmark = _bars()
@@ -162,6 +168,65 @@ def test_replay_preserves_model_version_and_settles_fake_forward_adapter():
     assert record["forward_adapter_id"] == "fake-forward-v1"
     assert record["status"] == "settled"
     assert record["training_samples"] == 123
+
+
+def test_replay_accepts_yfinance_single_ticker_multiindex_and_emits_prediction():
+    stock = _yahoo_bars("AAPL")
+    benchmark = _yahoo_bars("SPY")
+    decision_time = stock.index[2]
+    target_time = stock.index[4]
+
+    def predictor(stock_visible, benchmark_visible, *, symbol, as_of):
+        assert not isinstance(stock_visible.columns, pd.MultiIndex)
+        assert not isinstance(benchmark_visible.columns, pd.MultiIndex)
+        assert float(stock_visible.loc[decision_time, "Close"]) == pytest.approx(102.0)
+        return {
+            "available": True,
+            "as_of": decision_time.isoformat(),
+            "design_id": "fake-yahoo-shape-v1",
+            "forward_adapter_id": "fake-forward-v1",
+            "horizons": {
+                "10m": {
+                    "available": True,
+                    "probability_up": 0.75,
+                    "probability_down": 0.25,
+                    "direction": "bullish",
+                    "target_time_utc": target_time.isoformat(),
+                    "training_samples": 123,
+                    "training_cutoff": stock.index[0].isoformat(),
+                    "max_training_timestamp": stock.index[1].isoformat(),
+                }
+            },
+        }
+
+    result = MarketReplayEngine(predictor=predictor).run(
+        stock,
+        benchmark,
+        symbol="AAPL",
+        decision_times=[decision_time],
+    )
+
+    assert result["prediction_count"] == 1
+    assert result["resolved_prediction_count"] == 1
+    assert result["predictions"][0]["reference_price"] == pytest.approx(102.0)
+    assert result["predictions"][0]["future_price"] == pytest.approx(104.0)
+    assert all(row["reason"] != "missing_reference_close" for row in result["unavailable_decision_points"])
+
+
+def test_replay_rejects_ambiguous_multi_symbol_market_frame():
+    frame = _bars()
+    columns = []
+    values = {}
+    for column in frame.columns:
+        for symbol in ("AAPL", "MSFT"):
+            key = (column, symbol)
+            columns.append(key)
+            values[key] = frame[column].to_numpy()
+    ambiguous = pd.DataFrame(values, index=frame.index)
+    ambiguous.columns = pd.MultiIndex.from_tuples(columns)
+
+    with pytest.raises(ValueError, match="ambiguous multi-symbol"):
+        MarketReplayEngine().run(ambiguous, _yahoo_bars("SPY"), symbol="AAPL")
 
 
 def test_replay_rejects_non_monotonic_or_duplicate_input():

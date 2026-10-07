@@ -19,7 +19,7 @@ from app.services.intraday_probability_long_horizon_v5_forward import (
 
 SIMULATED_FORWARD = "SIMULATED_FORWARD"
 LIVE_FORWARD = "LIVE_FORWARD"
-REPLAY_ENGINE_ID = "market-replay-v1"
+REPLAY_ENGINE_ID = "market-replay-v2"
 
 ForwardPredictor = Callable[..., dict[str, Any]]
 
@@ -54,13 +54,33 @@ def _utc_timestamp(value: Any) -> pd.Timestamp:
     return ts.tz_convert("UTC")
 
 
+def _flatten_single_symbol_columns(frame: pd.DataFrame, *, name: str) -> pd.DataFrame:
+    """Normalize yfinance single-ticker MultiIndex OHLCV into scalar columns.
+
+    Newer yfinance versions commonly return columns such as ``('Close', 'AAPL')``
+    even for one ticker. Orion's forward adapter already normalizes that shape,
+    but replay reference-price extraction also needs the same canonical scalar
+    ``Close`` column. Multiple symbols in one frame are deliberately rejected
+    rather than silently selecting the wrong ticker.
+    """
+    if not isinstance(frame.columns, pd.MultiIndex):
+        return frame
+
+    result = frame.copy()
+    flattened = [column[0] if isinstance(column, tuple) else column for column in result.columns]
+    if len(set(flattened)) != len(flattened):
+        raise ValueError(f"{name} contains ambiguous multi-symbol market columns")
+    result.columns = flattened
+    return result
+
+
 def _validated_frame(frame: pd.DataFrame, *, name: str) -> pd.DataFrame:
     if not isinstance(frame, pd.DataFrame) or frame.empty:
         raise ValueError(f"{name} must be a non-empty DataFrame")
     if not isinstance(frame.index, pd.DatetimeIndex):
         raise ValueError(f"{name} must use a DatetimeIndex")
 
-    result = frame.copy()
+    result = _flatten_single_symbol_columns(frame.copy(), name=name)
     index = result.index
     if index.tz is None:
         index = index.tz_localize("UTC")
@@ -236,8 +256,6 @@ class MarketReplayEngine:
                 unavailable.append({"as_of": clock.isoformat(), "reason": "no_visible_market_data"})
                 continue
 
-            # Hard anti-leakage boundary: the predictor never receives a row whose
-            # timestamp is later than the virtual replay clock.
             forecast = self.predictor(
                 stock_visible,
                 benchmark_visible,
@@ -280,9 +298,6 @@ class MarketReplayEngine:
                     )
                 )
 
-        # Settlement is a separate phase.  No target price was exposed to the
-        # predictor.  Advancing to the end of supplied history merely resolves
-        # predictions whose horizons genuinely matured inside that history.
         replay_end = stock.index[-1]
         settled = [
             settle_replay_prediction(row, stock, replay_clock=replay_end)

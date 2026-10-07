@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from app.services.historical_universe_runner import HistoricalUniverseRunner, UniverseRunnerConfig
-from app.services.market_replay_engine import SIMULATED_FORWARD
+from app.services.market_replay_engine import REPLAY_ENGINE_ID, SIMULATED_FORWARD
 
 
 def _frame(start="2026-09-01 13:30", periods=20):
@@ -64,6 +64,7 @@ def test_runner_batches_universe_and_writes_checkpoint(tmp_path):
     result = runner.run(["AAPL", "MSFT", "NVDA"], run_id="run-1")
 
     assert result["scope"] == SIMULATED_FORWARD
+    assert result["replay_engine_id"] == REPLAY_ENGINE_ID
     assert result["requested_symbol_count"] == 3
     assert result["resumed_symbol_count"] == 0
     assert result["processed_symbol_count"] == 3
@@ -79,6 +80,7 @@ def test_runner_batches_universe_and_writes_checkpoint(tmp_path):
     assert checkpoint.exists()
     text = checkpoint.read_text(encoding="utf-8")
     assert '"scope": "SIMULATED_FORWARD"' in text
+    assert f'"replay_engine_id": "{REPLAY_ENGINE_ID}"' in text
     assert '"prediction_count": 6' in text
     assert '"period": "60d"' in text
 
@@ -164,6 +166,7 @@ def test_runner_rejects_checkpoint_from_incompatible_configuration(tmp_path):
     checkpoint = tmp_path / "replay-checkpoint.json"
     checkpoint.write_text(json.dumps({
         "runner_id": "historical-universe-runner-v1",
+        "replay_engine_id": REPLAY_ENGINE_ID,
         "scope": SIMULATED_FORWARD,
         "period": "30d",
         "interval": "5m",
@@ -181,6 +184,44 @@ def test_runner_rejects_checkpoint_from_incompatible_configuration(tmp_path):
 
     with pytest.raises(ValueError, match="checkpoint configuration mismatch: period"):
         runner.run(["AAPL"])
+
+
+def test_runner_replays_symbols_when_checkpoint_engine_version_is_stale(tmp_path):
+    frames = {symbol: _frame() for symbol in ("SPY", "AAPL")}
+    checkpoint = tmp_path / "replay-checkpoint.json"
+    checkpoint.write_text(json.dumps({
+        "runner_id": "historical-universe-runner-v1",
+        "replay_engine_id": "market-replay-v1",
+        "scope": SIMULATED_FORWARD,
+        "period": "60d",
+        "interval": "5m",
+        "prepost": False,
+        "benchmark_symbol": "SPY",
+        "completed_symbols": ["AAPL"],
+        "prediction_count": 0,
+        "settled_prediction_count": 0,
+    }), encoding="utf-8")
+
+    loaded = []
+
+    def loader(symbol, **kwargs):
+        loaded.append(symbol)
+        return frames[symbol]
+
+    arena = FakeArena()
+    result = HistoricalUniverseRunner(
+        arena=arena,
+        loader=loader,
+        checkpoint_path=checkpoint,
+    ).run(["AAPL"], run_id="replay-v2")
+
+    assert result["resumed_symbol_count"] == 0
+    assert result["processed_symbol_count"] == 1
+    assert result["prediction_count"] == 2
+    assert arena.calls == [(["AAPL"], "replay-v2:batch-1", None)]
+    assert loaded == ["SPY", "AAPL"]
+    payload = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert payload["replay_engine_id"] == REPLAY_ENGINE_ID
 
 
 def test_runner_can_disable_checkpoint_resume(tmp_path):
