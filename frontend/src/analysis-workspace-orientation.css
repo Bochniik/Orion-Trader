@@ -145,3 +145,90 @@
   .analyze-view .analyze-sticky-ticker { border-color: rgba(255, 255, 255, 0.22); }
   .analyze-view .analyze-sticky-context::after { color: rgba(225, 229, 235, 0.68); }
 }
+
+/* Reference-aligned Deep Stock Analysis hero. The evidence categories are decorative
+   orientation cues only; all analysis remains driven by existing backend evidence. */
+@media (min-width: 1081px) {
+  .analyze-view .analyze-page-heading {
+    min-height: 154px;
+    padding: 22px 24px 20px 26px;
+    border-color: rgba(255, 147, 58, 0.22);
+    border-radius: 15px;
+    background:
+      linear-gradient(90deg, rgba(5, 7, 10, 0.99) 0%, rgba(5, 7, 10, 0.98) 35%, rgba(5, 7, 10, 0.68) 52%, rgba(5, 7, 10, 0.12) 76%, rgba(5, 7, 10, 0.22) 100%),
+      url("./assets/deep-analysis-planet.webp") right center / 68% 100% no-repeat,
+      #05070a;
+    box-shadow:
+      inset 2px 0 0 rgba(255, 132, 32, 0.95),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 0 34px rgba(255, 122, 26, 0.055),
+      0 20px 54px rgba(0, 0, 0, 0.24);
+  }
+
+  .analyze-view .analyze-page-heading::before {
+    z-index: 1;
+    inset: 0 12px 0 40%;
+    background: url("./assets/deep-analysis-feature-grid.svg") right center / 100% auto no-repeat;
+    opacity: 0.96;
+  }
+
+  .analyze-view .analyze-page-heading::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  .analyze-view .analyze-page-heading > div {
+    position: relative;
+    z-index: 2;
+    width: 40%;
+    min-width: 390px;
+    max-width: 610px;
+  }
+
+  .analyze-view .analyze-page-heading .core-eyebrow {
+    margin-bottom: 8px;
+    color: #ff932f;
+    font-size: 0.68rem;
+    font-weight: 850;
+    letter-spacing: 0.12em;
+  }
+
+  .analyze-view .analyze-page-heading h1 {
+    margin: 0 0 9px;
+    color: #f4f5f6;
+    font-size: clamp(2rem, 2.75vw, 2.95rem);
+    font-weight: 690;
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+  }
+
+  .analyze-view .analyze-page-heading > div > p:last-child {
+    max-width: 610px;
+    margin: 0;
+    color: rgba(177, 186, 198, 0.72);
+    font-size: 0.77rem;
+    line-height: 1.55;
+  }
+}
+
+@media (min-width: 1081px) and (max-width: 1320px) {
+  .analyze-view .analyze-page-heading::before {
+    inset-left: 43%;
+    background-size: 104% auto;
+  }
+  .analyze-view .analyze-page-heading > div {
+    width: 43%;
+    min-width: 350px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .analyze-view .analyze-page-heading {
+    background:
+      linear-gradient(90deg, rgba(5,7,10,.98), rgba(5,7,10,.76)),
+      url("./assets/deep-analysis-planet.webp") right center / cover no-repeat,
+      #05070a;
+  }
+  .analyze-view .analyze-page-heading::before { display: none; }
+  .analyze-view .analyze-page-heading::after { display: none !important; content: none !important; }
+}
