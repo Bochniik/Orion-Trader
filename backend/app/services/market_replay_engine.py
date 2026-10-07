@@ -58,10 +58,10 @@ def _flatten_single_symbol_columns(frame: pd.DataFrame, *, name: str) -> pd.Data
     """Normalize yfinance single-ticker MultiIndex OHLCV into scalar columns.
 
     Newer yfinance versions commonly return columns such as ``('Close', 'AAPL')``
-    even for one ticker.  Orion's forward adapter already normalizes that shape,
-    but replay settlement/reference-price extraction also needs the same canonical
-    scalar ``Close`` column.  Multiple symbols in one frame are deliberately
-    rejected rather than silently selecting the wrong ticker.
+    even for one ticker. Orion's forward adapter already normalizes that shape,
+    but replay reference-price extraction also needs the same canonical scalar
+    ``Close`` column. Multiple symbols in one frame are deliberately rejected
+    rather than silently selecting the wrong ticker.
     """
     if not isinstance(frame.columns, pd.MultiIndex):
         return frame
@@ -178,7 +178,6 @@ def settle_replay_prediction(
     if prediction.get("scope") != SIMULATED_FORWARD:
         raise ValueError("Replay settlement accepts SIMULATED_FORWARD evidence only")
 
-    historical_stock = _validated_frame(historical_stock, name="historical_stock")
     target = _utc_timestamp(prediction["target_time_utc"])
     clock = _utc_timestamp(replay_clock)
     if clock < target:
@@ -257,8 +256,6 @@ class MarketReplayEngine:
                 unavailable.append({"as_of": clock.isoformat(), "reason": "no_visible_market_data"})
                 continue
 
-            # Hard anti-leakage boundary: the predictor never receives a row whose
-            # timestamp is later than the virtual replay clock.
             forecast = self.predictor(
                 stock_visible,
                 benchmark_visible,
@@ -301,9 +298,6 @@ class MarketReplayEngine:
                     )
                 )
 
-        # Settlement is a separate phase.  No target price was exposed to the
-        # predictor.  Advancing to the end of supplied history merely resolves
-        # predictions whose horizons genuinely matured inside that history.
         replay_end = stock.index[-1]
         settled = [
             settle_replay_prediction(row, stock, replay_clock=replay_end)
