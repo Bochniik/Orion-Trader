@@ -70,15 +70,20 @@ def _git_sha(value: Any, *, field: str) -> str:
     return sha
 
 
+def _all_premarket_crons() -> dict[str, str]:
+    return {**resolver.REGISTERED_CRON_SLOTS, **resolver.RECOVERY_CRON_SLOTS}
+
+
 def _registered_premarket_cron(run: dict[str, Any]) -> str | None:
     if str(run.get("event") or "") != "schedule":
         return None
     title = str(run.get("display_title") or run.get("name") or "")
+    valid_crons = _all_premarket_crons()
     for prefix in RUN_NAME_PREFIXES:
         if not title.startswith(prefix):
             continue
         cron = title[len(prefix) :].strip()
-        return cron if cron in resolver.REGISTERED_CRON_SLOTS else None
+        return cron if cron in valid_crons else None
     return None
 
 
@@ -248,9 +253,6 @@ class GitHubActionsClient:
                     if created < start:
                         stop = True
                         continue
-                    # The central scheduler also runs regular-hours and session
-                    # collectors. Only preregistered Premarket V5 cron identities
-                    # belong in this evidence population.
                     if _registered_premarket_cron(raw) is None:
                         continue
                     normalized = normalize_run(raw)
