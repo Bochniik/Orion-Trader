@@ -24,7 +24,7 @@ permissions:
 
 concurrency:
   group: orion-cloud-accelerated-learning
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   accelerated-learning:
