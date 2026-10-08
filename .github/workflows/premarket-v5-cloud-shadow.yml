@@ -63,13 +63,19 @@ jobs:
           EXTERNAL_SNAPSHOT: ${{ inputs.external_snapshot }}
         run: |
           EXTRA_ARGS=()
+          SCHEDULE_ARG="$SCHEDULE_CRON"
           if [ -n "$EXTERNAL_SNAPSHOT" ]; then
             EXTRA_ARGS+=(--external-snapshot "$EXTERNAL_SNAPSHOT")
+            # A reusable workflow invoked from a scheduled watchdog inherits the
+            # caller's schedule string. external_snapshot is the authoritative
+            # frozen slot in that mode, so do not pass the watchdog cron as a
+            # Premarket V5 registered cron slot.
+            SCHEDULE_ARG=""
           elif [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$MANUAL_COLLECTION_MODE" = 'current' ]; then
             EXTRA_ARGS+=(--manual-current)
           fi
           python scripts/resolve_premarket_v5_snapshot.py \
-            --schedule-cron "$SCHEDULE_CRON" \
+            --schedule-cron "$SCHEDULE_ARG" \
             "${EXTRA_ARGS[@]}" \
             --github-output "$GITHUB_OUTPUT"
 
