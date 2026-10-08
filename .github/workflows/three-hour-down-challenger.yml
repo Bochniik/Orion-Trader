@@ -1,0 +1,132 @@
+name: Orion 3h DOWN challenger research
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/services/three_hour_down_notrade_challenger.py"
+      - "backend/tests/test_three_hour_down_notrade_challenger.py"
+      - ".github/workflows/three-hour-down-challenger.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/app/services/three_hour_down_notrade_challenger.py"
+      - "backend/tests/test_three_hour_down_notrade_challenger.py"
+      - ".github/workflows/three-hour-down-challenger.yml"
+  workflow_run:
+    workflows: ["Orion cloud accelerated learning"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  challenger-tests:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      - name: Install backend and test dependencies
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Compile challenger
+        run: |
+          python -m py_compile app/services/three_hour_down_notrade_challenger.py
+          python -m py_compile tests/test_three_hour_down_notrade_challenger.py
+      - name: Run challenger regression tests
+        run: python -m pytest tests/test_three_hour_down_notrade_challenger.py -q
+
+  unseen-evaluation:
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Restore latest cloud-learning state read-only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          mkdir -p data/challenger-evaluation
+          RUN_ID="${TRIGGER_RUN_ID}"
+          if [ -z "$RUN_ID" ]; then
+            WORKFLOW_ID="$(gh api "repos/${REPOSITORY}/actions/workflows/cloud-accelerated-learning.yml" --jq '.id')"
+            RUN_ID="$(gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW_ID}/runs?status=completed&branch=main&per_page=20" \
+              --jq '.workflow_runs[] | select(.conclusion == "success") | .id' | head -n 1)"
+          fi
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful cloud-learning run available."
+            exit 1
+          fi
+          ARTIFACT_ID="$(gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+            --jq '.artifacts[] | select(.name == "orion-accelerated-learning-state") | .id' | head -n 1)"
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "Cloud-learning state artifact missing for run ${RUN_ID}."
+            exit 1
+          fi
+          gh api "repos/${REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/orion-learning-state.zip
+          unzip -o /tmp/orion-learning-state.zip -d data/challenger-evaluation/source
+          echo "${RUN_ID}" > data/challenger-evaluation/source_run_id.txt
+      - name: Evaluate preregistered challenger on later unseen evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from app.services.three_hour_down_notrade_challenger import ThreeHourDownNoTradeChallenger
+
+          root = Path("data/challenger-evaluation")
+          database = root / "source" / "simulated_forward.db"
+          if not database.exists():
+              raise RuntimeError("simulated_forward.db missing from restored state")
+          result = ThreeHourDownNoTradeChallenger(database).evaluate(
+              output_path=root / "three_hour_down_challenger.json"
+          )
+          assert result["scope"] == "SIMULATED_FORWARD"
+          assert result["same_evidence_approval_forbidden"] is True
+          assert result["requires_later_unseen_evidence"] is True
+          assert result["probabilities_mutated"] is False
+          assert result["automatic_live_promotion"] is False
+          assert result["live_forward_mutated"] is False
+          print(json.dumps({
+              "challenger_version": result["challenger_version"],
+              "status": result["status"],
+              "unseen_sample_count": result["unseen_sample_count"],
+              "unseen_session_count": result["unseen_session_count"],
+              "coverage": result["challenger_trade_coverage"],
+              "incumbent_accuracy": result["incumbent_directional_accuracy"],
+              "challenger_trade_accuracy": result["challenger_trade_directional_accuracy"],
+              "keep_challenger": result["keep_challenger"],
+          }, sort_keys=True))
+          PY
+      - name: Persist challenger research verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: orion-3h-down-challenger-evaluation
+          path: |
+            backend/data/challenger-evaluation/three_hour_down_challenger.json
+            backend/data/challenger-evaluation/source_run_id.txt
+          if-no-files-found: error
+          retention-days: 30
