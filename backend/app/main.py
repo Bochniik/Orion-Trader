@@ -20,6 +20,7 @@ from app.services.settlement_scheduler import SettlementScheduler
 from app.api import routes as legacy_routes
 from app.api.scanner_routes import router as scanner_router
 from app.services.continuous_scanner import ScannerScheduler
+from app.services.premarket_continuous_scheduler import PremarketContinuousScheduler
 from app.services.scanner_settings import ScannerSettings
 from app.services.scanner_state_store import ScannerStateStore
 from app.services.scanner_runtime import ExistingScannerRunner, scanner_provider_availability
@@ -46,16 +47,23 @@ scanner_scheduler = ScannerScheduler(
     lambda user_id: scanner_provider_availability(legacy_routes.market, legacy_routes.alpaca_broker, user_id),
     scanner_settings,
 )
+premarket_scanner_scheduler = PremarketContinuousScheduler(
+    legacy_routes.alpaca_broker,
+    legacy_routes.market,
+)
 
 
 @asynccontextmanager
 async def lifespan(_app):
     settlement_scheduler.start()
     _app.state.scanner_scheduler = scanner_scheduler
+    _app.state.premarket_scanner_scheduler = premarket_scanner_scheduler
     scanner_scheduler.start()
+    premarket_scanner_scheduler.start()
     try:
         yield
     finally:
+        premarket_scanner_scheduler.stop()
         scanner_scheduler.stop()
         settlement_scheduler.stop()
         core_job_manager.stop_all()
@@ -68,6 +76,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.state.scanner_scheduler = scanner_scheduler
+app.state.premarket_scanner_scheduler = premarket_scanner_scheduler
 
 PUBLIC_PATHS = {"/", "/health", "/ready", "/metrics", "/auth/register", "/auth/login", "/auth/session", "/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
 _metrics_lock = Lock()
@@ -136,6 +145,11 @@ def set_session_cookie(response, session):
     response.set_cookie(SESSION_COOKIE, session["token"], max_age=7 * 24 * 3600, httponly=True, secure=os.getenv("ORION_COOKIE_SECURE", "false").lower() == "true", samesite="strict", path="/")
 
 
+def activate_scanners_for_user(user_id):
+    scanner_scheduler.activate_user(user_id, auth_store.user_database(user_id))
+    premarket_scanner_scheduler.activate_user(user_id)
+
+
 @app.post("/auth/register")
 def register(request: CredentialsRequest, response: Response):
     try:
@@ -143,7 +157,7 @@ def register(request: CredentialsRequest, response: Response):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     set_session_cookie(response, session)
-    scanner_scheduler.activate_user(session["user"]["id"], auth_store.user_database(session["user"]["id"]))
+    activate_scanners_for_user(session["user"]["id"])
     return {"user": session["user"], "csrf_token": session["csrf_token"], "expires_at": session["expires_at"]}
 
 
@@ -155,7 +169,7 @@ def login(request: CredentialsRequest, response: Response):
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     set_session_cookie(response, session)
     user_id = session["user"]["id"]
-    scanner_scheduler.activate_user(user_id, auth_store.user_database(user_id))
+    activate_scanners_for_user(user_id)
     return {"user": session["user"], "csrf_token": session["csrf_token"], "expires_at": session["expires_at"]}
 
 
@@ -164,7 +178,7 @@ def current_session(request: Request):
     session = auth_store.authenticate(request.cookies.get(SESSION_COOKIE))
     if session is None:
         raise HTTPException(status_code=401, detail="Authentication required")
-    scanner_scheduler.activate_user(session["user"]["id"], auth_store.user_database(session["user"]["id"]))
+    activate_scanners_for_user(session["user"]["id"])
     return session
 
 
@@ -174,6 +188,7 @@ def logout(request: Request, response: Response):
     session = auth_store.authenticate(token)
     if session is not None:
         scanner_scheduler.deactivate_user(session["user"]["id"])
+        premarket_scanner_scheduler.deactivate_user(session["user"]["id"])
         core_job_manager.stop_user(session["user"]["id"])
         stream_manager.stop(session["user"]["id"])
     auth_store.logout(token)
