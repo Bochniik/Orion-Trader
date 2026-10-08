@@ -1,0 +1,29 @@
+{
+  "challenger_id": "3h-down-notrade-v1",
+  "base_model_version": "long-horizon-v5-20260911-a",
+  "horizon": "3h",
+  "development_cutoff_prediction_time_utc": "2026-10-07T16:55:00+00:00",
+  "discovery_evidence": {
+    "settled_sample_count": 16475,
+    "slice_sample_count": 4331,
+    "slice_error_rate": 0.5666,
+    "baseline_error_rate": 0.5104
+  },
+  "policy": {
+    "rule": "NO_TRADE when raw probability_up < 0.50; otherwise retain incumbent decision",
+    "probabilities_mutated": false
+  },
+  "approval_contract": {
+    "same_evidence_approval_forbidden": true,
+    "requires_later_unseen_evidence": true,
+    "minimum_unseen_samples": 200,
+    "minimum_unseen_sessions": 5,
+    "minimum_trade_coverage": 0.30,
+    "minimum_trade_accuracy_improvement": 0.02,
+    "minimum_avoided_slice_samples": 50,
+    "minimum_avoided_error_excess": 0.03,
+    "requires_wilson_95pct_error_interval_separation": true,
+    "automatic_live_promotion": false,
+    "live_forward_mutated": false
+  }
+}
