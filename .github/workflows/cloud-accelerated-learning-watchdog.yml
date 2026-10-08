@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/cloud-accelerated-learning-watchdog.yml"
+      - ".github/workflows/market-acquisition-scheduler.yml"
 
 permissions:
   contents: read
@@ -37,15 +38,15 @@ jobs:
             exit 0
           fi
 
-          LATEST_CREATED_AT="$(printf '%s' "$RUNS_JSON" | jq -r '.workflow_runs[0].created_at // empty')"
+          LATEST_UPDATED_AT="$(printf '%s' "$RUNS_JSON" | jq -r '.workflow_runs[0].updated_at // .workflow_runs[0].created_at // empty')"
           NOW_EPOCH="$(date -u +%s)"
 
-          if [ -n "$LATEST_CREATED_AT" ]; then
-            LATEST_EPOCH="$(date -u -d "$LATEST_CREATED_AT" +%s)"
+          if [ -n "$LATEST_UPDATED_AT" ]; then
+            LATEST_EPOCH="$(date -u -d "$LATEST_UPDATED_AT" +%s)"
             AGE_SECONDS="$((NOW_EPOCH - LATEST_EPOCH))"
-            echo "Latest cloud-learning run age: ${AGE_SECONDS}s"
+            echo "Latest cloud-learning activity age: ${AGE_SECONDS}s"
             if [ "$AGE_SECONDS" -lt 4200 ]; then
-              echo "Latest run is younger than 70 minutes; no watchdog dispatch needed."
+              echo "Latest activity is younger than 70 minutes; no watchdog dispatch needed."
               exit 0
             fi
           else
