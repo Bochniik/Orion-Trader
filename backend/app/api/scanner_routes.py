@@ -10,6 +10,11 @@ def current_scanner_state(request: Request):
     return request.app.state.scanner_scheduler.current_state(request_user_id(request))
 
 
+@router.get("/premarket")
+def current_premarket_scanner_state(request: Request):
+    return request.app.state.premarket_scanner_scheduler.current_state(request_user_id(request))
+
+
 @router.get("/market-intelligence")
 def market_intelligence(request: Request):
     return request.app.state.scanner_scheduler.market_intelligence(request_user_id(request))
