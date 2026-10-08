@@ -1,0 +1,37 @@
+name: Orion cloud accelerated learning watchdog test
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/cloud-accelerated-learning.yml"
+      - ".github/workflows/cloud-accelerated-learning-watchdog.yml"
+      - ".github/workflows/cloud-accelerated-learning-watchdog-test.yml"
+      - "docs/cloud_learning_watchdog.md"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-watchdog-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate watchdog and concurrency contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          learning = Path('.github/workflows/cloud-accelerated-learning.yml').read_text(encoding='utf-8')
+          watchdog = Path('.github/workflows/cloud-accelerated-learning-watchdog.yml').read_text(encoding='utf-8')
+
+          assert 'cancel-in-progress: false' in learning
+          assert 'workflow_dispatch:' in learning
+          assert 'actions: write' in watchdog
+          assert 'cron: "5,20,35,50 * * * *"' in watchdog
+          assert 'AGE_SECONDS' in watchdog
+          assert '4200' in watchdog
+          assert 'cloud-accelerated-learning.yml' in watchdog
+          assert 'ACTIVE_COUNT' in watchdog
+          assert '--method POST' in watchdog
+          print('Cloud-learning watchdog safety contract is present.')
+          PY

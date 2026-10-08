@@ -1,0 +1,61 @@
+name: Orion cloud accelerated learning watchdog
+
+on:
+  schedule:
+    - cron: "5,20,35,50 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cloud-accelerated-learning-watchdog.yml"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: orion-cloud-accelerated-learning-watchdog
+  cancel-in-progress: true
+
+jobs:
+  ensure-learning-progress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch cloud learning when stale
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          WORKFLOW="cloud-accelerated-learning.yml"
+          RUNS_JSON="$(gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW}/runs?branch=main&per_page=10")"
+
+          ACTIVE_COUNT="$(printf '%s' "$RUNS_JSON" | jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "requested" or .status == "pending")] | length')"
+          if [ "$ACTIVE_COUNT" -gt 0 ]; then
+            echo "Cloud learning already active; watchdog will not dispatch another run."
+            exit 0
+          fi
+
+          LATEST_CREATED_AT="$(printf '%s' "$RUNS_JSON" | jq -r '.workflow_runs[0].created_at // empty')"
+          NOW_EPOCH="$(date -u +%s)"
+
+          if [ -n "$LATEST_CREATED_AT" ]; then
+            LATEST_EPOCH="$(date -u -d "$LATEST_CREATED_AT" +%s)"
+            AGE_SECONDS="$((NOW_EPOCH - LATEST_EPOCH))"
+            echo "Latest cloud-learning run age: ${AGE_SECONDS}s"
+            if [ "$AGE_SECONDS" -lt 4200 ]; then
+              echo "Latest run is younger than 70 minutes; no watchdog dispatch needed."
+              exit 0
+            fi
+          else
+            echo "No prior cloud-learning run found; watchdog will bootstrap one."
+          fi
+
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${REPOSITORY}/actions/workflows/${WORKFLOW}/dispatches" \
+            -f ref=main
+
+          echo "Dispatched stale Orion cloud accelerated learning workflow."
