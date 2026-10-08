@@ -82,7 +82,9 @@ jobs:
             scripts/premarket_directional_v5_common.py \
             scripts/train_premarket_hierarchical.py \
             scripts/validate_premarket_directional_v5_walkforward.py \
-            scripts/validate_premarket_directional_v5_event_nested.py
+            scripts/validate_premarket_directional_v5_event_nested.py \
+            backend/app/services/premarket_live_engine.py \
+            backend/app/services/premarket_continuous_scheduler.py
 
       - name: Run focused regression tests
         run: |
@@ -105,4 +107,6 @@ jobs:
             backend/tests/test_premarket_v5_evidence_pipeline.py \
             backend/tests/test_premarket_v5_research_gate.py \
             backend/tests/test_premarket_directional_v4_features.py \
-            backend/tests/test_premarket_directional_v5_validation.py
+            backend/tests/test_premarket_directional_v5_validation.py \
+            backend/tests/test_premarket_live_engine.py \
+            backend/tests/test_premarket_continuous_scheduler.py
