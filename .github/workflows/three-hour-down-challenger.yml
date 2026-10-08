@@ -4,13 +4,17 @@ on:
   pull_request:
     paths:
       - "backend/app/services/three_hour_down_notrade_challenger.py"
+      - "backend/app/services/three_hour_down_challenger_registration.json"
       - "backend/tests/test_three_hour_down_notrade_challenger.py"
+      - "backend/tests/test_three_hour_down_challenger_registration.py"
       - ".github/workflows/three-hour-down-challenger.yml"
   push:
     branches: [main]
     paths:
       - "backend/app/services/three_hour_down_notrade_challenger.py"
+      - "backend/app/services/three_hour_down_challenger_registration.json"
       - "backend/tests/test_three_hour_down_notrade_challenger.py"
+      - "backend/tests/test_three_hour_down_challenger_registration.py"
       - ".github/workflows/three-hour-down-challenger.yml"
   workflow_run:
     workflows: ["Orion cloud accelerated learning"]
@@ -43,8 +47,12 @@ jobs:
         run: |
           python -m py_compile app/services/three_hour_down_notrade_challenger.py
           python -m py_compile tests/test_three_hour_down_notrade_challenger.py
+          python -m py_compile tests/test_three_hour_down_challenger_registration.py
       - name: Run challenger regression tests
-        run: python -m pytest tests/test_three_hour_down_notrade_challenger.py -q
+        run: >-
+          python -m pytest
+          tests/test_three_hour_down_notrade_challenger.py
+          tests/test_three_hour_down_challenger_registration.py -q
 
   unseen-evaluation:
     if: >-
