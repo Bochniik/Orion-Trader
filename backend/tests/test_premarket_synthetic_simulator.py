@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 
 def load_module():
     path = Path(__file__).resolve().parents[2] / "scripts" / "simulate_premarket_market.py"
     spec = importlib.util.spec_from_file_location("premarket_synthetic_simulator", path)
-    module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    # Dataclasses resolves postponed annotations through sys.modules. Register
+    # the dynamically loaded module before executing it, matching normal import
+    # semantics instead of relying on an incomplete test-only import path.
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
