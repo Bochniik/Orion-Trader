@@ -19,6 +19,7 @@ on:
       - "scripts/build_premarket_training_dataset_v2.py"
       - "scripts/run_premarket_v5_evidence_pipeline.py"
       - "scripts/run_premarket_v5_validation.py"
+      - "scripts/simulate_premarket_market.py"
       - "scripts/evaluate_premarket_v5_research_gate.py"
       - "scripts/premarket_directional_v4_common.py"
       - "scripts/premarket_directional_v5_common.py"
@@ -77,6 +78,7 @@ jobs:
             scripts/build_premarket_training_dataset_v2.py \
             scripts/run_premarket_v5_evidence_pipeline.py \
             scripts/run_premarket_v5_validation.py \
+            scripts/simulate_premarket_market.py \
             scripts/evaluate_premarket_v5_research_gate.py \
             scripts/premarket_directional_v4_common.py \
             scripts/premarket_directional_v5_common.py \
@@ -109,4 +111,5 @@ jobs:
             backend/tests/test_premarket_directional_v4_features.py \
             backend/tests/test_premarket_directional_v5_validation.py \
             backend/tests/test_premarket_live_engine.py \
-            backend/tests/test_premarket_continuous_scheduler.py
+            backend/tests/test_premarket_continuous_scheduler.py \
+            backend/tests/test_premarket_synthetic_simulator.py
