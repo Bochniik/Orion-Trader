@@ -5,10 +5,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-
-from app.services.alpaca_broker import AlpacaPaperBroker
-from app.services.market_data import MarketDataService
-from app.services.premarket_continuous_scheduler import PremarketContinuousScheduler
+from typing import Callable, Type
 
 
 def _required_env(name: str) -> str:
@@ -18,22 +15,52 @@ def _required_env(name: str) -> str:
     return value
 
 
-def run_cloud_cycle(*, output: Path, now: datetime | None = None) -> dict:
+def _runtime_classes():
+    """Import full backend runtime only when a real cloud cycle is executed.
+
+    Focused orchestration tests intentionally avoid importing the complete market
+    stack (and optional providers such as yfinance). The production workflow
+    installs backend/requirements.txt before calling this script, so the real
+    cloud path still uses the exact application implementations.
+    """
+    from app.services.alpaca_broker import AlpacaPaperBroker
+    from app.services.market_data import MarketDataService
+    from app.services.premarket_continuous_scheduler import PremarketContinuousScheduler
+
+    return AlpacaPaperBroker, MarketDataService, PremarketContinuousScheduler
+
+
+def run_cloud_cycle(
+    *,
+    output: Path,
+    now: datetime | None = None,
+    broker_factory: Callable[[], object] | None = None,
+    market_factory: Callable[[], object] | None = None,
+    scheduler_type: Type | None = None,
+) -> dict:
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")
 
-    broker = AlpacaPaperBroker()
-    user_id = "orion-cloud-premarket"
-    broker.connect(
-        user_id,
-        _required_env("ALPACA_API_KEY_ID"),
-        _required_env("ALPACA_API_SECRET_KEY"),
-    )
+    # Fail closed on missing cloud credentials before importing the heavier
+    # market-data stack. This keeps credential failure deterministic and makes
+    # the cloud orchestration independently testable.
+    key_id = _required_env("ALPACA_API_KEY_ID")
+    secret_key = _required_env("ALPACA_API_SECRET_KEY")
 
-    scheduler = PremarketContinuousScheduler(
+    if broker_factory is None or market_factory is None or scheduler_type is None:
+        AlpacaPaperBroker, MarketDataService, PremarketContinuousScheduler = _runtime_classes()
+        broker_factory = broker_factory or AlpacaPaperBroker
+        market_factory = market_factory or MarketDataService
+        scheduler_type = scheduler_type or PremarketContinuousScheduler
+
+    broker = broker_factory()
+    user_id = "orion-cloud-premarket"
+    broker.connect(user_id, key_id, secret_key)
+
+    scheduler = scheduler_type(
         broker,
-        MarketDataService(),
+        market_factory(),
         interval_seconds=300,
         clock=lambda: now,
     )
