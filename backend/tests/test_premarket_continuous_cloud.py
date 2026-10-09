@@ -48,12 +48,14 @@ def test_cloud_cycle_is_independent_of_local_backend(monkeypatch, tmp_path):
                 "order_submission_enabled": False,
             }
 
-    monkeypatch.setattr(module, "AlpacaPaperBroker", FakeBroker)
-    monkeypatch.setattr(module, "MarketDataService", FakeMarket)
-    monkeypatch.setattr(module, "PremarketContinuousScheduler", FakeScheduler)
-
     output = tmp_path / "latest.json"
-    payload = module.run_cloud_cycle(output=output, now=now)
+    payload = module.run_cloud_cycle(
+        output=output,
+        now=now,
+        broker_factory=FakeBroker,
+        market_factory=FakeMarket,
+        scheduler_type=FakeScheduler,
+    )
 
     assert output.exists()
     assert payload["contract"] == "orion-premarket-continuous-cloud-v1"
