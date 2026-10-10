@@ -94,18 +94,33 @@ def _future_close(latent: pd.Series, as_of: pd.Timestamp, horizon: int) -> float
     return float(latent.loc[target])
 
 
-def _settle_signal(row: dict, latent: pd.Series, as_of: pd.Timestamp, horizon: int) -> dict | None:
+def _settle_signal(
+    row: dict,
+    latent: pd.Series,
+    as_of: pd.Timestamp,
+    horizon: int,
+    *,
+    observed_price: float,
+    observed_at: pd.Timestamp,
+) -> dict | None:
     future = _future_close(latent, as_of, horizon)
     if future is None:
         return None
-    now_price = float(latent.loc[as_of])
-    actual_return = (future / now_price - 1.0) * 100.0
+    # The engine cannot trade at an unobserved latent price. Use the last
+    # visible close as the decision-time baseline, while the latent path
+    # remains ground truth for the future settlement.
+    if observed_price <= 0.0 or observed_at > as_of:
+        raise ValueError("Observed baseline must be positive and no later than as_of")
+    actual_return = (future / observed_price - 1.0) * 100.0
     actual_up = actual_return > 0.0
     probability_up = row.get("probability_up")
     predicted_direction = str(row.get("direction") or "NO_TRADE")
     raw_direction = str(row.get("raw_direction") or "")
     return {
         "horizon_minutes": horizon,
+        "observed_price": observed_price,
+        "observed_at": observed_at.isoformat(),
+        "observation_age_minutes": (as_of - observed_at).total_seconds() / 60.0,
         "actual_return_pct": actual_return,
         "actual_up": actual_up,
         "probability_up": probability_up,
@@ -140,6 +155,9 @@ def run_scenario(
         visible = frame.loc[frame.index <= as_of]
         if len(visible) < 3:
             continue
+        observed_at = visible.index[-1]
+        observed_price = float(visible["Close"].iloc[-1])
+        observation_age_minutes = (as_of - observed_at).total_seconds() / 60.0
         v5 = predict_premarket_v5_outlook(
             visible,
             previous_close=previous_close,
@@ -159,6 +177,8 @@ def run_scenario(
         snapshots.append(
             {
                 "as_of": as_of.isoformat(),
+                "observed_at": observed_at.isoformat(),
+                "observation_age_minutes": observation_age_minutes,
                 "direction": live.get("direction"),
                 "probability_up": live.get("probability_up"),
                 "probability_down": live.get("probability_down"),
@@ -172,7 +192,11 @@ def run_scenario(
             signal = (v5.get("signals") or {}).get(f"premarket_{horizon}m")
             if not isinstance(signal, dict):
                 continue
-            settled = _settle_signal(signal, latent, as_of, horizon)
+            settled = _settle_signal(
+                signal, latent, as_of, horizon,
+                observed_price=observed_price,
+                observed_at=observed_at,
+            )
             if settled is not None:
                 settlements.append(settled)
 
