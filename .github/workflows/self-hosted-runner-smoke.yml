@@ -1,0 +1,29 @@
+name: Self-hosted runner smoke test
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/self-hosted-runner-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show runner environment
+        shell: bash
+        run: |
+          echo "runner=${RUNNER_NAME}"
+          echo "os=${RUNNER_OS}"
+          echo "arch=${RUNNER_ARCH}"
+          python --version || python3 --version
+      - name: Confirm repository access
+        shell: bash
+        run: |
+          test -f README.md || test -d backend
+          echo "self-hosted-runner-ok"
