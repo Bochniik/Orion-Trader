@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 120
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
