@@ -1,0 +1,71 @@
+name: NVDA specialist frozen-lockbox benchmark
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/services/frozen_symbol_specialist_engine.py"
+      - "backend/evals/benchmark_nvda_specialist_v1.py"
+      - "backend/tests/test_frozen_symbol_specialist_engine.py"
+      - ".github/workflows/nvda-specialist-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nvda-specialist-v1-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused dependencies
+        run: python -m pip install --disable-pip-version-check numpy==2.5.1 pandas==3.0.3 pytest yfinance==1.5.1 scikit-learn
+      - name: Compile NVDA specialist path
+        run: |
+          python -m py_compile backend/app/services/frozen_symbol_specialist_engine.py
+          python -m py_compile backend/evals/benchmark_nvda_specialist_v1.py
+      - name: Run focused regressions
+        env:
+          PYTHONPATH: backend
+        run: python -m pytest -q backend/tests/test_frozen_symbol_specialist_engine.py backend/tests/test_symbol_specialist_engines.py
+      - name: Run real 60d/5m NVDA frozen-lockbox benchmark
+        env:
+          PYTHONPATH: backend
+        run: |
+          python backend/evals/benchmark_nvda_specialist_v1.py \
+            --output artifacts/nvda-specialist-v1-evidence.json
+          python - <<'PY'
+          import json
+          p = json.load(open('artifacts/nvda-specialist-v1-evidence.json'))
+          print(json.dumps({
+              'verdict': p.get('verdict'),
+              'validated_horizons': p.get('validated_horizons'),
+              'failed_symbols': p.get('failed_symbols'),
+              'horizons': {h: {
+                  'verdict': r.get('verdict'),
+                  'lockbox_samples': r.get('lockbox_samples'),
+                  'development_sessions': r.get('development_sessions'),
+                  'incumbent': r.get('incumbent'),
+                  'specialist': r.get('specialist'),
+                  'directional_accuracy_improvement': r.get('directional_accuracy_improvement'),
+                  'brier_improvement': r.get('brier_improvement'),
+                  'ece_improvement': r.get('ece_improvement'),
+                  'session_brier_win_rate': r.get('session_brier_win_rate'),
+              } for h, r in (p.get('horizons') or {}).items()}
+          }, indent=2, sort_keys=True))
+          PY
+      - name: Upload NVDA benchmark artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-specialist-v1-evidence-${{ github.run_id }}
+          path: artifacts/nvda-specialist-v1-evidence.json
+          if-no-files-found: error
+          retention-days: 30
