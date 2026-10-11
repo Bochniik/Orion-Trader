@@ -29,26 +29,26 @@ jobs:
       - name: Install focused test dependency
         run: python -m pip install pytest
       - name: Validate explicit regression manifest
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          mapfile -t tests < <(grep -Ev '^[[:space:]]*(#|$)' .github/analytics-regression-tests.txt)
-          if [ "${#tests[@]}" -eq 0 ]; then
-            echo "Analytics regression manifest is empty" >&2
-            exit 1
-          fi
-          for test_path in "${tests[@]}"; do
-            if [ ! -f "$test_path" ]; then
-              echo "Manifest entry does not exist: $test_path" >&2
-              exit 1
-            fi
-          done
-          printf '%s\n' "${tests[@]}" > /tmp/orion-analytics-tests.txt
+          $tests = Get-Content .github/analytics-regression-tests.txt |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -and -not $_.StartsWith('#') }
+          if (-not $tests -or $tests.Count -eq 0) {
+            throw "Analytics regression manifest is empty"
+          }
+          foreach ($testPath in $tests) {
+            if (-not (Test-Path -LiteralPath $testPath -PathType Leaf)) {
+              throw "Manifest entry does not exist: $testPath"
+            }
+          }
+          $manifestPath = Join-Path $env:RUNNER_TEMP "orion-analytics-tests.txt"
+          Set-Content -LiteralPath $manifestPath -Value $tests -Encoding utf8
       - name: Compile analytics evaluator
         run: python -m py_compile backend/evals/evaluate_directional_model.py
       - name: Run deterministic analytics regression suite
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          mapfile -t tests < /tmp/orion-analytics-tests.txt
-          python -m pytest "${tests[@]}" -q
+          $manifestPath = Join-Path $env:RUNNER_TEMP "orion-analytics-tests.txt"
+          $tests = Get-Content -LiteralPath $manifestPath | Where-Object { $_ }
+          python -m pytest @tests -q
