@@ -1,0 +1,78 @@
+name: JPM specialist self-hosted research
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/services/frozen_symbol_specialist_engine.py"
+      - "backend/evals/benchmark_tsla_specialist_simulated_v1.py"
+      - "backend/evals/benchmark_jpm_specialist_simulated_v1.py"
+      - "backend/scripts/run_jpm_specialist_self_hosted.py"
+      - ".github/workflows/jpm-specialist-self-hosted.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jpm-specialist-self-hosted-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: self-hosted
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: powershell
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Compile JPM specialist research path
+        run: |
+          python -m py_compile app/services/frozen_symbol_specialist_engine.py
+          python -m py_compile evals/benchmark_tsla_specialist_simulated_v1.py
+          python -m py_compile evals/benchmark_jpm_specialist_simulated_v1.py
+          python -m py_compile scripts/run_jpm_specialist_self_hosted.py
+
+      - name: Run focused specialist tests
+        run: python -m pytest -q tests/test_frozen_symbol_specialist_engine.py tests/test_symbol_specialist_engines.py
+
+      - name: Run JPM SIMULATED_FORWARD research cycle
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/run_jpm_specialist_self_hosted.py --root data/self-hosted-jpm --period 60d --interval 5m
+
+      - name: Validate research-only output
+        run: |
+          $payload = Get-Content data/self-hosted-jpm/jpm-self-hosted-summary.json -Raw | ConvertFrom-Json
+          if ($payload.scope -ne "SIMULATED_FORWARD") { throw "Expected SIMULATED_FORWARD scope" }
+          if ($payload.live_forward_mutated -ne $false) { throw "LIVE_FORWARD must remain untouched" }
+          if ($payload.automatic_live_promotion -ne $false) { throw "Automatic promotion is forbidden" }
+          Write-Host "JPM verdict=$($payload.jpm_verdict)"
+
+      - name: Upload JPM research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jpm-specialist-self-hosted-${{ github.run_id }}
+          path: |
+            backend/data/self-hosted-jpm/simulated_forward.db
+            backend/data/self-hosted-jpm/jpm-specialist-v1-evidence.json
+            backend/data/self-hosted-jpm/jpm-self-hosted-summary.json
+            backend/data/self-hosted-jpm/learning_challenger.json
+            backend/data/self-hosted-jpm/accelerated_learning_cycle.json
+          if-no-files-found: warn
+          retention-days: 30
