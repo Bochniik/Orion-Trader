@@ -104,6 +104,7 @@ import "./my-stocks-intelligence-panels.css";
 import "./my-stocks-journal-polish.css";
 import "./data-connections-polish.css";
 import "./auth-polish.css";
+import "./auth-background.css";
 import "./system-states.css";
 import "./table-density-polish.css";
 import "./market-row-state-cohesion.css";
