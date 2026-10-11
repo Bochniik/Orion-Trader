@@ -209,11 +209,21 @@ def run_scenario(
         rows = [row for row in settlements if row["horizon_minutes"] == horizon]
         traded = [row for row in rows if row["predicted_direction"] != "NO_TRADE"]
         horizon_briers = [float(row["brier"]) for row in rows if row["brier"] is not None]
+        raw_horizon = [row for row in rows if row["raw_direction_correct"] is not None]
+        # Count missing predictions separately from explicit NO_TRADE decisions.
+        opportunities = len(snapshots)
         by_horizon[str(horizon)] = {
+            "decision_opportunities": opportunities,
             "samples": len(rows),
+            "missing_prediction_count": opportunities - len(rows),
+            "prediction_coverage": None if not opportunities else len(rows) / opportunities,
             "trade_signals": len(traded),
+            "no_trade_count": len(rows) - len(traded),
             "signal_rate": 0.0 if not rows else len(traded) / len(rows),
+            "no_trade_rate": None if not rows else 1.0 - len(traded) / len(rows),
             "directional_accuracy_when_traded": None if not traded else sum(bool(row["correct_when_traded"]) for row in traded) / len(traded),
+            "raw_direction_sample_count": len(raw_horizon),
+            "raw_direction_accuracy": None if not raw_horizon else sum(bool(row["raw_direction_correct"]) for row in raw_horizon) / len(raw_horizon),
             "brier": None if not horizon_briers else sum(horizon_briers) / len(horizon_briers),
         }
 
@@ -225,7 +235,7 @@ def run_scenario(
         "settlement_count": len(settlements),
         "trade_signal_count": len(gated),
         "signal_rate": 0.0 if not settlements else len(gated) / len(settlements),
-        "no_trade_rate": 1.0 if not settlements else 1.0 - (len(gated) / len(settlements)),
+        "no_trade_rate": None if not settlements else 1.0 - (len(gated) / len(settlements)),
         "directional_accuracy_when_traded": None if not gated else sum(bool(row["correct_when_traded"]) for row in gated) / len(gated),
         "raw_direction_accuracy": None if not raw else sum(bool(row["raw_direction_correct"]) for row in raw) / len(raw),
         "brier": None if not briers else sum(briers) / len(briers),

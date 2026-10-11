@@ -119,3 +119,43 @@ def test_full_sparse_scenario_reports_stale_observation_age():
     )
     assert any(row["observation_age_minutes"] > 0 for row in result["snapshots"])
     assert all(row["observation_age_minutes"] >= 0 for row in result["snapshots"])
+
+
+def test_horizon_reporting_separates_abstentions_from_missing_predictions():
+    module = load_module()
+    result = module.run_scenario(
+        module.Scenario("trend_up", 3.0, 0.02, 0.04, volume_scale=1.2),
+        seed=7,
+        evaluation_step_minutes=30,
+    )
+    for horizon in ("5", "15", "30"):
+        row = result["by_horizon"][horizon]
+        assert row["decision_opportunities"] == result["snapshot_count"]
+        assert row["samples"] > 0
+        assert row["missing_prediction_count"] + row["samples"] == row["decision_opportunities"]
+        assert 0.0 <= row["prediction_coverage"] <= 1.0
+        assert row["no_trade_count"] + row["trade_signals"] == row["samples"]
+        assert abs(row["no_trade_rate"] - (1.0 - row["signal_rate"])) < 1e-12
+        assert 0 <= row["raw_direction_sample_count"] <= row["samples"]
+        if row["raw_direction_sample_count"]:
+            assert 0.0 <= row["raw_direction_accuracy"] <= 1.0
+        else:
+            assert row["raw_direction_accuracy"] is None
+
+
+def test_zero_settlements_are_not_reported_as_100_percent_abstention(monkeypatch):
+    module = load_module()
+    monkeypatch.setattr(module, "_settle_signal", lambda *args, **kwargs: None)
+    result = module.run_scenario(
+        module.Scenario("trend_up", 3.0, 0.02, 0.04, volume_scale=1.2),
+        seed=7,
+        evaluation_step_minutes=30,
+    )
+    assert result["settlement_count"] == 0
+    assert result["no_trade_rate"] is None
+    for row in result["by_horizon"].values():
+        assert row["samples"] == 0
+        assert row["no_trade_rate"] is None
+        assert row["raw_direction_accuracy"] is None
+        assert row["prediction_coverage"] == 0.0
+        assert row["missing_prediction_count"] == row["decision_opportunities"]
