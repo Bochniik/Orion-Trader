@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -27,10 +27,8 @@ jobs:
       - name: Compile synthetic premarket research modules
         env:
           PYTHONPATH: backend
-        run: |
-          python -m py_compile scripts/simulate_premarket_market.py scripts/run_premarket_synthetic_learning.py
+        run: python -m py_compile scripts/simulate_premarket_market.py scripts/run_premarket_synthetic_learning.py
       - name: Run synthetic premarket regression tests
         env:
           PYTHONPATH: backend
-        run: |
-          python -m pytest -q backend/tests/test_premarket_synthetic_simulator.py backend/tests/test_premarket_synthetic_learning.py
+        run: python -m pytest -q backend/tests/test_premarket_synthetic_simulator.py backend/tests/test_premarket_synthetic_learning.py
