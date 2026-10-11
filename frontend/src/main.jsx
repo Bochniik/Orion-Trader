@@ -135,7 +135,7 @@ function Root() {
       </section>
     </main>
   );
-  if (!session?.authenticated) return <AuthPanel onAuthenticated={setSession} />;
+  if (!session?.user) return <AuthPanel onAuthenticated={setSession} />;
   return <><CoreApp user={session.user} onLogout={logout} />{error && <div className="toast error" role="alert">{error}</div>}</>;
 }
 
