@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   synthetic-learning:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -35,13 +35,11 @@ jobs:
       - name: Run synthetic Premarket learning loop
         env:
           PYTHONPATH: backend
-        run: |
-          python scripts/run_premarket_synthetic_learning.py \
-            --output backend/data/simulations/premarket_synthetic_learning.json
+        run: python scripts/run_premarket_synthetic_learning.py --output backend/data/simulations/premarket_synthetic_learning.json
 
       - name: Print lockbox summary
+        shell: python
         run: |
-          python - <<'PY'
           import json
           from pathlib import Path
           payload = json.loads(Path("backend/data/simulations/premarket_synthetic_learning.json").read_text())
@@ -56,7 +54,6 @@ jobs:
                   f"return_mae_delta={row.get('return_mae_improvement_pct')} "
                   f"pass={row.get('passes_preregistered_gate')}"
               )
-          PY
 
       - name: Upload immutable research report
         uses: actions/upload-artifact@v4
