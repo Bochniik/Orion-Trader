@@ -1,40 +1,45 @@
-/* Premium Orion Decision Snapshot */
+/* Premium Orion Decision Snapshot — compact, viewport-safe pass */
 .analysis-overview-premium {
-  grid-template-columns:
-    minmax(360px, 1.7fr)
-    minmax(190px, .9fr)
-    minmax(190px, .9fr)
-    minmax(180px, .82fr)
-    minmax(190px, .9fr)
-    minmax(190px, .9fr)
-    minmax(230px, 1fr) !important;
-  grid-template-rows: minmax(228px, auto) !important;
-  min-height: 228px;
+  display: grid !important;
+  grid-template-columns: 2.05fr 1.05fr 1fr .9fr 1fr 1fr 1.2fr !important;
+  grid-template-rows: minmax(206px, auto) !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 206px;
+  overflow: hidden;
   border: 1px solid rgba(255, 139, 47, .28) !important;
   border-radius: 18px;
   background:
-    radial-gradient(circle at 8% 50%, rgba(255, 111, 18, .12), transparent 24%),
-    radial-gradient(circle at 98% 50%, rgba(255, 122, 26, .08), transparent 18%),
-    linear-gradient(180deg, rgba(255,255,255,.024), rgba(255,255,255,.006)),
+    radial-gradient(circle at 8% 50%, rgba(255, 111, 18, .11), transparent 25%),
+    radial-gradient(circle at 98% 50%, rgba(255, 122, 26, .07), transparent 20%),
+    linear-gradient(180deg, rgba(255,255,255,.022), rgba(255,255,255,.006)),
     #06090d !important;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.035),
-    0 0 0 1px rgba(255, 122, 26, .025),
-    0 24px 64px rgba(0,0,0,.30) !important;
+    inset 0 1px 0 rgba(255,255,255,.032),
+    0 20px 54px rgba(0,0,0,.28) !important;
 }
 
 .analysis-overview-premium::before {
   width: 3px !important;
   background: linear-gradient(180deg, #ff9b4f, #ff7714 48%, rgba(255,119,20,.14)) !important;
-  box-shadow: 0 0 24px rgba(255,122,26,.38) !important;
+  box-shadow: 0 0 22px rgba(255,122,26,.34) !important;
 }
 
 .analysis-overview-premium::after {
   background:
-    linear-gradient(90deg, rgba(3,6,10,.98) 0%, rgba(3,6,10,.88) 42%, rgba(3,6,10,.58) 68%, rgba(3,6,10,.90) 100%),
-    url("./assets/orion-hero-planet.webp") -9% 140% / 320px auto no-repeat !important;
-  opacity: .22 !important;
-  filter: saturate(.85) contrast(1.06) !important;
+    linear-gradient(90deg, rgba(3,6,10,.98) 0%, rgba(3,6,10,.90) 42%, rgba(3,6,10,.66) 70%, rgba(3,6,10,.91) 100%),
+    url("./assets/orion-hero-planet.webp") -7% 145% / 290px auto no-repeat !important;
+  opacity: .20 !important;
+  filter: saturate(.82) contrast(1.05) !important;
+}
+
+/* Hide duplicate labels introduced by the experimental premium pass. */
+.analysis-overview-premium .analysis-step-badge,
+.analysis-overview-premium .analysis-active-label,
+.analysis-overview-premium .analysis-card-kicker,
+.analysis-overview-premium .analysis-card-index {
+  display: none !important;
 }
 
 .analysis-overview-premium > .analysis-company,
@@ -43,24 +48,34 @@
 .analysis-overview-premium > .analysis-metric,
 .analysis-overview-premium > .analysis-risk-metric {
   grid-row: 1 !important;
-  min-height: 228px;
-  padding: 24px 22px;
-  border-left: 1px solid rgba(255,255,255,.055);
+  min-width: 0 !important;
+  min-height: 206px;
+  padding: 18px 16px;
+  border-left: 1px solid rgba(255,255,255,.05);
   border-bottom: 0 !important;
+  overflow: hidden;
 }
 
 .analysis-overview-premium .analysis-company {
   grid-column: 1;
   justify-content: center;
-  padding: 28px 28px 26px;
+  padding: 24px 22px;
   border-left: 0;
-  border-right: 1px solid rgba(255, 151, 78, .18);
+  border-right: 1px solid rgba(255,151,78,.16);
   background:
-    linear-gradient(90deg, rgba(255,122,26,.055), transparent 72%),
+    linear-gradient(90deg, rgba(255,122,26,.052), transparent 72%),
     rgba(255,255,255,.008);
 }
 
-.analysis-overview-premium .analysis-session { grid-column: 2; margin: 14px; min-height: 200px; align-self: center; }
+.analysis-overview-premium .analysis-session {
+  grid-column: 2;
+  margin: 12px;
+  min-height: 178px;
+  align-self: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.075);
+  box-shadow: inset 3px 0 0 rgba(133,161,190,.42), inset 0 1px 0 rgba(255,255,255,.024);
+}
 .analysis-overview-premium .analysis-score-block { grid-column: 3; }
 .analysis-overview-premium .adjusted-score { grid-column: 4; }
 .analysis-overview-premium .probability-up { grid-column: 5; }
@@ -68,142 +83,95 @@
 .analysis-overview-premium .analysis-risk-metric { grid-column: 7; }
 
 .analysis-overview-premium .analysis-company .core-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 15px;
+  margin-bottom: 13px;
   color: #ff943c;
-  font-size: .78rem;
+  font-size: .72rem;
   font-weight: 900;
-  letter-spacing: .095em;
-}
-
-.analysis-step-badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 30px;
-  height: 23px;
-  padding: 0 6px;
-  border: 1px solid rgba(255, 141, 58, .34);
-  border-radius: 6px;
-  background: rgba(255,122,26,.08);
-  color: #ff9c4d;
-  font-size: .68rem;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
-}
-
-.analysis-active-label {
-  margin-bottom: 8px;
-  color: rgba(255, 162, 92, .68);
-  font-size: .61rem;
-  font-weight: 850;
-  letter-spacing: .12em;
+  letter-spacing: .085em;
 }
 
 .analysis-overview-premium .analysis-company h2 {
-  font-size: clamp(2.8rem, 4vw, 4rem);
-  letter-spacing: -.06em;
+  font-size: clamp(2.45rem, 3.3vw, 3.5rem);
+  letter-spacing: -.055em;
+  white-space: nowrap;
 }
 
-.analysis-overview-premium .analysis-symbol-row { gap: 14px; }
+.analysis-overview-premium .analysis-symbol-row {
+  gap: 10px;
+  flex-wrap: nowrap;
+}
 
 .analysis-overview-premium .decision-pill {
-  padding: 8px 12px;
+  flex: 0 0 auto;
+  padding: 7px 10px;
   border-radius: 9px;
-  border-color: rgba(255,143,57,.28);
-  background: linear-gradient(180deg, rgba(255,122,26,.08), rgba(255,255,255,.018));
-  font-size: .72rem;
+  border-color: rgba(255,143,57,.25);
+  background: linear-gradient(180deg, rgba(255,122,26,.07), rgba(255,255,255,.016));
+  font-size: .68rem;
   font-weight: 850;
-  letter-spacing: .08em;
+  letter-spacing: .07em;
 }
 
 .analysis-overview-premium .analysis-company > p {
-  margin-top: 14px;
+  margin-top: 13px;
   color: rgba(220,225,233,.68);
-  font-size: .98rem;
+  font-size: .92rem;
+}
+
+.analysis-overview-premium .analysis-company-meta {
+  margin-top: 10px;
 }
 
 .analysis-snapshot-card {
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.018), transparent 46%),
-    rgba(7, 10, 14, .68);
-}
-
-.analysis-snapshot-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(130deg, rgba(255,255,255,.018), transparent 35%);
-}
-
-.analysis-overview-premium .analysis-session {
-  border-radius: 13px;
-  border: 1px solid rgba(255,255,255,.08);
-  box-shadow:
-    inset 3px 0 0 rgba(133, 161, 190, .44),
-    inset 0 1px 0 rgba(255,255,255,.025);
+  background: linear-gradient(180deg, rgba(255,255,255,.016), transparent 46%), rgba(7,10,14,.66);
 }
 
 .analysis-overview-premium .analysis-session small,
 .analysis-overview-premium .analysis-score-block > small,
 .analysis-overview-premium .analysis-metric small,
 .analysis-overview-premium .analysis-risk-metric small {
-  color: rgba(189, 198, 210, .62);
-  font-size: .69rem;
+  color: rgba(189,198,210,.60);
+  font-size: .62rem;
   font-weight: 850;
-  letter-spacing: .08em;
+  letter-spacing: .06em;
+  line-height: 1.25;
 }
 
 .analysis-overview-premium .analysis-session strong {
-  margin-top: 18px;
+  margin-top: 14px;
   color: #f0f2f5;
-  font-size: .9rem;
+  font-size: .82rem;
 }
 
 .analysis-overview-premium .analysis-session > span {
-  margin-top: 12px;
-  font-size: 1.55rem;
+  margin-top: 10px;
+  font-size: 1.3rem;
   font-weight: 850;
+  white-space: nowrap;
 }
 
 .analysis-overview-premium .analysis-score-block {
   align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
-.analysis-card-kicker,
-.analysis-card-index {
-  display: block;
-  color: rgba(255,154,77,.66);
-  font-size: .57rem;
-  font-weight: 900;
-  letter-spacing: .11em;
-  text-transform: uppercase;
-}
-
 .analysis-overview-premium .analysis-score-ring {
-  width: 132px;
-  height: 132px;
-  margin-top: 14px;
-  border: 1px solid rgba(255,133,38,.32);
+  width: 112px;
+  height: 112px;
+  margin-top: 4px;
+  border: 1px solid rgba(255,133,38,.30);
   border-radius: 50%;
   background:
     radial-gradient(circle, #070a0e 0 61%, transparent 62%),
     conic-gradient(#ff8128 calc(var(--analysis-score) * 1%), rgba(117,132,149,.16) 0);
-  box-shadow:
-    0 0 28px rgba(255,110,18,.15),
-    inset 0 0 28px rgba(255,122,26,.045);
+  box-shadow: 0 0 24px rgba(255,110,18,.13), inset 0 0 24px rgba(255,122,26,.04);
 }
 
-.analysis-overview-premium .analysis-score-ring strong { font-size: 2.05rem; }
-
-.analysis-score-caption {
-  margin-top: 10px !important;
-  color: #ff9b4a !important;
-}
+.analysis-overview-premium .analysis-score-ring strong { font-size: 1.7rem; }
+.analysis-overview-premium .analysis-score-caption { margin-top: 8px !important; color: #ff9b4a !important; }
 
 .analysis-overview-premium .analysis-metric,
 .analysis-overview-premium .analysis-risk-metric {
@@ -211,63 +179,58 @@
 }
 
 .analysis-overview-premium .analysis-metric strong {
-  margin-top: 24px;
-  font-size: 2rem;
+  margin-top: 18px;
+  font-size: 1.55rem;
 }
 
-.analysis-overview-premium .analysis-probability-meter { margin-top: 20px; }
+.analysis-overview-premium .analysis-probability-meter { margin-top: 14px; }
 
 .analysis-overview-premium .analysis-risk-track {
-  margin-top: 26px;
-  height: 9px;
+  margin-top: 18px;
+  height: 8px;
   border-radius: 999px;
 }
 
 .analysis-overview-premium .analysis-risk-metric > strong {
   align-self: flex-start;
-  margin-top: 22px;
-  padding: 8px 12px;
-  border: 1px solid rgba(255,255,255,.09);
+  margin-top: 16px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,.08);
   border-radius: 999px;
-  background: rgba(255,255,255,.03);
-  font-size: .82rem;
+  background: rgba(255,255,255,.028);
+  font-size: .74rem;
 }
 
 .analysis-overview-premium .analysis-metric > span,
 .analysis-overview-premium .analysis-risk-metric > span {
-  margin-top: 12px;
-  color: rgba(176,186,199,.48);
-  font-size: .69rem;
-  line-height: 1.45;
+  margin-top: 9px;
+  color: rgba(176,186,199,.46);
+  font-size: .61rem;
+  line-height: 1.35;
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 1280px) {
   .analysis-overview-premium {
-    grid-template-columns:
-      minmax(310px, 1.55fr)
-      minmax(175px, .88fr)
-      minmax(175px, .88fr)
-      minmax(165px, .8fr)
-      minmax(175px, .86fr)
-      minmax(175px, .86fr)
-      minmax(210px, .96fr) !important;
+    grid-template-columns: 1.85fr 1fr 1fr .82fr 1fr 1fr 1.08fr !important;
   }
-
   .analysis-overview-premium > .analysis-company,
   .analysis-overview-premium > .analysis-session,
   .analysis-overview-premium > .analysis-score-block,
   .analysis-overview-premium > .analysis-metric,
   .analysis-overview-premium > .analysis-risk-metric {
-    padding-inline: 16px;
+    padding-inline: 12px;
   }
+  .analysis-overview-premium .analysis-company { padding-inline: 18px; }
+  .analysis-overview-premium .analysis-session { margin-inline: 8px; }
+  .analysis-overview-premium .analysis-company h2 { font-size: 2.4rem; }
+  .analysis-overview-premium .analysis-score-ring { width: 100px; height: 100px; }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1040px) {
   .analysis-overview-premium {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     grid-template-rows: auto !important;
   }
-
   .analysis-overview-premium > .analysis-company,
   .analysis-overview-premium > .analysis-session,
   .analysis-overview-premium > .analysis-score-block,
@@ -275,15 +238,13 @@
   .analysis-overview-premium > .analysis-risk-metric {
     grid-column: auto !important;
     grid-row: auto !important;
-    min-height: 170px;
+    min-height: 156px;
   }
-
   .analysis-overview-premium .analysis-company {
     grid-column: 1 / -1 !important;
-    min-height: 200px;
+    min-height: 180px;
   }
-
-  .analysis-overview-premium .analysis-session { margin: 10px; }
+  .analysis-overview-premium .analysis-session { margin: 8px; }
 }
 
 @media (max-width: 680px) {
