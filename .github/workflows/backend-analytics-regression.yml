@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   analytics-regression:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
