@@ -88,6 +88,14 @@ export function analysisMetrics(analysis) {
     companyName: firstValue(analysis?.company_name, snapshot?.company_name),
     sector: firstValue(analysis?.sector, snapshot?.sector),
     industry: firstValue(analysis?.industry, snapshot?.industry),
+    logoUrl: firstValue(
+      analysis?.logo_url,
+      analysis?.company_logo,
+      analysis?.logo,
+      snapshot?.logo_url,
+      snapshot?.company_logo,
+      snapshot?.logo,
+    ),
     price: finite(firstValue(analysis?.price, analysis?.reference_price, snapshot?.price)),
     orionScore: boundedScore(firstValue(analysis?.orion_score, snapshot?.orion_score)),
     adjustedScore: boundedScore(firstValue(
@@ -148,15 +156,38 @@ export default function AnalysisOverview({ analysis }) {
       <article className="analysis-overview analysis-overview-premium" aria-label={`${metric.ticker} Orion summary`}>
         <div className="analysis-company analysis-company-premium">
           <p className="core-eyebrow"><span className="analysis-step-badge">01</span> ORION DECISION SNAPSHOT</p>
-          <small className="analysis-active-label">ACTIVE STOCK</small>
-          <div className="analysis-symbol-row">
-            <h2>{metric.ticker}</h2>
-            <span className={`decision-pill ${direction.toLowerCase()}`}>{direction}</span>
-          </div>
-          <p>{metric.companyName || "Company name unavailable"}</p>
-          <div className="analysis-company-meta">
-            {metric.sector && <span>{metric.sector}</span>}
-            {metric.industry && <span>{metric.industry}</span>}
+
+          <div className="analysis-stock-identity">
+            <div className="analysis-stock-status-line">
+              <span className="analysis-stock-status-dot" aria-hidden="true" />
+              <span>ACTIVE STOCK</span>
+            </div>
+
+            <div className="analysis-stock-primary">
+              <div className="analysis-stock-logo-shell" aria-hidden={!metric.logoUrl}>
+                {metric.logoUrl ? (
+                  <img className="analysis-stock-logo" src={metric.logoUrl} alt={`${metric.ticker} logo`} />
+                ) : (
+                  <span className="analysis-stock-monogram">{metric.ticker?.slice(0, 2) || "ST"}</span>
+                )}
+              </div>
+
+              <div className="analysis-stock-copy">
+                <div className="analysis-symbol-row">
+                  <h2>{metric.ticker}</h2>
+                  <span className={`decision-pill analysis-decision-pill ${direction.toLowerCase()}`}>
+                    <i aria-hidden="true" />
+                    {direction}
+                  </span>
+                </div>
+                <p className="analysis-company-name">{metric.companyName || "Company name unavailable"}</p>
+              </div>
+            </div>
+
+            <div className="analysis-company-meta">
+              {metric.sector && <span>{metric.sector}</span>}
+              {metric.industry && <span>{metric.industry}</span>}
+            </div>
           </div>
         </div>
 
