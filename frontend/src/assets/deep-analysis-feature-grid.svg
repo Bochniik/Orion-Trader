@@ -20,9 +20,9 @@
   <g transform="translate(220 52)">
     <circle class="o" cx="17" cy="18" r="16"/>
     <path class="o" d="M1 18h32M17 2c-7 8-7 24 0 32M17 2c7 8 7 24 0 32"/>
-    <text class="t" x="50" y="14">Market Context</text>
-    <text class="d" x="50" y="40">Sector, fundamentals</text>
-    <text class="d" x="50" y="59">and relative strength</text>
+    <text class="t" x="46" y="14">Market Context</text>
+    <text class="d" x="46" y="40">Sector and fundamentals</text>
+    <text class="d" x="46" y="59">Relative strength</text>
   </g>
 
   <g transform="translate(438 52)">
@@ -36,9 +36,9 @@
   <g transform="translate(714 52)">
     <path class="o" d="M17 1 31 7l-2 17L17 36 5 24 3 7 17 1Z"/>
     <path class="o" d="m11 18 4 4 8-10"/>
-    <text class="t" x="43" y="14">Risk Analysis</text>
-    <text class="d" x="43" y="40">Volatility, catalysts</text>
-    <text class="d" x="43" y="59">and downside risk</text>
+    <text class="t" x="39" y="14">Risk Analysis</text>
+    <text class="d" x="39" y="40">Volatility and catalysts</text>
+    <text class="d" x="39" y="59">Downside risk</text>
   </g>
 
   <g transform="translate(896 52)">
