@@ -41,7 +41,7 @@ permissions:
 
 jobs:
   focused-validation:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -60,6 +60,7 @@ jobs:
           python -m pip install numpy==2.5.1 pandas==3.0.3 pytest httpx python-dotenv
 
       - name: Compile premarket validation modules
+        shell: bash
         run: |
           python -m py_compile \
             scripts/audit_premarket_dataset_readiness.py \
@@ -89,6 +90,7 @@ jobs:
             backend/app/services/premarket_continuous_scheduler.py
 
       - name: Run focused regression tests
+        shell: bash
         run: |
           python -m pytest -q \
             backend/tests/test_collect_alpaca_extended_history.py \
