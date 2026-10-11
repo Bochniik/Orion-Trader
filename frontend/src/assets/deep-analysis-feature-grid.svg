@@ -41,15 +41,15 @@
     <text class="d" x="43" y="59">and downside risk</text>
   </g>
 
-  <g transform="translate(908 52)">
+  <g transform="translate(896 52)">
     <path class="o" d="m4 8 14 12L30 4M18 20 8 34m10-14 16 13M8 34h26"/>
     <circle class="o" cx="4" cy="8" r="3"/>
     <circle class="o" cx="30" cy="4" r="3"/>
     <circle class="o" cx="18" cy="20" r="3"/>
     <circle class="o" cx="8" cy="34" r="3"/>
     <circle class="o" cx="34" cy="33" r="3"/>
-    <text class="t" x="42" y="14">Model Evidence</text>
-    <text class="d" x="42" y="40">AI probability</text>
-    <text class="d" x="42" y="59">and scenario analysis</text>
+    <text class="t" x="40" y="14">Model Evidence</text>
+    <text class="d" x="40" y="40">AI probability</text>
+    <text class="d" x="40" y="59">and scenario analysis</text>
   </g>
 </svg>
