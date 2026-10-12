@@ -66,6 +66,7 @@ import "./analysis-workspace-orientation.css";
 import "./analysis-hero-planet.css";
 import "./analyze-chart-cohesion.css";
 import "./analysis-chart-decision-continuity.css";
+import "./analysis-chart-news-continuity.css";
 import "./watchlist-polish.css";
 import "./watchlist-terminal-density.css";
 import "./watchlist-analysis-orientation.css";
@@ -104,6 +105,7 @@ import "./my-stocks-intelligence-panels.css";
 import "./my-stocks-journal-polish.css";
 import "./data-connections-polish.css";
 import "./auth-polish.css";
+import "./auth-background.css";
 import "./system-states.css";
 import "./table-density-polish.css";
 import "./market-row-state-cohesion.css";
@@ -134,7 +136,7 @@ function Root() {
       </section>
     </main>
   );
-  if (!session?.authenticated) return <AuthPanel onAuthenticated={setSession} />;
+  if (!session?.user) return <AuthPanel onAuthenticated={setSession} />;
   return <><CoreApp user={session.user} onLogout={logout} />{error && <div className="toast error" role="alert">{error}</div>}</>;
 }
 

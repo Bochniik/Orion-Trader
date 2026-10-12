@@ -3,9 +3,11 @@ import { Search } from "lucide-react";
 import { getNews, getOrionNewsInsights, searchStocks } from "../api/api";
 import StockNewsPanel from "../components/StockNewsPanel";
 import AnalysisOverview from "./AnalysisOverview";
+import AnalysisEmptyWorkspace from "./AnalysisEmptyWorkspace";
 import useCoreJob from "./useCoreJob";
 import "../analysis-sticky-context.css";
 import "../analysis-session-mode.css";
+import "../analysis-empty-workspace.css";
 
 const CandleChart = lazy(() => import("../components/CandleChart"));
 const ANALYSIS_HORIZONS = [
@@ -37,6 +39,6 @@ export default function AnalyzeView({ selection, context = null, onSelect, onSav
     {!result.busy && !result.data && !result.error && result.progress.startsWith("Cancelled") && <p className="analysis-request-cancelled" role="status">{result.progress}</p>}
     {result.error && <div className="core-error analysis-request-state analysis-request-error" role="alert"><h2>Analysis unavailable</h2><p>{result.error}</p><button className="core-button" type="button" onClick={() => select(ticker)}>Try again</button></div>}
     {result.data && <><div className="analyze-result-horizon"><span>ANALYSIS HORIZON</span><strong>{horizon === "long_term" ? "LONG TERM" : horizon.toUpperCase()}</strong>{horizon !== "day" && <small>Up/Down intraday probabilities are intentionally withheld unless a validated probability model exists for this horizon.</small>}</div><AnalysisOverview analysis={result.data} /><div className="analysis-market-grid"><section id="analysis-price-action" className="core-chart analyze-chart-panel" aria-label={`Price chart for ${result.data.ticker}`}><div className="analyze-section-heading"><div><p className="core-eyebrow">PRICE ACTION</p><h2>{result.data.ticker} chart</h2></div><span>Live quote and selected range</span></div><Suspense fallback={<p>Loading chart…</p>}><CandleChart key={result.data.ticker} ticker={result.data.ticker} refreshKey={selection?.request} /></Suspense></section><section className="analyze-news-panel" aria-label={`Latest news for ${result.data.ticker}`}><div className="analyze-section-heading"><div><p className="core-eyebrow">LATEST NEWS & CATALYSTS</p><h2>What is moving {result.data.ticker}?</h2></div>{activeDecision && <span className={`analysis-news-decision-context ${decisionTone(activeDecision)}`}><small>DECISION CONTEXT</small><strong>{activeDecision}</strong></span>}</div><StockNewsPanel ticker={result.data.ticker} news={news} loading={newsLoading} error={newsError} onRefresh={refreshNews} insights={newsInsights} insightsLoading={newsInsightsLoading} insightsError={newsInsightsError} /></section></div></>}
-    {!ticker && !result.busy && <div className="analyze-intro"><p>{nextSessionMode ? "Choose a stock to prepare its evidence for the next regular session." : "Select a stock to open a complete Orion research view."}</p><span>Price action · market context · news · risk · model evidence</span><p className="core-muted">Missing evidence means WAIT, not an invented answer.</p></div>}
+    {!ticker && !result.busy && <AnalysisEmptyWorkspace nextSessionMode={nextSessionMode} />}
   </section>;
 }
