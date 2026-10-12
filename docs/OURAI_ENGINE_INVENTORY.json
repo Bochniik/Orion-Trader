@@ -1,0 +1,119 @@
+{
+  "schema_version": "ourai-orion-engine-inventory-v1",
+  "purpose": "Non-destructive inventory for consolidating OrionTrader prediction responsibility into OurAI.",
+  "runtime_behavior_changed": false,
+  "components": [
+    {
+      "id": "news_engine",
+      "path": "backend/app/services/news_engine.py",
+      "category": "feature_provider",
+      "disposition": "keep",
+      "target_role": "structured_news_features"
+    },
+    {
+      "id": "market_integrity_engine",
+      "path": "backend/app/services/market_integrity_engine.py",
+      "category": "feature_and_risk_provider",
+      "disposition": "keep",
+      "target_role": "market_integrity_components"
+    },
+    {
+      "id": "market_integrity_service",
+      "path": "backend/app/services/market_integrity_service.py",
+      "category": "data_adapter",
+      "disposition": "keep",
+      "target_role": "single_ticker_integrity_adapter"
+    },
+    {
+      "id": "orion_integrity_adjustment",
+      "path": "backend/app/services/orion_integrity_adjustment_engine.py",
+      "category": "legacy_suitability_score_layer",
+      "disposition": "keep_decoupled",
+      "target_role": "orion_ui_risk_context"
+    },
+    {
+      "id": "premarket_v5_runtime",
+      "path": "backend/app/services/premarket_v5_runtime.py",
+      "category": "prediction_engine",
+      "disposition": "baseline_then_retire_after_gate",
+      "target_role": "matched_oos_incumbent_and_feature_source"
+    },
+    {
+      "id": "regular_hours_v1_analogs",
+      "path": "backend/app/services/intraday_probability_engine.py",
+      "category": "prediction_engine",
+      "disposition": "baseline",
+      "target_role": "simple_oos_reference"
+    },
+    {
+      "id": "regular_hours_v3_ensemble",
+      "path": "backend/app/services/intraday_probability_ensemble_engine.py",
+      "category": "prediction_engine",
+      "disposition": "baseline_then_retire_after_gate",
+      "target_role": "matched_oos_incumbent"
+    },
+    {
+      "id": "regular_hours_v3_1_runtime",
+      "path": "backend/app/services/intraday_probability_runtime_v3_1.py",
+      "category": "prediction_runtime",
+      "disposition": "primary_incumbent_baseline",
+      "target_role": "matched_oos_incumbent_with_reliability_policy"
+    },
+    {
+      "id": "symbol_specialists",
+      "path": "backend/app/services/symbol_specialist_engines.py",
+      "category": "research_specialist_registry",
+      "disposition": "freeze_expansion_keep_benchmarks",
+      "target_role": "evidence_for_ticker_identity_or_optional_adapters"
+    },
+    {
+      "id": "liquidity_engine",
+      "path": "backend/app/services/liquidity_engine.py",
+      "category": "feature_and_universe_provider",
+      "disposition": "keep",
+      "target_role": "liquidity_cost_and_universe_features"
+    },
+    {
+      "id": "market_regime_engine",
+      "path": "backend/app/services/market_regime_engine.py",
+      "category": "feature_provider",
+      "disposition": "keep",
+      "target_role": "market_sector_regime_features"
+    },
+    {
+      "id": "predictive_features",
+      "path": "backend/app/services/predictive_features.py",
+      "category": "feature_and_target_infrastructure",
+      "disposition": "keep_expand",
+      "target_role": "unified_point_in_time_feature_schema"
+    },
+    {
+      "id": "orion_score",
+      "path": "backend/app/services/orion_score_engine.py",
+      "category": "product_suitability_score",
+      "disposition": "keep_decoupled",
+      "target_role": "explainable_orion_product_context_not_probability"
+    },
+    {
+      "id": "evaluation_infrastructure",
+      "path": "backend/evals",
+      "category": "evaluation_and_evidence",
+      "disposition": "keep_expand",
+      "target_role": "ourai_walk_forward_shadow_settlement_and_replacement_gates"
+    }
+  ],
+  "symbol_specialists": [
+    "NVDA",
+    "TSLA",
+    "AAPL",
+    "JPM",
+    "RGTI",
+    "IONQ",
+    "OKLO",
+    "SPCX",
+    "MSFT",
+    "AMD",
+    "META",
+    "NVTS"
+  ]
+}
