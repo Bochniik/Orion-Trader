@@ -18,18 +18,22 @@ REQUIRED_COLUMNS = {
 
 
 def inventory(database: Path, *, symbol: str = "JPM", model_version: str = MODEL_VERSION,
-              lockbox_sessions: int = 100, min_development_sessions: int = 15) -> dict:
+              lockbox_sessions: int = 20, min_development_sessions: int = 10) -> dict:
     if not symbol.isascii() or not symbol.isalnum() or not symbol.isupper():
         raise ValueError("symbol must be an uppercase alphanumeric ticker")
     if lockbox_sessions < 10 or min_development_sessions < 1:
         raise ValueError("invalid preregistration session configuration")
     report = {
-        "contract": "orion-jpm-evidence-inventory-v3", "scope": "SIMULATED_FORWARD",
+        "contract": "orion-jpm-evidence-inventory-v4", "scope": "SIMULATED_FORWARD",
         "symbol": symbol, "model_version": model_version,
         "database_available": False, "provider_validated": False,
         "research_only": True, "live_forward_mutated": False,
         "automatic_live_promotion": False, "lockbox_reserved": False,
         "benchmark_performed": False, "verdict": "AWAITING_MORE_EVIDENCE",
+        "session_definition": "UTC prediction-date buckets (not certified exchange sessions)",
+        "preregistration_parameters": {"candidate_lockbox_dates": lockbox_sessions,
+                                       "minimum_development_dates": min_development_sessions,
+                                       "minimum_oos_samples": 1000},
         "horizons": {},
     }
     path = Path(database).expanduser().resolve()
