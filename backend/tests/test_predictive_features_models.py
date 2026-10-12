@@ -77,9 +77,11 @@ def test_models_use_chronological_calibration_and_return_valid_probabilities():
 
     assert artifact["random_split_used"] is False
     assert artifact["neural_network_used"] is False
+    assert artifact["validation_contract"] == "four-stage-purged-cross-symbol-v3"
     assert horizon["calibration"]["method"] == "held-out temperature scaling"
     assert len(horizon["walk_forward_folds"]) == 3
-    assert horizon["training_window"]["train_end"] < horizon["training_window"]["holdout_start"]
+    window = horizon["training_window"]
+    assert window["train_end"] < window["validation_start"] < window["calibration_start"] < window["test_start"]
     assert sum(probabilities[key] for key in ("P_UP", "P_DOWN", "P_NEUTRAL")) == 1
     assert artifact["horizons"]["30s"]["probabilities_available"] is False
 
@@ -90,8 +92,9 @@ def test_purging_protects_every_split_across_simultaneous_symbols():
     artifact = train_predictive_model(samples)
     horizon = artifact["horizons"]["1m"]
     window = horizon["training_window"]
-    assert artifact["validation_contract"] == "purged-cross-symbol-v2"
-    assert window["train_outcome_end"] < window["calibration_start"]
+    assert artifact["validation_contract"] == "four-stage-purged-cross-symbol-v3"
+    assert window["train_outcome_end"] < window["validation_start"]
+    assert window["validation_outcome_end"] < window["calibration_start"]
     assert window["calibration_outcome_end"] < window["holdout_start"]
     for fold in horizon["walk_forward_folds"]:
         assert fold["train_outcome_end"] < fold["test_start"]
@@ -104,3 +107,43 @@ def test_long_overlapping_labels_cannot_pass_a_chronological_sort_alone():
         sample["outcome_timestamp"] = "2026-01-03T00:00:00+00:00"
     artifact = train_predictive_model(samples)
     assert artifact["horizons"]["1m"]["status"] == "insufficient_purged_data"
+
+
+def test_four_stage_artifact_has_deterministic_lineage_and_untouched_test():
+    samples = synthetic_samples()
+    first = train_predictive_model(samples, name="Lineage baseline")
+    second = train_predictive_model(samples, name="Lineage baseline")
+    horizon = first["horizons"]["1m"]
+
+    assert first["dataset_hash"] == second["dataset_hash"]
+    assert first["feature_set_hash"] == second["feature_set_hash"]
+    assert horizon["dataset_hash"] == second["horizons"]["1m"]["dataset_hash"]
+    assert horizon["feature_set_hash"] == first["feature_set_hash"]
+    assert horizon["split_counts"]["train"] >= 72
+    assert horizon["split_counts"]["validation"] >= 24
+    assert horizon["split_counts"]["calibration"] >= 24
+    assert horizon["split_counts"]["test"] >= 24
+    assert horizon["validation"]["observations"] == horizon["split_counts"]["validation"]
+    assert horizon["untouched_test"]["observations"] == horizon["split_counts"]["test"]
+    assert horizon["test_before_calibration"]["observations"] == horizon["split_counts"]["test"]
+    assert "log_loss" in horizon["untouched_test"]
+    assert "balanced_accuracy" in horizon["untouched_test"]
+    assert horizon["untouched_test"]["confusion_matrix"]["labels"] == ["DOWN", "NEUTRAL", "UP"]
+
+
+def test_lineage_hash_changes_when_causal_training_material_changes():
+    samples = synthetic_samples()
+    baseline = train_predictive_model(samples)
+    mutated = synthetic_samples()
+    mutated[10]["features"][FEATURE_SCHEMA[0]] += 0.123
+    changed = train_predictive_model(mutated)
+
+    assert baseline["dataset_hash"] != changed["dataset_hash"]
+    assert baseline["feature_set_hash"] == changed["feature_set_hash"]
+
+
+def test_one_day_horizon_is_explicit_when_data_is_unavailable():
+    artifact = train_predictive_model(synthetic_samples())
+    assert "1D" in artifact["horizons"]
+    assert artifact["horizons"]["1D"]["probabilities_available"] is False
+    assert artifact["horizons"]["1D"]["status"] == "insufficient_training_data"
