@@ -1,0 +1,86 @@
+.auth-screen {
+  background:
+    linear-gradient(90deg, rgba(2, 3, 7, .78) 0%, rgba(2, 3, 7, .55) 35%, rgba(2, 3, 7, .24) 57%, rgba(2, 3, 7, .58) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, .14) 0%, rgba(0, 0, 0, .34) 100%),
+    url("./assets/orion-auth-background.png") center / cover no-repeat;
+}
+
+.auth-screen::before {
+  z-index: -1;
+  opacity: .13;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.86), rgba(0,0,0,.35));
+}
+
+.auth-screen::after {
+  z-index: 0;
+  box-shadow: inset 0 0 180px rgba(0,0,0,.55);
+  background:
+    radial-gradient(circle at 81% 35%, rgba(255, 125, 34, .12), transparent 24%),
+    radial-gradient(circle at 15% 12%, rgba(255, 113, 23, .07), transparent 24%);
+}
+
+.auth-starfield,
+.auth-planet,
+.auth-orbit,
+.auth-market-ghost,
+.auth-aurora {
+  display: none;
+}
+
+.auth-experience {
+  z-index: 2;
+}
+
+.auth-story h1 {
+  font-size: clamp(54px, 5.85vw, 90px);
+  text-shadow: 0 12px 34px rgba(0,0,0,.5);
+}
+
+.auth-story h1 em {
+  text-shadow: 0 0 32px rgba(255, 105, 20, .27), 0 8px 28px rgba(0,0,0,.35);
+}
+
+.auth-story > p {
+  color: #c5bdb7;
+  text-shadow: 0 4px 18px rgba(0,0,0,.42);
+}
+
+.auth-trust-row span {
+  border-color: rgba(255,255,255,.12);
+  background: linear-gradient(180deg, rgba(17,18,21,.72), rgba(7,8,10,.69));
+  backdrop-filter: blur(15px);
+}
+
+.auth-card {
+  border-color: rgba(255, 141, 59, .36);
+  background:
+    radial-gradient(circle at 94% 0%, rgba(255, 124, 34, .13), transparent 31%),
+    linear-gradient(158deg, rgba(20,21,25,.84), rgba(7,8,11,.91) 66%, rgba(4,5,7,.94));
+  box-shadow:
+    0 42px 110px rgba(0,0,0,.63),
+    0 0 42px rgba(255, 100, 18, .09),
+    0 0 0 1px rgba(255,255,255,.025) inset,
+    inset 0 1px rgba(255,255,255,.06);
+  backdrop-filter: blur(22px) saturate(1.12);
+}
+
+.auth-card::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 163, 94, .98) 52%, transparent);
+  box-shadow: 0 0 24px rgba(255, 113, 27, .5);
+}
+
+@media (max-width: 860px) {
+  .auth-screen {
+    background-position: 58% center;
+  }
+}
+
+@media (max-width: 560px) {
+  .auth-screen {
+    background-position: 64% center;
+  }
+}

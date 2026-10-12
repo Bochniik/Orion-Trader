@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 from app.services.premarket_predictive_engine import FEATURE_NAMES, extract_predictive_features
+from app.services.premarket_v5_runtime import predict_premarket_v5_outlook
 
 
 MODEL_VERSION = "premarket_predictive_v3_hierarchical"
@@ -44,6 +45,27 @@ def _finite(value: Any) -> Optional[float]:
 def _sigmoid(value: float) -> float:
     value = float(np.clip(value, -50.0, 50.0))
     return 1.0 / (1.0 + np.exp(-value))
+
+
+def _v5_research(minute_frame: Any, *, previous_close: Any, feed: str, as_of: Any) -> Dict[str, Any]:
+    """Return V5 premarket-only research without changing opening semantics."""
+    try:
+        return predict_premarket_v5_outlook(
+            minute_frame,
+            previous_close=previous_close,
+            feed=feed,
+            as_of=as_of,
+        )
+    except Exception as exc:
+        return {
+            "available": False,
+            "actionable": False,
+            "research_only": True,
+            "forecast_scope": "premarket_short_horizon",
+            "model_version": "premarket_directional_v5_hybrid_return",
+            "reason": f"premarket_v5_runtime_error:{type(exc).__name__}",
+            "signals": {},
+        }
 
 
 @dataclass(frozen=True)
@@ -160,11 +182,11 @@ def predict_gated_hierarchical_outlook(
     as_of: Any = None,
     model_path: Optional[str | Path] = None,
 ) -> Dict[str, Any]:
-    """Return only validation-approved hierarchical directional signals.
+    """Return the opening-model result plus separate V5 premarket research.
 
-    The v3 model was trained on consolidated SIP minute history. We therefore
-    refuse to make an actionable signal from sparse IEX input. Raw diagnostics
-    are still returned when a supported artifact and SIP feature snapshot exist.
+    Opening semantics remain fail-closed. The V5 model predicts only short
+    PREMARKET horizons and is attached under ``premarket_research``; it is never
+    promoted or relabelled as an opening signal.
     """
     if str(feed or "").lower() != "sip":
         return {
@@ -173,11 +195,23 @@ def predict_gated_hierarchical_outlook(
             "model_version": MODEL_VERSION,
             "reason": "training_feed_mismatch_requires_sip",
             "signals": {},
+            "premarket_research": _v5_research(
+                minute_frame,
+                previous_close=previous_close,
+                feed=feed,
+                as_of=as_of,
+            ),
         }
 
     features = extract_predictive_features(
         minute_frame,
         previous_close=previous_close,
+        as_of=as_of,
+    )
+    research = _v5_research(
+        minute_frame,
+        previous_close=previous_close,
+        feed=feed,
         as_of=as_of,
     )
     registry = HierarchicalRegistry(model_path=model_path)
@@ -189,6 +223,8 @@ def predict_gated_hierarchical_outlook(
             "reason": registry.error,
             "signals": {},
             "features": features,
+            "premarket_research": research,
+            "opening_forecast_eligible": False,
         }
 
     signals: Dict[str, Any] = {}
@@ -228,4 +264,6 @@ def predict_gated_hierarchical_outlook(
         "signals": signals,
         "features": features,
         "metadata": registry.metadata,
+        "premarket_research": research,
+        "opening_forecast_eligible": bool(signals),
     }

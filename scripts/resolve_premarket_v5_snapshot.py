@@ -81,13 +81,19 @@ def _cron_clock(schedule_cron: str) -> tuple[int, int]:
     return hour, minute
 
 
-def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None, manual_current: bool = False) -> SnapshotResolution:
+def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None, manual_current: bool = False, external_snapshot: str | None = None) -> SnapshotResolution:
     reference = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
 
     if manual_current and schedule_cron:
         raise ValueError('manual_current is incompatible with a scheduled cron slot')
+    if external_snapshot and (schedule_cron or manual_current):
+        raise ValueError('external_snapshot is incompatible with schedule/manual_current')
+    if external_snapshot and external_snapshot not in SNAPSHOT_CLOCKS:
+        raise ValueError(f'Unknown external snapshot: {external_snapshot}')
 
-    if schedule_cron:
+    if external_snapshot:
+        snapshot, mode = external_snapshot, 'external'
+    elif schedule_cron:
         if schedule_cron in REGISTERED_CRON_SLOTS:
             snapshot = REGISTERED_CRON_SLOTS[schedule_cron]
             mode = "primary"
@@ -125,6 +131,8 @@ def resolve_snapshot(*, schedule_cron: str | None, now: datetime | None = None, 
         reason = "manual_dispatch"
     elif mode == "manual_current":
         reason = "manual_current_research_only"
+    elif mode == "external":
+        reason = "registered_external_snapshot"
     return SnapshotResolution(True, reason, snapshot, mode, target_utc, target_et)
 
 
@@ -145,6 +153,7 @@ def main() -> int:
     parser.add_argument("--schedule-cron", default=None, help="Exact github.event.schedule string; omit for workflow_dispatch")
     parser.add_argument("--now", default=None, help="Testing/debug ISO timestamp; default is current UTC")
     parser.add_argument("--manual-current", action="store_true", help="Manual research collection at the current minute, never forward eligible")
+    parser.add_argument("--external-snapshot", choices=tuple(SNAPSHOT_CLOCKS), default=None, help="Externally scheduled preregistered snapshot transport")
     parser.add_argument("--github-output", type=Path, default=None)
     args = parser.parse_args()
 
@@ -154,7 +163,7 @@ def main() -> int:
         if now.tzinfo is None:
             raise ValueError("--now must include a timezone offset")
 
-    resolution = resolve_snapshot(schedule_cron=args.schedule_cron or None, now=now, manual_current=args.manual_current)
+    resolution = resolve_snapshot(schedule_cron=args.schedule_cron or None, now=now, manual_current=args.manual_current, external_snapshot=args.external_snapshot)
     payload = {
         "active": resolution.active,
         "reason": resolution.reason,

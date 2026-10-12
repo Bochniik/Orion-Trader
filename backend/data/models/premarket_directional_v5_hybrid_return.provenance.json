@@ -1,0 +1,19 @@
+{
+  "artifact_name": "premarket-v5-shadow-mid-36711771100",
+  "source_workflow_run_id": 36711771100,
+  "source_artifact_id": 11094555618,
+  "source_artifact_digest": "sha256:52f0a11c2c631063224b4912ff523efc0820e0c6df01c26bb97fb49ab4327e0a",
+  "source_head_sha": "67f9deb8dd357e3d3899d46dc2b900263e76bffa",
+  "model_sha256": "f642bdeff0ed7f4ccebf12a06f244e2e59bcf33947ed628aaf6a54ff33ef8753",
+  "training_manifest_sha256": "4cbdd25a7a91c347109ee5def008ca42dbed69cb7cd0eb3d107b05b499a4562b",
+  "raw_manifest_sha256": "6029d4fd34056d4e5d778a096f2389266e94fc375e57abdb0daf236c3448efaa",
+  "model_version": "premarket_directional_v5_hybrid_return",
+  "training_rows_raw": 2545,
+  "deployment_semantics": "research_only_premarket_short_horizon_forecast",
+  "opening_forecast_eligible": false,
+  "notes": [
+    "Recovered byte-for-byte from the retained GitHub Actions artifact; weights were not regenerated or edited.",
+    "This artifact predicts premarket 5m/15m/30m horizons, not post-open horizons.",
+    "User-facing execution/actionability must remain fail-closed until forward evidence supports promotion."
+  ]
+}

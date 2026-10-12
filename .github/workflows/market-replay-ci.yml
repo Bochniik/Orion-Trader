@@ -1,0 +1,137 @@
+name: Market replay regression
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/services/market_replay_engine.py"
+      - "backend/app/services/prediction_arena.py"
+      - "backend/app/services/historical_universe_runner.py"
+      - "backend/app/services/replay_universe_selector.py"
+      - "backend/app/services/replay_universe_orchestrator.py"
+      - "backend/app/services/replay_job.py"
+      - "backend/app/services/orion_learning_engine.py"
+      - "backend/app/services/accelerated_learning_cycle.py"
+      - "backend/app/services/accelerated_learning_job.py"
+      - "backend/app/services/simulated_learning_diagnostics.py"
+      - "backend/app/services/cloud_learning_shards.py"
+      - "backend/app/services/model_registry.py"
+      - "backend/app/services/live_forward_validation_report.py"
+      - "backend/app/services/live_forward_promotion.py"
+      - "backend/app/services/live_forward_promotion_cli.py"
+      - "backend/app/services/predictive_store.py"
+      - "backend/app/services/liquidity_engine.py"
+      - "backend/app/services/market_universe_db.py"
+      - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
+      - "backend/tests/test_market_replay_engine.py"
+      - "backend/tests/test_prediction_arena.py"
+      - "backend/tests/test_historical_universe_runner.py"
+      - "backend/tests/test_replay_universe_selector.py"
+      - "backend/tests/test_replay_job.py"
+      - "backend/tests/test_orion_learning_engine.py"
+      - "backend/tests/test_accelerated_learning_cycle.py"
+      - "backend/tests/test_accelerated_learning_job.py"
+      - "backend/tests/test_simulated_learning_diagnostics.py"
+      - "backend/tests/test_cloud_learning_shards.py"
+      - "backend/tests/test_cloud_resume_contract.py"
+      - "backend/tests/test_model_registry.py"
+      - "backend/tests/test_live_forward_validation_report.py"
+      - "backend/tests/test_live_forward_promotion_cli.py"
+      - "backend/requirements.txt"
+      - "backend/requirements-dev.txt"
+      - ".github/workflows/cloud-accelerated-learning.yml"
+      - ".github/workflows/market-replay-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/app/services/market_replay_engine.py"
+      - "backend/app/services/prediction_arena.py"
+      - "backend/app/services/historical_universe_runner.py"
+      - "backend/app/services/replay_universe_selector.py"
+      - "backend/app/services/replay_universe_orchestrator.py"
+      - "backend/app/services/replay_job.py"
+      - "backend/app/services/orion_learning_engine.py"
+      - "backend/app/services/accelerated_learning_cycle.py"
+      - "backend/app/services/accelerated_learning_job.py"
+      - "backend/app/services/simulated_learning_diagnostics.py"
+      - "backend/app/services/cloud_learning_shards.py"
+      - "backend/app/services/model_registry.py"
+      - "backend/app/services/live_forward_validation_report.py"
+      - "backend/app/services/live_forward_promotion.py"
+      - "backend/app/services/live_forward_promotion_cli.py"
+      - "backend/app/services/predictive_store.py"
+      - "backend/app/services/liquidity_engine.py"
+      - "backend/app/services/market_universe_db.py"
+      - "backend/app/services/intraday_probability_long_horizon_v5_forward.py"
+      - "backend/tests/test_market_replay_engine.py"
+      - "backend/tests/test_prediction_arena.py"
+      - "backend/tests/test_historical_universe_runner.py"
+      - "backend/tests/test_replay_universe_selector.py"
+      - "backend/tests/test_replay_universe_orchestrator.py"
+      - "backend/tests/test_replay_job.py"
+      - "backend/tests/test_orion_learning_engine.py"
+      - "backend/tests/test_accelerated_learning_cycle.py"
+      - "backend/tests/test_accelerated_learning_job.py"
+      - "backend/tests/test_simulated_learning_diagnostics.py"
+      - "backend/tests/test_cloud_learning_shards.py"
+      - "backend/tests/test_cloud_resume_contract.py"
+      - "backend/tests/test_model_registry.py"
+      - "backend/tests/test_live_forward_validation_report.py"
+      - "backend/tests/test_live_forward_promotion_cli.py"
+      - "backend/requirements.txt"
+      - "backend/requirements-dev.txt"
+      - ".github/workflows/cloud-accelerated-learning.yml"
+      - ".github/workflows/market-replay-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  market-replay-regression:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      - name: Install backend and test dependencies
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Compile replay services and tests
+        run: |
+          python -m py_compile app/services/market_replay_engine.py
+          python -m py_compile app/services/prediction_arena.py
+          python -m py_compile app/services/historical_universe_runner.py
+          python -m py_compile app/services/replay_universe_selector.py
+          python -m py_compile app/services/replay_universe_orchestrator.py
+          python -m py_compile app/services/replay_job.py
+          python -m py_compile app/services/orion_learning_engine.py
+          python -m py_compile app/services/accelerated_learning_cycle.py
+          python -m py_compile app/services/accelerated_learning_job.py
+          python -m py_compile app/services/simulated_learning_diagnostics.py
+          python -m py_compile app/services/cloud_learning_shards.py
+          python -m py_compile app/services/model_registry.py
+          python -m py_compile app/services/live_forward_validation_report.py
+          python -m py_compile app/services/live_forward_promotion.py
+          python -m py_compile app/services/live_forward_promotion_cli.py
+          python -m py_compile tests/test_market_replay_engine.py
+          python -m py_compile tests/test_prediction_arena.py
+          python -m py_compile tests/test_historical_universe_runner.py
+          python -m py_compile tests/test_replay_universe_selector.py
+          python -m py_compile tests/test_replay_job.py
+          python -m py_compile tests/test_orion_learning_engine.py
+          python -m py_compile tests/test_accelerated_learning_cycle.py
+          python -m py_compile tests/test_accelerated_learning_job.py
+          python -m py_compile tests/test_simulated_learning_diagnostics.py
+          python -m py_compile tests/test_cloud_learning_shards.py
+          python -m py_compile tests/test_cloud_resume_contract.py
+          python -m py_compile tests/test_model_registry.py
+          python -m py_compile tests/test_live_forward_validation_report.py
+          python -m py_compile tests/test_live_forward_promotion_cli.py
+      - name: Run replay regression tests
+        run: python -m pytest tests/test_market_replay_engine.py tests/test_prediction_arena.py tests/test_historical_universe_runner.py tests/test_replay_universe_selector.py tests/test_replay_job.py tests/test_orion_learning_engine.py tests/test_accelerated_learning_cycle.py tests/test_accelerated_learning_job.py tests/test_simulated_learning_diagnostics.py tests/test_cloud_learning_shards.py tests/test_cloud_resume_contract.py tests/test_model_registry.py tests/test_live_forward_validation_report.py tests/test_live_forward_promotion_cli.py -q

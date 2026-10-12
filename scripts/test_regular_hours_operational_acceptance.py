@@ -112,12 +112,12 @@ class OperationalAcceptanceTests(unittest.TestCase):
         report = build_operational_acceptance_report(session_date=date(2026, 9, 15), runs=runs, artifacts=artifacts, artifact_payloads=payloads)
         self.assertEqual(report["counts"]["artifact_invalid"], 1)
 
-    def test_ambiguous_schedule_mapping_never_consumes_artifact(self):
+    def test_adjacent_slot_boundary_is_not_reused_for_previous_slot(self):
         runs, artifacts, payloads = _fixtures()
         runs[0]["created_at"] = "2026-09-15T14:35:00Z"
         report = build_operational_acceptance_report(session_date=date(2026, 9, 15), runs=runs, artifacts=artifacts, artifact_payloads=payloads)
         self.assertFalse(report["healthy"])
-        self.assertGreater(report["counts"].get("ambiguous", 0), 0)
+        self.assertEqual(report["counts"].get("missing", 0), 1)
 
 
 if __name__ == "__main__":

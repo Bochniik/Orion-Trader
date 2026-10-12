@@ -3,6 +3,23 @@ run-name: Premarket V5 ${{ github.event_name }} ${{ github.event.schedule || 'ma
 
 on:
   workflow_call:
+    inputs:
+      external_snapshot:
+        required: false
+        type: string
+        default: ""
+      external_trigger_created_at:
+        required: false
+        type: string
+        default: ""
+      external_actor:
+        required: false
+        type: string
+        default: ""
+      external_issue:
+        required: false
+        type: number
+        default: 0
   workflow_dispatch:
     inputs:
       collection_mode:
@@ -43,13 +60,22 @@ jobs:
         env:
           SCHEDULE_CRON: ${{ github.event.schedule }}
           MANUAL_COLLECTION_MODE: ${{ inputs.collection_mode }}
+          EXTERNAL_SNAPSHOT: ${{ inputs.external_snapshot }}
         run: |
           EXTRA_ARGS=()
-          if [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$MANUAL_COLLECTION_MODE" = 'current' ]; then
+          SCHEDULE_ARG="$SCHEDULE_CRON"
+          if [ -n "$EXTERNAL_SNAPSHOT" ]; then
+            EXTRA_ARGS+=(--external-snapshot "$EXTERNAL_SNAPSHOT")
+            # A reusable workflow invoked from a scheduled watchdog inherits the
+            # caller's schedule string. external_snapshot is the authoritative
+            # frozen slot in that mode, so do not pass the watchdog cron as a
+            # Premarket V5 registered cron slot.
+            SCHEDULE_ARG=""
+          elif [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$MANUAL_COLLECTION_MODE" = 'current' ]; then
             EXTRA_ARGS+=(--manual-current)
           fi
           python scripts/resolve_premarket_v5_snapshot.py \
-            --schedule-cron "$SCHEDULE_CRON" \
+            --schedule-cron "$SCHEDULE_ARG" \
             "${EXTRA_ARGS[@]}" \
             --github-output "$GITHUB_OUTPUT"
 
@@ -70,7 +96,7 @@ jobs:
 
       - name: Claim scheduled evidence slot idempotently
         id: claim
-        if: steps.target.outputs.active == 'true' && github.event_name == 'schedule'
+        if: steps.target.outputs.active == 'true' && (github.event_name == 'schedule' || github.event_name == 'issue_comment')
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -82,18 +108,18 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
 
       - name: Report idempotent scheduled skip
-        if: steps.target.outputs.active == 'true' && github.event_name == 'schedule' && steps.claim.outputs.collect_allowed != 'true'
+        if: steps.target.outputs.active == 'true' && (github.event_name == 'schedule' || github.event_name == 'issue_comment') && steps.claim.outputs.collect_allowed != 'true'
         run: |
           echo "Scheduled collection skipped: ${{ steps.claim.outputs.reason }}"
           echo "Existing run: ${{ steps.claim.outputs.blocking_run_id }}"
           echo "Existing artifact: ${{ steps.claim.outputs.blocking_artifact }}"
 
       - name: Install backend dependencies
-        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
+        if: steps.target.outputs.active == 'true' && ((github.event_name != 'schedule' && github.event_name != 'issue_comment') || steps.claim.outputs.collect_allowed == 'true')
         run: python -m pip install -r backend/requirements.txt
 
       - name: Verify cloud credentials are configured
-        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
+        if: steps.target.outputs.active == 'true' && ((github.event_name != 'schedule' && github.event_name != 'issue_comment') || steps.claim.outputs.collect_allowed == 'true')
         shell: bash
         run: |
           if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
@@ -102,7 +128,7 @@ jobs:
           fi
 
       - name: Run and attest premarket v5 shadow prediction
-        if: steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
+        if: steps.target.outputs.active == 'true' && ((github.event_name != 'schedule' && github.event_name != 'issue_comment') || steps.claim.outputs.collect_allowed == 'true')
         shell: bash
         run: |
           SYMBOLS="${{ github.event.inputs.symbols }}"
@@ -126,10 +152,13 @@ jobs:
             --event-name "$GITHUB_EVENT_NAME" \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
-            --github-head-sha "$GITHUB_SHA"
+            --github-head-sha "$GITHUB_SHA" \
+            --external-trigger-created-at "${{ inputs.external_trigger_created_at }}" \
+            --external-actor "${{ inputs.external_actor }}" \
+            --external-issue "${{ inputs.external_issue }}"
 
       - name: Upload immutable shadow evidence
-        if: always() && steps.target.outputs.active == 'true' && (github.event_name != 'schedule' || steps.claim.outputs.collect_allowed == 'true')
+        if: always() && steps.target.outputs.active == 'true' && ((github.event_name != 'schedule' && github.event_name != 'issue_comment') || steps.claim.outputs.collect_allowed == 'true')
         uses: actions/upload-artifact@v4
         with:
           name: premarket-v5-shadow-${{ steps.target.outputs.snapshot }}-${{ github.run_id }}

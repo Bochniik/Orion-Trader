@@ -1,0 +1,346 @@
+name: Orion cloud accelerated learning
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cloud-accelerated-learning.yml"
+      - "backend/app/services/market_replay_engine.py"
+      - "backend/app/services/historical_universe_runner.py"
+      - "backend/app/services/prediction_arena.py"
+      - "backend/app/services/replay_job.py"
+      - "backend/app/services/accelerated_learning_job.py"
+      - "backend/app/services/orion_learning_engine.py"
+      - "backend/app/services/accelerated_learning_cycle.py"
+      - "backend/app/services/simulated_learning_diagnostics.py"
+      - "backend/app/services/cloud_learning_shards.py"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: orion-cloud-accelerated-learning
+  cancel-in-progress: false
+
+jobs:
+  accelerated-learning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Restore latest persisted simulated-learning state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mkdir -p data/cloud-learning
+          WORKFLOW_ID="$(gh api "repos/${REPOSITORY}/actions/workflows/cloud-accelerated-learning.yml" --jq '.id' 2>/dev/null || true)"
+          if [ -z "$WORKFLOW_ID" ]; then
+            echo "No previous workflow metadata yet; starting fresh."
+            exit 0
+          fi
+
+          PREVIOUS_RUN_ID=""
+          ARTIFACT_ID=""
+          for RUN_ID in $(gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW_ID}/runs?status=completed&branch=main&per_page=20" --jq '.workflow_runs[].id' 2>/dev/null || true); do
+            CANDIDATE_ARTIFACT_ID="$(gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[] | select(.name == "orion-accelerated-learning-state") | .id' 2>/dev/null | head -n 1 || true)"
+            if [ -n "$CANDIDATE_ARTIFACT_ID" ]; then
+              PREVIOUS_RUN_ID="$RUN_ID"
+              ARTIFACT_ID="$CANDIDATE_ARTIFACT_ID"
+              break
+            fi
+          done
+
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "No previous persisted cloud-learning artifact; starting fresh."
+            exit 0
+          fi
+
+          gh api "repos/${REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/orion-learning-state.zip
+          unzip -o /tmp/orion-learning-state.zip -d data/cloud-learning
+          echo "Restored persistent SIMULATED_FORWARD state from run ${PREVIOUS_RUN_ID}."
+
+      - name: Bootstrap or resume rotating cloud replay shard
+        env:
+          ORION_MARKET_UNIVERSE_DB: data/cloud-learning/market_universe.db
+          CLOUD_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          rm -f data/cloud-learning/market_universe.db
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from app.services.cloud_learning_shards import select_cloud_replay_shard
+          from app.services.market_universe_db import MarketUniverseDatabase
+
+          root = Path("data/cloud-learning")
+          metadata_path = root / "shard_metadata.json"
+          checkpoint_path = root / "replay_checkpoint.json"
+
+          resume_symbols = None
+          if metadata_path.exists() and checkpoint_path.exists():
+              try:
+                  previous = json.loads(metadata_path.read_text(encoding="utf-8"))
+                  checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+                  previous_symbols = [str(s).strip().upper() for s in previous.get("symbols", []) if str(s).strip()]
+                  completed = {str(s).strip().upper() for s in checkpoint.get("completed_symbols", []) if str(s).strip()}
+                  if previous_symbols and any(symbol not in completed for symbol in previous_symbols):
+                      resume_symbols = previous_symbols
+                      metadata = dict(previous)
+                      metadata["resumed"] = True
+                      metadata["completed_before_run"] = sorted(completed.intersection(previous_symbols))
+                      print("Resuming incomplete replay shard:", metadata)
+              except (OSError, json.JSONDecodeError, TypeError, ValueError):
+                  resume_symbols = None
+
+          if resume_symbols is None:
+              shard = select_cloud_replay_shard(int(os.environ["CLOUD_RUN_NUMBER"]), shard_size=10)
+              resume_symbols = list(shard.symbols)
+              metadata = {
+                  "run_number": int(os.environ["CLOUD_RUN_NUMBER"]),
+                  "shard_index": shard.shard_index,
+                  "shard_count": shard.shard_count,
+                  "symbols": resume_symbols,
+                  "resumed": False,
+                  "completed_before_run": [],
+              }
+              checkpoint_path.unlink(missing_ok=True)
+              print("Starting new replay shard:", metadata)
+
+          db = MarketUniverseDatabase()
+          db.upsert_assets(
+              [
+                  {
+                      "symbol": symbol,
+                      "class": "us_equity",
+                      "tradable": True,
+                      "status": "active",
+                  }
+                  for symbol in resume_symbols
+              ],
+              source="cloud-replay-shard",
+          )
+          counts = db.counts()
+          if counts["tradable"] != len(resume_symbols):
+              raise RuntimeError(
+                  f"Cloud replay shard bootstrap mismatch: expected {len(resume_symbols)}, got {counts['tradable']}"
+              )
+          metadata_path.write_text(json.dumps(metadata, sort_keys=True, indent=2), encoding="utf-8")
+          PY
+
+      - name: Run bounded end-to-end accelerated learning
+        env:
+          PYTHONUNBUFFERED: "1"
+          ORION_MARKET_UNIVERSE_DB: data/cloud-learning/market_universe.db
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=30s 35m \
+            python -m app.services.accelerated_learning_job \
+              --simulated-db data/cloud-learning/simulated_forward.db \
+              --checkpoint data/cloud-learning/replay_checkpoint.json \
+              --learning-artifact data/cloud-learning/learning_challenger.json \
+              --cycle-artifact data/cloud-learning/accelerated_learning_cycle.json \
+              --top-n 10 \
+              --candidate-limit 10 \
+              --minimum-adv 25000000 \
+              --period 60d \
+              --interval 5m \
+              --batch-size 1 \
+              --run-id "cloud-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+              > data/cloud-learning/job_summary.json
+          EXIT_CODE=$?
+          set -e
+
+          python - "$EXIT_CODE" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          exit_code = int(sys.argv[1])
+          root = Path("data/cloud-learning")
+          checkpoint_path = root / "replay_checkpoint.json"
+          metadata_path = root / "shard_metadata.json"
+          summary_path = root / "job_summary.json"
+
+          metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+          checkpoint = {}
+          if checkpoint_path.exists():
+              checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+
+          completed = {str(s).strip().upper() for s in checkpoint.get("completed_symbols", []) if str(s).strip()}
+          shard_symbols = [str(s).strip().upper() for s in metadata.get("symbols", []) if str(s).strip()]
+          shard_complete = bool(shard_symbols) and all(symbol in completed for symbol in shard_symbols)
+          full_summary = summary_path.exists() and summary_path.stat().st_size > 0
+          soft_timeout = exit_code in {124, 137, 143}
+
+          status = {
+              "exit_code": exit_code,
+              "soft_timeout": soft_timeout,
+              "full_summary_available": full_summary,
+              "shard_complete": shard_complete,
+              "completed_symbols": sorted(completed.intersection(shard_symbols)),
+              "remaining_symbols": [symbol for symbol in shard_symbols if symbol not in completed],
+          }
+          (root / "run_status.json").write_text(json.dumps(status, sort_keys=True, indent=2), encoding="utf-8")
+          print("Cloud replay status:", status)
+
+          if exit_code != 0 and not soft_timeout:
+              raise SystemExit(exit_code)
+          PY
+
+      - name: Evaluate accumulated simulated evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from app.services.accelerated_learning_cycle import AcceleratedLearningCycle
+          from app.services.orion_learning_engine import OrionLearningEngine
+          from app.services.prediction_arena import SimulatedForwardStore
+          from app.services.simulated_learning_diagnostics import SimulatedLearningDiagnostics
+
+          root = Path("data/cloud-learning")
+          database = root / "simulated_forward.db"
+          if not database.exists():
+              raise RuntimeError("simulated_forward.db is required for accumulated learning research")
+
+          SimulatedForwardStore(database)
+          learning = OrionLearningEngine(database).build_challenger(
+              output_path=root / "learning_challenger.json"
+          )
+          cycle = AcceleratedLearningCycle(database).run(
+              output_path=root / "accelerated_learning_cycle.json"
+          )
+          diagnostics = SimulatedLearningDiagnostics(database).build_report(
+              output_path=root / "learning_error_diagnostics.json"
+          )
+          assert learning["scope"] == "SIMULATED_FORWARD"
+          assert cycle["scope"] == "SIMULATED_FORWARD"
+          assert diagnostics["scope"] == "SIMULATED_FORWARD"
+          assert learning["live_forward_mutated"] is False
+          assert cycle["live_forward_mutated"] is False
+          assert diagnostics["safety"]["live_forward_mutated"] is False
+          assert learning["automatic_live_promotion"] is False
+          assert cycle["automatic_live_promotion"] is False
+          assert diagnostics["safety"]["automatic_live_promotion"] is False
+
+          summary = {
+              "scope": "SIMULATED_FORWARD",
+              "settled_sample_count": learning.get("settled_sample_count", 0),
+              "horizon_count": learning.get("horizon_count", 0),
+              "promotable_horizons": learning.get("promotable_horizons", []),
+              "kept_challengers": cycle.get("kept_challengers", []),
+              "kept_challenger_count": len(cycle.get("kept_challengers", [])),
+              "failure_pattern_count": len(diagnostics.get("candidate_failure_patterns", [])),
+              "calibration_pattern_count": len(diagnostics.get("candidate_calibration_patterns", [])),
+              "automatic_live_promotion": False,
+              "live_forward_mutated": False,
+          }
+          (root / "learning_research_summary.json").write_text(
+              json.dumps(summary, sort_keys=True, indent=2), encoding="utf-8"
+          )
+          print("Accumulated learning research:", summary)
+          PY
+
+      - name: Validate simulation-only output
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("data/cloud-learning")
+          status = json.loads((root / "run_status.json").read_text(encoding="utf-8"))
+          checkpoint_path = root / "replay_checkpoint.json"
+          if checkpoint_path.exists():
+              checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+              assert checkpoint["scope"] == "SIMULATED_FORWARD", checkpoint.get("scope")
+
+          research = json.loads((root / "learning_research_summary.json").read_text(encoding="utf-8"))
+          diagnostics = json.loads((root / "learning_error_diagnostics.json").read_text(encoding="utf-8"))
+          assert research["scope"] == "SIMULATED_FORWARD"
+          assert research["live_forward_mutated"] is False
+          assert research["automatic_live_promotion"] is False
+          assert diagnostics["scope"] == "SIMULATED_FORWARD"
+          assert diagnostics["safety"]["research_only"] is True
+          assert diagnostics["safety"]["same_evidence_approval_forbidden"] is True
+          assert diagnostics["safety"]["requires_later_unseen_evidence"] is True
+          assert diagnostics["safety"]["live_forward_mutated"] is False
+
+          summary_path = root / "job_summary.json"
+          if status["full_summary_available"]:
+              payload = json.loads(summary_path.read_text(encoding="utf-8"))
+              assert payload["scope"] == "SIMULATED_FORWARD", payload.get("scope")
+              assert payload["live_forward_mutated"] is False
+              assert payload["automatic_live_promotion"] is False
+              assert payload["replay"]["scope"] == "SIMULATED_FORWARD"
+              assert payload["learning"]["scope"] == "SIMULATED_FORWARD"
+              assert payload["walk_forward"]["scope"] == "SIMULATED_FORWARD"
+              print(
+                  "Full Orion cloud learning cycle complete:",
+                  "settled=", payload["learning"].get("settled_sample_count"),
+                  "kept=", payload.get("kept_challenger_count"),
+                  "failure_patterns=", research["failure_pattern_count"],
+              )
+          else:
+              assert status["soft_timeout"] is True
+              print(
+                  "Partial replay progress safely persisted and researched:",
+                  "completed=", ",".join(status["completed_symbols"]),
+                  "remaining=", ",".join(status["remaining_symbols"]),
+                  "settled=", research["settled_sample_count"],
+                  "kept=", research["kept_challenger_count"],
+                  "failure_patterns=", research["failure_pattern_count"],
+                  "calibration_patterns=", research["calibration_pattern_count"],
+              )
+          PY
+
+      - name: Checkpoint SQLite WAL before persistence
+        if: always()
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from pathlib import Path
+
+          path = Path("data/cloud-learning/simulated_forward.db")
+          if path.exists():
+              with sqlite3.connect(path) as connection:
+                  connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+          PY
+
+      - name: Persist accelerated-learning state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orion-accelerated-learning-state
+          path: |
+            backend/data/cloud-learning/simulated_forward.db
+            backend/data/cloud-learning/replay_checkpoint.json
+            backend/data/cloud-learning/learning_challenger.json
+            backend/data/cloud-learning/accelerated_learning_cycle.json
+            backend/data/cloud-learning/learning_error_diagnostics.json
+            backend/data/cloud-learning/learning_research_summary.json
+            backend/data/cloud-learning/job_summary.json
+            backend/data/cloud-learning/shard_metadata.json
+            backend/data/cloud-learning/run_status.json
+          if-no-files-found: warn
+          retention-days: 30

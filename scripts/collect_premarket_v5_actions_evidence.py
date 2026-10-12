@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -14,8 +15,21 @@ import zipfile
 from typing import Any
 
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+import scripts.resolve_premarket_v5_snapshot as resolver
+
+
 API_VERSION = "2022-11-28"
-WORKFLOW_FILE = "premarket-v5-cloud-shadow.yml"
+LEGACY_WORKFLOW_FILE = "premarket-v5-cloud-shadow.yml"
+SCHEDULER_WORKFLOW_FILE = "market-acquisition-scheduler.yml"
+WORKFLOW_FILE = LEGACY_WORKFLOW_FILE  # Backward-compatible public constant.
+WORKFLOW_FILES = (LEGACY_WORKFLOW_FILE, SCHEDULER_WORKFLOW_FILE)
+LEGACY_RUN_NAME_PREFIX = "Premarket V5 schedule "
+SCHEDULER_RUN_NAME_PREFIX = "Market acquisition schedule "
+RUN_NAME_PREFIXES = (LEGACY_RUN_NAME_PREFIX, SCHEDULER_RUN_NAME_PREFIX)
 ARTIFACT_PREFIX = "premarket-v5-shadow-"
 MAX_ARTIFACT_BYTES = 8 * 1024 * 1024
 REQUIRED_ARTIFACT_RETENTION_DAYS = 90
@@ -54,6 +68,23 @@ def _git_sha(value: Any, *, field: str) -> str:
     if not _GIT_SHA_RE.fullmatch(sha):
         raise ActionsEvidenceError(f"{field} must be a 40-character hexadecimal commit SHA")
     return sha
+
+
+def _all_premarket_crons() -> dict[str, str]:
+    return {**resolver.REGISTERED_CRON_SLOTS, **resolver.RECOVERY_CRON_SLOTS}
+
+
+def _registered_premarket_cron(run: dict[str, Any]) -> str | None:
+    if str(run.get("event") or "") != "schedule":
+        return None
+    title = str(run.get("display_title") or run.get("name") or "")
+    valid_crons = _all_premarket_crons()
+    for prefix in RUN_NAME_PREFIXES:
+        if not title.startswith(prefix):
+            continue
+        cron = title[len(prefix) :].strip()
+        return cron if cron in valid_crons else None
+    return None
 
 
 def normalize_run(run: dict[str, Any]) -> dict[str, Any]:
@@ -200,30 +231,36 @@ class GitHubActionsClient:
         return payload
 
     def scheduled_runs(self, *, start_date: date) -> list[dict[str, Any]]:
-        workflow = urllib.parse.quote(WORKFLOW_FILE, safe="")
         start = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
-        result: list[dict[str, Any]] = []
-        for page in range(1, 11):
-            path = (
-                f"/repos/{self.repository}/actions/workflows/{workflow}/runs"
-                f"?event=schedule&per_page=100&page={page}"
-            )
-            rows = self._json(path).get("workflow_runs", [])
-            if not isinstance(rows, list):
-                raise ActionsEvidenceError("workflow_runs must be an array")
-            if not rows:
-                break
-            stop = False
-            for raw in rows:
-                if not isinstance(raw, dict):
-                    raise ActionsEvidenceError("workflow run entry must be an object")
-                created = _iso_utc(raw.get("created_at"), field="created_at")
-                if created < start:
-                    stop = True
-                    continue
-                result.append(normalize_run(raw))
-            if stop or len(rows) < 100:
-                break
+        by_id: dict[tuple[str, int], dict[str, Any]] = {}
+        for workflow_file in WORKFLOW_FILES:
+            workflow = urllib.parse.quote(workflow_file, safe="")
+            for page in range(1, 11):
+                path = (
+                    f"/repos/{self.repository}/actions/workflows/{workflow}/runs"
+                    f"?event=schedule&per_page=100&page={page}"
+                )
+                rows = self._json(path).get("workflow_runs", [])
+                if not isinstance(rows, list):
+                    raise ActionsEvidenceError("workflow_runs must be an array")
+                if not rows:
+                    break
+                stop = False
+                for raw in rows:
+                    if not isinstance(raw, dict):
+                        raise ActionsEvidenceError("workflow run entry must be an object")
+                    created = _iso_utc(raw.get("created_at"), field="created_at")
+                    if created < start:
+                        stop = True
+                        continue
+                    if _registered_premarket_cron(raw) is None:
+                        continue
+                    normalized = normalize_run(raw)
+                    normalized["workflow_file"] = workflow_file
+                    by_id[(normalized["id"], normalized["run_attempt"])] = normalized
+                if stop or len(rows) < 100:
+                    break
+        result = list(by_id.values())
         return sorted(result, key=lambda row: (row["created_at"], int(row["id"]), row["run_attempt"]))
 
     def run_artifacts(self, run_id: str) -> list[dict[str, Any]]:
@@ -234,9 +271,6 @@ class GitHubActionsClient:
         return rows
 
     def download_artifact(self, artifact_id: int) -> bytes:
-        # GitHub's artifact download endpoint is an API endpoint that returns a
-        # temporary redirect to the ZIP. The API request must use GitHub's JSON
-        # media type; the redirect target still returns the binary archive.
         return self._request(f"/repos/{self.repository}/actions/artifacts/{artifact_id}/zip")
 
 
@@ -268,7 +302,8 @@ def collect(client: GitHubActionsClient, *, start_date: date) -> tuple[list[dict
         )
     summary = {
         "score_blind": True,
-        "workflow_file": WORKFLOW_FILE,
+        "workflow_file": SCHEDULER_WORKFLOW_FILE,
+        "workflow_files": list(WORKFLOW_FILES),
         "start_date": start_date.isoformat(),
         "scheduled_run_count": len(runs),
         "prediction_artifact_count": len(payloads),

@@ -735,28 +735,13 @@ export default function TodayView(props) {
               </div>
             </div>
 
-            <div className="orion-score-area">
-              <div
-                className="orion-score-ring"
-                style={{
-                  "--orion-score-progress": `${Math.max(
-                    0,
-                    Math.min(100, Number(animatedOrionScore ?? 0))
-                  )}%`,
-                }}
-              >
-                <div>
-                  <strong>
-                    {analysisBusy
-                      ? "..."
-                      : isClosedSession || isAfterHours
-                        ? "N/A"
-                        : displayNumber(animatedOrionScore)}
-                  </strong>
-                  <span>/100</span>
+            <div className={`orion-score-area ${analysisBusy ? "is-loading" : ""}`} aria-busy={analysisBusy ? "true" : undefined}>
+              {analysisBusy && (
+                <div className="orion-score-loading-bars" role="status" aria-label="Orion Score is loading">
+                  <i /><i /><i />
+                  <span className="sr-only">Orion Score is loading</span>
                 </div>
-              </div>
-
+              )}
               <div className="orion-score-metrics">
                 <div>
                   <span>
@@ -775,6 +760,11 @@ export default function TodayView(props) {
                           ? "PAUSED"
                           : displayNumber(animatedAdjustedScore)}
                   </strong>
+                  {!isPremarket && !isClosedSession && !isAfterHours && (
+                    <div className="orion-metric-progress adjusted" aria-hidden="true">
+                      <i style={{ width: `${riskWidth(animatedAdjustedScore)}%` }} />
+                    </div>
+                  )}
                 </div>
 
                 <div className="orion-probability-grid">
@@ -800,6 +790,11 @@ export default function TodayView(props) {
                               ? "AFTER HOURS"
                               : displayProbability(animatedUpProbability)}
                     </strong>
+                    {!isPremarket && !isClosedSession && !isAfterHours && (
+                      <div className="orion-metric-progress up" aria-hidden="true">
+                        <i style={{ width: `${riskWidth(animatedUpProbability)}%` }} />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -822,6 +817,11 @@ export default function TodayView(props) {
                             ? "RESEARCH ONLY"
                             : displayProbability(animatedDownProbability)}
                     </strong>
+                    {!isPremarket && !isClosedSession && !isAfterHours && (
+                      <div className="orion-metric-progress down" aria-hidden="true">
+                        <i style={{ width: `${riskWidth(animatedDownProbability)}%` }} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

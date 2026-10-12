@@ -322,3 +322,58 @@ def test_timely_scheduled_empty_collection_is_not_forward_evidence():
     assert attested["acquisition_provenance"]["forward_eligible"] is False
     assert attested["acquisition_provenance"]["eligibility_reason"] == "no_evaluable_predictions"
     assert readiness.validate_acquisition(attested)["decision_grade_complete"] is False
+
+
+def test_trusted_external_scheduler_transport_can_be_forward_eligible():
+    payload = _base_payload(date(2026, 9, 30), "early")
+    as_of = datetime.fromisoformat(payload["as_of_utc"])
+    attested = attestation.finalize_payload(
+        payload,
+        collection_started_at=as_of + timedelta(minutes=2),
+        collection_completed_at=as_of + timedelta(minutes=3),
+        event_name="issue_comment",
+        run_id="999001",
+        run_attempt=1,
+        github_head_sha=HEAD_SHA,
+        external_trigger_created_at=as_of + timedelta(seconds=20),
+        external_actor="Bochniik",
+        external_issue=313,
+    )
+    provenance = attested["acquisition_provenance"]
+    assert provenance["forward_eligible"] is True
+    assert provenance["eligibility_reason"] == "external_scheduler_forward_window"
+    assert readiness.validate_acquisition(attested)["decision_grade_complete"] is True
+
+
+def test_external_scheduler_transport_fails_closed_if_issue_or_time_is_wrong():
+    payload = _base_payload(date(2026, 9, 30), "mid")
+    as_of = datetime.fromisoformat(payload["as_of_utc"])
+    bad_issue = attestation.finalize_payload(
+        payload,
+        collection_started_at=as_of + timedelta(minutes=1),
+        collection_completed_at=as_of + timedelta(minutes=2),
+        event_name="issue_comment",
+        run_id="999002",
+        run_attempt=1,
+        github_head_sha=HEAD_SHA,
+        external_trigger_created_at=as_of,
+        external_actor="Bochniik",
+        external_issue=999,
+    )
+    assert bad_issue["acquisition_provenance"]["forward_eligible"] is False
+    assert bad_issue["acquisition_provenance"]["eligibility_reason"] == "unverified_external_scheduler"
+
+    late_trigger = attestation.finalize_payload(
+        _base_payload(date(2026, 9, 30), "late"),
+        collection_started_at=datetime(2026, 9, 30, 13, 16, tzinfo=timezone.utc),
+        collection_completed_at=datetime(2026, 9, 30, 13, 17, tzinfo=timezone.utc),
+        event_name="issue_comment",
+        run_id="999003",
+        run_attempt=1,
+        github_head_sha=HEAD_SHA,
+        external_trigger_created_at=datetime(2026, 9, 30, 13, 25, tzinfo=timezone.utc),
+        external_actor="Bochniik",
+        external_issue=313,
+    )
+    assert late_trigger["acquisition_provenance"]["forward_eligible"] is False
+    assert late_trigger["acquisition_provenance"]["eligibility_reason"] == "external_trigger_outside_preregistered_window"

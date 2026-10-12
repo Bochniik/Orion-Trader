@@ -1,4 +1,5 @@
 import { AlertTriangle, BarChart3, Building2, Check, Info, ShieldAlert, Sparkles } from "lucide-react";
+import "../analysis-snapshot-premium.css";
 
 function finite(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -87,6 +88,14 @@ export function analysisMetrics(analysis) {
     companyName: firstValue(analysis?.company_name, snapshot?.company_name),
     sector: firstValue(analysis?.sector, snapshot?.sector),
     industry: firstValue(analysis?.industry, snapshot?.industry),
+    logoUrl: firstValue(
+      analysis?.logo_url,
+      analysis?.company_logo,
+      analysis?.logo,
+      snapshot?.logo_url,
+      snapshot?.company_logo,
+      snapshot?.logo,
+    ),
     price: finite(firstValue(analysis?.price, analysis?.reference_price, snapshot?.price)),
     orionScore: boundedScore(firstValue(analysis?.orion_score, snapshot?.orion_score)),
     adjustedScore: boundedScore(firstValue(
@@ -144,27 +153,52 @@ export default function AnalysisOverview({ analysis }) {
 
   return (
     <>
-      <article className="analysis-overview" aria-label={`${metric.ticker} Orion summary`}>
-        <div className="analysis-company">
-          <p className="core-eyebrow">ORION DECISION SNAPSHOT</p>
-          <div className="analysis-symbol-row">
-            <h2>{metric.ticker}</h2>
-            <span className={`decision-pill ${direction.toLowerCase()}`}>{direction}</span>
-          </div>
-          <p>{metric.companyName || "Company name unavailable"}</p>
-          <div className="analysis-company-meta">
-            {metric.sector && <span>{metric.sector}</span>}
-            {metric.industry && <span>{metric.industry}</span>}
+      <article className="analysis-overview analysis-overview-premium" aria-label={`${metric.ticker} Orion summary`}>
+        <div className="analysis-company analysis-company-premium">
+          <p className="core-eyebrow"><span className="analysis-step-badge">01</span> ORION DECISION SNAPSHOT</p>
+
+          <div className="analysis-stock-identity">
+            <div className="analysis-stock-status-line">
+              <span className="analysis-stock-status-dot" aria-hidden="true" />
+              <span>ACTIVE STOCK</span>
+            </div>
+
+            <div className="analysis-stock-primary">
+              <div className="analysis-stock-logo-shell" aria-hidden={!metric.logoUrl}>
+                {metric.logoUrl ? (
+                  <img className="analysis-stock-logo" src={metric.logoUrl} alt={`${metric.ticker} logo`} />
+                ) : (
+                  <span className="analysis-stock-monogram">{metric.ticker?.slice(0, 2) || "ST"}</span>
+                )}
+              </div>
+
+              <div className="analysis-stock-copy">
+                <div className="analysis-symbol-row">
+                  <h2>{metric.ticker}</h2>
+                  <span className={`decision-pill analysis-decision-pill ${direction.toLowerCase()}`}>
+                    <i aria-hidden="true" />
+                    {direction}
+                  </span>
+                </div>
+                <p className="analysis-company-name">{metric.companyName || "Company name unavailable"}</p>
+              </div>
+            </div>
+
+            <div className="analysis-company-meta">
+              {metric.sector && <span>{metric.sector}</span>}
+              {metric.industry && <span>{metric.industry}</span>}
+            </div>
           </div>
         </div>
 
-        <div className={`analysis-session ${metric.session.tone}`}>
+        <div className={`analysis-session analysis-snapshot-card ${metric.session.tone}`}>
           <small>Current market session</small>
           <strong>{metric.session.label}</strong>
           {metric.price !== null && <span>{money(metric.price)}</span>}
         </div>
 
-        <div className="analysis-score-block">
+        <div className="analysis-score-block analysis-snapshot-card">
+          <small className="analysis-card-kicker">Confidence</small>
           <div
             className={`analysis-score-ring ${metric.orionScore === null ? "unavailable" : ""}`}
             style={{ "--analysis-score": metric.orionScore ?? 0 }}
@@ -172,31 +206,31 @@ export default function AnalysisOverview({ analysis }) {
             <MetricValue value={metric.orionScore} />
             <span>/100</span>
           </div>
-          <small>Orion Score</small>
+          <small className="analysis-score-caption">Orion Score</small>
         </div>
 
-        <div className="analysis-metric adjusted-score">
+        <div className="analysis-metric analysis-snapshot-card adjusted-score">
           <small>Adjusted score <Info size={12} /></small>
           <MetricValue value={metric.adjustedScore} />
           <span>after integrity adjustment</span>
         </div>
 
-        <div className="analysis-metric probability-up">
-          <small>Up probability</small>
+        <div className="analysis-metric analysis-snapshot-card probability-up">
+          <small><span className="analysis-card-index">02 · Direction</span> Up probability</small>
           <MetricValue value={metric.up} suffix="%" tone="positive" />
           <ProbabilityMeter value={metric.up} tone="positive" label="Up probability" />
           <span>{metric.probabilityHorizon ? `${metric.probabilityHorizon} model horizon` : "validated model required"}</span>
         </div>
 
-        <div className="analysis-metric probability-down">
-          <small>Down probability</small>
+        <div className="analysis-metric analysis-snapshot-card probability-down">
+          <small><span className="analysis-card-index">02 · Direction</span> Down probability</small>
           <MetricValue value={metric.down} suffix="%" tone="negative" />
           <ProbabilityMeter value={metric.down} tone="negative" label="Down probability" />
           <span>{metric.probabilityHorizon ? `${metric.probabilityHorizon} model horizon` : "validated model required"}</span>
         </div>
 
-        <div className="analysis-risk-metric">
-          <small>Manipulation risk <Info size={12} /></small>
+        <div className="analysis-risk-metric analysis-snapshot-card">
+          <small><span className="analysis-card-index">03 · Risk</span>Manipulation risk <Info size={12} /></small>
           <div className="analysis-risk-track" aria-hidden="true">
             <i style={{ width: `${metric.manipulation ?? 0}%` }} />
           </div>

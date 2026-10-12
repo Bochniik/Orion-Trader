@@ -1,0 +1,47 @@
+name: Premarket V5 delivery watchdog
+run-name: Premarket V5 watchdog ${{ github.event_name }} ${{ github.event.schedule || 'manual' }}
+
+on:
+  schedule:
+    # Redundant transport for the frozen 06:45 / 08:00 / 09:15 ET snapshots.
+    # Cover both EDT and EST UTC ranges. The resolver activates only during a
+    # short post-target window and the reusable worker deduplicates by
+    # session+snapshot, so these probes cannot create duplicate evidence.
+    - cron: "*/5 10-14 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      active: ${{ steps.target.outputs.active }}
+      snapshot: ${{ steps.target.outputs.snapshot }}
+      as_of: ${{ steps.target.outputs.as_of }}
+      as_of_et: ${{ steps.target.outputs.as_of_et }}
+      lag_minutes: ${{ steps.target.outputs.lag_minutes }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve due Premarket V5 watchdog slot
+        id: target
+        run: |
+          python scripts/resolve_premarket_v5_watchdog.py \
+            --max-lag-minutes 12 \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Report watchdog decision
+        run: |
+          echo "active=${{ steps.target.outputs.active }}"
+          echo "snapshot=${{ steps.target.outputs.snapshot }}"
+          echo "as_of=${{ steps.target.outputs.as_of }}"
+          echo "lag_minutes=${{ steps.target.outputs.lag_minutes }}"
+
+  collect:
+    needs: resolve
+    if: needs.resolve.outputs.active == 'true'
+    uses: ./.github/workflows/premarket-v5-cloud-shadow.yml
+    with:
+      external_snapshot: ${{ needs.resolve.outputs.snapshot }}
+    secrets: inherit

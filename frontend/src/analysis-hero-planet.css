@@ -1,0 +1,75 @@
+/* Deep Stock Analysis hero planet layer.
+   Uses the uploaded PNG as a dedicated visual layer so the planet remains visible
+   behind the evidence category artwork without affecting analysis semantics. */
+
+.analyze-view .analyze-page-heading {
+  isolation: isolate;
+}
+
+@media (min-width: 1081px) {
+  .analyze-view .analyze-page-heading {
+    background:
+      linear-gradient(90deg,
+        rgba(5, 7, 10, 0.995) 0%,
+        rgba(5, 7, 10, 0.98) 34%,
+        rgba(5, 7, 10, 0.82) 46%,
+        rgba(5, 7, 10, 0.42) 60%,
+        rgba(5, 7, 10, 0.18) 78%,
+        rgba(5, 7, 10, 0.08) 100%),
+      #05070a !important;
+  }
+
+  .analyze-view .analyze-page-heading::after {
+    content: "" !important;
+    display: block !important;
+    position: absolute;
+    z-index: 0;
+    inset: -18% -2% -20% 37%;
+    pointer-events: none;
+    background: url("./assets/deep-analysis-planet.png") right center / contain no-repeat;
+    opacity: 0.9;
+    filter: saturate(0.94) contrast(1.04) brightness(0.84);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.42) 17%, #000 38%, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.42) 17%, #000 38%, #000 100%);
+  }
+
+  .analyze-view .analyze-page-heading::before {
+    z-index: 1 !important;
+  }
+
+  .analyze-view .analyze-page-heading > div {
+    z-index: 2 !important;
+  }
+}
+
+@media (min-width: 1081px) and (max-width: 1320px) {
+  .analyze-view .analyze-page-heading::after {
+    inset-left: 42%;
+    opacity: 0.78;
+  }
+}
+
+@media (max-width: 1080px) {
+  .analyze-view .analyze-page-heading {
+    background:
+      linear-gradient(90deg, rgba(5,7,10,.995), rgba(5,7,10,.82) 58%, rgba(5,7,10,.5)),
+      #05070a !important;
+  }
+
+  .analyze-view .analyze-page-heading::after {
+    content: "" !important;
+    display: block !important;
+    position: absolute;
+    z-index: 0;
+    inset: 0 -10% 0 44%;
+    pointer-events: none;
+    background: url("./assets/deep-analysis-planet.png") right center / cover no-repeat;
+    opacity: 0.42;
+    filter: saturate(.9) brightness(.78);
+  }
+
+  .analyze-view .analyze-page-heading > div {
+    position: relative;
+    z-index: 2;
+  }
+}

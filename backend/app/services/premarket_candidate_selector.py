@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from math import isfinite
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 
@@ -90,16 +90,47 @@ def _parse_timestamp(value: Any) -> Optional[datetime]:
         return None
 
     try:
-        parsed = datetime.fromisoformat(
-            str(value).replace("Z", "+00:00")
-        )
-    except ValueError:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
         return None
 
     if parsed.tzinfo is None:
         return None
 
     return parsed.astimezone(timezone.utc)
+
+
+def _valid_bar(bar: Any) -> bool:
+    if not isinstance(bar, dict):
+        return False
+    price = _finite(bar.get("c"))
+    stamp = _parse_timestamp(bar.get("t"))
+    return price is not None and price > 0 and stamp is not None
+
+
+def _latest_history_bar(payload: Any, symbol: str) -> Optional[Dict[str, Any]]:
+    """Return the newest valid provider bar for one symbol.
+
+    Alpaca's latest-bar endpoint can legitimately omit a symbol when there has
+    not been a recent trade on the selected feed. That omission used to make the
+    candidate disappear even when the delayed consolidated minute history
+    contained a perfectly usable current premarket observation. The scanner now
+    falls back to that causal history instead of treating endpoint sparsity as
+    absence of market data.
+    """
+    rows = (
+        (payload.get("bars") or {}).get(symbol, [])
+        if isinstance(payload, dict)
+        else []
+    )
+    if not isinstance(rows, list):
+        return None
+
+    candidates = [row for row in rows if _valid_bar(row)]
+    if not candidates:
+        return None
+
+    return max(candidates, key=lambda row: _parse_timestamp(row.get("t")) or datetime.min.replace(tzinfo=timezone.utc))
 
 
 def screen_premarket_candidates(
@@ -117,7 +148,8 @@ def screen_premarket_candidates(
 
     Flow:
       completed-session liquidity pool
-      -> one batched delayed-SIP latest-bar request
+      -> batched delayed-SIP latest-bar request
+      -> delayed-SIP minute-history recovery for missing/sparse latest bars
       -> gap/freshness/liquidity ranking
       -> small finalist set for expensive Orion context.
 
@@ -155,11 +187,16 @@ def screen_premarket_candidates(
             "finalist_count": 0,
             "provider": "alpaca",
             "feed": "delayed_sip",
+            "history_recovery_attempted": False,
+            "history_recovered_count": 0,
         }
 
     latest_bars: Dict[str, Dict[str, Any]] = {}
+    latest_bar_source: Dict[str, str] = {}
     provider_failures = []
     request_count = 0
+    history_request_count = 0
+    history_recovered_count = 0
 
     safe_batch_size = max(1, min(int(batch_size), 50))
 
@@ -175,14 +212,49 @@ def screen_premarket_candidates(
             request_count += 1
 
             for symbol, bar in (payload.get("bars") or {}).items():
-                if isinstance(bar, dict):
-                    latest_bars[str(symbol).upper()] = bar
+                clean_symbol = str(symbol).upper()
+                if _valid_bar(bar):
+                    latest_bars[clean_symbol] = bar
+                    latest_bar_source[clean_symbol] = "latest_bar"
 
         except Exception as exc:
             provider_failures.append({
                 "offset": offset,
                 "symbols": len(batch),
+                "stage": "latest_stock_bars",
                 "reason": "latest_stock_bars_failed:" + type(exc).__name__,
+            })
+
+    # A latest-bar endpoint is intentionally sparse: symbols without a recent
+    # print can be absent even though consolidated premarket minute history is
+    # available. Recover only the missing names and keep the same delayed-SIP
+    # causal semantics used by the validated premarket models.
+    missing_symbols = [symbol for symbol in symbols if symbol not in latest_bars]
+    for offset in range(0, len(missing_symbols), safe_batch_size):
+        batch = missing_symbols[offset:offset + safe_batch_size]
+        if not batch:
+            continue
+        try:
+            payload = broker.delayed_premarket_bars(
+                user_id,
+                batch,
+                now=now,
+                timeframe="1Min",
+                safe_delay_seconds=960,
+            )
+            history_request_count += 1
+            for symbol in batch:
+                recovered = _latest_history_bar(payload, symbol)
+                if recovered is not None:
+                    latest_bars[symbol] = recovered
+                    latest_bar_source[symbol] = "delayed_sip_minute_history"
+                    history_recovered_count += 1
+        except Exception as exc:
+            provider_failures.append({
+                "offset": offset,
+                "symbols": len(batch),
+                "stage": "delayed_premarket_bars",
+                "reason": "delayed_premarket_bars_failed:" + type(exc).__name__,
             })
 
     items: List[Dict[str, Any]] = []
@@ -199,7 +271,7 @@ def screen_premarket_candidates(
         if not isinstance(bar, dict):
             rejected.append({
                 "ticker": symbol,
-                "reason": "no_delayed_sip_latest_bar",
+                "reason": "no_delayed_sip_premarket_bar",
             })
             continue
 
@@ -228,6 +300,7 @@ def screen_premarket_candidates(
                 "reason": "stale_or_non_premarket_bar",
                 "timestamp": stamp.isoformat(),
                 "age_seconds": round(age_seconds, 1),
+                "bar_source": latest_bar_source.get(symbol),
             })
             continue
 
@@ -270,6 +343,7 @@ def screen_premarket_candidates(
             "baseline_dollar_volume": round(dollar_volume, 2),
             "price_timestamp": stamp.isoformat(),
             "price_age_seconds": round(age_seconds, 1),
+            "price_source": latest_bar_source.get(symbol) or "unknown",
             "delayed": True,
             "feed": "delayed_sip",
             "premarket_screen_score": round(screen_score, 2),
@@ -308,7 +382,12 @@ def screen_premarket_candidates(
         "finalist_count": len(finalists),
         "rejected_count": len(rejected),
         "rejected": rejected[:20],
-        "provider_request_count": request_count,
+        "provider_request_count": request_count + history_request_count,
+        "latest_bar_request_count": request_count,
+        "history_request_count": history_request_count,
+        "history_recovery_attempted": bool(missing_symbols),
+        "history_missing_symbol_count": len(missing_symbols),
+        "history_recovered_count": history_recovered_count,
         "provider_failure_count": len(provider_failures),
         "provider_failures": provider_failures[:10],
         "batch_size": safe_batch_size,

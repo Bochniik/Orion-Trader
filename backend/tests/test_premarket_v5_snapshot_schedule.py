@@ -134,3 +134,30 @@ def test_manual_current_rejects_scheduled_provenance():
         assert "incompatible" in str(exc)
     else:
         raise AssertionError("manual current must not impersonate scheduled evidence")
+
+
+def test_external_snapshot_preserves_preregistered_timestamp():
+    now = datetime(2026, 9, 30, 10, 45, 20, tzinfo=timezone.utc)
+    result = module.resolve_snapshot(
+        schedule_cron=None,
+        now=now,
+        external_snapshot="early",
+    )
+    assert result.active is True
+    assert result.snapshot == "early"
+    assert result.mode == "external"
+    assert result.reason == "registered_external_snapshot"
+    assert result.as_of_utc == datetime(2026, 9, 30, 10, 45, tzinfo=timezone.utc)
+
+
+def test_external_snapshot_rejects_unknown_target():
+    try:
+        module.resolve_snapshot(
+            schedule_cron=None,
+            now=datetime(2026, 9, 30, 10, 45, tzinfo=timezone.utc),
+            external_snapshot="unknown",
+        )
+    except ValueError as exc:
+        assert "unknown external snapshot" in str(exc).lower()
+    else:
+        raise AssertionError("unknown external snapshots must fail closed")

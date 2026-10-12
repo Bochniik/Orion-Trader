@@ -58,6 +58,46 @@ def _weighted_mean(rows: Sequence[Dict[str, Any]], key: str) -> float | None:
     return round(weighted / total_weight, 6)
 
 
+def _leave_one_symbol_out_stability(rows: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    """Require proper-score improvement to survive removal of any one symbol.
+
+    This deterministic sensitivity check prevents a single large/easy symbol holdout
+    from carrying an otherwise weak cross-symbol calibration result.
+    """
+    if len(rows) < 3:
+        return {
+            "stable": False,
+            "evaluations": 0,
+            "worst_brier_improvement": None,
+            "worst_log_loss_improvement": None,
+        }
+
+    brier_values: List[float] = []
+    log_loss_values: List[float] = []
+    for index in range(len(rows)):
+        subset = [row for i, row in enumerate(rows) if i != index]
+        brier = _weighted_mean(subset, "brier_improvement")
+        log_loss = _weighted_mean(subset, "log_loss_improvement")
+        if brier is None or log_loss is None:
+            return {
+                "stable": False,
+                "evaluations": index,
+                "worst_brier_improvement": None,
+                "worst_log_loss_improvement": None,
+            }
+        brier_values.append(brier)
+        log_loss_values.append(log_loss)
+
+    worst_brier = min(brier_values)
+    worst_log_loss = min(log_loss_values)
+    return {
+        "stable": worst_brier > 0 and worst_log_loss > 0,
+        "evaluations": len(rows),
+        "worst_brier_improvement": round(worst_brier, 6),
+        "worst_log_loss_improvement": round(worst_log_loss, 6),
+    }
+
+
 def aggregate_audits(
     audits: Sequence[Dict[str, Any]],
     *,
@@ -94,7 +134,13 @@ def aggregate_audits(
         coverage_ok = len(rows) >= min_symbols_per_horizon
         proper_scores_positive = brier is not None and log_loss is not None and brier > 0 and log_loss > 0
         majority_improved = improved > len(rows) / 2 if rows else False
-        supported = bool(coverage_ok and proper_scores_positive and majority_improved)
+        loo_stability = _leave_one_symbol_out_stability(rows)
+        supported = bool(
+            coverage_ok
+            and proper_scores_positive
+            and majority_improved
+            and loo_stability["stable"]
+        )
         supported_horizons += int(supported)
 
         horizon_summary[horizon] = {
@@ -108,6 +154,7 @@ def aggregate_audits(
             "coverage_ok": coverage_ok,
             "majority_improved": majority_improved,
             "proper_scores_positive": proper_scores_positive,
+            "leave_one_symbol_out_stability": loo_stability,
             "heuristic_supported": supported,
         }
 
@@ -119,8 +166,8 @@ def aggregate_audits(
     )
 
     return {
-        "contract": "orion-intraday-v3-1-cross-symbol-benchmark-v1",
-        "method": "aggregate_independent_chronological_oos_calibration_holdouts",
+        "contract": "orion-intraday-v3-1-cross-symbol-benchmark-v2",
+        "method": "aggregate_independent_chronological_oos_calibration_holdouts_with_leave_one_symbol_out_stability",
         "semantics": SEMANTICS,
         "symbol_count": len(symbol_results),
         "min_symbols_per_horizon": min_symbols_per_horizon,
