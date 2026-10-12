@@ -6,6 +6,7 @@ import pandas as pd
 
 class BacktestEngine:
     KINDS = {"sma_crossover", "rsi_reversion", "breakout"}
+    LIQUIDITY_TIERS = {"A", "B", "C", "D"}
 
     @staticmethod
     def _rsi(close, period):
@@ -15,16 +16,42 @@ class BacktestEngine:
         rs = gain / loss.replace(0, float("nan"))
         return (100 - 100 / (1 + rs)).fillna(50)
 
-    def run(self, ticker, history, kind, parameters=None, initial_cash=10_000, commission_bps=5, slippage_bps=5):
+    def run(
+        self,
+        ticker,
+        history,
+        kind,
+        parameters=None,
+        initial_cash=10_000,
+        commission_bps=5,
+        slippage_bps=5,
+        spread_bps=0,
+    ):
         if kind not in self.KINDS:
             raise ValueError("Unsupported strategy kind")
         parameters = parameters or {}
         if history is None or history.empty or not {"Open", "High", "Low", "Close"}.issubset(history.columns):
             raise ValueError("Backtests require non-empty OHLC history")
         frame = history.copy()
+        if not frame.index.is_monotonic_increasing or not frame.index.is_unique:
+            raise ValueError(
+                "Backtests require strictly increasing unique price-bar timestamps"
+            )
         for column in ["Open", "High", "Low", "Close"]:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
         frame = frame.dropna(subset=["Open", "High", "Low", "Close"])
+        prices = frame[["Open", "High", "Low", "Close"]]
+        finite = prices.map(math.isfinite).all(axis=1)
+        positive = prices.gt(0).all(axis=1)
+        consistent = (
+            frame["High"].ge(frame[["Open", "Close"]].max(axis=1))
+            & frame["Low"].le(frame[["Open", "Close"]].min(axis=1))
+            & frame["High"].ge(frame["Low"])
+        )
+        if not bool((finite & positive & consistent).all()):
+            raise ValueError(
+                "Backtests require finite, positive, internally consistent OHLC bars"
+            )
         if len(frame) < 30:
             raise ValueError("Backtests require at least 30 price bars")
 
@@ -36,12 +63,21 @@ class BacktestEngine:
             raise ValueError("Allocation percent must be between 0 and 100")
         if not 0 <= stop_loss_value < 100 or take_profit_value < 0:
             raise ValueError("Stop loss and take profit parameters are invalid")
-        if float(initial_cash) <= 0 or not 0 <= float(commission_bps) <= 1_000 or not 0 <= float(slippage_bps) <= 1_000:
+        if (
+            float(initial_cash) <= 0
+            or not 0 <= float(commission_bps) <= 1_000
+            or not 0 <= float(slippage_bps) <= 1_000
+            or not 0 <= float(spread_bps) <= 1_000
+        ):
             raise ValueError("Backtest cash and friction assumptions are invalid")
         allocation = allocation_value / 100
         stop_loss = stop_loss_value / 100
         take_profit = take_profit_value / 100
-        friction = (float(commission_bps) + float(slippage_bps)) / 10_000
+        half_spread_bps = float(spread_bps) / 2
+        per_side_friction_bps = (
+            float(commission_bps) + float(slippage_bps) + half_spread_bps
+        )
+        friction = per_side_friction_bps / 10_000
         cash = float(initial_cash)
         shares = 0
         entry_cost = None
@@ -56,12 +92,27 @@ class BacktestEngine:
             timestamp = frame.index[index]
             should_exit = bool(exit_signal.iloc[prior])
             reason = "signal"
-            if shares and stop_loss and float(row["Low"]) <= entry_cost * (1 - stop_loss):
-                execution_price = min(execution_price, entry_cost * (1 - stop_loss))
-                should_exit, reason = True, "stop_loss"
-            elif shares and take_profit and float(row["High"]) >= entry_cost * (1 + take_profit):
-                execution_price = max(execution_price, entry_cost * (1 + take_profit))
-                should_exit, reason = True, "take_profit"
+            if shares:
+                stop_price = entry_cost * (1 - stop_loss) if stop_loss else None
+                take_profit_price = (
+                    entry_cost * (1 + take_profit) if take_profit else None
+                )
+                if stop_price is not None and execution_price <= stop_price:
+                    should_exit, reason = True, "stop_loss"
+                elif (
+                    take_profit_price is not None
+                    and execution_price >= take_profit_price
+                ):
+                    should_exit, reason = True, "take_profit"
+                elif stop_price is not None and float(row["Low"]) <= stop_price:
+                    execution_price = stop_price
+                    should_exit, reason = True, "stop_loss"
+                elif (
+                    take_profit_price is not None
+                    and float(row["High"]) >= take_profit_price
+                ):
+                    execution_price = take_profit_price
+                    should_exit, reason = True, "take_profit"
 
             if shares and should_exit:
                 proceeds = shares * execution_price * (1 - friction)
@@ -85,7 +136,66 @@ class BacktestEngine:
         final_equity = cash + shares * final_close
         metrics = self._metrics(curve, trades, initial_cash, final_equity)
         buy_hold = (final_close / float(frame["Close"].iloc[0]) - 1) * 100
-        return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "initial_cash": initial_cash}}
+        return {"ticker": str(ticker).upper(), "kind": kind, "parameters": parameters, "metrics": {**metrics, "buy_hold_return_percent": round(buy_hold, 2)}, "trades": trades, "equity_curve": curve, "open_position": shares > 0, "assumptions": {"signal_execution": "next bar open", "intrabar_stop_take_conflict": "stop_loss_first_conservative", "gap_execution": "opening_price_before_intrabar_range", "commission_bps": commission_bps, "slippage_bps": slippage_bps, "spread_bps": spread_bps, "spread_application": "half_spread_each_side", "per_side_friction_bps": per_side_friction_bps, "initial_cash": initial_cash}}
+
+    def run_liquidity_spread_scenarios(
+        self,
+        ticker,
+        history,
+        kind,
+        spread_scenarios,
+        parameters=None,
+        initial_cash=10_000,
+        commission_bps=5,
+        slippage_bps=5,
+    ):
+        if not isinstance(spread_scenarios, dict) or not spread_scenarios:
+            raise ValueError("Liquidity spread scenarios require a non-empty tier mapping")
+
+        normalized_scenarios = {}
+        for raw_tier, raw_spread_bps in spread_scenarios.items():
+            tier = str(raw_tier).strip().upper()
+            if tier not in self.LIQUIDITY_TIERS:
+                raise ValueError("Liquidity spread scenario tiers must be A, B, C, or D")
+            if tier in normalized_scenarios:
+                raise ValueError("Liquidity spread scenario tiers must be unique")
+            try:
+                spread_bps = float(raw_spread_bps)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Liquidity spread values must be numeric") from exc
+            if not math.isfinite(spread_bps) or not 0 <= spread_bps <= 1_000:
+                raise ValueError(
+                    "Liquidity spread values must be finite and between 0 and 1000 bps"
+                )
+            normalized_scenarios[tier] = spread_bps
+
+        scenarios = {}
+        for tier, spread_bps in normalized_scenarios.items():
+            result = self.run(
+                ticker,
+                history,
+                kind,
+                parameters=parameters,
+                initial_cash=initial_cash,
+                commission_bps=commission_bps,
+                slippage_bps=slippage_bps,
+                spread_bps=spread_bps,
+            )
+            scenarios[tier] = {
+                "spread_bps": spread_bps,
+                "metrics": result["metrics"],
+                "completed_trades": result["metrics"]["completed_trades"],
+                "open_position": result["open_position"],
+            }
+
+        return {
+            "ticker": str(ticker).upper(),
+            "kind": kind,
+            "evidence_type": "hypothetical_cost_sensitivity",
+            "historical_quotes_used": False,
+            "promotion_eligible": False,
+            "scenarios": scenarios,
+        }
 
     def _signals(self, frame, kind, parameters):
         close = frame["Close"]

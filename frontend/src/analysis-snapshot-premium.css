@@ -1,0 +1,389 @@
+/* Premium Orion Decision Snapshot — compact, viewport-safe pass */
+.analysis-overview-premium {
+  display: grid !important;
+  grid-template-columns: 2.15fr 1.05fr 1fr .9fr 1fr 1fr 1.2fr !important;
+  grid-template-rows: minmax(206px, auto) !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 206px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 139, 47, .28) !important;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 8% 50%, rgba(255, 111, 18, .11), transparent 25%),
+    radial-gradient(circle at 98% 50%, rgba(255, 122, 26, .07), transparent 20%),
+    linear-gradient(180deg, rgba(255,255,255,.022), rgba(255,255,255,.006)),
+    #06090d !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.032),
+    0 20px 54px rgba(0,0,0,.28) !important;
+}
+
+.analysis-overview-premium::before {
+  width: 3px !important;
+  background: linear-gradient(180deg, #ff9b4f, #ff7714 48%, rgba(255,119,20,.14)) !important;
+  box-shadow: 0 0 22px rgba(255,122,26,.34) !important;
+}
+
+.analysis-overview-premium::after {
+  background:
+    linear-gradient(90deg, rgba(3,6,10,.98) 0%, rgba(3,6,10,.90) 42%, rgba(3,6,10,.66) 70%, rgba(3,6,10,.91) 100%),
+    url("./assets/orion-hero-planet.webp") -7% 145% / 290px auto no-repeat !important;
+  opacity: .20 !important;
+  filter: saturate(.82) contrast(1.05) !important;
+}
+
+/* The compact snapshot owns these labels; keep only the first section number. */
+.analysis-overview-premium .analysis-active-label,
+.analysis-overview-premium .analysis-card-kicker,
+.analysis-overview-premium .analysis-card-index {
+  display: none !important;
+}
+
+.analysis-overview-premium > .analysis-company,
+.analysis-overview-premium > .analysis-session,
+.analysis-overview-premium > .analysis-score-block,
+.analysis-overview-premium > .analysis-metric,
+.analysis-overview-premium > .analysis-risk-metric {
+  grid-row: 1 !important;
+  min-width: 0 !important;
+  min-height: 206px;
+  padding: 18px 16px;
+  border-left: 1px solid rgba(255,255,255,.05);
+  border-bottom: 0 !important;
+  overflow: hidden;
+}
+
+.analysis-overview-premium .analysis-company {
+  grid-column: 1;
+  justify-content: center;
+  padding: 20px 22px;
+  border-left: 0;
+  border-right: 1px solid rgba(255,151,78,.16);
+  background:
+    radial-gradient(circle at 0 50%, rgba(255,122,26,.12), transparent 42%),
+    linear-gradient(90deg, rgba(255,122,26,.045), transparent 76%),
+    rgba(255,255,255,.008);
+}
+
+.analysis-overview-premium .analysis-session {
+  grid-column: 2;
+  margin: 12px;
+  min-height: 178px;
+  align-self: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.075);
+  box-shadow: inset 3px 0 0 rgba(133,161,190,.42), inset 0 1px 0 rgba(255,255,255,.024);
+}
+.analysis-overview-premium .analysis-score-block { grid-column: 3; }
+.analysis-overview-premium .adjusted-score { grid-column: 4; }
+.analysis-overview-premium .probability-up { grid-column: 5; }
+.analysis-overview-premium .probability-down { grid-column: 6; }
+.analysis-overview-premium .analysis-risk-metric { grid-column: 7; }
+
+.analysis-overview-premium .analysis-company .core-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 13px;
+  color: #ff943c;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .085em;
+}
+
+.analysis-overview-premium .analysis-step-badge {
+  display: inline-grid !important;
+  place-items: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid rgba(255,142,55,.30);
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(255,143,54,.10), rgba(255,122,26,.035));
+  color: #ff9c4c;
+  font-size: .66rem;
+  font-weight: 900;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.analysis-stock-identity {
+  position: relative;
+  min-width: 0;
+  padding: 14px 15px 13px;
+  border: 1px solid rgba(255,143,55,.16);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.025), transparent 45%),
+    rgba(7,10,14,.54);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 10px 28px rgba(0,0,0,.16);
+}
+
+.analysis-stock-status-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  color: rgba(255,169,101,.72);
+  font-size: .56rem;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.analysis-stock-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff8427;
+  box-shadow: 0 0 10px rgba(255,132,39,.72);
+}
+
+.analysis-stock-primary {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+
+.analysis-stock-logo-shell {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  overflow: hidden;
+  border: 1px solid rgba(255,151,69,.24);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,145,62,.18), transparent 58%),
+    linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 0 18px rgba(255,122,26,.10);
+}
+
+.analysis-stock-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8px;
+}
+
+.analysis-stock-monogram {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #ff9a45;
+  font-size: 1.2rem;
+  font-weight: 950;
+  letter-spacing: -.04em;
+  text-shadow: 0 0 16px rgba(255,122,26,.22);
+}
+
+.analysis-stock-copy {
+  min-width: 0;
+}
+
+.analysis-overview-premium .analysis-symbol-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.analysis-overview-premium .analysis-company h2 {
+  min-width: 0;
+  margin: 0;
+  color: #f5f7fa;
+  font-size: clamp(2.2rem, 2.85vw, 3.05rem);
+  line-height: .95;
+  letter-spacing: -.06em;
+  white-space: nowrap;
+  text-shadow: 0 3px 22px rgba(0,0,0,.22);
+}
+
+.analysis-overview-premium .analysis-decision-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 72px;
+  justify-content: center;
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,143,57,.22);
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+  color: rgba(231,235,241,.86);
+  font-size: .64rem;
+  font-weight: 900;
+  letter-spacing: .07em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.analysis-overview-premium .analysis-decision-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .72;
+  box-shadow: 0 0 9px currentColor;
+}
+
+.analysis-overview-premium .analysis-decision-pill.buy { color: #58e7ae; border-color: rgba(88,231,174,.24); }
+.analysis-overview-premium .analysis-decision-pill.sell { color: #ff7078; border-color: rgba(255,112,120,.26); }
+.analysis-overview-premium .analysis-decision-pill.wait { color: #c6ccd5; }
+
+.analysis-company-name {
+  margin: 8px 0 0 !important;
+  overflow: hidden;
+  color: rgba(220,225,233,.72) !important;
+  font-size: .79rem !important;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-overview-premium .analysis-company-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.analysis-overview-premium .analysis-company-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 4px 7px;
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 999px;
+  background: rgba(255,255,255,.022);
+  color: rgba(178,188,201,.62);
+  font-size: .55rem;
+  font-weight: 750;
+}
+
+.analysis-snapshot-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,.016), transparent 46%), rgba(7,10,14,.66);
+}
+
+.analysis-overview-premium .analysis-session small,
+.analysis-overview-premium .analysis-score-block > small,
+.analysis-overview-premium .analysis-metric small,
+.analysis-overview-premium .analysis-risk-metric small {
+  color: rgba(189,198,210,.60);
+  font-size: .62rem;
+  font-weight: 850;
+  letter-spacing: .06em;
+  line-height: 1.25;
+}
+
+.analysis-overview-premium .analysis-session strong {
+  margin-top: 14px;
+  color: #f0f2f5;
+  font-size: .82rem;
+}
+
+.analysis-overview-premium .analysis-session > span {
+  margin-top: 10px;
+  font-size: 1.3rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.analysis-overview-premium .analysis-score-block {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.analysis-overview-premium .analysis-score-ring {
+  width: 112px;
+  height: 112px;
+  margin-top: 4px;
+  border: 1px solid rgba(255,133,38,.30);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #070a0e 0 61%, transparent 62%),
+    conic-gradient(#ff8128 calc(var(--analysis-score) * 1%), rgba(117,132,149,.16) 0);
+  box-shadow: 0 0 24px rgba(255,110,18,.13), inset 0 0 24px rgba(255,122,26,.04);
+}
+
+.analysis-overview-premium .analysis-score-ring strong { font-size: 1.7rem; }
+.analysis-overview-premium .analysis-score-caption { margin-top: 8px !important; color: #ff9b4a !important; }
+
+.analysis-overview-premium .analysis-metric,
+.analysis-overview-premium .analysis-risk-metric { justify-content: center; }
+.analysis-overview-premium .analysis-metric strong { margin-top: 18px; font-size: 1.55rem; }
+.analysis-overview-premium .analysis-probability-meter { margin-top: 14px; }
+.analysis-overview-premium .analysis-risk-track { margin-top: 18px; height: 8px; border-radius: 999px; }
+
+.analysis-overview-premium .analysis-risk-metric > strong {
+  align-self: flex-start;
+  margin-top: 16px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  background: rgba(255,255,255,.028);
+  font-size: .74rem;
+}
+
+.analysis-overview-premium .analysis-metric > span,
+.analysis-overview-premium .analysis-risk-metric > span {
+  margin-top: 9px;
+  color: rgba(176,186,199,.46);
+  font-size: .61rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 1280px) {
+  .analysis-overview-premium {
+    grid-template-columns: 1.95fr 1fr 1fr .82fr 1fr 1fr 1.08fr !important;
+  }
+  .analysis-overview-premium > .analysis-company,
+  .analysis-overview-premium > .analysis-session,
+  .analysis-overview-premium > .analysis-score-block,
+  .analysis-overview-premium > .analysis-metric,
+  .analysis-overview-premium > .analysis-risk-metric { padding-inline: 12px; }
+  .analysis-overview-premium .analysis-company { padding-inline: 16px; }
+  .analysis-overview-premium .analysis-session { margin-inline: 8px; }
+  .analysis-stock-primary { grid-template-columns: 54px minmax(0, 1fr); gap: 10px; }
+  .analysis-stock-logo-shell { width: 54px; height: 54px; border-radius: 13px; }
+  .analysis-overview-premium .analysis-company h2 { font-size: 2.15rem; }
+  .analysis-overview-premium .analysis-decision-pill { min-width: 64px; padding-inline: 7px; }
+  .analysis-overview-premium .analysis-score-ring { width: 100px; height: 100px; }
+}
+
+@media (max-width: 1040px) {
+  .analysis-overview-premium {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: auto !important;
+  }
+  .analysis-overview-premium > .analysis-company,
+  .analysis-overview-premium > .analysis-session,
+  .analysis-overview-premium > .analysis-score-block,
+  .analysis-overview-premium > .analysis-metric,
+  .analysis-overview-premium > .analysis-risk-metric {
+    grid-column: auto !important;
+    grid-row: auto !important;
+    min-height: 156px;
+  }
+  .analysis-overview-premium .analysis-company {
+    grid-column: 1 / -1 !important;
+    min-height: 180px;
+  }
+  .analysis-overview-premium .analysis-session { margin: 8px; }
+}
+
+@media (max-width: 680px) {
+  .analysis-overview-premium { grid-template-columns: 1fr !important; }
+  .analysis-overview-premium .analysis-company { grid-column: 1 !important; }
+}

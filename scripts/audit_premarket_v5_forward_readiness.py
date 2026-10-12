@@ -95,14 +95,20 @@ def validate_acquisition(payload: dict[str, Any]) -> dict[str, Any]:
     event_name = str(provenance.get("event_name") or "")
     run_id = provenance.get("github_run_id")
     run_attempt = provenance.get("github_run_attempt")
-    if event_name == "schedule" and (not run_id or not isinstance(run_attempt, int) or run_attempt < 1):
-        raise ForwardReadinessError("scheduled acquisition is missing GitHub run provenance")
+    if event_name in {"schedule", "issue_comment"} and (not run_id or not isinstance(run_attempt, int) or run_attempt < 1):
+        raise ForwardReadinessError("trusted acquisition is missing GitHub run provenance")
 
     expected_eligible, expected_reason, _ = attestation.classify_forward_acquisition(
         payload=payload,
         collection_started_at=started,
         collection_completed_at=completed,
         event_name=event_name,
+        external_trigger_created_at=(
+            _parse_timestamp(provenance.get("external_trigger_created_at_utc"), field="external_trigger_created_at_utc")
+            if provenance.get("external_trigger_created_at_utc") else None
+        ),
+        external_actor=provenance.get("external_actor"),
+        external_issue=provenance.get("external_issue"),
     )
     if provenance.get("forward_eligible") is not expected_eligible:
         raise ForwardReadinessError("forward_eligible does not match acquisition policy")
@@ -199,7 +205,7 @@ def build_forward_readiness_report(payloads: Iterable[dict[str, Any]]) -> dict[s
         "metrics_exposed": False,
         "policy": {
             "required_complete_sessions_per_snapshot": health.REQUIRED_DISTINCT_SESSIONS_PER_SNAPSHOT,
-            "required_event_name": "schedule",
+            "required_transport": "github_schedule_or_verified_external_issue_event",
             "max_early_skew_minutes": attestation.MAX_EARLY_SKEW_MINUTES,
             "max_start_lag_minutes": attestation.MAX_START_LAG_MINUTES,
             "horizon_prospective_rule": "collection_completed_at_utc < as_of_utc + horizon",

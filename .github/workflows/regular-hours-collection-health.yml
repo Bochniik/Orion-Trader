@@ -112,7 +112,7 @@ jobs:
           set -euo pipefail
           mkdir -p backend/data/cloud_shadow/regular_hours_v3_1/health
           mapfile -t PREDICTIONS < <(find .regular-hours-health-inputs -type f -name 'prediction-*.json' | sort)
-          python scripts/audit_regular_hours_forward_completeness.py \
+          python -m scripts.audit_regular_hours_forward_completeness \
             "${PREDICTIONS[@]}" \
             --output backend/data/cloud_shadow/regular_hours_v3_1/health/collection-health-${{ github.run_id }}.json
 
@@ -121,7 +121,7 @@ jobs:
         run: |
           set -euo pipefail
           HEALTH="backend/data/cloud_shadow/regular_hours_v3_1/health/collection-health-${{ github.run_id }}.json"
-          python scripts/audit_regular_hours_session_cadence.py \
+          python -m scripts.audit_regular_hours_session_cadence \
             "$HEALTH" \
             --output backend/data/cloud_shadow/regular_hours_v3_1/health/session-cadence-${{ github.run_id }}.json
 

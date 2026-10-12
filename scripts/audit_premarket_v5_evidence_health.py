@@ -56,12 +56,9 @@ def _projection_key(row: dict[str, Any]) -> tuple[str, str, str]:
 def _recovery_run_keys(runs: Iterable[dict[str, Any]]) -> set[tuple[str, str, str]]:
     keys: set[tuple[str, str, str]] = set()
     for run in runs:
-        if str(run.get("event") or "") != "schedule":
+        cron = delivery._extract_schedule_cron(run)
+        if cron is None:
             continue
-        title = str(run.get("display_title") or run.get("name") or "")
-        if not title.startswith(delivery.RUN_NAME_PREFIX):
-            continue
-        cron = title[len(delivery.RUN_NAME_PREFIX) :].strip()
         snapshot = resolver.RECOVERY_CRON_SLOTS.get(cron)
         if snapshot is None:
             continue
@@ -193,8 +190,6 @@ def build_evidence_health_report(
     all_mature_slots_decision_grade = bool(evidence_rows) and all(
         row["status"] == "decision_grade_complete" for row in evidence_rows
     )
-    # Recovery can preserve a decision-grade observation, but it must never erase
-    # the fact that primary GitHub schedule transport was missing or unsuccessful.
     historically_gap_free = bool(
         all_mature_slots_decision_grade
         and schedule_report["summary"]["missing_count"] == 0

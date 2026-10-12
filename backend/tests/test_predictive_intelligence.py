@@ -30,6 +30,50 @@ def test_expected_value_subtracts_round_trip_execution_costs():
     assert "estimated round-trip" in result["formula"]
 
 
+def test_missing_sector_context_receives_no_neutral_score_credit():
+    common = {
+        "probabilities": {"P_UP": 0.6, "P_DOWN": 0.25, "P_NEUTRAL": 0.15},
+        "expected_value": {
+            "EV_LONG_bps": 10,
+            "EV_SHORT_bps": -10,
+            "execution_cost": 0.0004,
+        },
+        "liquidity_row": {"liquidity_score": 80},
+        "horizon_artifact": {
+            "holdout": {"expected_calibration_error": 0.05},
+        },
+        "regime": {"regime": "bullish_trend"},
+        "direction": "UP",
+        "strategy_consensus": {"consensus": "LONG", "agreement_score": 80},
+        "learning_memory": {"decision_influence": "cold_start"},
+    }
+
+    missing = service.calculate_opportunity_score(
+        feature_snapshot={
+            "feature_coverage_percent": 90,
+            "features": {"sector_momentum": None},
+        },
+        **common,
+    )
+    aligned = service.calculate_opportunity_score(
+        feature_snapshot={
+            "feature_coverage_percent": 90,
+            "features": {"sector_momentum": 0.01},
+        },
+        **common,
+    )
+
+    assert missing["components"]["sector_confirmation"] == 0
+    assert missing["component_evidence"]["sector_confirmation"] == {
+        "status": "unavailable",
+        "value": None,
+        "points": 0,
+        "missing_policy": "no_credit",
+    }
+    assert aligned["components"]["sector_confirmation"] == 2
+    assert aligned["component_evidence"]["sector_confirmation"]["status"] == "aligned"
+
+
 def test_live_prediction_returns_no_trade_when_reliability_fails(monkeypatch):
     monkeypatch.setattr(service, "predict_probabilities", lambda *_args: {
         "P_UP": 0.82, "P_DOWN": 0.10, "P_NEUTRAL": 0.08,
@@ -108,3 +152,66 @@ def test_trusted_adverse_memory_can_veto_but_never_rewrite_probabilities(monkeyp
     assert result["P_UP"] == 0.82
     assert result["learning_memory"]["probabilities_modified"] is False
     assert any("Outcome memory" in blocker for blocker in result["blockers"])
+
+def test_live_prediction_fails_closed_without_point_in_time_timestamp(monkeypatch):
+    monkeypatch.setattr(service, "predict_probabilities", lambda *_args: {
+        "P_UP": 0.82, "P_DOWN": 0.10, "P_NEUTRAL": 0.08,
+        "strongest_logistic_contributors": [
+            {"feature": "return_5m", "contribution": 1.0, "direction": "supports"},
+        ],
+    })
+    snapshot = {
+        "price": 100,
+        "feature_coverage_percent": 90,
+        "features": {"spread_percent": 0.0002, "atr_14": 1, "relative_volume": 2},
+    }
+    liquidity = {
+        "liquidity_score": 95, "liquidity_tier": "A", "liquidity_percentile": 99,
+        "metrics": {"spread_percent": 0.02},
+    }
+    horizon = {
+        "reliable": True,
+        "holdout": {"expected_calibration_error": 0.02},
+        "conditional_return_statistics": {
+            "UP": {"mean": 0.02}, "DOWN": {"mean": -0.006}, "NEUTRAL": {"mean": 0},
+        },
+    }
+    regime = {"regime": "bullish_trend", "label": "Bullish Trend", "status": "classified"}
+    strategies = {
+        "consensus": "LONG", "agreement_score": 82,
+        "available_strategies": 12, "strategies": [],
+    }
+
+    result = service.build_live_prediction(
+        "AAPL", "5m", snapshot, liquidity, horizon, regime, strategies
+    )
+
+    assert result["direction"] == "NO_TRADE"
+    assert result["decision"] == "HOLD"
+    assert result["timestamp"] is None
+    assert result["due_at"] is None
+    assert result["market_data_timestamp"] is None
+    assert result["observation_time_diagnostics"] == {
+        "status": "unavailable",
+        "source": None,
+        "timestamp": None,
+        "reason_code": "missing_observation_timestamp",
+        "missing_inputs": ["timezone-aware point-in-time observation timestamp"],
+        "policy": "missing_or_invalid_observation_time_forces_no_trade",
+    }
+    assert any("observation timestamp" in blocker for blocker in result["blockers"])
+
+    snapshot["timestamp"] = "2026-08-26T14:00:00"
+    invalid = service.build_live_prediction(
+        "AAPL", "5m", snapshot, liquidity, horizon, regime, strategies
+    )
+
+    assert invalid["direction"] == "NO_TRADE"
+    assert invalid["timestamp"] is None
+    assert invalid["due_at"] is None
+    assert invalid["observation_time_diagnostics"]["status"] == "unavailable"
+    assert (
+        invalid["observation_time_diagnostics"]["reason_code"]
+        == "invalid_observation_timestamp"
+    )
+

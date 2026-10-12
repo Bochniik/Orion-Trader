@@ -203,13 +203,37 @@ def prediction_for_symbol(*, ticker: str, raw: pd.DataFrame, as_of: datetime, mo
     local_dates = ticker_frame.index.tz_convert(NY).date
     day = as_of.astimezone(NY).date()
     history = ticker_frame.loc[local_dates <= day]
-    prior_close = previous_regular_close(history, day)
+    history_for_close = history.copy()
+    history_for_close.index = history_for_close.index.tz_convert(NY)
+    prior_close = previous_regular_close(history_for_close, day)
     current = history.loc[history.index.tz_convert(NY).date == day]
     current = current.loc[(current.index.tz_convert(NY).time >= PREMARKET_START) & (current.index.tz_convert(NY).time < REGULAR_OPEN)]
     cutoff = pd.Timestamp(as_of).tz_convert("UTC")
     observed = current.loc[current.index <= cutoff]
-    if prior_close is None or len(observed) < 3:
-        return {"ticker": ticker, "available": False, "reason": "insufficient_causal_bars_or_previous_close"}
+
+    diagnostics = {
+        "observed_bar_count": int(len(observed)),
+        "first_observed_bar_utc": None if observed.empty else observed.index[0].isoformat(),
+        "last_observed_bar_utc": None if observed.empty else observed.index[-1].isoformat(),
+        "previous_regular_close_available": prior_close is not None,
+        "history_row_count": int(len(history)),
+        "current_day_row_count": int(len(current)),
+        "causal_cutoff_utc": cutoff.isoformat(),
+    }
+    if prior_close is None:
+        return {
+            "ticker": ticker,
+            "available": False,
+            "reason": "missing_previous_regular_close",
+            "diagnostics": diagnostics,
+        }
+    if len(observed) < 3:
+        return {
+            "ticker": ticker,
+            "available": False,
+            "reason": "insufficient_current_premarket_bars",
+            "diagnostics": diagnostics,
+        }
 
     features = extract_predictive_features(observed, previous_close=prior_close, as_of=cutoff)
     local = as_of.astimezone(NY)
@@ -250,6 +274,7 @@ def prediction_for_symbol(*, ticker: str, raw: pd.DataFrame, as_of: datetime, mo
         "as_of_utc": as_of.isoformat(),
         "as_of_et": local.isoformat(),
         "last_observed_bar_utc": observed.index[-1].isoformat(),
+        "diagnostics": diagnostics,
         "previous_regular_close": round(float(prior_close), 6),
         "feature_count_present": int(sum(value is not None and pd.notna(value) for value in features.values())),
         "forecasts": forecasts,

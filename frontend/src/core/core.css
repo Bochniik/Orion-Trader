@@ -5484,3 +5484,910 @@ button
   .analysis-risk-metric > span { grid-column: auto; margin-top: 0; }
   .analysis-insight-grid { grid-template-columns: 1fr; }
 }
+
+
+/* Dashboard Orion Analysis emphasis: use the freed side-rail space and let
+   selected-company artwork read as a true full-bleed tile. */
+@media (min-width: 1181px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(360px, 440px);
+  }
+
+  .dashboard-side {
+    width: 100%;
+  }
+
+  .dashboard-orion-card {
+    min-height: 640px;
+  }
+}
+
+.orion-snapshot-stock {
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.orion-snapshot-logo {
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border-radius: 11px;
+}
+
+.orion-snapshot-logo > .stock-logo {
+  width: 58px !important;
+  height: 58px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.orion-snapshot-logo > .stock-logo img {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+
+/* Orion Analysis readability pass.
+   Logo.dev assets can contain transparent whitespace inside the bitmap itself;
+   scale the image past the tile bounds so the visible mark reads full-bleed. */
+.dashboard-orion-card .orion-snapshot-logo {
+  width: 68px;
+  height: 68px;
+}
+
+.dashboard-orion-card .orion-snapshot-stock {
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.dashboard-orion-card .orion-snapshot-logo > .stock-logo {
+  width: 68px !important;
+  height: 68px !important;
+  padding: 0 !important;
+}
+
+.dashboard-orion-card .orion-snapshot-logo > .stock-logo img {
+  width: 122% !important;
+  height: 122% !important;
+  max-width: none;
+  object-fit: cover;
+  transform: scale(1.08);
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > span,
+.dashboard-orion-card .orion-score-metrics span,
+.dashboard-orion-card .orion-probability-grid span,
+.dashboard-orion-card .orion-risk-row span,
+.dashboard-orion-card .orion-setup-summary small {
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > strong {
+  font-size: 16px;
+}
+
+.dashboard-orion-card .orion-snapshot-stock-copy > small {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.dashboard-orion-card .orion-score-metrics strong {
+  font-size: 19px;
+}
+
+.dashboard-orion-card .orion-probability-grid strong {
+  font-size: 18px;
+}
+
+.dashboard-orion-card .orion-risk-row strong {
+  font-size: 12px;
+}
+
+.dashboard-orion-card .orion-setup-summary {
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+}
+
+.dashboard-orion-card .orion-summary-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.dashboard-orion-card .orion-setup-summary p {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.dashboard-orion-card .dashboard-primary-action {
+  font-size: 12px;
+  min-height: 42px;
+}
+
+
+/* Balance the selected-stock mark after the readability pass:
+   keep the readable 68px slot, but give the artwork a natural inset. */
+.dashboard-orion-card .orion-snapshot-logo > .stock-logo img {
+  width: 86% !important;
+  height: 86% !important;
+  max-width: 86%;
+  object-fit: contain;
+  transform: none;
+}
+
+
+/* Remove only the decorative frame around the selected company logo. */
+.dashboard-orion-card .orion-snapshot-logo,
+.dashboard-orion-card .orion-snapshot-logo > .stock-logo {
+  border: none !important;
+}
+
+
+/* Give Market Explorer more horizontal priority on desktop while retaining
+   a useful Orion Analysis rail. */
+@media (min-width: 1181px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 2.15fr) minmax(330px, 390px);
+    gap: 16px;
+  }
+}
+
+
+/* Dashboard cleanup: hide legacy decorative section captions requested for removal. */
+.dashboard-view .core-section-label,
+.dashboard-view .dashboard-section-kicker,
+.dashboard-view .dashboard-workspace-context,
+.dashboard-view .dashboard-live-research,
+.dashboard-view .dashboard-market-intelligence-label {
+  display: none !important;
+}
+
+
+/* Wider desktop Market Explorer: prioritize the six-column market workspace. */
+@media (min-width: 1181px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 2.8fr) minmax(300px, 350px);
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1500px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 3.1fr) minmax(320px, 360px);
+  }
+}
+
+
+/* Borderless dashboard hero on a unified deep-black canvas. */
+.dashboard-view {
+  background: #030405 !important;
+}
+
+.dashboard-hero {
+  border: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background:
+    radial-gradient(
+      ellipse at 73% 55%,
+      rgba(255, 116, 18, 0.09),
+      transparent 22rem
+    ),
+    #030405 !important;
+}
+
+.dashboard-hero::after {
+  display: none !important;
+}
+
+.dashboard-view,
+.dashboard-primary,
+.dashboard-side {
+  --dashboard-canvas: #030405;
+}
+
+.dashboard-primary,
+.dashboard-side {
+  background-color: #030405;
+}
+
+
+/* Seamless dashboard composition: let the hero artwork dissolve into both
+   workspaces instead of ending as a separate banner/card. */
+.dashboard-view {
+  position: relative;
+  isolation: isolate;
+  background: #010203 !important;
+}
+
+.dashboard-view::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -34px calc(clamp(24px, 3vw, 46px) * -1) auto;
+  height: 430px;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse at 78% 26%,
+      rgba(255, 112, 18, 0.12) 0%,
+      rgba(255, 112, 18, 0.055) 25%,
+      transparent 58%
+    ),
+    linear-gradient(
+      180deg,
+      #010203 0%,
+      #010203 58%,
+      rgba(1, 2, 3, 0.96) 74%,
+      #010203 100%
+    );
+}
+
+.dashboard-hero {
+  margin-bottom: 0 !important;
+  padding-bottom: 46px !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+.dashboard-hero-planet-art {
+  z-index: 1;
+}
+
+.dashboard-hero-planet-art::after {
+  content: "";
+  position: absolute;
+  left: -12%;
+  right: -8%;
+  bottom: -72px;
+  height: 150px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(1, 2, 3, 0),
+    rgba(1, 2, 3, 0.72) 52%,
+    #010203 100%
+  );
+}
+
+.dashboard-grid {
+  position: relative;
+  z-index: 2;
+  margin-top: -8px;
+  background: transparent !important;
+}
+
+.dashboard-primary,
+.dashboard-side {
+  background: transparent !important;
+}
+
+/* Keep the two functional workspaces readable while allowing the surrounding
+   canvas/artwork to feel continuous rather than boxed into a second backdrop. */
+.dashboard-primary > .market-explorer-panel.market-v3,
+.dashboard-side > .dashboard-orion-card {
+  background-color: rgba(4, 7, 10, 0.88) !important;
+}
+
+
+/* Correct the dashboard canvas/artwork seam from the rendered #274 result:
+   true black everywhere, with the planet/mountains reaching both workspaces. */
+.dashboard-view,
+.dashboard-view::before,
+.dashboard-primary,
+.dashboard-side,
+.dashboard-grid {
+  background-color: #000 !important;
+}
+
+.dashboard-view::before {
+  inset: -34px calc(clamp(24px, 3vw, 46px) * -1) auto;
+  height: 360px;
+  background:
+    radial-gradient(
+      ellipse at 82% 18%,
+      rgba(255, 112, 18, 0.055) 0%,
+      rgba(255, 112, 18, 0.02) 24%,
+      transparent 48%
+    ),
+    #000 !important;
+}
+
+.dashboard-hero {
+  min-height: 214px;
+  padding-bottom: 22px !important;
+  background: #000 !important;
+}
+
+.dashboard-hero-planet-art {
+  top: -20px !important;
+  right: 12px !important;
+  width: min(48vw, 760px) !important;
+  height: 292px !important;
+  overflow: visible !important;
+  z-index: 1 !important;
+}
+
+.dashboard-hero-planet-art img {
+  object-fit: contain !important;
+  object-position: right bottom !important;
+}
+
+.dashboard-hero-planet-art::after {
+  left: -18% !important;
+  right: -5% !important;
+  bottom: -38px !important;
+  height: 116px !important;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0),
+    rgba(0, 0, 0, 0.58) 45%,
+    #000 92%
+  ) !important;
+}
+
+.dashboard-grid {
+  margin-top: -24px !important;
+}
+
+/* Let the mountain silhouette visually meet the top edge of both workspaces;
+   the cards stay readable but no secondary brown/gray canvas shows through. */
+.dashboard-primary > .market-explorer-panel.market-v3,
+.dashboard-side > .dashboard-orion-card {
+  background-color: rgba(3, 5, 7, 0.94) !important;
+}
+
+@media (max-width: 1180px) {
+  .dashboard-hero-planet-art {
+    width: min(58vw, 650px) !important;
+    height: 250px !important;
+  }
+
+  .dashboard-grid {
+    margin-top: -14px !important;
+  }
+}
+
+
+/* Final Today canvas correction from the rendered dashboard:
+   make the entire workspace black and scale the hero artwork up. */
+.core-workspace:has(.dashboard-view),
+.core-main:has(.dashboard-view),
+.core-view.dashboard-view,
+.dashboard-view,
+.dashboard-view::before,
+.dashboard-grid,
+.dashboard-primary,
+.dashboard-side {
+  background: #000 !important;
+  background-color: #000 !important;
+}
+
+.core-shell:has(.dashboard-view)::before {
+  background: #000 !important;
+}
+
+.dashboard-view::before {
+  background: #000 !important;
+}
+
+.dashboard-hero {
+  min-height: 250px !important;
+  background: #000 !important;
+}
+
+.dashboard-hero-planet-art {
+  top: -34px !important;
+  right: -12px !important;
+  width: min(58vw, 920px) !important;
+  height: 338px !important;
+}
+
+.dashboard-hero-planet-art img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: right bottom !important;
+}
+
+.dashboard-hero-planet-art::after {
+  left: -22% !important;
+  right: -3% !important;
+  bottom: -30px !important;
+  height: 104px !important;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0),
+    rgba(0, 0, 0, 0.5) 42%,
+    #000 94%
+  ) !important;
+}
+
+.dashboard-grid {
+  margin-top: -34px !important;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-planet-art {
+    width: min(62vw, 1020px) !important;
+    height: 360px !important;
+    right: -20px !important;
+  }
+}
+
+
+/* Seat the hero artwork directly onto the Market Explorer / Orion Analysis row. */
+.dashboard-hero {
+  min-height: 276px !important;
+  padding-bottom: 0 !important;
+}
+
+.dashboard-hero-planet-art {
+  top: 18px !important;
+  right: -12px !important;
+  height: 352px !important;
+}
+
+.dashboard-hero-planet-art::after {
+  bottom: -12px !important;
+  height: 86px !important;
+}
+
+.dashboard-grid {
+  margin-top: -58px !important;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-planet-art {
+    top: 12px !important;
+    right: -20px !important;
+    height: 374px !important;
+  }
+
+  .dashboard-grid {
+    margin-top: -62px !important;
+  }
+}
+
+
+/* Improve dashboard Orion Analysis metric readability without resizing the card. */
+.dashboard-orion-card .orion-score-ring strong {
+  font-size: 34px !important;
+  line-height: 1 !important;
+}
+
+.dashboard-orion-card .orion-score-ring span {
+  font-size: 11px !important;
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child > span,
+.dashboard-orion-card .orion-probability-grid > div > span {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.dashboard-orion-card .orion-score-metrics > div:first-child > strong {
+  font-size: 20px !important;
+}
+
+.dashboard-orion-card .orion-probability-grid > div > strong {
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+}
+
+.dashboard-orion-card .orion-risk-row,
+.dashboard-orion-card .orion-risk-row span {
+  font-size: 14px !important;
+}
+
+.dashboard-orion-card .orion-risk-row strong {
+  font-size: 18px !important;
+}
+
+
+/* Final hero placement: slightly left and lower to meet both dashboard cards. */
+.dashboard-hero-planet-art {
+  right: 34px !important;
+  top: 28px !important;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-planet-art {
+    right: 46px !important;
+    top: 24px !important;
+  }
+}
+
+
+/* Hero artwork lighting: move the existing planet left and let its orange light
+   softly illuminate the surrounding true-black dashboard canvas. */
+.dashboard-hero-planet-art {
+  right: 118px !important;
+  filter:
+    drop-shadow(0 0 16px rgba(255, 119, 28, 0.22))
+    drop-shadow(-34px 10px 54px rgba(255, 105, 16, 0.10));
+}
+
+.dashboard-hero-planet-art::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -24%;
+  top: 4%;
+  width: 118%;
+  height: 94%;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 62% 46%,
+    rgba(255, 126, 35, 0.20) 0%,
+    rgba(255, 103, 18, 0.11) 25%,
+    rgba(255, 92, 10, 0.045) 48%,
+    transparent 72%
+  );
+  filter: blur(24px);
+  opacity: .92;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-planet-art {
+    right: 148px !important;
+  }
+
+  .dashboard-hero-planet-art::before {
+    left: -28%;
+    width: 124%;
+  }
+}
+
+
+/* Approved Orion cosmic hero: replace the planet artwork with a restrained,
+   CSS-only orange starfield/nebula that dissolves into the black workspace. */
+.dashboard-hero {
+  position: relative;
+  min-height: 276px !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
+
+.dashboard-hero-content {
+  position: relative;
+  z-index: 3;
+}
+
+.dashboard-hero-starfield {
+  position: absolute;
+  z-index: 1;
+  inset: 0 -2% -18px 0;
+  pointer-events: none;
+  opacity: .92;
+  background-image:
+    radial-gradient(circle at 73% 23%, rgba(255, 188, 112, .98) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 86% 34%, rgba(255, 130, 42, .92) 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 63% 55%, rgba(255, 221, 178, .88) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 91% 65%, rgba(255, 150, 62, .95) 0 1.2px, transparent 2px),
+    radial-gradient(circle at 54% 31%, rgba(255, 128, 35, .78) 0 .8px, transparent 1.6px),
+    radial-gradient(circle at 77% 78%, rgba(255, 205, 146, .82) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 97% 18%, rgba(255, 112, 24, .9) 0 1px, transparent 2px),
+    radial-gradient(circle at 44% 69%, rgba(255, 184, 108, .72) 0 .8px, transparent 1.5px),
+    radial-gradient(circle at 68% 42%, rgba(255, 116, 26, .82) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 82% 51%, rgba(255, 236, 198, .9) 0 .9px, transparent 1.7px),
+    radial-gradient(circle at 58% 84%, rgba(255, 135, 42, .74) 0 .8px, transparent 1.6px),
+    radial-gradient(ellipse at 80% 54%, rgba(255, 101, 18, .18) 0%, rgba(255, 92, 12, .075) 28%, transparent 61%),
+    radial-gradient(ellipse at 66% 30%, rgba(255, 139, 42, .10) 0%, transparent 46%);
+  background-size:
+    149px 131px, 223px 179px, 181px 157px, 269px 211px,
+    197px 167px, 251px 193px, 307px 227px, 173px 143px,
+    283px 199px, 211px 173px, 239px 187px, 100% 100%, 100% 100%;
+  background-position:
+    0 0, 31px 17px, 71px 39px, 11px 83px, 97px 13px,
+    41px 67px, 5px 29px, 121px 53px, 61px 7px, 17px 101px,
+    89px 73px, center, center;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.2) 27%, #000 47%, #000 100%),
+                      linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.2) 27%, #000 47%, #000 100%),
+              linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.dashboard-hero-starfield::before,
+.dashboard-hero-starfield::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.dashboard-hero-starfield::before {
+  width: 46%;
+  height: 68%;
+  right: 5%;
+  top: 9%;
+  background:
+    radial-gradient(ellipse at 52% 48%, rgba(255, 121, 29, .22), rgba(255, 92, 12, .08) 35%, transparent 68%);
+  filter: blur(28px);
+}
+
+.dashboard-hero-starfield::after {
+  width: 34%;
+  height: 46%;
+  right: 19%;
+  top: 30%;
+  background:
+    radial-gradient(ellipse, rgba(255, 169, 76, .13), transparent 67%);
+  filter: blur(34px);
+}
+
+.dashboard-hero-planet-art {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-hero-starfield {
+    animation: orion-starfield-breathe 9s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes orion-starfield-breathe {
+  from { opacity: .84; filter: brightness(.94); }
+  to { opacity: .98; filter: brightness(1.08); }
+}
+
+@media (max-width: 980px) {
+  .dashboard-hero-starfield {
+    opacity: .72;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.72), #000 55%, transparent 100%);
+    mask-image: linear-gradient(180deg, rgba(0,0,0,.72), #000 55%, transparent 100%);
+  }
+}
+
+
+/* Use the approved generated starfield artwork uploaded to src/assets.
+   These rules intentionally override the previous CSS-generated starfield. */
+.dashboard-hero-starfield {
+  inset: 0 -2% -22px 0 !important;
+  opacity: 1 !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center 46% !important;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 74%,
+    rgba(0, 0, 0, .82) 86%,
+    transparent 100%
+  ) !important;
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 74%,
+    rgba(0, 0, 0, .82) 86%,
+    transparent 100%
+  ) !important;
+  filter: none !important;
+  animation: none !important;
+}
+
+.dashboard-hero-starfield::before,
+.dashboard-hero-starfield::after {
+  display: none !important;
+}
+
+@media (max-width: 980px) {
+  .dashboard-hero-starfield {
+    background-position: 64% center !important;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%) !important;
+    mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%) !important;
+  }
+}
+
+
+/* Fill the entire dashboard hero with the generated starfield asset.
+   Extend beyond the hero box so no uncovered black gutter remains. */
+.dashboard-hero {
+  overflow: visible !important;
+}
+
+.dashboard-hero-starfield {
+  inset: -18px calc(clamp(24px, 3vw, 46px) * -1) -72px !important;
+  width: auto !important;
+  height: auto !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 82%,
+    rgba(0, 0, 0, .94) 91%,
+    transparent 100%
+  ) !important;
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 82%,
+    rgba(0, 0, 0, .94) 91%,
+    transparent 100%
+  ) !important;
+}
+
+@media (min-width: 1500px) {
+  .dashboard-hero-starfield {
+    inset-inline: calc(clamp(24px, 3vw, 46px) * -1) !important;
+    background-size: 106% auto !important;
+    background-position: center 48% !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .dashboard-hero-starfield {
+    inset: -12px -18px -46px !important;
+    background-size: cover !important;
+    background-position: 62% center !important;
+  }
+}
+
+
+/* Continue the uploaded starfield through the narrow gutter between the two
+   dashboard workspaces without moving or resizing either panel. */
+.dashboard-grid-starfield {
+  position: absolute;
+  z-index: 0;
+  top: -78px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center top;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0,
+    rgba(0, 0, 0, .96) 82px,
+    rgba(0, 0, 0, .78) 150px,
+    transparent 290px
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0,
+    rgba(0, 0, 0, .96) 82px,
+    rgba(0, 0, 0, .78) 150px,
+    transparent 290px
+  );
+}
+
+.dashboard-primary,
+.dashboard-side {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 980px) {
+  .dashboard-grid-starfield {
+    display: none;
+  }
+}
+
+
+/* Correct #286: never paint the uploaded starfield across the dashboard grid.
+   The hero asset stops at the workspace seam; the inter-panel gutter remains
+   the dashboard's true-black canvas. */
+.dashboard-grid-starfield {
+  display: none !important;
+}
+
+.dashboard-grid {
+  background: #000 !important;
+}
+
+.dashboard-primary,
+.dashboard-side {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* Restore Orion Analysis to the top alignment of the dashboard workspace row. */
+@media (min-width: 981px) {
+  .dashboard-side {
+    align-self: start !important;
+    top: 76px;
+    margin-top: 0 !important;
+    transform: translateY(-16px);
+  }
+}
+
+
+/* Join the two desktop dashboard workspaces edge-to-edge.
+   Remove only the inter-column gutter; keep both panel widths/content intact. */
+@media (min-width: 981px) {
+  .dashboard-grid {
+    column-gap: 0 !important;
+  }
+
+  .dashboard-primary > .market-explorer-panel.market-v3 {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  .dashboard-side > .dashboard-orion-card {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+  }
+}
+
+
+/* Match Orion Analysis to Market Explorer's full desktop row height.
+   The grid row is sized by the taller Explorer; Analysis stretches to it. */
+@media (min-width: 981px) {
+  .dashboard-grid {
+    align-items: stretch !important;
+  }
+
+  .dashboard-side {
+    align-self: stretch !important;
+    top: auto !important;
+    transform: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .dashboard-side > .dashboard-orion-card {
+    height: 100% !important;
+    min-height: 100% !important;
+    box-sizing: border-box;
+  }
+}
+
+
+/* Keep premarket Analysis metric labels/values readable inside the narrow side card. */
+.dashboard-orion-card .orion-score-metrics {
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-orion-card .orion-probability-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 18px;
+}
+
+.dashboard-orion-card .orion-probability-grid > div {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-orion-card .orion-probability-grid > div > span {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  line-height: 1.25 !important;
+}
+
+.dashboard-orion-card .orion-probability-grid > div > strong {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.12 !important;
+}
+
+@media (min-width: 981px) and (max-width: 1380px) {
+  .dashboard-orion-card .orion-probability-grid {
+    grid-template-columns: 1fr;
+    row-gap: 12px;
+  }
+
+  .dashboard-orion-card .orion-probability-grid > div > strong {
+    font-size: 18px !important;
+  }
+}

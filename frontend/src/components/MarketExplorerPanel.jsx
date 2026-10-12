@@ -957,14 +957,11 @@ export default function MarketExplorerPanel({
           </p>
 
           <h2>
-            Explore the market
+            Market Explorer
           </h2>
 
           <p>
-            Browse the market first.
-            Send any stock to Orion
-            Engine only when you want
-            analysis.
+            Explore movers, activity, sectors and themes from Orion´s tracked global markets.
           </p>
         </div>
 
@@ -1221,16 +1218,6 @@ export default function MarketExplorerPanel({
                   onAnalyze={onAnalyze}
                 />
 
-                <div className="market-v3-footer">
-                  Showing{" "}
-                  {groupRows.length}{" "}
-                  of{" "}
-                  {openedGroup.member_count ||
-                    openedGroup.items?.length ||
-                    0}{" "}
-                  classified stocks. Click any row to
-                  analyze it in Orion.
-                </div>
               </>
             ) : (
               <div className="market-explorer-empty">

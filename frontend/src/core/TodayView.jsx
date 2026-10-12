@@ -21,11 +21,10 @@ import OpportunityRadar from "./OpportunityRadar";
 import ScannerCandidateCard from "./ScannerCandidateCard";
 import useCoreJob from "./useCoreJob";
 
-import LearningAnalyticsPanel from "../components/LearningAnalyticsPanel";
 import MarketExplorerPanel from "../components/MarketExplorerPanel";
 import { MarketSessionBadge, PremarketResearchStrip } from "./SessionAwareOrionMetrics";
 import StockLogo from "../components/StockLogo";
-import heroPlanet from "../assets/orion-hero-planet.webp";
+import heroStarfield from "../assets/orion-starfield-hero.png";
 
 export function TodayResults({
   result,
@@ -662,27 +661,11 @@ export default function TodayView(props) {
             Spot opportunity. Research smarter.
           </p>
         </div>
-        <img
-          className="dashboard-hero-planet-art"
-          src={heroPlanet}
-          alt=""
-          aria-hidden="true"
-        />
-        <div className="dashboard-hero-motto">
-          <span>MARKETS</span>
-          <span>MOVE IDEAS</span>
-          <span>MOVE THE WORLD</span>
-          <i />
-        </div>
+        <div className="dashboard-hero-starfield" aria-hidden="true" style={{ backgroundImage: `url(${heroStarfield})` }} />
       </section>
 
       <div className="dashboard-grid">
         <div className="dashboard-primary">
-          <SessionResearchWorkspace
-            session={sessionState}
-            watchlistCount={saved.length}
-            onAnalyze={props.onAnalyze}
-          />
           {isPremarket && (
             <PremarketResearchStrip
               research={premarketResearch}
@@ -752,28 +735,13 @@ export default function TodayView(props) {
               </div>
             </div>
 
-            <div className="orion-score-area">
-              <div
-                className="orion-score-ring"
-                style={{
-                  "--orion-score-progress": `${Math.max(
-                    0,
-                    Math.min(100, Number(animatedOrionScore ?? 0))
-                  )}%`,
-                }}
-              >
-                <div>
-                  <strong>
-                    {analysisBusy
-                      ? "..."
-                      : isClosedSession || isAfterHours
-                        ? "N/A"
-                        : displayNumber(animatedOrionScore)}
-                  </strong>
-                  <span>/100</span>
+            <div className={`orion-score-area ${analysisBusy ? "is-loading" : ""}`} aria-busy={analysisBusy ? "true" : undefined}>
+              {analysisBusy && (
+                <div className="orion-score-loading-bars" role="status" aria-label="Orion Score is loading">
+                  <i /><i /><i />
+                  <span className="sr-only">Orion Score is loading</span>
                 </div>
-              </div>
-
+              )}
               <div className="orion-score-metrics">
                 <div>
                   <span>
@@ -792,6 +760,11 @@ export default function TodayView(props) {
                           ? "PAUSED"
                           : displayNumber(animatedAdjustedScore)}
                   </strong>
+                  {!isPremarket && !isClosedSession && !isAfterHours && (
+                    <div className="orion-metric-progress adjusted" aria-hidden="true">
+                      <i style={{ width: `${riskWidth(animatedAdjustedScore)}%` }} />
+                    </div>
+                  )}
                 </div>
 
                 <div className="orion-probability-grid">
@@ -817,6 +790,11 @@ export default function TodayView(props) {
                               ? "AFTER HOURS"
                               : displayProbability(animatedUpProbability)}
                     </strong>
+                    {!isPremarket && !isClosedSession && !isAfterHours && (
+                      <div className="orion-metric-progress up" aria-hidden="true">
+                        <i style={{ width: `${riskWidth(animatedUpProbability)}%` }} />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -839,6 +817,11 @@ export default function TodayView(props) {
                             ? "RESEARCH ONLY"
                             : displayProbability(animatedDownProbability)}
                     </strong>
+                    {!isPremarket && !isClosedSession && !isAfterHours && (
+                      <div className="orion-metric-progress down" aria-hidden="true">
+                        <i style={{ width: `${riskWidth(animatedDownProbability)}%` }} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -936,9 +919,6 @@ export default function TodayView(props) {
         </aside>
       </div>
 
-      <section className="dashboard-learning">
-        <LearningAnalyticsPanel />
-      </section>
     </section>
   );
 }

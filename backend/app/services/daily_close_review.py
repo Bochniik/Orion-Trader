@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ from zoneinfo import ZoneInfo
 REVIEW_VERSION = "orion-daily-close-review-v1"
 _NEW_YORK = ZoneInfo("America/New_York")
 _EPSILON = 1e-15
+MIN_SECTOR_CONTEXT_SLICE_SIZE = 30
 
 
 def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
@@ -24,7 +26,8 @@ def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
             f.probability_up,
             f.forecast_horizon,
             o.actual_up,
-            o.resolved_at
+            o.resolved_at,
+            p.snapshot_json
         FROM probability_outcomes o
         JOIN probability_forecasts f
             ON f.id = o.forecast_id
@@ -35,7 +38,80 @@ def read_user_settled_evidence(db: Any, user_id: str) -> List[Dict[str, Any]]:
         """,
         (str(user_id),),
     ).fetchall()
-    return [dict(row) for row in rows]
+    evidence = []
+    for row in rows:
+        item = dict(row)
+        stored_probability = item.get("probability_up")
+        item["probability_storage_scale"] = _stored_probability_scale(
+            stored_probability
+        )
+        item["probability_up"] = _stored_probability_to_unit(
+            stored_probability
+        )
+        snapshot_json = item.pop("snapshot_json", None)
+        try:
+            snapshot = json.loads(snapshot_json) if snapshot_json else {}
+        except (TypeError, ValueError, json.JSONDecodeError):
+            snapshot = {}
+        item["sector_context_availability"] = _sector_context_availability(
+            snapshot
+        )
+        evidence.append(item)
+    return evidence
+
+
+def _stored_probability_scale(value: Any) -> str:
+    try:
+        probability = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return "invalid"
+    if not math.isfinite(probability) or probability < 0.0:
+        return "invalid"
+    if probability <= 1.0:
+        return "unit"
+    if probability <= 100.0:
+        return "percent_normalized"
+    return "invalid"
+
+
+def _stored_probability_to_unit(value: Any) -> Optional[float]:
+    try:
+        probability = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(probability) or probability < 0.0:
+        return None
+    if probability <= 1.0:
+        return probability
+    if probability <= 100.0:
+        return probability / 100.0
+    return None
+
+
+def _sector_context_availability(snapshot: Any) -> Optional[str]:
+    if not isinstance(snapshot, dict):
+        return None
+
+    component = (
+        ((snapshot.get("opportunity_score") or {}).get("component_evidence") or {})
+        .get("sector_confirmation") or {}
+    )
+    status = component.get("status")
+    if status in {"aligned", "not_aligned"}:
+        return "available"
+    if status == "unavailable":
+        return "unavailable"
+
+    source = (
+        (snapshot.get("feature_source_diagnostics") or {})
+        .get("sector_benchmark") or {}
+    )
+    status = source.get("status")
+    if status == "fresh":
+        return "available"
+    if status in {"unavailable", "blocked"}:
+        return "unavailable"
+    return None
 
 
 def _finite_probability(value: Any) -> Optional[float]:
@@ -120,28 +196,60 @@ def build_daily_close_review(
     """Score settled evidence for one session; default to the latest settled session."""
     normalized: List[Dict[str, Any]] = []
     diagnostics = defaultdict(int)
+    probability_scale_diagnostics = defaultdict(int)
+    rejection_reasons = defaultdict(int)
+    rejections_by_horizon: Dict[str, Dict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    input_rows_by_horizon = defaultdict(int)
+    scorable_rows_by_horizon = defaultdict(int)
+    scorable_rows_with_known_horizon = 0
+    input_rows = 0
 
     for row in evidence:
+        input_rows += 1
+        storage_scale = row.get("probability_storage_scale")
+        if storage_scale in {"unit", "percent_normalized", "invalid"}:
+            probability_scale_diagnostics[storage_scale] += 1
         probability = _finite_probability(row.get("probability_up"))
         actual = _actual_up(row.get("actual_up"))
         resolved_session = _session_date(row.get("resolved_at"))
+        raw_horizon = row.get("forecast_horizon")
+        known_horizon = str(raw_horizon).strip() if raw_horizon is not None else ""
+        horizon = known_horizon or "unknown"
+        input_rows_by_horizon[horizon] += 1
 
+        rejection_reason = None
         if probability is None:
-            diagnostics["invalid_probability"] += 1
-            continue
-        if actual is None:
-            diagnostics["missing_or_invalid_outcome"] += 1
-            continue
-        if resolved_session is None:
-            diagnostics["invalid_resolved_at"] += 1
+            rejection_reason = "invalid_probability"
+        elif actual is None:
+            rejection_reason = "missing_or_invalid_outcome"
+        elif resolved_session is None:
+            rejection_reason = "invalid_resolved_at"
+
+        if rejection_reason is not None:
+            diagnostics[rejection_reason] += 1
+            rejection_reasons[rejection_reason] += 1
+            rejections_by_horizon[horizon][rejection_reason] += 1
             continue
 
+        sector_context = row.get("sector_context_availability")
+        if sector_context not in {"available", "unavailable"}:
+            sector_context = None
+            diagnostics["missing_sector_context_status"] += 1
+
+        scorable_rows_by_horizon[horizon] += 1
+        if known_horizon:
+            scorable_rows_with_known_horizon += 1
+        else:
+            diagnostics["missing_forecast_horizon"] += 1
         normalized.append(
             {
                 "probability_up": probability,
                 "actual_up": actual,
-                "horizon": str(row.get("forecast_horizon") or "unknown"),
+                "horizon": horizon,
                 "session_date": resolved_session,
+                "sector_context_availability": sector_context,
             }
         )
 
@@ -157,8 +265,102 @@ def build_daily_close_review(
         accepted.append(row)
 
     by_horizon: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_sector_context: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for row in accepted:
         by_horizon[row["horizon"]].append(row)
+        sector_context = row["sector_context_availability"]
+        if sector_context is not None:
+            by_sector_context[sector_context].append(row)
+
+    sector_slices = {
+        status: _score(rows)
+        for status, rows in sorted(by_sector_context.items())
+    }
+    sector_sample_sizes = {
+        status: sector_slices.get(status, {}).get("sample_size", 0)
+        for status in ("available", "unavailable")
+    }
+    underpowered = [
+        status
+        for status, size in sector_sample_sizes.items()
+        if size < MIN_SECTOR_CONTEXT_SLICE_SIZE
+    ]
+
+    scorable_rows = len(normalized)
+    rejected_rows = input_rows - scorable_rows
+    rejection_breakdown = {
+        "total": rejected_rows,
+        "by_reason": dict(sorted(rejection_reasons.items())),
+        "by_horizon": {
+            horizon: {
+                "total": sum(reasons.values()),
+                "by_reason": dict(sorted(reasons.items())),
+            }
+            for horizon, reasons in sorted(rejections_by_horizon.items())
+        },
+        "policy": (
+            "each rejected row is counted once under its first failing "
+            "structural check; session filtering is not rejection"
+        ),
+    }
+    coverage_by_horizon = {
+        horizon: {
+            "input_rows": horizon_input_rows,
+            "structurally_scorable_rows": scorable_rows_by_horizon.get(
+                horizon, 0
+            ),
+            "rejected_unscorable_rows": (
+                horizon_input_rows
+                - scorable_rows_by_horizon.get(horizon, 0)
+            ),
+            "scorable_ratio": (
+                scorable_rows_by_horizon.get(horizon, 0)
+                / horizon_input_rows
+            ),
+        }
+        for horizon, horizon_input_rows in sorted(
+            input_rows_by_horizon.items()
+        )
+    }
+    missing_horizon_rows = scorable_rows - scorable_rows_with_known_horizon
+    horizon_attribution = {
+        "status": (
+            "no_evidence" if scorable_rows == 0
+            else "complete" if missing_horizon_rows == 0
+            else "partial"
+        ),
+        "structurally_scorable_rows": scorable_rows,
+        "attributed_rows": scorable_rows_with_known_horizon,
+        "missing_or_blank_horizon_rows": missing_horizon_rows,
+        "attribution_ratio": (
+            None
+            if scorable_rows == 0
+            else scorable_rows_with_known_horizon / scorable_rows
+        ),
+        "policy": (
+            "unknown-horizon rows remain in overall settled metrics and are "
+            "reported in the unknown horizon bucket"
+        ),
+    }
+    evidence_coverage = {
+        "status": (
+            "no_evidence" if input_rows == 0
+            else "complete" if rejected_rows == 0
+            else "partial"
+        ),
+        "input_rows": input_rows,
+        "structurally_scorable_rows": scorable_rows,
+        "rejected_unscorable_rows": rejected_rows,
+        "selected_session_rows": len(accepted),
+        "outside_selected_session_rows": diagnostics.get("outside_session", 0),
+        "scorable_ratio": (
+            None if input_rows == 0 else scorable_rows / input_rows
+        ),
+        "policy": (
+            "coverage is descriptive; outside-session rows are scorable but "
+            "excluded from selected-session metrics"
+        ),
+    }
 
     return {
         "version": REVIEW_VERSION,
@@ -168,6 +370,33 @@ def build_daily_close_review(
             horizon: _score(rows)
             for horizon, rows in sorted(by_horizon.items())
         },
+        "by_sector_context_availability": sector_slices,
+        "sector_context_comparison": {
+            "status": "insufficient_evidence" if underpowered else "ready",
+            "minimum_sample_size_per_group": MIN_SECTOR_CONTEXT_SLICE_SIZE,
+            "sample_sizes": sector_sample_sizes,
+            "underpowered_groups": underpowered,
+            "interpretation": (
+                "descriptive_metrics_only"
+                if underpowered
+                else "eligible_for_descriptive_comparison"
+            ),
+            "promotion_eligible": False,
+        },
         "diagnostics": dict(sorted(diagnostics.items())),
+        "evidence_coverage": evidence_coverage,
+        "coverage_by_horizon": coverage_by_horizon,
+        "horizon_attribution": horizon_attribution,
+        "rejection_breakdown": rejection_breakdown,
+        "probability_scale_diagnostics": dict(
+            sorted(probability_scale_diagnostics.items())
+        ),
+        "probability_scale_policy": (
+            "journal percentages normalized at read boundary; "
+            "unit-scale legacy rows preserved; unknown scales rejected"
+        ),
         "scoring_policy": "settled_evidence_only",
+        "sector_slice_policy": (
+            "explicit_point_in_time_status_only; unknown rows excluded from slices"
+        ),
     }

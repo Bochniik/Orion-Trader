@@ -90,3 +90,43 @@ def test_symbol_failure_is_recorded_and_forces_fail_closed_conclusion():
     assert result["symbol_count"] == 3
     assert result["research_conclusion"] == "heuristic_not_demonstrated_across_benchmark"
     assert result["runtime_modified"] is False
+
+
+def test_cross_symbol_support_requires_leave_one_symbol_out_stability():
+    # Two small winners can outvote one large loser, while the aggregate is still
+    # positive. Removing either winner exposes that the result depends on it.
+    loser = _audit("AAPL", improvement=-0.02, verdict="degrades_proper_scores")
+    winner_one = _audit("MSFT", improvement=0.01)
+    winner_two = _audit("NVDA", improvement=0.05)
+    for row in loser["horizons"].values():
+        row["evaluation_count"] = 100
+    for row in winner_one["horizons"].values():
+        row["evaluation_count"] = 100
+    for row in winner_two["horizons"].values():
+        row["evaluation_count"] = 100
+
+    result = aggregate_audits([loser, winner_one, winner_two])
+
+    assert result["research_conclusion"] == "heuristic_not_demonstrated_across_benchmark"
+    for row in result["horizons"].values():
+        assert row["proper_scores_positive"] is True
+        assert row["majority_improved"] is True
+        assert row["leave_one_symbol_out_stability"]["stable"] is False
+        assert row["heuristic_supported"] is False
+
+
+def test_leave_one_symbol_out_gate_accepts_broad_stable_improvement():
+    result = aggregate_audits([
+        _audit("AAPL", improvement=0.01),
+        _audit("MSFT", improvement=0.02),
+        _audit("NVDA", improvement=0.03),
+        _audit("META", improvement=0.015),
+    ])
+
+    assert result["research_conclusion"] == "heuristic_supported_across_benchmark"
+    for row in result["horizons"].values():
+        stability = row["leave_one_symbol_out_stability"]
+        assert stability["stable"] is True
+        assert stability["evaluations"] == 4
+        assert stability["worst_brier_improvement"] > 0
+        assert stability["worst_log_loss_improvement"] > 0

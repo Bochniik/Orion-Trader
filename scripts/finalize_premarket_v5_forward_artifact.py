@@ -12,6 +12,9 @@ from typing import Any
 ATTESTATION_CONTRACT = "orion-premarket-v5-forward-acquisition-v2"
 MAX_EARLY_SKEW_MINUTES = 2.0
 MAX_START_LAG_MINUTES = 20.0
+EXTERNAL_CONTROL_ISSUE = 313
+EXTERNAL_ACTOR = "Bochniik"
+EXTERNAL_TRIGGER_TOLERANCE_MINUTES = 3.0
 _GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -54,6 +57,9 @@ def classify_forward_acquisition(
     collection_started_at: datetime,
     collection_completed_at: datetime,
     event_name: str,
+    external_trigger_created_at: datetime | None = None,
+    external_actor: str | None = None,
+    external_issue: int | None = None,
 ) -> tuple[bool, str, float]:
     as_of = _parse_timestamp(payload.get("as_of_utc"), field="as_of_utc")
     started = collection_started_at.astimezone(timezone.utc)
@@ -68,13 +74,25 @@ def classify_forward_acquisition(
         return False, "order_submission_not_disabled", lag_minutes
     if payload.get("causal_cutoff_enforced") is not True:
         return False, "causal_cutoff_not_enforced", lag_minutes
-    if event_name != "schedule":
+    if event_name == "issue_comment":
+        if external_issue != EXTERNAL_CONTROL_ISSUE or external_actor != EXTERNAL_ACTOR or external_trigger_created_at is None:
+            return False, "unverified_external_scheduler", lag_minutes
+        trigger_lag = (external_trigger_created_at.astimezone(timezone.utc) - as_of).total_seconds() / 60.0
+        if abs(trigger_lag) > EXTERNAL_TRIGGER_TOLERANCE_MINUTES:
+            return False, "external_trigger_outside_preregistered_window", lag_minutes
+    elif event_name != "schedule":
         return False, "not_scheduled_collection", lag_minutes
     if lag_minutes < -MAX_EARLY_SKEW_MINUTES:
         return False, "collection_started_too_early", lag_minutes
     if lag_minutes > MAX_START_LAG_MINUTES:
         return False, "collection_started_too_late", lag_minutes
-    return True, "scheduled_forward_window", lag_minutes
+    predictions = payload.get("predictions")
+    if not isinstance(predictions, list) or not any(
+        isinstance(row, dict) and row.get("available") is True and isinstance(row.get("forecasts"), dict) and row["forecasts"]
+        for row in predictions
+    ):
+        return False, "no_evaluable_predictions", lag_minutes
+    return True, ("external_scheduler_forward_window" if event_name == "issue_comment" else "scheduled_forward_window"), lag_minutes
 
 
 def finalize_payload(
@@ -86,6 +104,9 @@ def finalize_payload(
     run_id: str | None,
     run_attempt: str | int | None,
     github_head_sha: str | None = None,
+    external_trigger_created_at: datetime | None = None,
+    external_actor: str | None = None,
+    external_issue: int | None = None,
 ) -> dict[str, Any]:
     if "acquisition_provenance" in payload:
         raise ForwardAcquisitionError("artifact already contains acquisition_provenance")
@@ -96,15 +117,19 @@ def finalize_payload(
         collection_started_at=started,
         collection_completed_at=completed,
         event_name=event_name,
+        external_trigger_created_at=external_trigger_created_at,
+        external_actor=external_actor,
+        external_issue=external_issue,
     )
 
     try:
         attempt = int(run_attempt) if run_attempt is not None else None
     except (TypeError, ValueError) as exc:
         raise ForwardAcquisitionError("run_attempt must be an integer") from exc
-    if event_name == "schedule" and (not run_id or attempt is None or attempt < 1):
-        raise ForwardAcquisitionError("scheduled collection requires GitHub run_id and positive run_attempt")
-    head_sha = _normalize_git_sha(github_head_sha, required=event_name == "schedule")
+    trusted_transport = event_name in {"schedule", "issue_comment"}
+    if trusted_transport and (not run_id or attempt is None or attempt < 1):
+        raise ForwardAcquisitionError("trusted collection requires GitHub run_id and positive run_attempt")
+    head_sha = _normalize_git_sha(github_head_sha, required=trusted_transport)
 
     result = dict(payload)
     result["acquisition_provenance"] = {
@@ -117,6 +142,9 @@ def finalize_payload(
         "github_run_id": None if run_id is None else str(run_id),
         "github_run_attempt": attempt,
         "github_head_sha": head_sha,
+        "external_trigger_created_at_utc": external_trigger_created_at.astimezone(timezone.utc).isoformat() if external_trigger_created_at else None,
+        "external_actor": external_actor,
+        "external_issue": external_issue,
         "max_early_skew_minutes": MAX_EARLY_SKEW_MINUTES,
         "max_start_lag_minutes": MAX_START_LAG_MINUTES,
         "forward_eligible": eligible,
@@ -143,6 +171,9 @@ def main() -> int:
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--run-attempt", default=None)
     parser.add_argument("--github-head-sha", default=None)
+    parser.add_argument("--external-trigger-created-at", default=None)
+    parser.add_argument("--external-actor", default=None)
+    parser.add_argument("--external-issue", type=int, default=None)
     args = parser.parse_args()
 
     try:
@@ -155,6 +186,9 @@ def main() -> int:
             run_id=args.run_id,
             run_attempt=args.run_attempt,
             github_head_sha=args.github_head_sha,
+            external_trigger_created_at=(_parse_timestamp(args.external_trigger_created_at, field="external_trigger_created_at") if args.external_trigger_created_at else None),
+            external_actor=args.external_actor,
+            external_issue=args.external_issue,
         )
     except (OSError, json.JSONDecodeError, ForwardAcquisitionError, ValueError) as exc:
         print(json.dumps({"status": "invalid_forward_acquisition", "error": str(exc)}, sort_keys=True))

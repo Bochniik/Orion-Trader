@@ -61,6 +61,43 @@ def recent(value, now, seconds):
     return parsed is not None and 0 <= (now - parsed).total_seconds() <= seconds
 
 
+def _observation_window_reason(value, now, seconds):
+    """Classify only parseable observation times outside the causal live window."""
+    parsed = timestamp(value)
+    if parsed is None:
+        return None
+    age_seconds = (now - parsed).total_seconds()
+    if age_seconds < 0:
+        return "future_observation_timestamp"
+    if age_seconds > seconds:
+        return "stale_observation_timestamp"
+    return None
+
+
+def _temporal_layer_diagnostic(layer, value, now, max_age_seconds):
+    """Return one stable freshness result for a required timestamped data layer."""
+    parsed = timestamp(value)
+    if value is None:
+        status = "missing"
+    elif parsed is None:
+        status = "invalid"
+    else:
+        age_seconds = (now - parsed).total_seconds()
+        status = (
+            "future" if age_seconds < 0
+            else "stale" if age_seconds > max_age_seconds
+            else "fresh"
+        )
+    return {
+        "status": status,
+        "reason_code": (
+            None if status == "fresh" else f"{status}_{layer}_timestamp"
+        ),
+        "timestamp": value,
+        "max_age_seconds": max_age_seconds,
+    }
+
+
 def board_predictions(board):
     return [row for key in BOARD_SECTIONS for row in (board.get(key) or [])]
 
@@ -93,6 +130,20 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
     direction = prediction.get("direction")
     horizon = prediction.get("horizon")
     warnings = list(prediction.get("blockers") or [])
+    observation_time_diagnostics = prediction.get("observation_time_diagnostics")
+    no_trade_reason_codes = []
+    if (
+        isinstance(observation_time_diagnostics, dict)
+        and observation_time_diagnostics.get("status") != "ready"
+    ):
+        reason_code = (
+            observation_time_diagnostics.get("reason_code")
+            or "observation_time_unavailable"
+        )
+        no_trade_reason_codes.append(reason_code)
+        warnings.append(
+            "Point-in-time observation evidence is unavailable or invalid."
+        )
     supplied_model_direction = prediction.get("model_direction")
     model_direction = (
         supplied_model_direction
@@ -113,18 +164,177 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         warnings.append("The regular market session is closed or could not be verified.")
     max_age = min(120, HORIZON_SECONDS.get(horizon, 60))
     snapshot = prediction.get("feature_snapshot") or {}
+    feature_input_diagnostics = {}
+    feature_input_reason_codes = []
+    source_event_time_reason_codes = []
+    optional_context_reason_codes = []
+    feature_source_diagnostics = {
+        "stock": {
+            "required": True, "status": "not_evaluated",
+            "features": [], "reason_codes": [],
+        },
+        "market_benchmark": {
+            "required": True, "status": "not_evaluated",
+            "features": [], "reason_codes": [],
+        },
+        "sector_benchmark": {
+            "required": False, "status": "not_evaluated",
+            "features": [], "reason_codes": [],
+        },
+    }
     if prediction.get("core_validation") is not None:
         if prediction["core_validation"].get("ready") is not True:
             warnings.append("The model freshness or promotion gate failed.")
+        features = snapshot.get("features") or {}
         provenance = snapshot.get("feature_provenance") or {}
-        required = {"price_momentum", "atr_14", "realized_volatility", "relative_volume", "index_momentum", "relative_strength_market"}
-        if snapshot.get("freshness_contract") != "source-specific-v2" or any(
-            (provenance.get(name) or {}).get("status") != "fresh"
-            or not recent((provenance.get(name) or {}).get("as_of"), now, 120)
-            or number((snapshot.get("features") or {}).get(name)) is None for name in required
-        ):
+        required = (
+            "price_momentum", "atr_14", "realized_volatility",
+            "relative_volume", "index_momentum", "relative_strength_market",
+        )
+        feature_sources = {
+            "price_momentum": "stock",
+            "atr_14": "stock",
+            "realized_volatility": "stock",
+            "relative_volume": "stock",
+            "index_momentum": "market_benchmark",
+            "relative_strength_market": "market_benchmark",
+        }
+        if snapshot.get("freshness_contract") != "source-specific-v2":
+            feature_input_reason_codes.append("invalid_feature_freshness_contract")
+        for name in required:
+            metadata = provenance.get(name) or {}
+            reason_codes = []
+            if number(features.get(name)) is None:
+                reason_codes.append(f"missing_feature_value_{name}")
+            if not isinstance(provenance.get(name), dict):
+                reason_codes.append(f"missing_feature_provenance_{name}")
+            elif metadata.get("status") != "fresh":
+                reason_codes.append(f"nonfresh_feature_provenance_{name}")
+            timestamp_diagnostic = _temporal_layer_diagnostic(
+                f"feature_{name}", metadata.get("as_of"), now, 120
+            )
+            if timestamp_diagnostic["reason_code"] is not None:
+                reason_codes.append(timestamp_diagnostic["reason_code"])
+            feature_input_diagnostics[name] = {
+                "source": feature_sources[name],
+                "value_status": (
+                    "available" if number(features.get(name)) is not None
+                    else "missing"
+                ),
+                "provenance_status": metadata.get("status"),
+                "timestamp": timestamp_diagnostic,
+                "reason_codes": reason_codes,
+            }
+            feature_input_reason_codes.extend(reason_codes)
+        feature_input_reason_codes = list(dict.fromkeys(feature_input_reason_codes))
+        source_event_times = snapshot.get("source_event_times") or {}
+        explicit_source_times = (
+            snapshot.get("source_event_time_contract") == "explicit-v1"
+        )
+        source_feature_sets = {
+            "stock": [
+                name for name in required if feature_sources[name] == "stock"
+            ],
+            "market_benchmark": [
+                name for name in required
+                if feature_sources[name] == "market_benchmark"
+            ],
+            "sector_benchmark": [
+                "sector_momentum", "relative_strength_sector",
+            ],
+        }
+        for source, diagnostics in feature_source_diagnostics.items():
+            source_features = source_feature_sets[source]
+            source_event_time = (
+                _temporal_layer_diagnostic(
+                    f"{source}_source",
+                    (source_event_times.get(source) or {}).get("timestamp"),
+                    now,
+                    (source_event_times.get(source) or {}).get(
+                        "max_age_seconds", 120
+                    ),
+                )
+                if explicit_source_times else None
+            )
+            if (
+                source_event_time is not None
+                and source_event_time["reason_code"] is not None
+            ):
+                (
+                    source_event_time_reason_codes
+                    if diagnostics["required"]
+                    else optional_context_reason_codes
+                ).append(source_event_time["reason_code"])
+            source_reason_codes = list(dict.fromkeys([
+                *(
+                    ["invalid_feature_freshness_contract"]
+                    if diagnostics["required"]
+                    and snapshot.get("freshness_contract") != "source-specific-v2"
+                    else []
+                ),
+                *(
+                    [source_event_time["reason_code"]]
+                    if source_event_time is not None
+                    and source_event_time["reason_code"] is not None
+                    else []
+                ),
+                *(
+                    code
+                    for name in source_features
+                    if name in feature_input_diagnostics
+                    for code in feature_input_diagnostics[name]["reason_codes"]
+                ),
+            ]))
+            diagnostics.update({
+                "status": (
+                    "blocked" if source_reason_codes and diagnostics["required"]
+                    else "unavailable" if source_reason_codes
+                    else "fresh"
+                ),
+                "features": source_features,
+                "event_time": source_event_time,
+                "reason_codes": source_reason_codes,
+            })
+        source_event_time_reason_codes = list(dict.fromkeys(
+            source_event_time_reason_codes
+        ))
+        optional_context_reason_codes = list(dict.fromkeys(
+            optional_context_reason_codes
+        ))
+        no_trade_reason_codes.extend([
+            *feature_input_reason_codes,
+            *source_event_time_reason_codes,
+        ])
+        if feature_input_reason_codes or source_event_time_reason_codes:
             warnings.append("Required stock or benchmark feature evidence is stale or unavailable.")
     history_time = snapshot.get("history_timestamp") or snapshot.get("timestamp")
+    data_freshness_diagnostics = {
+        "prediction": _temporal_layer_diagnostic(
+            "prediction", prediction.get("timestamp"), now, max_age
+        ),
+        "feature_bars": _temporal_layer_diagnostic(
+            "feature_bars", history_time, now, max_age
+        ),
+        "quote": _temporal_layer_diagnostic(
+            "quote", prediction.get("quote_as_of"), now, 60
+        ),
+    }
+    data_layer_reason_codes = [
+        diagnostics["reason_code"]
+        for diagnostics in data_freshness_diagnostics.values()
+        if diagnostics["reason_code"] is not None
+    ]
+    observation_window_codes = list(dict.fromkeys(
+        code for code in (
+            _observation_window_reason(prediction.get("timestamp"), now, max_age),
+            _observation_window_reason(history_time, now, max_age),
+        )
+        if code is not None
+    ))
+    no_trade_reason_codes.extend(
+        code for code in observation_window_codes
+        if code not in no_trade_reason_codes
+    )
     if not recent(prediction.get("timestamp"), now, max_age) or not recent(history_time, now, max_age):
         warnings.append("The price or underlying feature bars are stale or undated.")
     if not recent(prediction.get("quote_as_of"), now, 60):
@@ -142,6 +352,28 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         model_direction=model_direction,
         probabilities=probabilities,
         horizon=horizon,
+    )
+    decision_observation_evidence = (
+        dict(observation_time_diagnostics)
+        if isinstance(observation_time_diagnostics, dict)
+        else {"status": "legacy_contract", "reason_code": None}
+    )
+    decision_observation_evidence["window_reason_codes"] = observation_window_codes
+    decision_observation_evidence["freshness_status"] = (
+        "outside_live_window" if observation_window_codes else "within_live_window"
+    )
+    directional_diagnostics["decision_evidence"] = decision_observation_evidence
+    directional_diagnostics["no_trade_reason_codes"] = no_trade_reason_codes
+    directional_diagnostics["data_freshness"] = data_freshness_diagnostics
+    directional_diagnostics["data_layer_reason_codes"] = data_layer_reason_codes
+    directional_diagnostics["feature_inputs"] = feature_input_diagnostics
+    directional_diagnostics["feature_input_reason_codes"] = feature_input_reason_codes
+    directional_diagnostics["feature_sources"] = feature_source_diagnostics
+    directional_diagnostics["source_event_time_reason_codes"] = (
+        source_event_time_reason_codes
+    )
+    directional_diagnostics["optional_context_reason_codes"] = (
+        optional_context_reason_codes
     )
     ev = number(expected.get("EV_LONG_bps" if model_direction == "UP" else "EV_SHORT_bps"))
     cost = number((prediction.get("execution_costs") or {}).get("round_trip_cost_bps"))
@@ -201,6 +433,14 @@ def decision_from_prediction(prediction, *, now=None, market_open=False):
         "market_regime": (prediction.get("market_regime") or {}).get("label"),
         "reasons": [prediction.get("short_explanation") or "Deterministic model evidence evaluated."],
         "warnings": warnings,
+        "no_trade_reason_codes": no_trade_reason_codes,
+        "data_layer_reason_codes": data_layer_reason_codes,
+        "data_freshness_diagnostics": data_freshness_diagnostics,
+        "feature_input_reason_codes": feature_input_reason_codes,
+        "feature_input_diagnostics": feature_input_diagnostics,
+        "feature_source_diagnostics": feature_source_diagnostics,
+        "source_event_time_reason_codes": source_event_time_reason_codes,
+        "optional_context_reason_codes": optional_context_reason_codes,
         "model_agreement": (prediction.get("strategy_consensus") or {}).get("agreement_score"),
         "model_outputs": prediction,
         "confidence_unavailable_reasons": directional_diagnostics["missing_inputs"],

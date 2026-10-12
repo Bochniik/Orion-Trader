@@ -1,12 +1,15 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 
+import pandas as pd
 import pytest
 from starlette.testclient import TestClient
 
 from app import main
 from app.api import core_routes as api
+from app.api import routes as legacy_api
 from app.services.auth_store import AuthStore
+from app.services.core_readiness import audit_features
 from app.services.decision_engine import decision_from_prediction, decisions_from_board, technical_decision, today_from_board
 
 NOW = datetime(2026, 9, 1, 14, 0, tzinfo=timezone.utc)
@@ -37,6 +40,23 @@ def board(*rows, **extra):
     return {"highest_statistical_edge": list(rows), "liquidity_candidates_ranked": 80, **extra}
 
 
+def test_sector_benchmark_manifest_uses_known_profiles_only():
+    profiles = {
+        "AAPL": {"sector": "Technology"},
+        "JPM": {"sector": "Financial Services"},
+        "UNKNOWN": {"sector": "Unmapped Sector"},
+    }
+    calls = []
+
+    result = legacy_api._sector_benchmark_manifest(
+        ["AAPL", "JPM", "UNKNOWN"],
+        lambda symbol: calls.append(symbol) or profiles[symbol],
+    )
+
+    assert calls == ["AAPL", "JPM", "UNKNOWN"]
+    assert result == {"AAPL": "XLK", "JPM": "XLF"}
+
+
 def test_preserves_model_numbers_and_calculates_conservative_rr_without_mutation():
     source = prediction()
     original = deepcopy(source)
@@ -46,6 +66,11 @@ def test_preserves_model_numbers_and_calculates_conservative_rr_without_mutation
     assert result["risk_reward"] == 2
     assert result["confidence"] == 80
     assert result["model_outputs"] == original
+    assert result["data_layer_reason_codes"] == []
+    assert all(
+        item["status"] == "fresh"
+        for item in result["data_freshness_diagnostics"].values()
+    )
     assert source == original
 
 
@@ -71,6 +96,254 @@ def test_missing_stale_conflicting_and_unsafe_inputs_fail_closed(changes):
     assert result["confidence"] is None
     assert result["entry_zone"] is None and result["targets"] == []
     assert result["warnings"]
+
+
+@pytest.mark.parametrize(("observed", "reason_code"), [
+    ("2026-09-01T13:00:00+00:00", "stale_observation_timestamp"),
+    ("2026-09-01T14:01:00+00:00", "future_observation_timestamp"),
+])
+def test_valid_but_out_of_window_observation_time_has_exact_reason_code(
+    observed, reason_code
+):
+    result = decision_from_prediction(
+        prediction(timestamp=observed),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["decision"] == "WAIT"
+    assert result["no_trade_reason_codes"] == [reason_code]
+    diagnostics = result["directional_diagnostics"]["decision_evidence"]
+    assert diagnostics["freshness_status"] == "outside_live_window"
+    assert diagnostics["window_reason_codes"] == [reason_code]
+
+
+def test_data_freshness_diagnostics_identify_each_blocking_layer():
+    stale = "2026-09-01T13:00:00+00:00"
+    result = decision_from_prediction(
+        prediction(
+            timestamp=stale,
+            feature_snapshot={"timestamp": stale},
+            quote_as_of=None,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["data_layer_reason_codes"] == [
+        "stale_prediction_timestamp",
+        "stale_feature_bars_timestamp",
+        "missing_quote_timestamp",
+    ]
+    diagnostics = result["data_freshness_diagnostics"]
+    assert diagnostics["prediction"]["status"] == "stale"
+    assert diagnostics["feature_bars"]["status"] == "stale"
+    assert diagnostics["quote"]["status"] == "missing"
+    assert (
+        result["directional_diagnostics"]["data_layer_reason_codes"]
+        == result["data_layer_reason_codes"]
+    )
+
+
+def test_required_feature_diagnostics_identify_exact_missing_input():
+    observed = (NOW - timedelta(seconds=20)).isoformat()
+    required = (
+        "price_momentum", "atr_14", "realized_volatility",
+        "relative_volume", "index_momentum", "relative_strength_market",
+    )
+    snapshot = {
+        "timestamp": observed,
+        "freshness_contract": "source-specific-v2",
+        "features": {name: 1.0 for name in required},
+        "feature_provenance": {
+            name: {"status": "fresh", "as_of": observed} for name in required
+        },
+    }
+    snapshot["features"].pop("relative_volume")
+
+    result = decision_from_prediction(
+        prediction(
+            core_validation={"ready": True},
+            feature_snapshot=snapshot,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["decision"] == "WAIT"
+    assert result["feature_input_reason_codes"] == [
+        "missing_feature_value_relative_volume"
+    ]
+    diagnostics = result["feature_input_diagnostics"]
+    assert diagnostics["relative_volume"]["value_status"] == "missing"
+    assert diagnostics["relative_volume"]["reason_codes"] == [
+        "missing_feature_value_relative_volume"
+    ]
+    assert all(
+        not item["reason_codes"]
+        for name, item in diagnostics.items()
+        if name != "relative_volume"
+    )
+    assert (
+        result["directional_diagnostics"]["feature_input_reason_codes"]
+        == result["feature_input_reason_codes"]
+    )
+
+
+def test_stale_benchmark_feed_isolated_from_fresh_stock_features():
+    observed = (NOW - timedelta(seconds=20)).isoformat()
+    stale_benchmark = (NOW - timedelta(minutes=5)).isoformat()
+    stock_features = (
+        "price_momentum", "atr_14", "realized_volatility", "relative_volume",
+    )
+    benchmark_features = ("index_momentum", "relative_strength_market")
+    required = (*stock_features, *benchmark_features)
+    snapshot = {
+        "timestamp": observed,
+        "freshness_contract": "source-specific-v2",
+        "features": {name: 1.0 for name in required},
+        "feature_provenance": {
+            name: {
+                "status": "fresh",
+                "as_of": (
+                    stale_benchmark if name in benchmark_features else observed
+                ),
+            }
+            for name in required
+        },
+    }
+
+    result = decision_from_prediction(
+        prediction(
+            core_validation={"ready": True},
+            feature_snapshot=snapshot,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["feature_input_reason_codes"] == [
+        "stale_feature_index_momentum_timestamp",
+        "stale_feature_relative_strength_market_timestamp",
+    ]
+    sources = result["feature_source_diagnostics"]
+    assert sources["stock"]["status"] == "fresh"
+    assert sources["stock"]["reason_codes"] == []
+    assert sources["market_benchmark"]["status"] == "blocked"
+    assert sources["market_benchmark"]["reason_codes"] == (
+        result["feature_input_reason_codes"]
+    )
+    assert (
+        result["directional_diagnostics"]["feature_sources"]
+        == result["feature_source_diagnostics"]
+    )
+
+
+def test_explicit_source_event_times_flow_from_feature_audit_to_decision():
+    observed = (NOW - timedelta(seconds=20)).isoformat()
+    stale_benchmark = NOW - timedelta(minutes=5)
+    required = (
+        "price_momentum", "atr_14", "realized_volatility",
+        "relative_volume", "index_momentum", "relative_strength_market",
+    )
+    snapshot = audit_features(
+        {
+            "timestamp": observed,
+            "features": {name: 1.0 for name in required},
+        },
+        market_history=pd.DataFrame(
+            {"Close": [100.0]},
+            index=pd.DatetimeIndex([stale_benchmark]),
+        ),
+        now=NOW,
+    )
+
+    assert snapshot["source_event_time_contract"] == "explicit-v1"
+    assert snapshot["source_event_times"]["stock"]["status"] == "fresh"
+    assert snapshot["source_event_times"]["market_benchmark"]["status"] == "stale"
+
+    result = decision_from_prediction(
+        prediction(
+            core_validation={"ready": True},
+            feature_snapshot=snapshot,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["source_event_time_reason_codes"] == [
+        "stale_market_benchmark_source_timestamp"
+    ]
+    sources = result["feature_source_diagnostics"]
+    assert sources["stock"]["event_time"]["status"] == "fresh"
+    assert sources["market_benchmark"]["event_time"]["status"] == "stale"
+    assert (
+        "stale_market_benchmark_source_timestamp"
+        in sources["market_benchmark"]["reason_codes"]
+    )
+    assert (
+        result["directional_diagnostics"]["source_event_time_reason_codes"]
+        == result["source_event_time_reason_codes"]
+    )
+
+
+def test_missing_sector_source_is_reported_without_blocking_required_evidence():
+    observed = (NOW - timedelta(seconds=20)).isoformat()
+    required = (
+        "price_momentum", "atr_14", "realized_volatility",
+        "relative_volume", "index_momentum", "relative_strength_market",
+    )
+    snapshot = {
+        "timestamp": observed,
+        "freshness_contract": "source-specific-v2",
+        "source_event_time_contract": "explicit-v1",
+        "source_event_times": {
+            "stock": {"timestamp": observed, "max_age_seconds": 120},
+            "market_benchmark": {
+                "timestamp": observed, "max_age_seconds": 120,
+            },
+            "sector_benchmark": {
+                "timestamp": None, "max_age_seconds": 120,
+            },
+        },
+        "features": {name: 1.0 for name in required},
+        "feature_provenance": {
+            name: {"status": "fresh", "as_of": observed}
+            for name in required
+        },
+    }
+
+    result = decision_from_prediction(
+        prediction(
+            core_validation={"ready": True},
+            feature_snapshot=snapshot,
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is True
+    assert result["source_event_time_reason_codes"] == []
+    assert result["optional_context_reason_codes"] == [
+        "missing_sector_benchmark_source_timestamp"
+    ]
+    sources = result["feature_source_diagnostics"]
+    assert sources["stock"]["required"] is True
+    assert sources["stock"]["status"] == "fresh"
+    assert sources["market_benchmark"]["required"] is True
+    assert sources["market_benchmark"]["status"] == "fresh"
+    assert sources["sector_benchmark"]["required"] is False
+    assert sources["sector_benchmark"]["status"] == "unavailable"
+    assert sources["sector_benchmark"]["event_time"]["status"] == "missing"
+    assert (
+        result["directional_diagnostics"]["optional_context_reason_codes"]
+        == result["optional_context_reason_codes"]
+    )
 
 
 def test_closed_market_and_short_risk_geometry():
@@ -100,6 +373,39 @@ def test_blocked_prediction_preserves_directional_model_confidence():
     assert result["expected_horizon"] == "5m"
     assert result["directional_result"]["status"] == "available"
     assert result["directional_result"]["direction"] == "UP"
+
+
+def test_observation_time_reason_code_reaches_no_trade_decision():
+    result = decision_from_prediction(
+        prediction(
+            direction="NO_TRADE",
+            model_direction="UP",
+            blockers=[],
+            observation_time_diagnostics={
+                "status": "unavailable",
+                "source": None,
+                "timestamp": None,
+                "reason_code": "missing_observation_timestamp",
+                "missing_inputs": [
+                    "timezone-aware point-in-time observation timestamp"
+                ],
+                "policy": "missing_or_invalid_observation_time_forces_no_trade",
+            },
+        ),
+        now=NOW,
+        market_open=True,
+    )
+
+    assert result["actionable"] is False
+    assert result["decision"] == "WAIT"
+    assert result["no_trade_reason_codes"] == ["missing_observation_timestamp"]
+    assert (
+        result["directional_diagnostics"]["decision_evidence"]["reason_code"]
+        == "missing_observation_timestamp"
+    )
+    assert result["directional_result"]["diagnostics"]["no_trade_reason_codes"] == [
+        "missing_observation_timestamp"
+    ]
 
 
 def test_technical_fallback_returns_exact_directional_diagnostics():
@@ -220,3 +526,63 @@ def test_core_routes_inherit_auth_and_csrf(core_client, monkeypatch, tmp_path):
     assert core_client.get("/core/status").status_code == 200
     assert core_client.post("/core/today").status_code == 403
     assert core_client.post("/core/today", headers={"X-CSRF-Token": session["csrf_token"]}).status_code == 200
+
+
+def test_premarket_core_projection_exposes_existing_actionable_opening_forecast():
+    projected = api._premarket_forecast_projection({
+        "predictive_outlook": {
+            "available": True,
+            "actionable": True,
+            "signals": {
+                "open_30m": {
+                    "actionable": True,
+                    "direction": "UP",
+                    "direction_confidence": 0.634,
+                }
+            },
+        }
+    })
+    assert projected == {
+        "forecast_available": True,
+        "forecast_actionable": True,
+        "opening_outlook": "UP BIAS",
+        "directional_conviction": 63.4,
+        "forecast_horizon": "OPEN -> FIRST 30 MIN",
+        "forecast_target": "open_30m",
+    }
+
+
+def test_premarket_core_projection_keeps_below_gate_signal_as_wait_but_visible():
+    projected = api._premarket_forecast_projection({
+        "predictive_outlook": {
+            "available": True,
+            "actionable": False,
+            "signals": {
+                "open_30m": {
+                    "actionable": False,
+                    "direction": "NO_EDGE",
+                    "direction_confidence": 0.587,
+                    "reason": "below_validation_approved_gate",
+                }
+            },
+        }
+    })
+    assert projected["forecast_available"] is True
+    assert projected["forecast_actionable"] is False
+    assert projected["opening_outlook"] == "WAIT"
+    assert projected["directional_conviction"] == 58.7
+    assert projected["forecast_horizon"] == "OPEN -> FIRST 30 MIN"
+
+
+def test_premarket_core_projection_does_not_invent_forecast_without_signal():
+    projected = api._premarket_forecast_projection({
+        "predictive_outlook": {
+            "available": False,
+            "actionable": False,
+            "reason": "full_sip_minute_history_required",
+            "signals": {},
+        }
+    })
+    assert projected["forecast_available"] is False
+    assert projected["directional_conviction"] is None
+    assert projected["opening_outlook"] == "WAIT"

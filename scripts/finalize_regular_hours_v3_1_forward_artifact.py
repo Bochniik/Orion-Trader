@@ -12,6 +12,9 @@ PROVENANCE_SCHEMA = "regular-hours-v3-1-acquisition-provenance-v1"
 MANIFEST_SCHEMA = "regular-hours-v3-1-forward-manifest-v1"
 RUNNER_VERSION = "regular-hours-v3-1-cloud-shadow-v2"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+EXTERNAL_CONTROL_ISSUE = 313
+EXTERNAL_ACTOR = "Bochniik"
+EXTERNAL_TRIGGER_TOLERANCE_SECONDS = 180
 
 
 class ForwardArtifactError(ValueError):
@@ -42,6 +45,9 @@ def finalize_payload(
     run_id: int,
     run_attempt: int,
     github_head_sha: str,
+    external_trigger_created_at: str | None = None,
+    external_actor: str | None = None,
+    external_issue: int | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if payload.get("runner_version") != RUNNER_VERSION:
         raise ForwardArtifactError("unexpected regular-hours runner_version")
@@ -63,8 +69,22 @@ def finalize_payload(
         raise ForwardArtifactError("session_gate must be an object")
     status = str(payload.get("status") or "")
     scheduled = event_name == "schedule"
+    external = event_name == "issue_comment"
     active_market_sample = gate.get("allowed") is True and status == "completed"
-    forward_eligible = scheduled and active_market_sample
+    external_verified = False
+    external_trigger = None
+    if external and external_trigger_created_at:
+        external_trigger = _parse_utc(external_trigger_created_at, label="external_trigger_created_at")
+        local = external_trigger.astimezone(__import__('zoneinfo').ZoneInfo('America/New_York'))
+        slot_ok = local.weekday() < 5 and local.minute == 35 and 9 <= local.hour <= 15
+        start_delta = (started - external_trigger).total_seconds()
+        external_verified = (
+            external_issue == EXTERNAL_CONTROL_ISSUE
+            and external_actor == EXTERNAL_ACTOR
+            and slot_ok
+            and -EXTERNAL_TRIGGER_TOLERANCE_SECONDS <= start_delta <= 20 * 60
+        )
+    forward_eligible = active_market_sample and (scheduled or external_verified)
     source_sha256 = _canonical_sha256(payload)
 
     provenance = {
@@ -78,6 +98,10 @@ def finalize_payload(
         "collection_completed_at_utc": completed.isoformat(),
         "source_payload_sha256": source_sha256,
         "forward_eligible": forward_eligible,
+        "external_trigger_created_at_utc": external_trigger.isoformat() if external_trigger else None,
+        "external_actor": external_actor,
+        "external_issue": external_issue,
+        "external_scheduler_verified": external_verified,
     }
     finalized = dict(payload)
     finalized["acquisition_provenance"] = provenance
@@ -105,6 +129,9 @@ def main() -> int:
     parser.add_argument("--run-id", type=int, required=True)
     parser.add_argument("--run-attempt", type=int, required=True)
     parser.add_argument("--github-head-sha", required=True)
+    parser.add_argument("--external-trigger-created-at", default=None)
+    parser.add_argument("--external-actor", default=None)
+    parser.add_argument("--external-issue", type=int, default=None)
     args = parser.parse_args()
 
     payload = json.loads(args.input.read_text(encoding="utf-8"))
@@ -118,6 +145,9 @@ def main() -> int:
         run_id=args.run_id,
         run_attempt=args.run_attempt,
         github_head_sha=args.github_head_sha,
+        external_trigger_created_at=args.external_trigger_created_at,
+        external_actor=args.external_actor,
+        external_issue=args.external_issue,
     )
     args.input.write_text(json.dumps(finalized, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     manifest_path = args.input.with_suffix(".manifest.json")
