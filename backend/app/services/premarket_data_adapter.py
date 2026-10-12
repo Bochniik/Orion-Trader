@@ -414,7 +414,7 @@ class PremarketDataAdapter:
             )
 
             predictive_frame = sip_frame if self._usable_frame(sip_frame) else None
-            return self._analysis_payload(
+            payload = self._analysis_payload(
                 symbol=symbol,
                 analysis=analysis,
                 data_mode=descriptive_mode,
@@ -431,7 +431,127 @@ class PremarketDataAdapter:
                 average_dollar_volume=average_dollar_volume,
             )
 
-        # Point fallback. No full score or model prediction from one point.
+            # The validated hierarchical directional model is SIP-trained and
+            # correctly refuses IEX input. Do not let the fresher IEX setup
+            # path short-circuit a model-compatible delayed SIP forecast.
+            predictive = payload.get("predictive_outlook") or {}
+            if predictive.get("reason") == "training_feed_mismatch_requires_sip":
+                try:
+                    predictive_sip_payload = self.broker.delayed_premarket_bars(
+                        user_id,
+                        [symbol],
+                        now=now,
+                        timeframe="1Min",
+                        safe_delay_seconds=960,
+                    )
+                    predictive_sip_rows = (
+                        (predictive_sip_payload.get("bars") or {}).get(symbol, [])
+                        if isinstance(predictive_sip_payload, dict)
+                        else []
+                    )
+                    predictive_sip_frame = alpaca_bars_to_frame(
+                        predictive_sip_rows
+                    )
+                    if (
+                        predictive_sip_frame is not None
+                        and len(predictive_sip_frame) >= 5
+                    ):
+                        predictive_as_of = predictive_sip_frame.index[-1]
+                        payload["predictive_outlook"] = (
+                            predict_gated_hierarchical_outlook(
+                                predictive_sip_frame,
+                                previous_close=analysis.get("previous_close"),
+                                feed="sip",
+                                as_of=predictive_as_of,
+                            )
+                        )
+                        payload["predictive_feed"] = "sip"
+                        payload["predictive_delayed"] = True
+                        payload["predictive_as_of"] = (
+                            predictive_as_of.isoformat()
+                        )
+                        payload["predictive_delay_minutes_nominal"] = (
+                            predictive_sip_payload.get(
+                                "delay_minutes_nominal"
+                            )
+                        )
+                        payload["warnings"] = list(dict.fromkeys(
+                            list(payload.get("warnings") or [])
+                            + list(
+                                predictive_sip_payload.get("limitations") or []
+                            )
+                        ))
+                except Exception as exc:
+                    payload["warnings"] = list(dict.fromkeys(
+                        list(payload.get("warnings") or [])
+                        + [
+                            "Model-compatible delayed SIP forecast fallback "
+                            f"unavailable: {type(exc).__name__}"
+                        ]
+                    ))
+
+            return payload
+
+        # --------------------------------------------------------------
+        # 2) Delayed historical consolidated SIP minute history.
+        # --------------------------------------------------------------
+        try:
+            sip_payload = self.broker.delayed_premarket_bars(
+                user_id,
+                [symbol],
+                now=now,
+                timeframe="1Min",
+                safe_delay_seconds=960,
+            )
+        except Exception as exc:
+            sip_payload = {
+                "bars": {},
+                "provider": "alpaca",
+                "feed": "sip",
+                "limitations": [],
+                "available": False,
+            }
+            provider_errors.append(
+                f"Delayed SIP premarket history unavailable: {type(exc).__name__}"
+            )
+
+        sip_rows = (
+            (sip_payload.get("bars") or {}).get(symbol, [])
+            if isinstance(sip_payload, dict)
+            else []
+        )
+        sip_frame = alpaca_bars_to_frame(sip_rows)
+
+        if sip_frame is not None and len(sip_frame) >= 5:
+            analysis = analyze_premarket(
+                symbol,
+                sip_frame,
+                previous_close=previous_close,
+                average_premarket_volume=average_premarket_volume,
+                news_score=news_score,
+                market_score=market_score,
+                sector_score=sector_score,
+                thematic_score=thematic_score,
+                now=now,
+            )
+
+            return self._analysis_payload(
+                symbol=symbol,
+                analysis=analysis,
+                data_mode="delayed_sip_minute_history",
+                feed="sip",
+                delayed=True,
+                minute_frame=sip_frame,
+                provider_payload=sip_payload,
+                warnings=warnings + provider_errors,
+                now=now,
+                news_score=news_score,
+                average_dollar_volume=average_dollar_volume,
+            )
+
+        # --------------------------------------------------------------
+        # 3) Point fallback. No full score or model prediction from one point.
+        # --------------------------------------------------------------
         try:
             fallback = self.broker.premarket_snapshot_fallback(
                 user_id,
