@@ -1,2 +1,110 @@
 .intelligence-page{display:grid;gap:18px}.intelligence-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;padding:26px;border:1px solid var(--core-line);border-radius:20px;background:radial-gradient(circle at 78% 10%,rgba(77,118,255,.16),transparent 35%),linear-gradient(145deg,rgba(15,22,33,.95),rgba(8,12,18,.98))}.intelligence-hero h1{margin:4px 0 8px;font-size:clamp(28px,4vw,44px)}.intelligence-hero p{margin:0;color:#8c98a4}.intelligence-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}.intelligence-card{display:grid;gap:14px;padding:18px;border:1px solid var(--core-line);border-radius:17px;background:linear-gradient(180deg,rgba(18,25,36,.94),rgba(10,14,21,.96))}.intelligence-card header{display:flex;justify-content:space-between;gap:12px}.intelligence-card header>div{display:flex;align-items:center;gap:8px}.intelligence-ticker{font-size:20px;font-weight:760}.intelligence-state{padding:4px 7px;border:1px solid var(--core-line);border-radius:999px;color:#85909b;font-size:9px;text-transform:uppercase}.intelligence-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.intelligence-metrics div{padding:10px;border-radius:11px;background:rgba(255,255,255,.025)}.intelligence-metrics span{display:block;color:#6e7a86;font-size:9px;text-transform:uppercase}.intelligence-metrics strong{display:block;margin-top:4px;font-size:12px}.intelligence-evidence{display:grid;gap:8px;color:#a2acb6;font-size:11px;line-height:1.5}.intelligence-evidence p{margin:0}.intelligence-risk{display:flex;align-items:flex-start;gap:6px}.intelligence-open{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 0;border:0;border-top:1px solid var(--core-line);background:transparent;color:#d8e0e8;cursor:pointer}.intelligence-empty{padding:50px 24px;text-align:center;border:1px dashed var(--core-line);border-radius:18px;color:#7f8b96}.intelligence-provenance{padding:14px 16px;border:1px solid var(--core-line);border-radius:14px;color:#86919c}.intelligence-provenance p{line-height:1.55}.intelligence-provenance small{color:#65717d}@media(max-width:720px){.intelligence-hero{align-items:flex-start;flex-direction:column}.intelligence-refresh{width:100%}}
 .intelligence-card.selected{border-color:rgba(106,151,255,.5);box-shadow:0 0 0 1px rgba(106,151,255,.12),0 18px 40px rgba(0,0,0,.18)}.intelligence-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--core-line);padding-top:10px}.intelligence-select,.intelligence-open{display:flex;align-items:center;justify-content:center;gap:6px;min-height:36px;border-radius:9px;cursor:pointer}.intelligence-select{border:1px solid var(--core-line);background:rgba(255,255,255,.025);color:#9ba7b3}.intelligence-open{border:0;background:transparent;color:#d8e0e8}.intelligence-module{display:grid;gap:15px;padding:20px;border:1px solid var(--core-line);border-radius:18px;background:linear-gradient(180deg,rgba(15,22,31,.96),rgba(9,13,19,.98))}.intelligence-module-empty{text-align:center;color:#76828d}.intelligence-module-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.intelligence-module-header h2{margin:3px 0 5px}.intelligence-module-header p{margin:0;color:#7e8994;font-size:11px}.intelligence-selected-chip{padding:6px 9px;border:1px solid rgba(106,151,255,.32);border-radius:999px;color:#b9cbff;background:rgba(78,115,214,.09);font-size:10px;font-weight:700}.sizing-form{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.sizing-form label{display:grid;gap:5px;color:#78838e;font-size:9px;text-transform:uppercase}.sizing-form input{min-width:0;padding:9px 10px;border:1px solid var(--core-line);border-radius:9px;background:#0b1118;color:#dbe2e9;font:inherit;font-size:11px}.sizing-submit{align-self:end;min-height:35px}.sizing-evidence-strip{display:flex;flex-wrap:wrap;gap:8px}.sizing-evidence-strip span{padding:7px 9px;border-radius:9px;background:rgba(255,255,255,.025);color:#77838f;font-size:9px}.sizing-evidence-strip strong{color:#b9c3cd}.sizing-result{display:grid;gap:13px}.sizing-result-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.sizing-result-grid>div{padding:12px;border-radius:11px;background:rgba(255,255,255,.028)}.sizing-result-grid span,.sizing-result-grid small{display:block;color:#6d7984;font-size:8px;text-transform:uppercase}.sizing-result-grid strong{display:block;margin:5px 0 3px;font-size:13px}.sizing-explanation{display:flex;gap:10px;padding:12px;border:1px solid var(--core-line);border-radius:11px;color:#8e9aa5;font-size:10px}.sizing-explanation strong{color:#c3ccd5}.sizing-explanation ul{margin:7px 0;padding-left:17px}.sizing-explanation p{margin:7px 0 0}.sizing-semantics{margin:0;color:#68747f;font-size:9px;line-height:1.5}@media(max-width:1050px){.sizing-form{grid-template-columns:repeat(3,minmax(0,1fr))}.sizing-result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){.sizing-form{grid-template-columns:1fr 1fr}.intelligence-card-actions{grid-template-columns:1fr}.sizing-result-grid{grid-template-columns:1fr}.intelligence-module-header{flex-direction:column}}.ticker-intelligence-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.intelligence-module-header h2{display:flex;align-items:center;gap:7px}.personality-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.personality-metrics>div{padding:11px;border-radius:10px;background:rgba(255,255,255,.026)}.personality-metrics span,.personality-metrics small{display:block;color:#697581;font-size:8px;text-transform:uppercase}.personality-metrics strong{display:block;margin:5px 0 3px;font-size:12px}.personality-horizons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.personality-horizons span{padding:9px;border:1px solid var(--core-line);border-radius:9px;color:#798590;font-size:9px}.personality-horizons strong{display:block;margin-top:4px;color:#bcc6d0}.personality-lessons{margin:0;padding-left:18px;color:#8b97a2;font-size:10px;line-height:1.55}.unsupported-metrics{display:grid;gap:5px;margin-top:9px;color:#6f7a85;font-size:9px;text-transform:capitalize}.ticker-memory-list{display:grid;gap:8px;max-height:520px;overflow:auto}.ticker-memory-list article{padding:11px;border-left:2px solid rgba(106,151,255,.32);background:rgba(255,255,255,.02);border-radius:0 9px 9px 0}.ticker-memory-list strong{display:block;margin:5px 0;color:#c4cdd6;font-size:11px}.ticker-memory-list p{margin:0;color:#7e8994;font-size:9px;line-height:1.45;overflow-wrap:anywhere}.ticker-memory-list small{display:block;margin-top:7px;color:#5f6b76;font-size:7px;letter-spacing:.4px}.ticker-memory-meta{display:flex;justify-content:space-between;gap:8px;color:#66727d;font-size:8px;text-transform:uppercase}.ticker-memory-meta time{text-transform:none}@media(max-width:980px){.ticker-intelligence-grid{grid-template-columns:1fr}}@media(max-width:600px){.personality-metrics,.personality-horizons{grid-template-columns:1fr}}.relationship-nodes{display:flex;flex-wrap:wrap;gap:8px}.relationship-node{display:grid;gap:2px;padding:9px 11px;border:1px solid var(--core-line);border-radius:12px;background:rgba(255,255,255,.025)}.relationship-node b{font-size:11px}.relationship-node small{color:#65717c;font-size:7px;text-transform:uppercase}.relationship-node.ticker{border-color:rgba(106,151,255,.42)}.relationship-edges{display:grid;gap:6px}.relationship-edges>div{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:8px 9px;border-radius:8px;background:rgba(255,255,255,.02);font-size:9px}.relationship-edges strong{color:#aeb9c3}.relationship-edges small{color:#626e79}.earnings-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.earnings-summary>div{padding:11px;border-radius:10px;background:rgba(255,255,255,.026)}.earnings-summary span,.earnings-summary small{display:block;color:#697581;font-size:8px;text-transform:uppercase}.earnings-summary strong{display:block;margin:5px 0 3px;font-size:11px;overflow-wrap:anywhere}.earnings-expectations{display:grid;gap:5px;padding:10px;border:1px solid var(--core-line);border-radius:10px;color:#7d8994;font-size:9px}.earnings-expectations>strong{color:#bcc6cf}.earnings-scenarios{display:grid;gap:7px}.earnings-scenarios>div{display:grid;grid-template-columns:50px 1fr;gap:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.02);font-size:9px}.earnings-scenarios b{text-transform:uppercase;color:#abb6c0}.earnings-scenarios span{color:#78848f;line-height:1.45}.earnings-reactions{display:grid;gap:5px;margin-top:8px}.earnings-reactions span{font-size:9px;color:#77838e}@media(max-width:650px){.earnings-summary{grid-template-columns:1fr}.relationship-edges>div{grid-template-columns:1fr}}
+
+/* Orion Intelligence cockpit refresh */
+.intelligence-cockpit{gap:14px}
+.intelligence-cockpit .intelligence-hero{align-items:center;padding:24px 26px;background:radial-gradient(circle at 72% 0%,rgba(64,102,190,.14),transparent 38%),linear-gradient(145deg,rgba(14,21,31,.98),rgba(8,12,18,.99));box-shadow:inset 0 1px rgba(255,255,255,.02)}
+.intelligence-cockpit .intelligence-hero h1{font-size:clamp(30px,3vw,42px);letter-spacing:-1.1px}
+.intelligence-hero-actions{display:flex;align-items:center;gap:10px}
+.intelligence-session-state{display:flex;align-items:center;gap:9px;min-width:185px;padding:9px 12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(7,12,19,.46)}
+.intelligence-session-dot{width:8px;height:8px;border-radius:999px;background:#ff812f;box-shadow:0 0 16px rgba(255,129,47,.62)}
+.intelligence-session-state div{display:grid;gap:2px}
+.intelligence-session-state strong{font-size:9px;letter-spacing:.7px;color:#dce4ec}
+.intelligence-session-state small{font-size:8px;color:#697682;text-transform:uppercase}
+
+.intelligence-briefing-section,.intelligence-secondary-section{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;align-items:start}
+.intelligence-section-label{display:flex;align-items:flex-start;gap:8px;padding:9px 4px;color:#ff8b3d}
+.intelligence-section-label div{display:grid;gap:3px}
+.intelligence-section-label strong{font-size:10px;letter-spacing:.65px}
+.intelligence-section-label small{max-width:130px;color:#65727e;font-size:8px;line-height:1.45}
+.intelligence-section-label.compact{padding-top:12px}
+
+.intelligence-priority-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.intelligence-priority-card{display:grid;gap:11px;min-width:0;padding:15px;border:1px solid rgba(255,255,255,.075);border-radius:14px;background:linear-gradient(180deg,rgba(16,24,35,.97),rgba(9,14,21,.99));transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.intelligence-priority-card:hover{border-color:rgba(255,255,255,.13);transform:translateY(-1px)}
+.intelligence-priority-card.selected{border-color:rgba(255,128,38,.92);box-shadow:0 0 0 1px rgba(255,128,38,.14),0 0 28px rgba(255,105,20,.12),0 16px 36px rgba(0,0,0,.2)}
+.intelligence-priority-card header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.intelligence-priority-identity{display:flex;align-items:center;gap:7px;min-width:0}
+.intelligence-priority-identity>strong{font-size:18px;letter-spacing:-.3px}
+.intelligence-priority-identity>span{padding:3px 6px;border:1px solid rgba(255,255,255,.07);border-radius:999px;color:#64717d;font-size:7px;text-transform:uppercase;white-space:nowrap}
+.intelligence-direction{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;text-transform:uppercase;white-space:nowrap}
+.intelligence-direction::before{content:"";width:6px;height:6px;border-radius:99px;background:#69747f}
+.intelligence-direction.bullish{color:#52d7ad}.intelligence-direction.bullish::before{background:#35d7a1;box-shadow:0 0 9px rgba(53,215,161,.32)}
+.intelligence-direction.bearish{color:#ff756a}.intelligence-direction.bearish::before{background:#ff655b;box-shadow:0 0 9px rgba(255,101,91,.28)}
+.intelligence-direction.neutral{color:#82909c}
+
+.intelligence-priority-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.intelligence-priority-metrics>div{min-width:0;padding:8px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.025)}
+.intelligence-priority-metrics span{display:block;color:#5f6c78;font-size:7px;text-transform:uppercase;letter-spacing:.2px}
+.intelligence-priority-metrics strong{display:block;margin-top:4px;color:#d4dde5;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.intelligence-priority-story{display:grid;grid-template-columns:1.15fr .85fr;gap:11px;padding-top:3px}
+.intelligence-priority-story>div+div{padding-left:11px;border-left:1px solid rgba(255,255,255,.06)}
+.intelligence-priority-story b{display:flex;align-items:center;gap:5px;color:#69a7ff;font-size:8px}
+.intelligence-priority-story>div+div b{color:#f29a58}
+.intelligence-priority-story p{margin:4px 0 0;color:#798691;font-size:8px;line-height:1.45}
+.intelligence-priority-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:9px;border-top:1px solid rgba(255,255,255,.055)}
+.intelligence-priority-actions button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:31px;border-radius:8px;border:1px solid rgba(255,255,255,.065);background:rgba(255,255,255,.018);color:#aeb9c3;font:inherit;font-size:8px;cursor:pointer}
+.intelligence-priority-actions button:last-child{border-color:transparent;background:transparent;color:#d7e0e7}
+.intelligence-priority-card.selected .intelligence-priority-actions button:first-child{border-color:rgba(255,128,38,.25);color:#ffc08f;background:rgba(255,128,38,.06)}
+
+.intelligence-secondary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.intelligence-compact-candidate{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"symbol direction" "setup liquidity";gap:5px 8px;align-items:center;min-width:0;padding:10px 11px;border:1px solid rgba(255,255,255,.065);border-radius:11px;background:linear-gradient(180deg,rgba(15,22,31,.94),rgba(10,15,22,.98));color:#7f8b96;text-align:left;cursor:pointer}
+.intelligence-compact-candidate:hover,.intelligence-compact-candidate.selected{border-color:rgba(255,128,38,.38)}
+.intelligence-compact-candidate>svg{display:none}
+.intelligence-compact-symbol{grid-area:symbol;display:flex;align-items:center;gap:6px;min-width:0}
+.intelligence-compact-symbol strong{color:#d6dee6;font-size:13px}
+.intelligence-compact-symbol small{padding:2px 5px;border:1px solid rgba(255,255,255,.055);border-radius:999px;color:#57636f;font-size:6px;text-transform:uppercase}
+.intelligence-compact-candidate>.intelligence-direction{grid-area:direction;justify-self:end;font-size:7px}
+.intelligence-compact-candidate>span:nth-of-type(3){grid-area:setup}
+.intelligence-compact-candidate>span:nth-of-type(4){grid-area:liquidity}
+.intelligence-compact-candidate>span:nth-of-type(3),.intelligence-compact-candidate>span:nth-of-type(4){font-size:7px}
+.intelligence-compact-candidate b{color:#b8c2cc}
+
+.intelligence-selected-context{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:9px 12px;border:1px solid rgba(255,128,38,.35);border-radius:11px;background:linear-gradient(90deg,rgba(255,128,38,.06),rgba(17,25,36,.5) 32%,rgba(9,14,20,.75));box-shadow:inset 0 1px rgba(255,255,255,.02)}
+.intelligence-selected-title{display:flex;align-items:center;gap:8px}
+.intelligence-selected-title>span{display:grid;place-items:center;width:20px;height:20px;border:1px solid rgba(119,161,255,.45);border-radius:99px;color:#b8ccff;font-size:10px}
+.intelligence-selected-title strong{font-size:16px}
+.intelligence-selected-title small{color:#8995a0;font-size:9px}
+.intelligence-selected-facts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.intelligence-selected-facts>span:not(.intelligence-direction){padding:6px 8px;border:1px solid rgba(255,255,255,.055);border-radius:8px;color:#66737f;font-size:8px}
+.intelligence-selected-facts b{color:#c1cbd4}
+
+.intelligence-workspace{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(310px,.85fr);gap:12px;align-items:start}
+.intelligence-workspace-main{display:grid;gap:12px;min-width:0}
+.intelligence-workspace-risk{position:sticky;top:14px;min-width:0}
+.intelligence-workspace-risk .intelligence-module{border-color:rgba(255,255,255,.075);background:linear-gradient(180deg,rgba(16,24,35,.98),rgba(9,14,20,.99))}
+.intelligence-workspace-risk .sizing-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+.intelligence-workspace-risk .sizing-submit{grid-column:1/-1}
+.intelligence-workspace-risk .sizing-result-grid{grid-template-columns:1fr 1fr}
+.intelligence-workspace-main .ticker-intelligence-grid{grid-template-columns:1fr 1fr}
+.intelligence-workspace-main .intelligence-module{padding:17px;border-radius:14px}
+.intelligence-workspace-main .intelligence-module-header h2{font-size:16px}
+.intelligence-workspace-main .intelligence-module-header p{font-size:9px}
+.intelligence-workspace-main .personality-metrics>div,.intelligence-workspace-main .earnings-summary>div{background:rgba(255,255,255,.02)}
+.intelligence-provenance{margin-top:1px;background:rgba(255,255,255,.012)}
+
+@media(max-width:1280px){
+  .intelligence-priority-grid{grid-template-columns:1fr 1fr}
+  .intelligence-secondary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .intelligence-workspace{grid-template-columns:1fr}
+  .intelligence-workspace-risk{position:static}
+}
+@media(max-width:900px){
+  .intelligence-briefing-section,.intelligence-secondary-section{grid-template-columns:1fr}
+  .intelligence-section-label small{max-width:none}
+  .intelligence-priority-grid{grid-template-columns:1fr}
+  .intelligence-secondary-grid{grid-template-columns:1fr 1fr}
+  .intelligence-selected-context{align-items:flex-start;flex-direction:column}
+  .intelligence-selected-facts{justify-content:flex-start}
+  .intelligence-workspace-main .ticker-intelligence-grid{grid-template-columns:1fr}
+}
+@media(max-width:650px){
+  .intelligence-hero-actions{width:100%;align-items:stretch;flex-direction:column}
+  .intelligence-session-state{min-width:0}
+  .intelligence-secondary-grid{grid-template-columns:1fr}
+  .intelligence-priority-metrics{grid-template-columns:1fr 1fr}
+  .intelligence-priority-story{grid-template-columns:1fr}
+  .intelligence-priority-story>div+div{padding-left:0;padding-top:8px;border-left:0;border-top:1px solid rgba(255,255,255,.06)}
+  .intelligence-workspace-risk .sizing-form{grid-template-columns:1fr}
+  .intelligence-workspace-risk .sizing-result-grid{grid-template-columns:1fr}
+}
