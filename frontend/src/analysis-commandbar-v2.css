@@ -207,99 +207,14 @@
 }
 
 
-/* Image-backed HUD shell for the Analysis command bar.
-   Uses the user-provided frame asset while keeping all controls interactive. */
-.analyze-view .analyze-commandbar {
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-  min-height: 104px;
-  padding: 18px 28px 18px 34px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
+/* Minimal image-assisted HUD shell.
+   The uploaded PNG is cropped into side accents instead of stretched across the full bar. */
 
-.analyze-view .analyze-commandbar::before {
-  content: "";
-  position: absolute;
-  inset: -12px -18px;
-  z-index: -1;
-  pointer-events: none;
-  background: url("./assets/analysis-search-frame.png") center / 100% 100% no-repeat;
-  filter: drop-shadow(0 16px 30px rgba(0,0,0,.28));
-}
-
-.analyze-view .analyze-commandbar::after {
-  content: "";
-  position: absolute;
-  inset: 12px 18px;
-  z-index: -2;
-  pointer-events: none;
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 18% 50%, rgba(255,122,26,.07), transparent 30%),
-    linear-gradient(180deg, rgba(17,20,24,.92), rgba(6,8,12,.96));
-}
-
-.analyze-view .analyze-command-label {
-  padding-left: 2px;
-}
-
-.analyze-view .analyze-command-field {
-  border-color: rgba(255, 139, 55, .42);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.018), rgba(255,255,255,.004)),
-    rgba(6, 9, 13, .9);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.025),
-    0 0 0 1px rgba(255,122,26,.025);
-}
-
-.analyze-view .analyze-commandbar:focus-within .analyze-command-field {
-  border-color: rgba(255, 145, 62, .74);
-  box-shadow:
-    0 0 0 1px rgba(255,122,26,.08),
-    0 0 30px rgba(255,122,26,.1);
-}
-
-@media (max-width: 900px) {
-  .analyze-view .analyze-commandbar {
-    padding: 24px 22px 22px;
-  }
-
-  .analyze-view .analyze-commandbar::before {
-    inset: -8px -10px;
-    background-size: 110% 100%;
-  }
-}
-
-@media (max-width: 620px) {
-  .analyze-view .analyze-commandbar {
-    padding: 22px 18px 20px;
-  }
-
-  .analyze-view .analyze-commandbar::before {
-    inset: -6px;
-    background-size: 150% 100%;
-  }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .analyze-view .analyze-commandbar::after {
-    background: #070a0e;
-  }
-}
-
-
-/* Corrected HUD composition: neutralize the legacy wrapper and preserve
-   the uploaded frame's corners/sides with 9-slice border rendering. */
 .analyze-view > .core-search-wrap.analyze-command-wrap {
   position: relative;
   z-index: 4;
   margin: 10px 0 14px;
-  padding: 0;
+  padding: 0 8px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -308,80 +223,110 @@
 
 .analyze-view > .core-search-wrap.analyze-command-wrap::before,
 .analyze-view > .core-search-wrap.analyze-command-wrap::after {
-  display: none !important;
-  content: none !important;
+  content: "";
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 96px;
+  z-index: 1;
+  pointer-events: none;
+  background-image: url("./assets/analysis-search-frame.png");
+  background-repeat: no-repeat;
+  background-size: auto 100%;
+  opacity: .86;
+  filter: drop-shadow(0 0 12px rgba(255,122,26,.16));
+}
+
+.analyze-view > .core-search-wrap.analyze-command-wrap::before {
+  left: -2px;
+  background-position: left center;
+}
+
+.analyze-view > .core-search-wrap.analyze-command-wrap::after {
+  right: -2px;
+  background-position: right center;
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar {
+  position: relative;
+  z-index: 2;
   margin-left: 0 !important;
-  min-height: 86px;
-  padding: 12px 18px;
-  border: 0 !important;
-  border-radius: 16px;
+  min-height: 80px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 139, 55, .2) !important;
+  border-radius: 15px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.015), rgba(255,255,255,.003)),
-    rgba(7, 10, 14, .95);
+    linear-gradient(180deg, rgba(255,255,255,.018), rgba(255,255,255,.004)),
+    rgba(6, 9, 13, .96);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.025),
-    0 14px 34px rgba(0,0,0,.18);
+    inset 0 1px 0 rgba(255,255,255,.026),
+    inset 0 0 0 1px rgba(255,122,26,.018),
+    0 14px 32px rgba(0,0,0,.2);
 }
 
-.analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar::before {
-  content: "";
-  display: block;
-  position: absolute;
-  inset: -10px -12px;
-  z-index: -1;
-  pointer-events: none;
-  border: 20px solid transparent;
-  border-image-source: url("./assets/analysis-search-frame.png");
-  border-image-slice: 31% 9% 31% 9% fill;
-  border-image-width: 20px 30px;
-  border-image-repeat: stretch;
-  background: none;
-  filter: drop-shadow(0 12px 24px rgba(0,0,0,.32));
-}
-
+.analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar::before,
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar::after {
   display: none !important;
   content: none !important;
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-label {
-  padding: 0 8px 0 2px;
+  padding: 0 10px 0 4px;
+  color: #ff9340;
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-field {
-  border-color: rgba(255, 139, 55, .34);
+  border-color: rgba(255,255,255,.08);
+  border-radius: 12px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.014), rgba(255,255,255,.002)),
-    rgba(7, 10, 14, .94);
+    radial-gradient(circle at 8% 50%, rgba(255,122,26,.03), transparent 26%),
+    rgba(8, 11, 15, .96);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
+}
+
+.analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar:focus-within .analyze-command-field {
+  border-color: rgba(255, 139, 55, .5);
+  box-shadow:
+    0 0 0 1px rgba(255,122,26,.055),
+    0 0 24px rgba(255,122,26,.07);
+}
+
+.analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-submit {
+  min-width: 126px;
+  border-radius: 10px;
+  box-shadow: 0 0 18px rgba(255,122,26,.08);
 }
 
 @media (max-width: 900px) {
-  .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar {
-    padding: 14px;
-  }
-
-  .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar::before {
-    inset: -8px;
-    border-width: 16px;
-    border-image-width: 16px 22px;
-  }
-}
-
-@media (max-width: 620px) {
   .analyze-view > .core-search-wrap.analyze-command-wrap {
-    margin-top: 8px;
+    padding-inline: 4px;
+  }
+
+  .analyze-view > .core-search-wrap.analyze-command-wrap::before,
+  .analyze-view > .core-search-wrap.analyze-command-wrap::after {
+    width: 68px;
+    opacity: .72;
   }
 
   .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar {
     padding: 12px;
   }
+}
 
-  .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar::before {
-    inset: -6px;
-    border-width: 14px;
-    border-image-width: 14px 18px;
+@media (max-width: 620px) {
+  .analyze-view > .core-search-wrap.analyze-command-wrap::before,
+  .analyze-view > .core-search-wrap.analyze-command-wrap::after {
+    display: none;
+  }
+
+  .analyze-view > .core-search-wrap.analyze-command-wrap {
+    padding: 0;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar,
+  .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-field {
+    background: #070a0e;
   }
 }
