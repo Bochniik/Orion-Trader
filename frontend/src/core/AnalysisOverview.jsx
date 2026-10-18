@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import { AlertTriangle, BarChart3, Building2, Check, Info, ShieldAlert, Sparkles } from "lucide-react";
+import { getQuote } from "../api/api";
+import StockLogo from "../components/StockLogo";
 import "../analysis-snapshot-premium.css";
 
 function finite(value) {
@@ -95,6 +98,10 @@ export function analysisMetrics(analysis) {
       snapshot?.logo_url,
       snapshot?.company_logo,
       snapshot?.logo,
+      analysis?.icon_url,
+      analysis?.icon,
+      snapshot?.icon_url,
+      snapshot?.icon,
     ),
     price: finite(firstValue(analysis?.price, analysis?.reference_price, snapshot?.price)),
     orionScore: boundedScore(firstValue(analysis?.orion_score, snapshot?.orion_score)),
@@ -136,6 +143,25 @@ function ProbabilityMeter({ value, tone, label }) {
   );
 }
 
+function SnapshotStockLogo({ ticker, name, src }) {
+  const [failedSource, setFailedSource] = useState("");
+  const source = String(src || "").trim();
+  const showDirect = Boolean(source) && failedSource !== source;
+
+  return showDirect ? (
+    <img
+      className="analysis-stock-logo"
+      src={source}
+      alt=""
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailedSource(source)}
+    />
+  ) : (
+    <StockLogo ticker={ticker} name={name} size="100%" />
+  );
+}
+
 export default function AnalysisOverview({ analysis }) {
   const metric = analysisMetrics(analysis);
   const direction = displayText(analysis?.decision || analysis?.direction || "WAIT").toUpperCase();
@@ -146,6 +172,31 @@ export default function AnalysisOverview({ analysis }) {
   const manipulationLabel = metric.manipulation === null
     ? "UNAVAILABLE"
     : metric.manipulation < 33 ? "LOW" : metric.manipulation < 66 ? "MEDIUM" : "HIGH";
+  const [quoteLogoUrl, setQuoteLogoUrl] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    setQuoteLogoUrl("");
+    if (!metric.ticker || metric.logoUrl) return () => { active = false; };
+
+    getQuote(metric.ticker)
+      .then((quote) => {
+        if (!active) return;
+        const logo = firstValue(
+          quote?.logo_url,
+          quote?.company_logo,
+          quote?.logo,
+          quote?.icon_url,
+          quote?.icon,
+        );
+        if (logo) setQuoteLogoUrl(String(logo));
+      })
+      .catch(() => {});
+
+    return () => { active = false; };
+  }, [metric.ticker, metric.logoUrl]);
+
+  const resolvedLogoUrl = metric.logoUrl || quoteLogoUrl;
 
   function focusPriceAction() {
     document.getElementById("analysis-price-action")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -164,12 +215,12 @@ export default function AnalysisOverview({ analysis }) {
             </div>
 
             <div className="analysis-stock-primary">
-              <div className="analysis-stock-logo-shell" aria-hidden={!metric.logoUrl}>
-                {metric.logoUrl ? (
-                  <img className="analysis-stock-logo" src={metric.logoUrl} alt={`${metric.ticker} logo`} />
-                ) : (
-                  <span className="analysis-stock-monogram">{metric.ticker?.slice(0, 2) || "ST"}</span>
-                )}
+              <div className="analysis-stock-logo-shell" aria-hidden="true">
+                <SnapshotStockLogo
+                  ticker={metric.ticker}
+                  name={metric.companyName || ""}
+                  src={resolvedLogoUrl}
+                />
               </div>
 
               <div className="analysis-stock-copy">
