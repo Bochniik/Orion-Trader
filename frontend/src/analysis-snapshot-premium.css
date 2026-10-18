@@ -1155,3 +1155,75 @@
     padding: 7px 12px;
   }
 }
+
+
+/* Manipulation Risk rail v2: fit all content inside the snapshot card.
+   Keep label and status on the first row, full-width risk track on the second,
+   and explanatory note on the third. */
+.analysis-overview-premium .analysis-risk-metric {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas:
+    "label badge"
+    "track track"
+    "note note" !important;
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 10px;
+  min-width: 0 !important;
+  padding: 14px 18px !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+
+.analysis-overview-premium .analysis-risk-metric::after {
+  display: none !important;
+  content: none !important;
+}
+
+.analysis-overview-premium .analysis-risk-metric > small {
+  grid-area: label;
+  min-width: 0;
+  margin: 0;
+}
+
+.analysis-overview-premium .analysis-risk-track {
+  grid-area: track;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.analysis-overview-premium .analysis-risk-metric > strong {
+  grid-area: badge;
+  justify-self: end;
+  align-self: center;
+  width: max-content;
+  min-width: 0 !important;
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 7px 12px;
+  box-sizing: border-box;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.analysis-overview-premium .analysis-risk-metric > span {
+  grid-area: note;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 540px) {
+  .analysis-overview-premium .analysis-risk-metric {
+    column-gap: 10px;
+    padding: 13px 14px !important;
+  }
+
+  .analysis-overview-premium .analysis-risk-metric > strong {
+    padding: 6px 10px;
+    font-size: .69rem;
+  }
+}
