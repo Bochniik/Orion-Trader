@@ -282,3 +282,215 @@
     font-size: .62rem;
   }
 }
+
+
+/* Refined running-analysis panel.
+   Uses an indeterminate activity rail: it signals work in progress without
+   inventing a backend completion percentage. */
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(230px, 320px) minmax(360px, 1fr) auto;
+  grid-template-areas:
+    "identity progress action"
+    "identity meta action";
+  align-items: center;
+  column-gap: 24px;
+  row-gap: 4px;
+  min-height: 112px;
+  margin: 0 0 16px;
+  padding: 18px 20px 18px 48px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 145, 63, .14);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 10% 50%, rgba(255, 122, 26, .075), transparent 24rem),
+    linear-gradient(180deg, rgba(255,255,255,.018), rgba(255,255,255,.004)),
+    rgba(6, 9, 13, .96);
+  box-shadow:
+    inset 2px 0 0 rgba(255, 137, 49, .7),
+    inset 0 1px 0 rgba(255,255,255,.024),
+    0 16px 38px rgba(0,0,0,.2);
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  margin: 0;
+  background: linear-gradient(180deg, #ff9447, rgba(255,122,26,.18) 70%, transparent);
+  box-shadow: 0 0 18px rgba(255,122,26,.24);
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running::after {
+  display: none;
+  content: none;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running .core-loading-dot {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #ff9138;
+  box-shadow:
+    0 0 0 5px rgba(255,122,26,.07),
+    0 0 18px rgba(255,122,26,.42);
+  animation: analysis-research-pulse 1.3s ease-in-out infinite;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running h2 {
+  grid-area: identity;
+  align-self: center;
+  max-width: none;
+  margin: 0;
+  color: rgba(249,250,252,.96);
+  font-size: clamp(.94rem, 1.15vw, 1.08rem);
+  font-weight: 760;
+  letter-spacing: -.015em;
+  line-height: 1.2;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running h2::before {
+  content: "ORION RESEARCH";
+  display: block;
+  margin-bottom: 7px;
+  color: rgba(255, 151, 78, .62);
+  font-size: .5rem;
+  font-weight: 850;
+  letter-spacing: .14em;
+  line-height: 1;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running p {
+  max-width: none;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running p:not(.core-muted) {
+  grid-area: progress;
+  position: relative;
+  margin: 0;
+  padding: 18px 0 14px;
+  color: rgba(232,235,240,.78);
+  font-size: .78rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running p:not(.core-muted)::before {
+  content: "CURRENT STEP";
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: rgba(181,189,201,.38);
+  font-size: .49rem;
+  font-weight: 850;
+  letter-spacing: .13em;
+  line-height: 1;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running p:not(.core-muted)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg,
+      rgba(255,122,26,.12) 0%,
+      rgba(255,145,62,.7) 28%,
+      rgba(255,179,104,.95) 42%,
+      rgba(255,122,26,.12) 58%,
+      rgba(255,122,26,.12) 100%);
+  background-size: 220% 100%;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.018);
+  animation: analysis-research-sweep 1.6s linear infinite;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running .core-muted {
+  grid-area: meta;
+  margin: 0;
+  color: rgba(177,185,198,.46);
+  font-size: .67rem;
+  line-height: 1.35;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running .core-button {
+  grid-area: action;
+  align-self: center;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 9px;
+  color: rgba(222,226,232,.72);
+  background: rgba(255,255,255,.018);
+  box-shadow: none;
+  font-size: .68rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running .core-button:hover {
+  border-color: rgba(255,145,63,.24);
+  color: rgba(246,248,250,.9);
+  background: rgba(255,122,26,.045);
+  box-shadow: 0 0 18px rgba(255,122,26,.05);
+}
+
+@keyframes analysis-research-sweep {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+
+@keyframes analysis-research-pulse {
+  0%, 100% { opacity: .58; transform: scale(.82); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 900px) {
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running {
+    grid-template-columns: minmax(190px, .8fr) minmax(260px, 1.2fr);
+    grid-template-areas:
+      "identity progress"
+      "meta action";
+    column-gap: 18px;
+    padding-right: 16px;
+  }
+
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running .core-button {
+    justify-self: end;
+  }
+}
+
+@media (max-width: 640px) {
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "identity"
+      "progress"
+      "meta"
+      "action";
+    gap: 8px;
+    padding: 18px 16px 16px 44px;
+  }
+
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running .core-button {
+    justify-self: start;
+    margin-top: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running .core-loading-dot,
+  .analyze-view > .analyze-horizon-selector:has(.analyze-sticky-context) + .analysis-request-running p:not(.core-muted)::after {
+    animation: none;
+  }
+}
