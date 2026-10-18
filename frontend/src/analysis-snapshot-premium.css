@@ -387,3 +387,332 @@
   .analysis-overview-premium { grid-template-columns: 1fr !important; }
   .analysis-overview-premium .analysis-company { grid-column: 1 !important; }
 }
+
+
+/* Decision Snapshot v2 — reorganize the existing evidence into a two-row cockpit.
+   Presentation only; all values still come from AnalysisOverview/backend evidence. */
+.analysis-overview-premium {
+  grid-template-columns: repeat(14, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(2, minmax(112px, auto)) !important;
+  gap: 10px;
+  min-height: 244px;
+  padding: 10px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 9% 42%, rgba(255, 116, 22, .085), transparent 27%),
+    linear-gradient(180deg, rgba(255,255,255,.018), rgba(255,255,255,.004)),
+    #06090d !important;
+}
+
+.analysis-overview-premium::after {
+  content: "" !important;
+  inset: 0 !important;
+  background:
+    linear-gradient(90deg, rgba(3,6,10,.94) 0%, rgba(3,6,10,.72) 36%, rgba(3,6,10,.38) 62%, rgba(3,6,10,.86) 100%),
+    url("./assets/orion-hero-planet.webp") -4% 138% / 300px auto no-repeat !important;
+  opacity: .14 !important;
+}
+
+.analysis-overview-premium > .analysis-company,
+.analysis-overview-premium > .analysis-session,
+.analysis-overview-premium > .analysis-score-block,
+.analysis-overview-premium > .analysis-metric,
+.analysis-overview-premium > .analysis-risk-metric {
+  grid-row: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 14px 15px;
+  border: 1px solid rgba(255,255,255,.06) !important;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.014), rgba(255,255,255,.003)),
+    rgba(7,10,14,.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.018),
+    0 10px 24px rgba(0,0,0,.12);
+}
+
+.analysis-overview-premium > .analysis-company {
+  grid-column: 1 / 5 !important;
+  grid-row: 1 / 3 !important;
+  padding: 17px 18px;
+  border-color: rgba(255,144,58,.14) !important;
+  background:
+    radial-gradient(circle at 3% 50%, rgba(255,122,26,.12), transparent 48%),
+    linear-gradient(145deg, rgba(255,255,255,.025), transparent 48%),
+    rgba(7,10,14,.82);
+}
+
+.analysis-overview-premium > .analysis-session {
+  grid-column: 5 / 7 !important;
+  grid-row: 1 !important;
+}
+
+.analysis-overview-premium > .analysis-score-block {
+  grid-column: 5 / 7 !important;
+  grid-row: 2 !important;
+  border-inline: 1px solid rgba(255,255,255,.06) !important;
+}
+
+.analysis-overview-premium > .adjusted-score {
+  grid-column: 7 / 9 !important;
+  grid-row: 1 / 3 !important;
+}
+
+.analysis-overview-premium > .probability-up {
+  grid-column: 9 / 12 !important;
+  grid-row: 1 !important;
+}
+
+.analysis-overview-premium > .probability-down {
+  grid-column: 12 / 15 !important;
+  grid-row: 1 !important;
+}
+
+.analysis-overview-premium > .analysis-risk-metric {
+  grid-column: 9 / 15 !important;
+  grid-row: 2 !important;
+}
+
+.analysis-overview-premium .analysis-company .core-eyebrow::before,
+.analysis-overview-premium .analysis-company .core-eyebrow::after {
+  display: none !important;
+  content: none !important;
+}
+
+.analysis-overview-premium .analysis-company .core-eyebrow {
+  margin-bottom: 14px;
+}
+
+.analysis-overview-premium .analysis-step-badge {
+  min-width: 26px;
+  height: 22px;
+}
+
+.analysis-overview-premium .analysis-stock-identity {
+  padding: 15px 16px;
+  border-radius: 14px;
+}
+
+.analysis-overview-premium .analysis-stock-primary {
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 15px;
+}
+
+.analysis-overview-premium .analysis-stock-logo-shell {
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+}
+
+.analysis-overview-premium .analysis-company h2 {
+  font-size: clamp(2.45rem, 3.4vw, 3.45rem);
+}
+
+.analysis-overview-premium .analysis-company-name {
+  margin-top: 9px !important;
+  font-size: .84rem !important;
+}
+
+.analysis-overview-premium .analysis-decision-pill {
+  min-width: 76px;
+  min-height: 30px;
+}
+
+.analysis-overview-premium .analysis-session {
+  justify-content: center;
+}
+
+.analysis-overview-premium .analysis-session strong {
+  margin-top: 8px;
+  font-size: .78rem;
+}
+
+.analysis-overview-premium .analysis-session > span {
+  margin-top: 7px;
+  font-size: 1.18rem;
+}
+
+.analysis-overview-premium .analysis-score-block {
+  justify-content: center;
+}
+
+.analysis-overview-premium .analysis-score-block::before,
+.analysis-overview-premium .analysis-score-block::after {
+  display: none !important;
+  content: none !important;
+}
+
+.analysis-overview-premium .analysis-score-ring {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 4px;
+}
+
+.analysis-overview-premium .analysis-score-ring strong {
+  font-size: 1.3rem;
+}
+
+.analysis-overview-premium .analysis-score-caption {
+  margin-top: 3px !important;
+  font-size: .57rem !important;
+}
+
+.analysis-overview-premium .adjusted-score {
+  justify-content: center;
+  text-align: left;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,122,26,.05), transparent 58%),
+    rgba(7,10,14,.74);
+}
+
+.analysis-overview-premium .adjusted-score small {
+  margin-bottom: 12px;
+}
+
+.analysis-overview-premium .adjusted-score strong {
+  margin-top: 0;
+  font-size: 2rem;
+  letter-spacing: -.035em;
+}
+
+.analysis-overview-premium .adjusted-score > span {
+  max-width: 130px;
+  margin-top: 8px;
+}
+
+.analysis-overview-premium .probability-up,
+.analysis-overview-premium .probability-down {
+  justify-content: center;
+}
+
+.analysis-overview-premium .probability-up small,
+.analysis-overview-premium .probability-down small {
+  margin-bottom: 2px;
+}
+
+.analysis-overview-premium .probability-up strong,
+.analysis-overview-premium .probability-down strong {
+  margin-top: 8px;
+  font-size: 1.7rem;
+}
+
+.analysis-overview-premium .analysis-probability-meter {
+  margin-top: 10px;
+}
+
+.analysis-overview-premium .analysis-probability-meter > span {
+  height: 6px;
+}
+
+.analysis-overview-premium .probability-up > span,
+.analysis-overview-premium .probability-down > span {
+  margin-top: 7px;
+}
+
+.analysis-overview-premium .analysis-risk-metric {
+  display: grid;
+  grid-template-columns: minmax(170px, .9fr) minmax(180px, 1.2fr) auto;
+  grid-template-areas:
+    "label track badge"
+    "note note note";
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 9px;
+  padding: 14px 16px;
+}
+
+.analysis-overview-premium .analysis-risk-metric > small {
+  grid-area: label;
+  margin: 0;
+}
+
+.analysis-overview-premium .analysis-risk-track {
+  grid-area: track;
+  width: 100%;
+  margin: 0;
+  height: 8px;
+}
+
+.analysis-overview-premium .analysis-risk-metric > strong {
+  grid-area: badge;
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.analysis-overview-premium .analysis-risk-metric > span {
+  grid-area: note;
+  margin: 0;
+  color: rgba(176,186,199,.46);
+  font-size: .61rem;
+}
+
+.analysis-overview-premium .analysis-card-index {
+  display: none !important;
+}
+
+@media (max-width: 1180px) {
+  .analysis-overview-premium {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: auto !important;
+    gap: 9px;
+  }
+
+  .analysis-overview-premium > .analysis-company,
+  .analysis-overview-premium > .analysis-session,
+  .analysis-overview-premium > .analysis-score-block,
+  .analysis-overview-premium > .analysis-metric,
+  .analysis-overview-premium > .analysis-risk-metric {
+    grid-column: auto !important;
+    grid-row: auto !important;
+    min-height: 144px !important;
+  }
+
+  .analysis-overview-premium > .analysis-company {
+    grid-column: 1 / -1 !important;
+    min-height: 176px !important;
+  }
+
+  .analysis-overview-premium > .analysis-risk-metric {
+    grid-column: 1 / -1 !important;
+    min-height: 118px !important;
+  }
+
+  .analysis-overview-premium .adjusted-score {
+    min-height: 144px !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .analysis-overview-premium {
+    grid-template-columns: 1fr !important;
+  }
+
+  .analysis-overview-premium > .analysis-company,
+  .analysis-overview-premium > .analysis-risk-metric {
+    grid-column: 1 !important;
+  }
+
+  .analysis-overview-premium .analysis-risk-metric {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label badge"
+      "track track"
+      "note note";
+  }
+
+  .analysis-overview-premium .analysis-stock-primary {
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+
+  .analysis-overview-premium .analysis-stock-logo-shell {
+    width: 58px;
+    height: 58px;
+  }
+
+  .analysis-overview-premium .analysis-company h2 {
+    font-size: 2.3rem;
+  }
+}
