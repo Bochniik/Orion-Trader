@@ -836,3 +836,85 @@
     font-size: 2.25rem;
   }
 }
+
+
+/* Stock identity repair: preserve the full ticker and use Orion's shared logo surface. */
+.analysis-overview-premium .analysis-stock-copy {
+  min-width: 0;
+  overflow: visible;
+}
+
+.analysis-overview-premium .analysis-symbol-row {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+.analysis-overview-premium .analysis-company h2 {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  font-size: clamp(2.15rem, 2.75vw, 2.95rem);
+}
+
+.analysis-overview-premium .analysis-decision-pill {
+  align-self: flex-start;
+  justify-self: start;
+  margin: 0 !important;
+}
+
+.analysis-overview-premium .analysis-stock-logo-shell .stock-logo {
+  display: grid;
+  width: 100% !important;
+  height: 100% !important;
+  place-items: center;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: inherit;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.analysis-overview-premium .analysis-stock-logo-shell .stock-logo img,
+.analysis-overview-premium .analysis-stock-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 9px;
+  object-fit: contain;
+}
+
+.analysis-overview-premium .analysis-stock-logo-shell .stock-logo-fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #ff9a45;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+@media (max-width: 1280px) {
+  .analysis-overview-premium .analysis-symbol-row {
+    gap: 7px;
+  }
+
+  .analysis-overview-premium .analysis-company h2 {
+    font-size: clamp(2.1rem, 4vw, 2.75rem);
+  }
+}
+
+@media (max-width: 680px) {
+  .analysis-overview-premium .analysis-company h2 {
+    font-size: 2.2rem;
+  }
+}
