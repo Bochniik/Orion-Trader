@@ -1227,3 +1227,76 @@
     font-size: .69rem;
   }
 }
+
+
+/* Manipulation Risk structural fix.
+   Header owns label + status; track and note are separate rows. */
+.analysis-overview-premium .analysis-risk-metric {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0 !important;
+  padding: 14px 18px !important;
+  overflow: hidden !important;
+}
+
+.analysis-overview-premium .analysis-risk-metric::after {
+  display: none !important;
+  content: none !important;
+}
+
+.analysis-overview-premium .analysis-risk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  width: 100%;
+}
+
+.analysis-overview-premium .analysis-risk-header > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+.analysis-overview-premium .analysis-risk-header > strong {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 7px 12px;
+  box-sizing: border-box;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.analysis-overview-premium .analysis-risk-track {
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.analysis-overview-premium .analysis-risk-note {
+  width: 100%;
+  min-width: 0;
+  max-width: none !important;
+  margin: 0 !important;
+  line-height: 1.4;
+}
+
+@media (max-width: 540px) {
+  .analysis-overview-premium .analysis-risk-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .analysis-overview-premium .analysis-risk-header > strong {
+    align-self: flex-start;
+  }
+}
