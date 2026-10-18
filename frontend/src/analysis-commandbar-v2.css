@@ -207,61 +207,50 @@
 }
 
 
-/* Minimal image-assisted HUD shell.
-   The uploaded PNG is cropped into side accents instead of stretched across the full bar. */
+/* Full image-backed HUD frame for the Analysis command bar.
+   The uploaded PNG contains transparent vertical padding, so the background
+   is zoomed vertically to align the visible frame with the command bar perimeter. */
 
 .analyze-view > .core-search-wrap.analyze-command-wrap {
   position: relative;
   z-index: 4;
   margin: 10px 0 14px;
-  padding: 0 8px;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.analyze-view > .core-search-wrap.analyze-command-wrap::before,
-.analyze-view > .core-search-wrap.analyze-command-wrap::after {
+.analyze-view > .core-search-wrap.analyze-command-wrap::before {
   content: "";
   position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 96px;
+  inset: -7px -8px;
   z-index: 1;
   pointer-events: none;
   background-image: url("./assets/analysis-search-frame.png");
   background-repeat: no-repeat;
-  background-size: auto 100%;
-  opacity: .86;
-  filter: drop-shadow(0 0 12px rgba(255,122,26,.16));
-}
-
-.analyze-view > .core-search-wrap.analyze-command-wrap::before {
-  left: -2px;
-  background-position: left center;
+  background-position: center center;
+  background-size: 100% 230%;
+  opacity: .95;
+  filter: drop-shadow(0 10px 24px rgba(0,0,0,.3));
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap::after {
-  right: -2px;
-  background-position: right center;
+  display: none !important;
+  content: none !important;
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar {
   position: relative;
   z-index: 2;
   margin-left: 0 !important;
-  min-height: 80px;
-  padding: 10px 14px;
-  border: 1px solid rgba(255, 139, 55, .2) !important;
-  border-radius: 15px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.018), rgba(255,255,255,.004)),
-    rgba(6, 9, 13, .96);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.026),
-    inset 0 0 0 1px rgba(255,122,26,.018),
-    0 14px 32px rgba(0,0,0,.2);
+  min-height: 86px;
+  padding: 13px 20px;
+  border: 0 !important;
+  border-radius: 14px;
+  background: rgba(6, 9, 13, .82);
+  box-shadow: none;
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar::before,
@@ -271,24 +260,24 @@
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-label {
-  padding: 0 10px 0 4px;
+  padding: 0 12px 0 7px;
   color: #ff9340;
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-field {
-  border-color: rgba(255,255,255,.08);
+  border-color: rgba(255, 139, 55, .34);
   border-radius: 12px;
   background:
-    radial-gradient(circle at 8% 50%, rgba(255,122,26,.03), transparent 26%),
-    rgba(8, 11, 15, .96);
+    linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)),
+    rgba(7, 10, 14, .94);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar:focus-within .analyze-command-field {
-  border-color: rgba(255, 139, 55, .5);
+  border-color: rgba(255, 139, 55, .56);
   box-shadow:
-    0 0 0 1px rgba(255,122,26,.055),
-    0 0 24px rgba(255,122,26,.07);
+    0 0 0 1px rgba(255,122,26,.05),
+    0 0 22px rgba(255,122,26,.065);
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-submit {
@@ -298,29 +287,23 @@
 }
 
 @media (max-width: 900px) {
-  .analyze-view > .core-search-wrap.analyze-command-wrap {
-    padding-inline: 4px;
-  }
-
-  .analyze-view > .core-search-wrap.analyze-command-wrap::before,
-  .analyze-view > .core-search-wrap.analyze-command-wrap::after {
-    width: 68px;
-    opacity: .72;
+  .analyze-view > .core-search-wrap.analyze-command-wrap::before {
+    inset: -5px;
+    background-size: 108% 225%;
   }
 
   .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar {
-    padding: 12px;
+    padding: 12px 14px;
   }
 }
 
 @media (max-width: 620px) {
-  .analyze-view > .core-search-wrap.analyze-command-wrap::before,
-  .analyze-view > .core-search-wrap.analyze-command-wrap::after {
-    display: none;
+  .analyze-view > .core-search-wrap.analyze-command-wrap::before {
+    background-size: 122% 218%;
   }
 
-  .analyze-view > .core-search-wrap.analyze-command-wrap {
-    padding: 0;
+  .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar {
+    padding: 11px;
   }
 }
 
