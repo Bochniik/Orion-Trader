@@ -281,12 +281,14 @@ export default function AnalysisOverview({ analysis }) {
         </div>
 
         <div className="analysis-risk-metric analysis-snapshot-card">
-          <small><span className="analysis-card-index">03 · Risk</span>Manipulation risk <Info size={12} /></small>
+          <div className="analysis-risk-header">
+            <small>Manipulation risk <Info size={12} /></small>
+            <strong className={`risk-${manipulationLabel.toLowerCase()}`}>{manipulationLabel}</strong>
+          </div>
           <div className="analysis-risk-track" aria-hidden="true">
             <i style={{ width: `${metric.manipulation ?? 0}%` }} />
           </div>
-          <strong className={`risk-${manipulationLabel.toLowerCase()}`}>{manipulationLabel}</strong>
-          <span>Anomaly/integrity risk, not proof of illegal manipulation</span>
+          <span className="analysis-risk-note">Anomaly/integrity risk, not proof of illegal manipulation</span>
         </div>
       </article>
 
