@@ -81,7 +81,8 @@
 }
 
 .analysis-risk-metric::after {
-  content: "03 · RISK";
+  content: none;
+  display: none;
 }
 
 .analysis-insight-grid {
@@ -121,7 +122,8 @@
   }
 
   .analysis-risk-metric::after {
-    content: "04 · RISK";
+    content: none;
+    display: none;
   }
 
   .analysis-insight-grid::before {
