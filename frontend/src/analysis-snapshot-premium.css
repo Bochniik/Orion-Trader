@@ -918,3 +918,171 @@
     font-size: 2.2rem;
   }
 }
+
+
+/* Stock identity premium polish.
+   Reduces nested chrome and keeps the company identity compact and readable. */
+@media (min-width: 1281px) {
+  .analysis-overview-premium {
+    grid-template-columns:
+      minmax(390px, 3.35fr)
+      minmax(150px, 1.3fr)
+      minmax(150px, 1.3fr)
+      minmax(220px, 1.85fr)
+      minmax(220px, 1.85fr) !important;
+  }
+}
+
+.analysis-overview-premium > .analysis-company {
+  display: flex;
+  flex-direction: column;
+}
+
+.analysis-overview-premium .analysis-stock-identity {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
+  margin: 2px 0 0;
+  padding: 10px 6px;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.analysis-overview-premium .analysis-stock-status-line {
+  margin: 0 0 14px 2px;
+  color: rgba(255, 174, 108, .76);
+  font-size: .57rem;
+}
+
+.analysis-overview-premium .analysis-stock-primary {
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.analysis-overview-premium .analysis-stock-logo-shell {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  border-radius: 19px;
+  border-color: rgba(255, 151, 69, .28);
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255,145,62,.15), transparent 58%),
+    linear-gradient(180deg, rgba(255,255,255,.038), rgba(255,255,255,.01));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.035),
+    0 0 24px rgba(255,122,26,.08);
+}
+
+.analysis-overview-premium .analysis-stock-copy {
+  position: relative;
+  min-width: 0;
+  padding-left: 18px;
+  border-left: 1px solid rgba(255,255,255,.07);
+}
+
+.analysis-overview-premium .analysis-company .analysis-symbol-row {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.analysis-overview-premium .analysis-company .analysis-symbol-row::before,
+.analysis-overview-premium .analysis-company .analysis-symbol-row::after {
+  display: none !important;
+  content: none !important;
+}
+
+.analysis-overview-premium .analysis-company h2 {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  font-size: clamp(2.55rem, 3.15vw, 3.35rem);
+  letter-spacing: -.055em;
+}
+
+.analysis-overview-premium .analysis-decision-pill {
+  min-width: 70px;
+  min-height: 30px;
+  align-self: center;
+  justify-self: end;
+  margin: 0 !important;
+  padding-inline: 10px;
+}
+
+.analysis-overview-premium .analysis-company-name {
+  margin: 9px 0 0 !important;
+  color: rgba(230,234,240,.78) !important;
+  font-size: .84rem !important;
+  line-height: 1.25;
+}
+
+.analysis-overview-premium .analysis-company-meta {
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.analysis-overview-premium .analysis-company-meta span {
+  padding: 4px 8px;
+  border-color: rgba(255,255,255,.06);
+  background: rgba(255,255,255,.018);
+  color: rgba(185,194,206,.58);
+}
+
+@media (max-width: 1280px) {
+  .analysis-overview-premium .analysis-stock-identity {
+    padding: 8px 4px;
+  }
+
+  .analysis-overview-premium .analysis-stock-primary {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .analysis-overview-premium .analysis-stock-logo-shell {
+    width: 76px;
+    height: 76px;
+  }
+
+  .analysis-overview-premium .analysis-company h2 {
+    font-size: clamp(2.35rem, 5vw, 3rem);
+  }
+}
+
+@media (max-width: 680px) {
+  .analysis-overview-premium .analysis-stock-primary {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 13px;
+  }
+
+  .analysis-overview-premium .analysis-stock-logo-shell {
+    width: 64px;
+    height: 64px;
+    border-radius: 15px;
+  }
+
+  .analysis-overview-premium .analysis-stock-copy {
+    padding-left: 13px;
+  }
+
+  .analysis-overview-premium .analysis-company .analysis-symbol-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .analysis-overview-premium .analysis-decision-pill {
+    justify-self: start;
+  }
+}
