@@ -33,6 +33,9 @@ describe("AnalysisOverview", () => {
     expect(html).toContain("MEDIUM");
     expect(html).toContain("not proof of illegal manipulation");
     expect(html).toContain("1.80×");
+    expect(html).toContain("NVDA");
+    expect(html).toContain('class="stock-logo"');
+    expect(html).not.toContain("analysis-stock-monogram");
   });
 
   it("preserves missing probabilities instead of deriving them from a score", () => {
