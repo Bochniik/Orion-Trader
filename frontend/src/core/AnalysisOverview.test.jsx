@@ -36,6 +36,9 @@ describe("AnalysisOverview", () => {
     expect(html).toContain("NVDA");
     expect(html).toContain('class="stock-logo"');
     expect(html).not.toContain("analysis-stock-monogram");
+    expect(html).toContain("analysis-risk-header");
+    expect(html).toContain("UNAVAILABLE");
+    expect(html).not.toContain("03 · Risk");
   });
 
   it("preserves missing probabilities instead of deriving them from a score", () => {
