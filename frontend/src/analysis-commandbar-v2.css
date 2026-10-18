@@ -207,35 +207,22 @@
 }
 
 
-/* Full image-backed HUD frame for the Analysis command bar.
-   The uploaded PNG contains transparent vertical padding, so the background
-   is zoomed vertically to align the visible frame with the command bar perimeter. */
+/* Stable Analysis search shell.
+   Intentionally image-free: neutralizes legacy wrapper decorations and keeps
+   the command bar visually aligned with the rest of Orion. */
 
 .analyze-view > .core-search-wrap.analyze-command-wrap {
   position: relative;
   z-index: 4;
   margin: 10px 0 14px;
   padding: 0;
-  border: 0;
+  border: 0 !important;
   border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
-.analyze-view > .core-search-wrap.analyze-command-wrap::before {
-  content: "";
-  position: absolute;
-  inset: -7px -8px;
-  z-index: 1;
-  pointer-events: none;
-  background-image: url("./assets/analysis-search-frame.png");
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-size: 100% 230%;
-  opacity: .95;
-  filter: drop-shadow(0 10px 24px rgba(0,0,0,.3));
-}
-
+.analyze-view > .core-search-wrap.analyze-command-wrap::before,
 .analyze-view > .core-search-wrap.analyze-command-wrap::after {
   display: none !important;
   content: none !important;
@@ -245,12 +232,18 @@
   position: relative;
   z-index: 2;
   margin-left: 0 !important;
-  min-height: 86px;
-  padding: 13px 20px;
-  border: 0 !important;
+  min-height: 80px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid rgba(255, 136, 48, .22) !important;
+  border-left: 2px solid rgba(255, 132, 32, .78) !important;
   border-radius: 14px;
-  background: rgba(6, 9, 13, .82);
-  box-shadow: none;
+  background:
+    linear-gradient(90deg, rgba(255,122,26,.035), transparent 16%),
+    linear-gradient(180deg, rgba(255,255,255,.018), rgba(255,255,255,.004)),
+    rgba(6, 9, 13, .96) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.024),
+    0 14px 34px rgba(0,0,0,.18) !important;
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar::before,
@@ -260,24 +253,25 @@
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-label {
-  padding: 0 12px 0 7px;
+  padding: 0 12px 0 4px;
   color: #ff9340;
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-field {
-  border-color: rgba(255, 139, 55, .34);
-  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.085);
+  border-radius: 11px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.012), rgba(255,255,255,.002)),
-    rgba(7, 10, 14, .94);
+    radial-gradient(circle at 8% 50%, rgba(255,122,26,.03), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,.015), rgba(255,255,255,.002)),
+    rgba(8, 11, 15, .95);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar:focus-within .analyze-command-field {
-  border-color: rgba(255, 139, 55, .56);
+  border-color: rgba(255, 139, 55, .52);
   box-shadow:
-    0 0 0 1px rgba(255,122,26,.05),
-    0 0 22px rgba(255,122,26,.065);
+    0 0 0 1px rgba(255,122,26,.055),
+    0 0 22px rgba(255,122,26,.07);
 }
 
 .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-submit {
@@ -286,30 +280,26 @@
   box-shadow: 0 0 18px rgba(255,122,26,.08);
 }
 
-@media (max-width: 900px) {
-  .analyze-view > .core-search-wrap.analyze-command-wrap::before {
-    inset: -5px;
-    background-size: 108% 225%;
-  }
+.analyze-view > .core-search-wrap.analyze-command-wrap .analyze-search-results {
+  left: 0;
+  right: 0;
+}
 
+@media (max-width: 900px) {
   .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar {
-    padding: 12px 14px;
+    padding: 12px;
   }
 }
 
 @media (max-width: 620px) {
-  .analyze-view > .core-search-wrap.analyze-command-wrap::before {
-    background-size: 122% 218%;
-  }
-
   .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar {
-    padding: 11px;
+    padding: 10px;
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-commandbar,
   .analyze-view > .core-search-wrap.analyze-command-wrap .analyze-command-field {
-    background: #070a0e;
+    background: #070a0e !important;
   }
 }
