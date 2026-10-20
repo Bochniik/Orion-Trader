@@ -37,8 +37,20 @@ Original OrionTrader forecasting/scanner/execution engines remain unchanged.
    ```
 
    The frontend helper is `getOurAIForwardEvidence()` from
-   `frontend/src/api/api.js`. This first phase prepares the API; UI cards
-   should be added separately after the local bridge is confirmed operational.
+   `frontend/src/api/api.js`. Orion Intelligence now contains a separate
+   **OurAI · Frozen V3 Research** evidence panel. On page load it requests
+   only this read-only endpoint, with a manual Refresh evidence button.
+   It never calls trading/scanning endpoints, automatically places orders,
+   or changes any stock's Orion decision. It highlights a selected ticker
+   when that ticker has a verified per-symbol row and optionally displays
+   the latest *absolute magnitude* prediction, even if still pending
+   settlement; this is not a fresh actionable trading signal.
+
+   The panel explicitly distinguishes **disabled**, **unavailable** and
+   **available** responses. Invalid API semantics and request failures
+   yield unavailable UI without substitute scores. Backend opt-in remains
+   necessary; cloud CircleCI test success does not enable the user's local
+   bridge or start local market data collection.
 
 ## Returned states
 

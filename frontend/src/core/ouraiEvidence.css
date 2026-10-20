@@ -1,0 +1,39 @@
+.ourai-evidence-container { display: grid; gap: 10px; min-width: 0; }
+.ourai-evidence-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #8999a9; font-size: 12px; }
+.ourai-evidence-toolbar .core-button { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.ourai-evidence { min-width: 0; gap: 16px; border-color: rgba(113,148,220,.28); }
+.ourai-evidence-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.ourai-evidence-heading h2 { display: flex; align-items: center; gap: 8px; margin: 5px 0 7px; color: #ebf2fb; font-size: clamp(17px,2vw,22px); line-height: 1.3; }
+.ourai-evidence-heading p { margin: 0; color: #a2afbe; font-size: 12px; line-height: 1.6; }
+.ourai-evidence-heading .core-eyebrow { font-size: 10px; font-weight: 700; color: #8eb3ed; letter-spacing: .1em; }
+.ourai-evidence-status { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 8px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid #485264; color: #bbc7d5; background: #141c28; }
+.ourai-evidence-status.available { border-color: rgba(102,190,168,.32); color: #9ee2ce; background: rgba(51,148,125,.1); }
+.ourai-evidence-status.unavailable { border-color: rgba(229,166,101,.35); color: #f1c49a; background: rgba(184,115,53,.1); }
+.ourai-evidence-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 11px; }
+.ourai-metric { display: grid; align-content: start; gap: 6px; min-width: 0; padding: 16px; border: 1px solid rgba(158,175,201,.12); border-radius: 12px; background: rgba(255,255,255,.024); }
+.ourai-metric span { font-size: 11px; color: #99a7b7; }
+.ourai-metric strong { font-size: clamp(16px,1.5vw,21px); font-variant-numeric: tabular-nums; color: #ecf3fb; overflow-wrap: anywhere; }
+.ourai-metric small { font-size: 11px; color: #7f91a3; }
+.ourai-evidence-by-symbol { display: grid; gap: 10px; min-width: 0; }
+.ourai-evidence-by-symbol h3 { margin: 0; font-size: 13px; color: #c9d8e8; }
+.ourai-evidence-table-scroll { overflow-x: auto; border: 1px solid rgba(158,175,201,.12); border-radius: 11px; }
+.ourai-evidence table { width: 100%; border-collapse: collapse; min-width: 550px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.ourai-evidence th, .ourai-evidence td { padding: 12px; border-bottom: 1px solid rgba(158,175,201,.1); text-align: right; white-space: nowrap; }
+.ourai-evidence th:first-child { text-align: left; }
+.ourai-evidence thead th { color: #9dabba; font-size: 11px; background: rgba(255,255,255,.024); }
+.ourai-evidence tbody th, .ourai-evidence tbody td { color: #c6d3df; }
+.ourai-evidence tbody tr:last-child th, .ourai-evidence tbody tr:last-child td { border-bottom: 0; }
+.ourai-evidence tbody tr.selected { background: rgba(89,137,230,.1); }
+.ourai-evidence-latest { display: grid; gap: 5px; padding: 13px 16px; border-left: 3px solid #88aee7; background: rgba(91,126,184,.08); border-radius: 5px 11px 11px 5px; }
+.ourai-evidence-latest span { color: #adbed1; font-size: 11px; }
+.ourai-evidence-latest strong { color: #edf5fc; font-size: 19px; }
+.ourai-evidence-latest small { color: #98aabe; font-size: 11px; line-height: 1.5; }
+.ourai-evidence-provenance, .ourai-evidence-warning { margin: 0; color: #91a2b3; font-size: 11px; line-height: 1.65; }
+.ourai-evidence-warning { padding-top: 12px; border-top: 1px solid rgba(158,175,201,.12); }
+.ourai-evidence-warning b { color: #d1deea; }
+.ourai-evidence-empty { display: grid; gap: 7px; padding: 22px; background: rgba(255,255,255,.025); border-radius: 12px; border: 1px dashed rgba(158,175,201,.2); }
+.ourai-evidence-empty strong { color: #cbd8e6; font-size: 14px; }
+.ourai-evidence-empty p { color: #93a2b2; font-size: 12px; line-height: 1.6; margin: 0; }
+.ourai-evidence-loading { color: #9facbd; border: 1px solid var(--core-line); padding: 23px; border-radius: 12px; font-size: 13px; }
+@media (max-width: 1000px) { .ourai-evidence-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 600px) { .ourai-evidence-toolbar, .ourai-evidence-heading { align-items: stretch; flex-direction: column; } .ourai-evidence-stats { grid-template-columns: 1fr; } .ourai-evidence-toolbar .core-button { align-self: flex-start; } .ourai-evidence-status { align-self: flex-start; } }
