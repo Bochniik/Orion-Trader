@@ -37,8 +37,26 @@ describe("AnalysisOverview", () => {
     expect(html).toContain('class="stock-logo"');
     expect(html).not.toContain("analysis-stock-monogram");
     expect(html).toContain("analysis-risk-header");
-    expect(html).toContain("UNAVAILABLE");
+    // The fixture contains valid manipulation-risk and fundamentals data.
+    expect(html).toContain('class="risk-medium">MEDIUM</strong>');
+    expect(html).toContain("Available");
+    expect(html).not.toContain('class="risk-unavailable"');
     expect(html).not.toContain("03 · Risk");
+  });
+
+  it("shows unavailable risk and fundamentals only when their evidence is missing", () => {
+    const html = renderToStaticMarkup(
+      <AnalysisOverview
+        analysis={{
+          ...fixture,
+          manipulation_risk: null,
+          fundamental_context: { ...fixture.fundamental_context, available: false },
+        }}
+      />
+    );
+    expect(html).toContain('class="risk-unavailable">UNAVAILABLE</strong>');
+    expect(html).toContain("<dt>Data state</dt><dd>Unavailable</dd>");
+    expect(html).not.toContain('class="risk-medium"');
   });
 
   it("preserves missing probabilities instead of deriving them from a score", () => {
