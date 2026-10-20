@@ -15,6 +15,18 @@ from app.api.routes import request_user_id
 
 router = APIRouter(prefix="/intelligence", tags=["Orion Intelligence"])
 
+@router.get("/ourai/forward-evidence")
+def ourai_forward_evidence(request: Request):
+    """Optional, authenticated magnitude-only OurAI bridge; NO order controls.
+
+    The source journal is local to the Orion host, not user-scoped: operators
+    must enable this integration only for a trusted single-user deployment.
+    """
+    request_user_id(request)
+    from app.services.ourai_bridge import fetch_ourai_forward_evidence
+    return fetch_ourai_forward_evidence()
+
+
 
 class IntelligencePositionSizeRequest(BaseModel):
     ticker: str = Field(min_length=1, max_length=15)
