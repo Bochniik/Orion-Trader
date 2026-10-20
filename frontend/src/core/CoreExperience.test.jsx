@@ -78,8 +78,11 @@ describe("simplified core experience", () => {
   });
   it("has one Analyze input and no manual statistical controls", () => {
     const html = renderToStaticMarkup(<AnalyzeView />);
-    expect(html).toContain('id="analyze-ticker"');
-    expect(html).toContain("Missing evidence means WAIT, not an invented answer.");
+    expect(html.match(/id="analyze-ticker"/g)).toHaveLength(1);
+    expect(html).toContain("Waiting for ticker");
+    expect(html).toContain('aria-label="Analysis workspace introduction"');
+    expect(html).toContain('alt="Analysis workspace: choose a stock to begin"');
+    expect(html).not.toContain('aria-label="Price chart for');
     expect(html).not.toContain("Build baseline");
     expect(html).not.toContain("Choose models");
   });
