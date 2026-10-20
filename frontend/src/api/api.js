@@ -75,6 +75,8 @@ export function getTickerEarningsPack(ticker, options = {}) { return request(`/i
 export function getTickerDecisionPipeline(ticker, options = {}) { return request(`/intelligence/ticker/${tickerPath(ticker)}/decision-pipeline`, options); }
 export function simulateIntelligencePositionSize(inputs) { return jsonRequest("/intelligence/position-size", "POST", inputs); }
 export function getEngineBay(options = {}) { return request("/intelligence/engine-bay", options); }
+// Verified OurAI V3 magnitude evidence only, not UP/DOWN or trading signals.
+export function getOurAIForwardEvidence(options = {}) { return request("/intelligence/ourai/forward-evidence", options); }
 
 export function getCoreStatus(options = {}) { return request("/core/status", options); }
 export function getCoreSession(options = {}) { return request("/core/session", options); }
