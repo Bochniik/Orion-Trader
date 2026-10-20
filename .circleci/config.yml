@@ -1,0 +1,69 @@
+# GitHub-independent CI for OrionTrader on CircleCI Free.
+# Runs only tests/builds: no credentials, trading, deployment or model writes.
+version: 2.1
+
+jobs:
+  backend-regressions:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Install backend and pytest dependencies
+          command: |
+            python -m pip install --disable-pip-version-check -r backend/requirements.txt
+            python -m pip install --disable-pip-version-check 'pytest>=8.3,<10'
+      - run:
+          name: Integration, Intelligence, session and news regression tests
+          command: |
+            set -euo pipefail
+            tests=(
+              backend/tests/test_intelligence_routes.py
+              backend/tests/test_portfolio_intelligence.py
+              backend/tests/test_market_session_engine.py
+              backend/tests/test_regular_hours_nyse_session_gate.py
+              backend/tests/test_core_milestone2.py
+              backend/tests/test_orion_ai_service.py
+              backend/tests/test_market_data.py
+            )
+            # PR #397 adds this test; it is not yet present on main.
+            if [ -f backend/tests/test_ourai_bridge.py ]; then
+              tests+=(backend/tests/test_ourai_bridge.py)
+            fi
+            python -m pytest -q "${tests[@]}"
+      - run:
+          name: Analytics regression manifest
+          command: |
+            set -euo pipefail
+            python -m py_compile backend/evals/evaluate_directional_model.py
+            mapfile -t tests < <(grep -Ev '^[[:space:]]*(#|$)' .github/analytics-regression-tests.txt)
+            if [ "${#tests[@]}" -eq 0 ]; then
+              echo "Analytics regression test manifest is empty" >&2
+              exit 1
+            fi
+            python -m pytest -q "${tests[@]}"
+
+  frontend-regressions:
+    docker:
+      - image: cimg/node:24.0
+    resource_class: small
+    working_directory: ~/project/frontend
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Install locked frontend dependencies
+          command: npm ci --no-audit --no-fund
+      - run:
+          name: Vitest regression suite
+          command: npm test
+      - run:
+          name: Build production frontend
+          command: npm run build
+
+workflows:
+  regression-checks:
+    jobs:
+      - backend-regressions
+      - frontend-regressions
