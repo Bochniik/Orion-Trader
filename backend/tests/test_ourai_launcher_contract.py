@@ -98,3 +98,26 @@ def test_managed_opt_in_owns_server_processes_without_wrapper_children():
     failure = source.index('throw "Vite entry point is missing;')
     cleanup = source.index('Stop-OwnedProcess $ownedProcess', failure)
     assert start < failure < cleanup
+
+
+
+def test_managed_bridge_flag_is_scoped_to_spawned_backend_not_parent_shell():
+    """Static guard: only the spawned backend inherits the verified opt-in."""
+    source = LAUNCHER.read_text(encoding="utf-8")
+    enabled = source.index('$env:OURAI_BRIDGE_ENABLED = "true"')
+    backend_start = source.index('$backendProcess = Start-Process')
+    parent_reset = source.index(
+        '$env:OURAI_BRIDGE_ENABLED = "false"', backend_start
+    )
+    frontend_start = source.index('$frontendProcess = Start-Process', backend_start)
+    assert enabled < backend_start < parent_reset < frontend_start
+
+    # If backend creation raises before the normal reset, the catch must
+    # still clear the parent flag and only then clean up owned processes.
+    failure_handler = source.index('catch {', backend_start)
+    failure_end = source.index('\n$ready = $false', failure_handler)
+    failure_body = source[failure_handler:failure_end]
+    assert '$env:OURAI_BRIDGE_ENABLED = "false"' in failure_body
+    assert failure_body.index('$env:OURAI_BRIDGE_ENABLED = "false"') < failure_body.index(
+        'Stop-OwnedProcess $ownedProcess'
+    )
