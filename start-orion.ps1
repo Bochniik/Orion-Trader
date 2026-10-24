@@ -161,12 +161,31 @@ Write-Host "Starting OrionTrader backend and frontend..." -ForegroundColor Cyan
 $backendProcess = $null
 $frontendProcess = $null
 try {
+    # A managed opt-in launch must own the actual server processes. Uvicorn
+    # --reload forks a worker, and npm.cmd launches a separate Node child;
+    # killing their wrapper PIDs can leave ports 8000/5173 occupied on failure.
+    $backendArguments = @("-m", "uvicorn", "app.main:app", "--port", "8000")
+    if (-not $StartOurAI) { $backendArguments += "--reload" }
     $backendProcess = Start-Process -FilePath $venvPython `
-        -ArgumentList "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000" `
+        -ArgumentList $backendArguments `
         -WorkingDirectory $backend -PassThru
-    $frontendProcess = Start-Process -FilePath "npm.cmd" `
-        -ArgumentList "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173", "--strictPort" `
-        -WorkingDirectory $frontend -PassThru
+    if ($StartOurAI) {
+        Require-Command "node.exe" "Node.js is required for managed local startup."
+        $viteEntry = Join-Path $frontend "node_modules\\vite\\bin\\vite.js"
+        if (-not (Test-Path -LiteralPath $viteEntry -PathType Leaf)) {
+            throw "Vite entry point is missing; reinstall frontend dependencies."
+        }
+        # Quote the entry path because the repository may live under Program Files.
+        $frontendProcess = Start-Process -FilePath "node.exe" `
+            -ArgumentList "`"$viteEntry`"", "--host", "127.0.0.1", "--port", "5173", "--strictPort" `
+            -WorkingDirectory $frontend -PassThru
+    }
+    else {
+        # Preserve the existing development workflow unless opted in.
+        $frontendProcess = Start-Process -FilePath "npm.cmd" `
+            -ArgumentList "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173", "--strictPort" `
+            -WorkingDirectory $frontend -PassThru
+    }
 }
 catch {
     if ($StartOurAI) {
