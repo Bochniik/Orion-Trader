@@ -207,6 +207,37 @@ if (-not $ready) {
     Write-Warning "The backend did not become ready in time. Check the backend window for details."
 }
 
+# Backend health alone does not establish that the Vite UI is serving this launch.
+# In opt-in mode, a missing frontend must also fail closed and stop owned
+# processes rather than report a successful integrated startup.
+$frontendReady = $false
+for ($attempt = 0; $attempt -lt 30; $attempt++) {
+    if ($frontendProcess.HasExited) { break }
+    try {
+        $frontendResponse = Invoke-WebRequest -Uri "http://127.0.0.1:5173/" -UseBasicParsing -TimeoutSec 1
+        if ($frontendResponse.StatusCode -eq 200) {
+            $frontendReady = $true
+            break
+        }
+    }
+    catch {
+        # The UI may still be starting; retry without trusting another port.
+    }
+    Start-Sleep -Milliseconds 500
+}
+
+if (-not $frontendReady) {
+    if ($StartOurAI) {
+        foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
+            if ($null -ne $ownedProcess -and -not $ownedProcess.HasExited) {
+                Stop-OwnedProcess $ownedProcess
+            }
+        }
+        throw "Orion frontend did not become ready; attempted to stop the processes started by this launch."
+    }
+    Write-Warning "The frontend did not become ready in time. Check the frontend window for details."
+}
+
 Write-Host "Backend PID: $($backendProcess.Id) | Frontend PID: $($frontendProcess.Id)" -ForegroundColor DarkGray
 Write-Host "OrionTrader: http://127.0.0.1:5173" -ForegroundColor Green
 Write-Host "API docs:    http://127.0.0.1:8000/docs" -ForegroundColor Green
