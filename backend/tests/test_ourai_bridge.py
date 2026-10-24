@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+import pytest
+from fastapi import HTTPException
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from contextlib import contextmanager
@@ -257,3 +259,14 @@ def test_real_loopback_http_unavailable_and_disabled_do_not_expose_stale_evidenc
     assert "latest_by_symbol" not in unavailable
     assert disabled["status"] == "disabled"
     assert disabled["trading_enabled"] is False
+
+
+def test_forward_evidence_endpoint_rejects_missing_user_before_bridge(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ourai_bridge, "fetch_ourai_forward_evidence", lambda: calls.append(1) or sample())
+    for user in (None, {}, {"id": ""}):
+        request = SimpleNamespace(state=SimpleNamespace(user=user))
+        with pytest.raises(HTTPException) as exc:
+            intelligence.ourai_forward_evidence(request)
+        assert exc.value.status_code == 401
+    assert calls == []
