@@ -1,0 +1,18 @@
+name: Premarket continuous cloud watchdog
+run-name: Premarket continuous watchdog ${{ github.event.schedule || 'manual' }}
+
+on:
+  schedule:
+    # Covers 04:00-09:30 America/New_York in both EDT and EST. The runner
+    # itself gates on the exact NY premarket window, so inactive UTC slots exit
+    # without publishing a false live scan.
+    - cron: "*/5 8-14 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  premarket-continuous:
+    uses: ./.github/workflows/premarket-continuous-cloud.yml
+    secrets: inherit
