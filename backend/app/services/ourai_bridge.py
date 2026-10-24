@@ -220,7 +220,9 @@ def fetch_ourai_forward_evidence(
             port = int(os.getenv("OURAI_BRIDGE_PORT", "8765"))
         if type(port) is not int or not 1 <= port <= 65535:
             raise ValueError("invalid loopback port")
-        with httpx.Client(timeout=2.0, trust_env=False, transport=transport) as client:
+        # Redirects must never send evidence requests outside trusted loopback.
+        # Explicitly pin this instead of relying on httpx defaults.
+        with httpx.Client(timeout=2.0, trust_env=False, follow_redirects=False, transport=transport) as client:
             with client.stream(
                 "GET", f"http://127.0.0.1:{port}{ROUTE}",
                 headers={"Accept-Encoding": "identity"},

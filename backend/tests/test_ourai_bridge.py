@@ -617,3 +617,27 @@ def test_duplicate_json_keys_fail_closed_at_any_evidence_depth(needle, duplicate
     assert result["trading_enabled"] is False
     assert result["direction_available"] is False
     assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+@pytest.mark.parametrize("status_code", [301, 302, 303, 307, 308])
+def test_loopback_redirect_never_contacts_non_loopback_destination(status_code):
+    """A compromised local listener cannot redirect the read-only bridge."""
+    requested = []
+
+    def respond(request):
+        requested.append(str(request.url))
+        return httpx.Response(
+            status_code,
+            headers={"Location": "https://outside.invalid/forward-evidence"},
+            stream=httpx.ByteStream(b""),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert requested == ["http://127.0.0.1:8765/v1/forward-evidence"]
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "upstream_http_failure"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
