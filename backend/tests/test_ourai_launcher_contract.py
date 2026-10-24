@@ -78,3 +78,23 @@ def test_opt_in_launcher_requires_frontend_readiness_before_reporting_success():
     assert 'if ($frontendProcess.HasExited) { break }' in source
     assert 'if ($StartOurAI) {' in source[frontend_ready:frontend_failure]
     assert 'Stop-OwnedProcess $ownedProcess' in source[frontend_ready:frontend_failure]
+
+
+
+def test_managed_opt_in_owns_server_processes_without_wrapper_children():
+    """Source contract for rollback; Windows process-tree E2E still required."""
+    source = LAUNCHER.read_text(encoding="utf-8")
+    assert '$backendArguments = @("-m", "uvicorn", "app.main:app", "--port", "8000")' in source
+    assert 'if (-not $StartOurAI) { $backendArguments += "--reload" }' in source
+    assert '-ArgumentList $backendArguments' in source
+    assert 'Require-Command "node.exe"' in source
+    assert r'Join-Path $frontend "node_modules\vite\bin\vite.js"' in source
+    assert '-FilePath "node.exe"' in source
+    assert '-ArgumentList "`"$viteEntry`"", "--host", "127.0.0.1", "--port", "5173", "--strictPort"' in source
+    assert '-FilePath "npm.cmd"' in source
+    assert '"run", "dev", "--", "--host", "127.0.0.1"' in source
+    # A missing Vite entry point must trigger cleanup of already-started backend.
+    start = source.index('$backendArguments = @(')
+    failure = source.index('throw "Vite entry point is missing;')
+    cleanup = source.index('Stop-OwnedProcess $ownedProcess', failure)
+    assert start < failure < cleanup
