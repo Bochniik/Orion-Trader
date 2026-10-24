@@ -104,6 +104,9 @@ def _validate_payload(payload: object) -> dict:
         overdue_symbol = _count(data.get("overdue_pending"))
         if n - m != q or overdue_symbol > q:
             raise ValueError("inconsistent per-symbol evidence counts")
+        maae = tuple(_metric(data.get(key)) for key in ("champion_mae_bps", "linear_mae_bps", "null_mae_bps"))
+        if (m == 0 and any(value is not None for value in maae)) or (m > 0 and any(value is None for value in maae)):
+            raise ValueError("inconsistent per-symbol MAE availability")
         symbols[symbol] = {
             "predictions": n,
             "resolved": m,
@@ -117,6 +120,10 @@ def _validate_payload(payload: object) -> dict:
         raise ValueError("per-symbol prediction counts differ from total")
     if sum(x["resolved"] for x in symbols.values()) != resolved:
         raise ValueError("per-symbol resolution counts differ from total")
+    if sum(x["pending"] for x in symbols.values()) != pending:
+        raise ValueError("per-symbol pending counts differ from total")
+    if sum(x["overdue_pending"] for x in symbols.values()) != overdue:
+        raise ValueError("per-symbol overdue counts differ from total")
 
     latest = {}
     for symbol, data in raw_latest.items():

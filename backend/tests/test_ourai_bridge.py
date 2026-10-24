@@ -119,3 +119,23 @@ def test_intelligence_route_requires_user_scope_and_calls_bridge(monkeypatch):
     response = intelligence.ourai_forward_evidence(request)
     assert response["status"] == "disabled"
     assert seen == [1]
+
+
+def test_overdue_symbol_total_mismatch_fails_closed():
+    data = sample()
+    data["overdue_pending_count"] = 1
+    assert ourai_bridge.fetch_ourai_forward_evidence(enabled=True, transport=transport_response(data))["status"] == "unavailable"
+
+
+def test_symbol_mae_must_match_resolved_count():
+    data = sample()
+    data["symbols"]["NVDA"]["champion_mae_bps"] = None
+    assert ourai_bridge.fetch_ourai_forward_evidence(enabled=True, transport=transport_response(data))["status"] == "unavailable"
+    data = sample()
+    data["symbols"]["NVDA"]["resolved"] = 0
+    data["symbols"]["NVDA"]["pending"] = 2
+    data["resolution_count"] = 0
+    data["pending_count"] = 2
+    for key in ("champion_mae_bps", "linear_mae_bps", "null_mae_bps"):
+        data[key] = None
+    assert ourai_bridge.fetch_ourai_forward_evidence(enabled=True, transport=transport_response(data))["status"] == "unavailable"

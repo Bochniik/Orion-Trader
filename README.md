@@ -80,6 +80,13 @@ configuration; its old navigation and lab instructions are historical.
   existing fixed hosts and submission switches. The new workflows cannot call
   them. No live-money trading adapter or subscription billing is added.
 
+
+## OurAI Forward Evidence (optional research integration)
+
+The OurAI V3 bridge is opt-in, read-only and limited to research evidence about the **absolute magnitude** of a 15-minute price movement. It does **not** predict direction, authorize a trade, place orders, or enable automatic live trading. Do not interpret its magnitude estimate as a BUY/SELL signal or as a directional probability.
+
+The Orion Intelligence evidence panel remains disabled unless a trusted single-user local machine runs the OurAI loopback process and the Orion backend explicitly sets `OURAI_BRIDGE_ENABLED=true`. Passing cloud CI tests does not start that local process or enable the bridge. Keep this integration local and do not expose the loopback endpoint publicly.
+
 ## Architecture and verification
 
 The [2.0 architecture audit](docs/ORIONTRADER_2_ARCHITECTURE.md) records what was
