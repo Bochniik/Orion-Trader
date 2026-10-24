@@ -73,6 +73,8 @@ describe("OurAI verified forward evidence panel", () => {
       { trading_enabled: true },
       { source: "unverified_local_file" },
       { experiment: "directional_model" },
+      { mode: "LIVE_TRADING" },
+      { mode: undefined },
     ]) {
       const html = renderToStaticMarkup(<ForwardEvidenceSummary evidence={{ ...evidence, ...mutation }} />);
       expect(html).not.toContain("8.71 bps");
@@ -97,5 +99,28 @@ describe("OurAI verified forward evidence panel", () => {
   it("displays another selected symbol only when matching latest identity is present", () => {
     const html = renderToStaticMarkup(<ForwardEvidenceSummary evidence={evidence} selectedTicker="AAPL" />);
     expect(html).not.toContain("Latest NVDA forecast");
+  });
+});
+
+
+describe("OurAI evidence pending-settlement display", () => {
+  it("shows an explicit awaiting-settlement state without fabricating MAE", () => {
+    const html = renderToStaticMarkup(
+      <ForwardEvidenceSummary evidence={{
+        ...evidence,
+        resolution_count: 0,
+        prediction_count: 11,
+        pending_count: 11,
+        champion_mae_bps: null,
+        linear_mae_bps: null,
+        null_mae_bps: null,
+        symbols: {},
+        latest_by_symbol: {},
+      }} />
+    );
+    expect(html).toContain("Awaiting first settled prediction");
+    expect(html).toContain("Unavailable");
+    expect(html).not.toContain("8.71 bps");
+    expect(html).toContain("No direction, position sizing, trading action");
   });
 });
