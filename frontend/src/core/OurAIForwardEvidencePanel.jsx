@@ -39,6 +39,7 @@ export function ForwardEvidenceSummary({ evidence, selectedTicker }) {
   const valid = evidence?.status === "available" &&
     evidence?.source === "ourai_verified_forward_journal" &&
     evidence?.experiment === "frozen_v3_magnitude_15m" &&
+    evidence?.mode === "RESEARCH_SHADOW_ONLY" &&
     evidence?.direction_available === false &&
     evidence?.trading_enabled === false;
   const state = valid ? "available" : evidence?.status === "disabled" ? "disabled" : "unavailable";
@@ -69,6 +70,9 @@ export function ForwardEvidenceSummary({ evidence, selectedTicker }) {
         </div>
       ) : (
         <>
+          {evidence.resolution_count === 0 && (
+            <p className="ourai-evidence-empty" role="status">Awaiting first settled prediction. Error metrics are not available yet.</p>
+          )}
           <div className="ourai-evidence-stats">
             <Metric name="V3 absolute-move MAE" value={bps(evidence.champion_mae_bps)} description="Resolved forward observations" />
             <Metric name="Linear baseline MAE" value={bps(evidence.linear_mae_bps)} description="Same observed period" />
@@ -127,6 +131,7 @@ export default function OurAIForwardEvidencePanel({ selectedTicker }) {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
+    setEvidence(null);
     getOurAIForwardEvidence({ signal: controller.signal })
       .then((value) => {
         if (!controller.signal.aborted) setEvidence(value);
