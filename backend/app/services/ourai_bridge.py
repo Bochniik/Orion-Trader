@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from math import isfinite
+import json
 import os
 
 import httpx
@@ -15,6 +16,7 @@ import httpx
 
 FROZEN_SYMBOLS = ("NVDA", "AAPL", "TSLA", "JPM", "AMD", "META", "MSFT")
 ROUTE = "/v1/forward-evidence"
+MAX_EVIDENCE_BYTES = 262_144  # Bounded trusted-loopback JSON; never accept unbounded data.
 
 
 def _inactive(state: str, reason: str | None = None) -> dict:
@@ -201,9 +203,18 @@ def fetch_ourai_forward_evidence(
         if type(port) is not int or not 1 <= port <= 65535:
             raise ValueError("invalid loopback port")
         with httpx.Client(timeout=2.0, trust_env=False, transport=transport) as client:
-            response = client.get(f"http://127.0.0.1:{port}{ROUTE}")
-            response.raise_for_status()
-            return _validate_payload(response.json())
+            with client.stream("GET", f"http://127.0.0.1:{port}{ROUTE}") as response:
+                response.raise_for_status()
+                # Cap decoded bytes, not just Content-Length, before parsing:
+                # a local listener can be replaced or return compressed data.
+                chunks = []
+                total = 0
+                for chunk in response.iter_bytes():
+                    total += len(chunk)
+                    if total > MAX_EVIDENCE_BYTES:
+                        raise ValueError("oversized forward evidence response")
+                    chunks.append(chunk)
+            return _validate_payload(json.loads(b"".join(chunks)))
     except httpx.TransportError:
         # All loopback transport failures (DNS/connect/read/write/pool/protocol)
         # are data-availability failures, not evidence of model inaccuracy.
