@@ -167,3 +167,32 @@ def test_upstream_connection_failure_and_timeout_fail_closed():
         assert result["direction_available"] is False
         assert result["trading_enabled"] is False
         assert "symbols" not in result
+
+
+def test_resolved_global_evidence_requires_all_three_mae_metrics():
+    for key in ("champion_mae_bps", "linear_mae_bps", "null_mae_bps"):
+        data = sample()
+        data[key] = None
+        result = ourai_bridge.fetch_ourai_forward_evidence(
+            enabled=True, transport=transport_response(data),
+        )
+        assert result["status"] == "unavailable"
+        assert "champion_mae_bps" not in result
+
+
+def test_unresolved_evidence_without_mae_is_valid():
+    data = sample()
+    data["resolution_count"] = 0
+    data["pending_count"] = 2
+    data["symbols"]["NVDA"]["resolved"] = 0
+    data["symbols"]["NVDA"]["pending"] = 2
+    for key in ("champion_mae_bps", "linear_mae_bps", "null_mae_bps"):
+        data[key] = None
+        data["symbols"]["NVDA"][key] = None
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "available"
+    assert result["resolution_count"] == 0
+    assert result["champion_mae_bps"] is None
+    assert result["direction_available"] is False

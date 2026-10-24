@@ -87,6 +87,8 @@ def _validate_payload(payload: object) -> dict:
     }
     if resolved == 0 and any(v is not None for v in metrics.values()):
         raise ValueError("unresolved forward evidence cannot have MAE")
+    if resolved > 0 and any(v is None for v in metrics.values()):
+        raise ValueError("resolved forward evidence requires all MAE baselines")
 
     raw_symbols = payload.get("symbols")
     raw_latest = payload.get("latest_by_symbol")
