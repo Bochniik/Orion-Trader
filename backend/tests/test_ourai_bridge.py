@@ -474,3 +474,46 @@ def test_deeply_nested_but_small_json_fails_closed_without_500():
     assert result["direction_available"] is False
     assert result["trading_enabled"] is False
     assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+@pytest.mark.parametrize("encoding", ["gzip", "br", "deflate", "gzip, identity"])
+def test_even_small_encoded_evidence_is_rejected_before_decompression(encoding):
+    """The producer sends plain JSON; no compressed listener may bypass limits."""
+    payload = sample()
+    payload["secret"] = "must-not-leak"
+    seen = []
+
+    def respond(request):
+        seen.append(request.headers["Accept-Encoding"])
+        return httpx.Response(
+            200,
+            headers={"Content-Encoding": encoding},
+            content=json.dumps(payload).encode("utf-8"),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert seen == ["identity"]
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "secret" not in str(result)
+
+
+def test_plain_json_evidence_remains_accepted_with_identity_encoding():
+    payload = sample()
+    def respond(request):
+        assert request.headers["Accept-Encoding"] == "identity"
+        return httpx.Response(
+            200, headers={"Content-Encoding": "identity"}, json=payload,
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "available"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
