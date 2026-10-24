@@ -52,3 +52,11 @@ def test_opt_in_startup_failure_cleans_up_only_owned_processes():
     assert 'Write-Warning "The backend did not become ready in time.' in launch_section
     assert 'Stop-Process -Name' not in source
     assert 'Get-Process | Stop-Process' not in source
+
+
+def test_launcher_clears_stale_environment_opt_in_before_startup():
+    source = LAUNCHER.read_text(encoding="utf-8")
+    reset = source.index('$env:OURAI_BRIDGE_ENABLED = "false"')
+    managed = source.index("if ($StartOurAI) {")
+    enabled = source.index('$env:OURAI_BRIDGE_ENABLED = "true"')
+    assert reset < managed < enabled
