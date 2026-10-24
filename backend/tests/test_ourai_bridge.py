@@ -317,3 +317,31 @@ def test_latest_resolution_state_must_match_symbol_counts():
     assert ourai_bridge.fetch_ourai_forward_evidence(
         enabled=True, transport=transport_response(data)
     )["status"] == "unavailable"
+
+
+def test_bridge_distinguishes_transport_http_and_invalid_evidence_failures():
+    cases = (
+        (httpx.ConnectError("getaddrinfo failed"), "upstream_connection_failure"),
+        (httpx.ConnectTimeout("WinError 10060"), "upstream_connection_failure"),
+        (httpx.ReadTimeout("timed out"), "upstream_connection_failure"),
+    )
+    for error, reason in cases:
+        def fail(_request):
+            raise error
+        result = ourai_bridge.fetch_ourai_forward_evidence(
+            enabled=True, transport=httpx.MockTransport(fail),
+        )
+        assert result["status"] == "unavailable"
+        assert result["unavailable_reason"] == reason
+        assert result["trading_enabled"] is False
+        assert "symbols" not in result and "latest_by_symbol" not in result
+
+    http_failure = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response({"status": "unavailable"}, status=503),
+    )
+    assert http_failure["unavailable_reason"] == "upstream_http_failure"
+    malformed = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response({"journal_valid": False}),
+    )
+    assert malformed["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in malformed
