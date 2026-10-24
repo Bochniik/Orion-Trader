@@ -169,6 +169,9 @@ try {
     $backendProcess = Start-Process -FilePath $venvPython `
         -ArgumentList $backendArguments `
         -WorkingDirectory $backend -PassThru
+    # Start-Process captures the backend's environment at creation. The parent
+    # shell and subsequent frontend must not retain the opt-in bridge flag.
+    if ($StartOurAI) { $env:OURAI_BRIDGE_ENABLED = "false" }
     if ($StartOurAI) {
         Require-Command "node.exe" "Node.js is required for managed local startup."
         $viteEntry = Join-Path $frontend "node_modules\vite\bin\vite.js"
@@ -189,6 +192,8 @@ try {
 }
 catch {
     if ($StartOurAI) {
+        # Also reset the parent environment if Start-Process itself failed.
+        $env:OURAI_BRIDGE_ENABLED = "false"
         foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
             if ($null -ne $ownedProcess -and -not $ownedProcess.HasExited) {
                 Stop-OwnedProcess $ownedProcess
