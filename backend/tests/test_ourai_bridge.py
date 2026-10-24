@@ -407,3 +407,29 @@ def test_compressed_loopback_response_is_bounded_after_decompression():
     assert result["status"] == "unavailable"
     assert result["unavailable_reason"] == "invalid_upstream_evidence"
     assert "symbols" not in result
+
+
+
+def test_evaluation_timestamp_cannot_precede_latest_prediction():
+    """A synthetic upstream cannot report evidence evaluated before its forecast."""
+    data = sample()
+    data["evaluated_at_utc"] = "2026-10-20T13:59:59Z"
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in result
+    assert "latest_by_symbol" not in result
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+
+
+def test_evaluation_timestamp_may_equal_latest_prediction():
+    data = sample()
+    data["evaluated_at_utc"] = "2026-10-20T14:00:20Z"
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "available"
+    assert result["as_of"] == data["evaluated_at_utc"]
