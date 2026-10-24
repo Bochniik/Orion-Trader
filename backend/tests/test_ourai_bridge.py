@@ -373,3 +373,37 @@ def test_all_loopback_transport_failures_are_unavailable_not_model_errors(error)
     assert "symbols" not in result and "latest_by_symbol" not in result
     assert "champion_mae_bps" not in result
     assert str(error) not in str(result)
+
+
+def test_oversized_loopback_json_fails_closed_without_exposing_data():
+    payload = sample()
+    payload["secret"] = "private-" + "x" * ourai_bridge.MAX_EVIDENCE_BYTES
+    def respond(_request):
+        return httpx.Response(200, content=json.dumps(payload).encode("utf-8"))
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "secret" not in str(result)
+
+
+def test_compressed_loopback_response_is_bounded_after_decompression():
+    import gzip
+    payload = sample()
+    payload["secret"] = "x" * ourai_bridge.MAX_EVIDENCE_BYTES
+    compressed = gzip.compress(json.dumps(payload).encode("utf-8"))
+    assert len(compressed) < ourai_bridge.MAX_EVIDENCE_BYTES
+    def respond(_request):
+        return httpx.Response(
+            200, headers={"Content-Encoding": "gzip"}, content=compressed,
+        )
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in result
