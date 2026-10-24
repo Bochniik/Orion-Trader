@@ -37,6 +37,11 @@ function Assert-PortAvailable([int]$Port, [string]$ServiceName) {
     throw "$ServiceName cannot start because port $Port is already used by $processLabel. Close the old OrionTrader terminal or stop that process, then run this launcher again."
 }
 
+# Do not inherit a stale bridge opt-in from an earlier terminal session.
+# Explicit -StartOurAI is required for this managed launcher.
+$env:OURAI_BRIDGE_ENABLED = "false"
+$env:OURAI_BRIDGE_PORT = "8765"
+
 Require-Command "npm.cmd" "Install the current Node.js LTS release and reopen PowerShell."
 
 if (-not (Test-Path $venvPython)) {
