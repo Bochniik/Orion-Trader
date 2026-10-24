@@ -205,13 +205,19 @@ def fetch_ourai_forward_evidence(
         if type(port) is not int or not 1 <= port <= 65535:
             raise ValueError("invalid loopback port")
         with httpx.Client(timeout=2.0, trust_env=False, transport=transport) as client:
-            with client.stream("GET", f"http://127.0.0.1:{port}{ROUTE}") as response:
+            with client.stream(
+                "GET", f"http://127.0.0.1:{port}{ROUTE}",
+                headers={"Accept-Encoding": "identity"},
+            ) as response:
                 response.raise_for_status()
-                # Cap decoded bytes, not just Content-Length, before parsing:
-                # a local listener can be replaced or return compressed data.
+                # OurAI's producer sends plain JSON. Reject compression rather
+                # than allocating an arbitrarily large decoded chunk before
+                # the byte limit can be checked (decompression-bomb defense).
+                if response.headers.get("Content-Encoding", "identity").strip().lower() not in ("", "identity"):
+                    raise ValueError("encoded forward evidence response")
                 chunks = []
                 total = 0
-                for chunk in response.iter_bytes():
+                for chunk in response.iter_raw():
                     total += len(chunk)
                     if total > MAX_EVIDENCE_BYTES:
                         raise ValueError("oversized forward evidence response")
