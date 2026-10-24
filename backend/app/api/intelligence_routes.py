@@ -22,6 +22,11 @@ def ourai_forward_evidence(request: Request):
     The source journal is local to the Orion host, not user-scoped: operators
     must enable this integration only for a trusted single-user deployment.
     """
+    # Unlike general development routes, this shared local-journal endpoint
+    # must never accept the fallback "test-user" identity.
+    user = getattr(request.state, "user", None)
+    if not isinstance(user, dict) or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Authenticated local user required")
     request_user_id(request)
     from app.services.ourai_bridge import fetch_ourai_forward_evidence
     return fetch_ourai_forward_evidence()
