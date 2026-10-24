@@ -127,7 +127,12 @@ if ($StartOurAI) {
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
         if ($ouraiProcess.HasExited) { break }
         try {
-            $evidence = Invoke-RestMethod -Uri "http://127.0.0.1:8765/v1/forward-evidence" -TimeoutSec 2
+            # Never follow a redirect away from the trusted loopback endpoint.
+            # Only an HTTP 200 JSON response from this exact local URL is eligible.
+            $evidenceResponse = Invoke-WebRequest -Uri "http://127.0.0.1:8765/v1/forward-evidence" `
+                -UseBasicParsing -MaximumRedirection 0 -TimeoutSec 2
+            if ($evidenceResponse.StatusCode -ne 200) { throw "Unexpected OurAI bridge HTTP status." }
+            $evidence = ConvertFrom-Json -InputObject $evidenceResponse.Content
             if ($evidence.schema_version -eq 1 -and
                 $evidence.source -eq "ourai_verified_forward_journal" -and
                 $evidence.journal_valid -eq $true -and
