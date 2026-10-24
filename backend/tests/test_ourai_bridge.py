@@ -447,7 +447,7 @@ def test_evaluation_timestamp_may_equal_latest_prediction():
     [
         ("2026-10-20T14:14:59Z", "unavailable"),
         ("2026-10-20T14:15:00Z", "available"),
-        ("2026-10-20T15:15:00+01:00", "unavailable"),
+        ("2026-10-20T15:15:00+01:00", "available"),
     ],
 )
 def test_resolved_latest_forecast_cannot_precede_its_target_due_at(
