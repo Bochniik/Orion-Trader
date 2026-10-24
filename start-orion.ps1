@@ -171,7 +171,7 @@ try {
         -WorkingDirectory $backend -PassThru
     if ($StartOurAI) {
         Require-Command "node.exe" "Node.js is required for managed local startup."
-        $viteEntry = Join-Path $frontend "node_modules\\vite\\bin\\vite.js"
+        $viteEntry = Join-Path $frontend "node_modules\vite\bin\vite.js"
         if (-not (Test-Path -LiteralPath $viteEntry -PathType Leaf)) {
             throw "Vite entry point is missing; reinstall frontend dependencies."
         }
