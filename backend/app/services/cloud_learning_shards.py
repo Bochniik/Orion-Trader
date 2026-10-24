@@ -3,19 +3,41 @@
 The cloud workflow processes one small shard per run so each replay finishes well
 inside the hosted-runner timeout while the persistent SIMULATED_FORWARD database
 accumulates evidence across runs.
+
+Requested symbol-specialist targets are intentionally placed first so their
+research evidence is collected before the broader cloud-learning universe.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Sequence
 
-CLOUD_REPLAY_SYMBOLS: tuple[str, ...] = (
+SPECIALIST_PRIORITY_SYMBOLS: tuple[str, ...] = (
+    "NVDA",
+    "TSLA",
+    "AAPL",
+    "JPM",
+    "RGTI",
+    "IONQ",
+    "OKLO",
+    "SPCX",
+    "MSFT",
+    "AMD",
+    "META",
+    "NVTS",
+)
+
+_BASE_CLOUD_REPLAY_SYMBOLS: tuple[str, ...] = (
     "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "GOOG", "TSLA",
     "AVGO", "AMD", "NFLX", "ORCL", "CRM", "ADBE", "QCOM", "INTC",
     "MU", "AMAT", "LRCX", "KLAC", "TXN", "PANW", "PLTR", "UBER",
     "JPM", "BAC", "WFC", "GS", "MS", "C", "V", "MA",
     "XOM", "CVX", "COP", "SLB", "LLY", "UNH", "JNJ", "ABBV",
     "WMT", "COST", "HD", "LOW", "DIS", "BA", "CAT", "GE", "F", "GM",
+)
+
+CLOUD_REPLAY_SYMBOLS: tuple[str, ...] = tuple(
+    dict.fromkeys((*SPECIALIST_PRIORITY_SYMBOLS, *_BASE_CLOUD_REPLAY_SYMBOLS))
 )
 
 
