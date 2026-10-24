@@ -163,7 +163,10 @@ def _validate_payload(payload: object) -> dict:
         due_at = datetime.fromisoformat(latest[symbol]["target_due_at"].replace("Z", "+00:00"))
         if (due_at - sample_at != timedelta(minutes=15)
                 or not sample_at <= predicted_at < due_at
-                or predicted_at > evaluated_dt):
+                or predicted_at > evaluated_dt
+                # A resolved forecast cannot have reached its 15m target
+                # after the report was evaluated. Pending may be overdue.
+                or (data["resolved"] and due_at > evaluated_dt)):
             raise ValueError("inconsistent latest forecast chronology")
     if not set(latest) <= set(symbols):
         raise ValueError("latest forecasts absent from symbol counts")
