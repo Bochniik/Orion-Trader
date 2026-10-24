@@ -111,6 +111,9 @@ if ($StartOurAI) {
             if ($evidence.schema_version -eq 1 -and
                 $evidence.source -eq "ourai_verified_forward_journal" -and
                 $evidence.journal_valid -eq $true -and
+                $evidence.experiment -eq "frozen_v3_magnitude_15m" -and
+                $evidence.mode -eq "RESEARCH_SHADOW_ONLY" -and
+                $evidence.horizon_minutes -eq 15 -and
                 $evidence.trading_enabled -eq $false -and
                 $evidence.direction_available -eq $false) {
                 $ouraiReady = $true
