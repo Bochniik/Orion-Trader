@@ -561,3 +561,33 @@ def test_latest_horizon_is_compared_as_elapsed_time_across_offsets():
     assert result["horizon_minutes"] == 15
     assert result["trading_enabled"] is False
     assert result["direction_available"] is False
+
+
+@pytest.mark.parametrize(
+    ("needle", "duplicate"),
+    [
+        ('"journal_valid": true', '"journal_valid": false, "journal_valid": true'),
+        ('"predictions": 2', '"predictions": 99, "predictions": 2'),
+        ('"expected_magnitude_bps": 12.0',
+         '"expected_magnitude_bps": -1, "expected_magnitude_bps": 12.0'),
+    ],
+)
+def test_duplicate_json_keys_fail_closed_at_any_evidence_depth(needle, duplicate):
+    """A last-wins JSON parser could hide invalid journal or forecast fields."""
+    content = json.dumps(sample())
+    assert content.count(needle) == 1
+    content = content.replace(needle, duplicate, 1)
+
+    def respond(_request):
+        return httpx.Response(
+            200, stream=httpx.ByteStream(content.encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
