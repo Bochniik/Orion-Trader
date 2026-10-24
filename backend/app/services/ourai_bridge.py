@@ -223,5 +223,7 @@ def fetch_ourai_forward_evidence(
         return _inactive("unavailable", "upstream_connection_failure")
     except httpx.HTTPStatusError:
         return _inactive("unavailable", "upstream_http_failure")
-    except (ValueError, TypeError, KeyError, httpx.HTTPError):
+    except (ValueError, TypeError, KeyError, OverflowError, RecursionError, httpx.HTTPError):
+        # Bounded JSON may still contain huge numeric literals or deep nesting.
+        # Treat parser/metric exhaustion as invalid upstream data, never a 500.
         return _inactive("unavailable", "invalid_upstream_evidence")
