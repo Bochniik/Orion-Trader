@@ -138,12 +138,26 @@ if ($StartOurAI) {
 }
 
 Write-Host "Starting OrionTrader backend and frontend..." -ForegroundColor Cyan
-$backendProcess = Start-Process -FilePath $venvPython `
-    -ArgumentList "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000" `
-    -WorkingDirectory $backend -PassThru
-$frontendProcess = Start-Process -FilePath "npm.cmd" `
-    -ArgumentList "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173", "--strictPort" `
-    -WorkingDirectory $frontend -PassThru
+$backendProcess = $null
+$frontendProcess = $null
+try {
+    $backendProcess = Start-Process -FilePath $venvPython `
+        -ArgumentList "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000" `
+        -WorkingDirectory $backend -PassThru
+    $frontendProcess = Start-Process -FilePath "npm.cmd" `
+        -ArgumentList "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173", "--strictPort" `
+        -WorkingDirectory $frontend -PassThru
+}
+catch {
+    if ($StartOurAI) {
+        foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
+            if ($null -ne $ownedProcess -and -not $ownedProcess.HasExited) {
+                Stop-Process -Id $ownedProcess.Id -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    throw
+}
 
 $ready = $false
 for ($attempt = 0; $attempt -lt 30; $attempt++) {
