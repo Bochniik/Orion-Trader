@@ -442,6 +442,32 @@ def test_evaluation_timestamp_may_equal_latest_prediction():
     assert result["as_of"] == data["evaluated_at_utc"]
 
 
+@pytest.mark.parametrize(
+    ("evaluated_at", "expected_status"),
+    [
+        ("2026-10-20T14:14:59Z", "unavailable"),
+        ("2026-10-20T14:15:00Z", "available"),
+        ("2026-10-20T15:15:00+01:00", "unavailable"),
+    ],
+)
+def test_resolved_latest_forecast_cannot_precede_its_target_due_at(
+    evaluated_at, expected_status,
+):
+    """Synthetic forward evidence must not resolve a future 15m target."""
+    data = sample()
+    data["latest_by_symbol"]["NVDA"]["resolved"] = True
+    data["evaluated_at_utc"] = evaluated_at
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == expected_status
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    if expected_status == "unavailable":
+        assert result["unavailable_reason"] == "invalid_upstream_evidence"
+        assert "symbols" not in result and "latest_by_symbol" not in result
+
+
 
 @pytest.mark.parametrize("location", ["global", "symbol", "latest"])
 def test_huge_json_numeric_metric_fails_closed_without_500(location):
