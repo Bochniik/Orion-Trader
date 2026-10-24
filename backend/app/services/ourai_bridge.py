@@ -6,7 +6,7 @@ external JSON response and fails closed on broken data or absent service.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from math import isfinite
 import json
 import os
@@ -161,7 +161,9 @@ def _validate_payload(payload: object) -> dict:
         sample_at = datetime.fromisoformat(latest[symbol]["sample_timestamp"].replace("Z", "+00:00"))
         predicted_at = datetime.fromisoformat(latest[symbol]["predicted_at"].replace("Z", "+00:00"))
         due_at = datetime.fromisoformat(latest[symbol]["target_due_at"].replace("Z", "+00:00"))
-        if not sample_at <= predicted_at < due_at or predicted_at > evaluated_dt:
+        if (due_at - sample_at != timedelta(minutes=15)
+                or not sample_at <= predicted_at < due_at
+                or predicted_at > evaluated_dt):
             raise ValueError("inconsistent latest forecast chronology")
     if not set(latest) <= set(symbols):
         raise ValueError("latest forecasts absent from symbol counts")
