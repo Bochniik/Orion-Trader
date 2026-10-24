@@ -345,3 +345,31 @@ def test_bridge_distinguishes_transport_http_and_invalid_evidence_failures():
     )
     assert malformed["unavailable_reason"] == "invalid_upstream_evidence"
     assert "symbols" not in malformed
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.WriteTimeout("write timed out"),
+        httpx.WriteError("socket write failed"),
+        httpx.PoolTimeout("connection pool unavailable"),
+        httpx.LocalProtocolError("invalid upstream protocol"),
+        httpx.RemoteProtocolError("upstream protocol failed"),
+    ],
+)
+def test_all_loopback_transport_failures_are_unavailable_not_model_errors(error):
+    """Synthetic network failures must never publish stale model evidence."""
+    def fail(_request):
+        raise error
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(fail),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "upstream_connection_failure"
+    assert result["mode"] == "RESEARCH_SHADOW_ONLY"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "champion_mae_bps" not in result
+    assert str(error) not in str(result)
