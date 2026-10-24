@@ -134,3 +134,37 @@ def test_managed_readiness_never_follows_redirects_outside_loopback():
     checks = source.index('$evidence.journal_valid -eq $true', probe)
     enable = source.index('$env:OURAI_BRIDGE_ENABLED = "true"', probe)
     assert probe < status < decode < checks < enable
+
+
+def test_managed_orion_readiness_never_follows_redirects():
+    """Both local servers must return direct HTTP 200 before success is reported."""
+    source = LAUNCHER.read_text(encoding="utf-8")
+
+    backend_probe = source.index(
+        '$healthResponse = Invoke-WebRequest -Uri "http://127.0.0.1:8000/health"'
+    )
+    backend_status = source.index('$healthResponse.StatusCode -eq 200', backend_probe)
+    backend_json = source.index(
+        '$health = ConvertFrom-Json -InputObject $healthResponse.Content',
+        backend_status,
+    )
+    backend_ok = source.index('$health.status -eq "ok"', backend_json)
+    backend_success = source.index('$ready = $true', backend_ok)
+    assert (
+        '-UseBasicParsing -MaximumRedirection 0 -TimeoutSec 1'
+        in source[backend_probe:backend_status]
+    )
+    assert backend_probe < backend_status < backend_json < backend_ok < backend_success
+
+    frontend_probe = source.index(
+        '$frontendResponse = Invoke-WebRequest -Uri "http://127.0.0.1:5173/"'
+    )
+    frontend_status = source.index(
+        '$frontendResponse.StatusCode -eq 200', frontend_probe
+    )
+    frontend_success = source.index('$frontendReady = $true', frontend_status)
+    assert (
+        '-UseBasicParsing -MaximumRedirection 0 -TimeoutSec 1'
+        in source[frontend_probe:frontend_status]
+    )
+    assert frontend_probe < frontend_status < frontend_success
