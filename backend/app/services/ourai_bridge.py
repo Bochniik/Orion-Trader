@@ -127,6 +127,10 @@ def _validate_payload(payload: object) -> dict:
     if sum(x["overdue_pending"] for x in symbols.values()) != overdue:
         raise ValueError("per-symbol overdue counts differ from total")
 
+    # A latest row must exist for each symbol with a real journal prediction,
+    # and no latest row may be invented for an empty symbol.
+    if set(raw_latest) != {symbol for symbol, row in symbols.items() if row["predictions"] > 0}:
+        raise ValueError("latest forecasts do not match symbol prediction counts")
     latest = {}
     for symbol, data in raw_latest.items():
         if not isinstance(data, dict) or data.get("symbol") != symbol:
@@ -143,6 +147,10 @@ def _validate_payload(payload: object) -> dict:
         }
         if latest[symbol]["expected_magnitude_bps"] is None:
             raise ValueError("missing latest magnitude")
+        if data["resolved"] and symbols[symbol]["resolved"] == 0:
+            raise ValueError("latest forecast resolved without symbol resolutions")
+        if not data["resolved"] and symbols[symbol]["pending"] == 0:
+            raise ValueError("latest forecast pending without symbol pending count")
         sample_at = datetime.fromisoformat(latest[symbol]["sample_timestamp"].replace("Z", "+00:00"))
         predicted_at = datetime.fromisoformat(latest[symbol]["predicted_at"].replace("Z", "+00:00"))
         due_at = datetime.fromisoformat(latest[symbol]["target_due_at"].replace("Z", "+00:00"))
