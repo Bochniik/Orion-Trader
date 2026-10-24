@@ -211,10 +211,15 @@ catch {
 $ready = $false
 for ($attempt = 0; $attempt -lt 30; $attempt++) {
     try {
-        $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -TimeoutSec 1
-        if ($health.status -eq "ok") {
-            $ready = $true
-            break
+        # Readiness must not follow redirects to a different host.
+        $healthResponse = Invoke-WebRequest -Uri "http://127.0.0.1:8000/health" `
+            -UseBasicParsing -MaximumRedirection 0 -TimeoutSec 1
+        if ($healthResponse.StatusCode -eq 200) {
+            $health = ConvertFrom-Json -InputObject $healthResponse.Content
+            if ($health.status -eq "ok") {
+                $ready = $true
+                break
+            }
         }
     }
     catch {
@@ -243,7 +248,7 @@ $frontendReady = $false
 for ($attempt = 0; $attempt -lt 30; $attempt++) {
     if ($frontendProcess.HasExited) { break }
     try {
-        $frontendResponse = Invoke-WebRequest -Uri "http://127.0.0.1:5173/" -UseBasicParsing -TimeoutSec 1
+        $frontendResponse = Invoke-WebRequest -Uri "http://127.0.0.1:5173/" -UseBasicParsing -MaximumRedirection 0 -TimeoutSec 1
         if ($frontendResponse.StatusCode -eq 200) {
             $frontendReady = $true
             break
