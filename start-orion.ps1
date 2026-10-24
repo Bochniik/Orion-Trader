@@ -199,7 +199,7 @@ if (-not $ready) {
         # Only terminate the exact processes this launcher started.
         foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
             if ($null -ne $ownedProcess -and -not $ownedProcess.HasExited) {
-                Stop-Process -Id $ownedProcess.Id -ErrorAction SilentlyContinue
+                Stop-OwnedProcess $ownedProcess
             }
         }
         throw "Orion backend did not become ready; attempted to stop the processes started by this launch."
