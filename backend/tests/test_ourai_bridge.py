@@ -525,3 +525,39 @@ def test_plain_json_evidence_remains_accepted_with_identity_encoding():
     assert result["status"] == "available"
     assert result["trading_enabled"] is False
     assert result["direction_available"] is False
+
+
+@pytest.mark.parametrize(
+    ("field", "timestamp"),
+    [
+        ("target_due_at", "2026-10-20T14:14:00Z"),
+        ("target_due_at", "2026-10-20T14:16:00Z"),
+        ("sample_timestamp", "2026-10-20T13:59:00Z"),
+    ],
+)
+def test_latest_magnitude_forecast_requires_exact_15m_horizon(field, timestamp):
+    """Even causally ordered evidence must match the frozen 15m contract."""
+    data = sample()
+    data["latest_by_symbol"]["NVDA"][field] = timestamp
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "latest_by_symbol" not in result
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+def test_latest_horizon_is_compared_as_elapsed_time_across_offsets():
+    """Equivalent offset-aware timestamps must preserve a valid 15m horizon."""
+    data = sample()
+    data["latest_by_symbol"]["NVDA"]["sample_timestamp"] = "2026-10-20T16:00:00+02:00"
+    data["latest_by_symbol"]["NVDA"]["target_due_at"] = "2026-10-20T10:15:00-04:00"
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "available"
+    assert result["horizon_minutes"] == 15
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
