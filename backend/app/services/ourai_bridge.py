@@ -17,8 +17,8 @@ FROZEN_SYMBOLS = ("NVDA", "AAPL", "TSLA", "JPM", "AMD", "META", "MSFT")
 ROUTE = "/v1/forward-evidence"
 
 
-def _inactive(state: str) -> dict:
-    return {
+def _inactive(state: str, reason: str | None = None) -> dict:
+    result = {
         "status": state,
         "source": "ourai_local_forward_bridge",
         "experiment": "frozen_v3_magnitude_15m",
@@ -31,6 +31,9 @@ def _inactive(state: str) -> dict:
             "Verified local forward evidence unavailable; no results inferred."
         ),
     }
+    if reason is not None:
+        result["unavailable_reason"] = reason
+    return result
 
 
 def _count(value: object) -> int:
@@ -201,5 +204,9 @@ def fetch_ourai_forward_evidence(
             response = client.get(f"http://127.0.0.1:{port}{ROUTE}")
             response.raise_for_status()
             return _validate_payload(response.json())
+    except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ReadError, httpx.RemoteProtocolError):
+        return _inactive("unavailable", "upstream_connection_failure")
+    except httpx.HTTPStatusError:
+        return _inactive("unavailable", "upstream_http_failure")
     except (ValueError, TypeError, KeyError, httpx.HTTPError):
-        return _inactive("unavailable")
+        return _inactive("unavailable", "invalid_upstream_evidence")
