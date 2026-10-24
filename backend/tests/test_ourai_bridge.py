@@ -270,3 +270,50 @@ def test_forward_evidence_endpoint_rejects_missing_user_before_bridge(monkeypatc
             intelligence.ourai_forward_evidence(request)
         assert exc.value.status_code == 401
     assert calls == []
+
+
+def test_latest_forecast_must_correspond_to_a_real_symbol_prediction():
+    data = sample()
+    data["latest_by_symbol"] = {}
+    assert ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data)
+    )["status"] == "unavailable"
+
+    data = sample()
+    data["prediction_count"] = 0
+    data["resolution_count"] = 0
+    data["pending_count"] = 0
+    data["symbols"]["NVDA"]["predictions"] = 0
+    data["symbols"]["NVDA"]["resolved"] = 0
+    data["symbols"]["NVDA"]["pending"] = 0
+    for key in ("champion_mae_bps", "linear_mae_bps", "null_mae_bps"):
+        data[key] = None
+        data["symbols"]["NVDA"][key] = None
+    assert ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data)
+    )["status"] == "unavailable"
+
+
+def test_latest_resolution_state_must_match_symbol_counts():
+    data = sample()
+    data["resolution_count"] = 0
+    data["pending_count"] = 2
+    data["symbols"]["NVDA"]["resolved"] = 0
+    data["symbols"]["NVDA"]["pending"] = 2
+    data["latest_by_symbol"]["NVDA"]["resolved"] = True
+    for key in ("champion_mae_bps", "linear_mae_bps", "null_mae_bps"):
+        data[key] = None
+        data["symbols"]["NVDA"][key] = None
+    assert ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data)
+    )["status"] == "unavailable"
+
+    data = sample()
+    data["resolution_count"] = 2
+    data["pending_count"] = 0
+    data["symbols"]["NVDA"]["resolved"] = 2
+    data["symbols"]["NVDA"]["pending"] = 0
+    data["latest_by_symbol"]["NVDA"]["resolved"] = False
+    assert ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data)
+    )["status"] == "unavailable"
