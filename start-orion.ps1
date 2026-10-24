@@ -103,9 +103,34 @@ if ($StartOurAI) {
     $ouraiProcess = Start-Process -FilePath $ouraiPython `
         -ArgumentList "-m", "scripts.serve_orion_forward_bridge", "--port", "8765" `
         -WorkingDirectory $ouraiRoot -PassThru
+    $ouraiReady = $false
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        if ($ouraiProcess.HasExited) { break }
+        try {
+            $evidence = Invoke-RestMethod -Uri "http://127.0.0.1:8765/v1/forward-evidence" -TimeoutSec 2
+            if ($evidence.schema_version -eq 1 -and
+                $evidence.source -eq "ourai_verified_forward_journal" -and
+                $evidence.journal_valid -eq $true -and
+                $evidence.trading_enabled -eq $false -and
+                $evidence.direction_available -eq $false) {
+                $ouraiReady = $true
+                break
+            }
+        }
+        catch {
+            # Missing or invalid evidence is not a successful startup.
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    if (-not $ouraiReady) {
+        if (-not $ouraiProcess.HasExited) {
+            Stop-Process -Id $ouraiProcess.Id -ErrorAction SilentlyContinue
+        }
+        throw "OurAI bridge did not return verified read-only evidence. Orion was not started."
+    }
     $env:OURAI_BRIDGE_ENABLED = "true"
     $env:OURAI_BRIDGE_PORT = "8765"
-    Write-Host "Started opt-in local OurAI bridge (PID $($ouraiProcess.Id))." -ForegroundColor Cyan
+    Write-Host "OurAI verified read-only bridge ready (PID $($ouraiProcess.Id))." -ForegroundColor Cyan
     Write-Host "Stop the OurAI process separately when finished; automatic lifecycle management is not implemented yet." -ForegroundColor Yellow
 }
 
