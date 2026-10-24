@@ -160,6 +160,16 @@ for ($attempt = 0; $attempt -lt 30; $attempt++) {
 }
 
 if (-not $ready) {
+    if ($StartOurAI) {
+        # Do not leave an opt-in bridge running after a failed Orion startup.
+        # Only terminate the exact processes this launcher started.
+        foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
+            if ($null -ne $ownedProcess -and -not $ownedProcess.HasExited) {
+                Stop-Process -Id $ownedProcess.Id -ErrorAction SilentlyContinue
+            }
+        }
+        throw "Orion backend did not become ready; attempted to stop the processes started by this launch."
+    }
     Write-Warning "The backend did not become ready in time. Check the backend window for details."
 }
 
