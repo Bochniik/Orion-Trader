@@ -47,11 +47,18 @@ def sample():
 
 
 def transport_response(data, status=200):
+    # MockTransport must expose an unread byte stream for iter_raw().
+    # httpx.Response(json=... / content=...) preloads the body and raises
+    # StreamConsumed when the production bridge uses streaming reads.
     def respond(request):
         assert request.url.host == "127.0.0.1"
         assert request.url.path == ourai_bridge.ROUTE
         assert request.url.port == 8765
-        return httpx.Response(status, json=data)
+        return httpx.Response(
+            status,
+            headers={"Content-Type": "application/json"},
+            stream=httpx.ByteStream(json.dumps(data).encode("utf-8")),
+        )
     return httpx.MockTransport(respond)
 
 
@@ -379,7 +386,7 @@ def test_oversized_loopback_json_fails_closed_without_exposing_data():
     payload = sample()
     payload["secret"] = "private-" + "x" * ourai_bridge.MAX_EVIDENCE_BYTES
     def respond(_request):
-        return httpx.Response(200, content=json.dumps(payload).encode("utf-8"))
+        return httpx.Response(200, stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")))
     result = ourai_bridge.fetch_ourai_forward_evidence(
         enabled=True, transport=httpx.MockTransport(respond),
     )
@@ -399,7 +406,7 @@ def test_compressed_loopback_response_is_rejected_without_decompression():
     assert len(compressed) < ourai_bridge.MAX_EVIDENCE_BYTES
     def respond(_request):
         return httpx.Response(
-            200, headers={"Content-Encoding": "gzip"}, content=compressed,
+            200, headers={"Content-Encoding": "gzip"}, stream=httpx.ByteStream(compressed),
         )
     result = ourai_bridge.fetch_ourai_forward_evidence(
         enabled=True, transport=httpx.MockTransport(respond),
@@ -466,7 +473,7 @@ def test_deeply_nested_but_small_json_fails_closed_without_500():
     result = ourai_bridge.fetch_ourai_forward_evidence(
         enabled=True,
         transport=httpx.MockTransport(
-            lambda _request: httpx.Response(200, content=content)
+            lambda _request: httpx.Response(200, stream=httpx.ByteStream(content))
         ),
     )
     assert result["status"] == "unavailable"
@@ -488,7 +495,7 @@ def test_even_small_encoded_evidence_is_rejected_before_decompression(encoding):
         return httpx.Response(
             200,
             headers={"Content-Encoding": encoding},
-            content=json.dumps(payload).encode("utf-8"),
+            stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")),
         )
 
     result = ourai_bridge.fetch_ourai_forward_evidence(
@@ -508,7 +515,8 @@ def test_plain_json_evidence_remains_accepted_with_identity_encoding():
     def respond(request):
         assert request.headers["Accept-Encoding"] == "identity"
         return httpx.Response(
-            200, headers={"Content-Encoding": "identity"}, json=payload,
+            200, headers={"Content-Encoding": "identity"},
+            stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")),
         )
 
     result = ourai_bridge.fetch_ourai_forward_evidence(
