@@ -19,7 +19,7 @@ def test_ourai_startup_is_explicit_opt_in_and_local():
 
 def test_ourai_readiness_is_checked_before_enabling_client():
     source = LAUNCHER.read_text(encoding="utf-8")
-    readiness = source.index('$evidence = Invoke-RestMethod')
+    readiness = source.index('$evidenceResponse = Invoke-WebRequest')
     checks = source.index('$evidence.journal_valid -eq $true')
     failure = source.index('throw "OurAI bridge did not return verified read-only evidence.')
     enable = source.index('$env:OURAI_BRIDGE_ENABLED = "true"')
@@ -121,3 +121,16 @@ def test_managed_bridge_flag_is_scoped_to_spawned_backend_not_parent_shell():
     assert failure_body.index('$env:OURAI_BRIDGE_ENABLED = "false"') < failure_body.index(
         'Stop-OwnedProcess $ownedProcess'
     )
+
+
+def test_managed_readiness_never_follows_redirects_outside_loopback():
+    """Static guard for local-only bootstrap; Windows E2E remains required."""
+    source = LAUNCHER.read_text(encoding="utf-8")
+    probe = source.index('$evidenceResponse = Invoke-WebRequest')
+    assert 'Invoke-WebRequest -Uri "http://127.0.0.1:8765/v1/forward-evidence"' in source
+    assert '-UseBasicParsing -MaximumRedirection 0 -TimeoutSec 2' in source
+    status = source.index('$evidenceResponse.StatusCode -ne 200', probe)
+    decode = source.index('$evidence = ConvertFrom-Json -InputObject $evidenceResponse.Content', probe)
+    checks = source.index('$evidence.journal_valid -eq $true', probe)
+    enable = source.index('$env:OURAI_BRIDGE_ENABLED = "true"', probe)
+    assert probe < status < decode < checks < enable
