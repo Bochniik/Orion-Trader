@@ -391,7 +391,7 @@ def test_oversized_loopback_json_fails_closed_without_exposing_data():
     assert "secret" not in str(result)
 
 
-def test_compressed_loopback_response_is_bounded_after_decompression():
+def test_compressed_loopback_response_is_rejected_without_decompression():
     import gzip
     payload = sample()
     payload["secret"] = "x" * ourai_bridge.MAX_EVIDENCE_BYTES
