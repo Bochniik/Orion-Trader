@@ -136,6 +136,8 @@ def _validate_payload(payload: object) -> dict:
     # and no latest row may be invented for an empty symbol.
     if set(raw_latest) != {symbol for symbol, row in symbols.items() if row["predictions"] > 0}:
         raise ValueError("latest forecasts do not match symbol prediction counts")
+    evaluated_at = _stamp(payload.get("evaluated_at_utc"))
+    evaluated_dt = datetime.fromisoformat(evaluated_at.replace("Z", "+00:00"))
     latest = {}
     for symbol, data in raw_latest.items():
         if not isinstance(data, dict) or data.get("symbol") != symbol:
@@ -159,7 +161,7 @@ def _validate_payload(payload: object) -> dict:
         sample_at = datetime.fromisoformat(latest[symbol]["sample_timestamp"].replace("Z", "+00:00"))
         predicted_at = datetime.fromisoformat(latest[symbol]["predicted_at"].replace("Z", "+00:00"))
         due_at = datetime.fromisoformat(latest[symbol]["target_due_at"].replace("Z", "+00:00"))
-        if not sample_at <= predicted_at < due_at:
+        if not sample_at <= predicted_at < due_at or predicted_at > evaluated_dt:
             raise ValueError("inconsistent latest forecast chronology")
     if not set(latest) <= set(symbols):
         raise ValueError("latest forecasts absent from symbol counts")
@@ -171,7 +173,7 @@ def _validate_payload(payload: object) -> dict:
         "horizon_minutes": 15,
         "direction_available": False,
         "trading_enabled": False,
-        "as_of": _stamp(payload.get("evaluated_at_utc")),
+        "as_of": evaluated_at,
         "prediction_count": predictions,
         "resolution_count": resolved,
         "pending_count": pending,
