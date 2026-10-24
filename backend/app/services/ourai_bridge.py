@@ -204,7 +204,9 @@ def fetch_ourai_forward_evidence(
             response = client.get(f"http://127.0.0.1:{port}{ROUTE}")
             response.raise_for_status()
             return _validate_payload(response.json())
-    except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ReadError, httpx.RemoteProtocolError):
+    except httpx.TransportError:
+        # All loopback transport failures (DNS/connect/read/write/pool/protocol)
+        # are data-availability failures, not evidence of model inaccuracy.
         return _inactive("unavailable", "upstream_connection_failure")
     except httpx.HTTPStatusError:
         return _inactive("unavailable", "upstream_http_failure")
