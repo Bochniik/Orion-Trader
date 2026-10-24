@@ -1,0 +1,64 @@
+name: Premarket synthetic learning
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: premarket-synthetic-learning
+  cancel-in-progress: false
+
+jobs:
+  synthetic-learning:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==2.5.1 pandas==3.0.3
+
+      - name: Run synthetic Premarket learning loop
+        env:
+          PYTHONPATH: backend
+        run: python scripts/run_premarket_synthetic_learning.py --output backend/data/simulations/premarket_synthetic_learning.json
+
+      - name: Print lockbox summary
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          payload = json.loads(Path("backend/data/simulations/premarket_synthetic_learning.json").read_text())
+          print("verdict:", payload["lockbox_evaluation"]["verdict"])
+          print("development samples:", payload["development_sample_count"])
+          print("lockbox samples:", payload["lockbox_sample_count"])
+          for horizon, row in payload["lockbox_evaluation"]["by_horizon"].items():
+              print(
+                  f"{horizon}m samples={row.get('sample_count')} "
+                  f"brier_delta={row.get('brier_improvement')} "
+                  f"accuracy_delta={row.get('directional_accuracy_delta')} "
+                  f"return_mae_delta={row.get('return_mae_improvement_pct')} "
+                  f"pass={row.get('passes_preregistered_gate')}"
+              )
+
+      - name: Upload immutable research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: premarket-synthetic-learning-${{ github.run_id }}
+          path: backend/data/simulations/premarket_synthetic_learning.json
+          if-no-files-found: error
+          retention-days: 30

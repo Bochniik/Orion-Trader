@@ -76,3 +76,46 @@ def test_lab_is_research_only_and_never_enables_orders():
     assert payload["research_only"] is True
     assert payload["order_submission_enabled"] is False
     assert len(payload["scenarios"]) == 2
+
+
+def test_sparse_settlement_uses_observed_close_not_hidden_latent_price():
+    module = load_module()
+    frame, latent = module.generate_scenario(
+        module.Scenario("sparse", 1.0, 0.01, 0.10, bar_probability=0.20),
+        seed=99,
+    )
+    # Select a decision minute with no bar to reproduce stale observed data.
+    as_of = next(t for t in latent.index[60:-30] if t not in frame.index)
+    visible = frame.loc[frame.index <= as_of]
+    observed_at = visible.index[-1]
+    observed_price = float(visible["Close"].iloc[-1])
+    assert observed_at < as_of
+    signal = {
+        "direction": "UP",
+        "raw_direction": "UP",
+        "probability_up": 0.7,
+        "research_gate_passed": True,
+    }
+    result = module._settle_signal(
+        signal, latent, as_of, 5,
+        observed_price=observed_price, observed_at=observed_at,
+    )
+    assert result is not None
+    expected = (float(latent.loc[as_of + module.pd.Timedelta(minutes=5)]) / observed_price - 1) * 100
+    assert abs(result["actual_return_pct"] - expected) < 1e-12
+    assert result["observation_age_minutes"] > 0
+    assert result["observed_price"] == observed_price
+    # The latent as_of price is deliberately not the settlement baseline.
+    hidden_baseline = (float(latent.loc[as_of + module.pd.Timedelta(minutes=5)]) / float(latent.loc[as_of]) - 1) * 100
+    assert abs(result["actual_return_pct"] - hidden_baseline) > 1e-10
+
+
+def test_full_sparse_scenario_reports_stale_observation_age():
+    module = load_module()
+    result = module.run_scenario(
+        module.Scenario("sparse", 1.0, 0.01, 0.10, bar_probability=0.20),
+        seed=99,
+        evaluation_step_minutes=5,
+    )
+    assert any(row["observation_age_minutes"] > 0 for row in result["snapshots"])
+    assert all(row["observation_age_minutes"] >= 0 for row in result["snapshots"])
