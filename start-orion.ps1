@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [switch]$SkipInstall,
-    [switch]$NoBrowser
+    [switch]$NoBrowser,
+    [switch]$StartOurAI,
+    [string]$OurAIPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -79,6 +81,33 @@ if (-not (Test-Path $envFile)) {
 # Fail before starting either service so the pair always belongs to one launch.
 Assert-PortAvailable 8000 "OrionTrader backend"
 Assert-PortAvailable 5173 "OrionTrader frontend"
+
+# Transitional opt-in local startup. Future packaged builds will provide an
+# embedded OurAI runtime; never silently trust or execute an arbitrary folder.
+if ($StartOurAI) {
+    if ([string]::IsNullOrWhiteSpace($OurAIPath)) {
+        throw "-StartOurAI requires an explicit trusted -OurAIPath. Nothing was started."
+    }
+    $ouraiRoot = (Resolve-Path -LiteralPath $OurAIPath -ErrorAction Stop).Path
+    $ouraiScript = Join-Path $ouraiRoot "scripts\\serve_orion_forward_bridge.py"
+    if (-not (Test-Path -LiteralPath $ouraiScript -PathType Leaf)) {
+        throw "OurAI read-only server script not found at the selected path."
+    }
+    Assert-PortAvailable 8765 "OurAI read-only bridge"
+    $ouraiPython = Join-Path $ouraiRoot ".venv\\Scripts\\python.exe"
+    if (-not (Test-Path -LiteralPath $ouraiPython -PathType Leaf)) {
+        throw "OurAI Python environment is missing. Install it in the selected OurAI directory first."
+    }
+    # The server only binds to 127.0.0.1, reads the verified journal and
+    # cannot place trades. Child environment enables the Orion read-only client.
+    $ouraiProcess = Start-Process -FilePath $ouraiPython \`
+        -ArgumentList "-m", "scripts.serve_orion_forward_bridge", "--port", "8765" \`
+        -WorkingDirectory $ouraiRoot -PassThru
+    $env:OURAI_BRIDGE_ENABLED = "true"
+    $env:OURAI_BRIDGE_PORT = "8765"
+    Write-Host "Started opt-in local OurAI bridge (PID $($ouraiProcess.Id))." -ForegroundColor Cyan
+    Write-Host "Stop the OurAI process separately when finished; automatic lifecycle management is not implemented yet." -ForegroundColor Yellow
+}
 
 Write-Host "Starting OrionTrader backend and frontend..." -ForegroundColor Cyan
 $backendProcess = Start-Process -FilePath $venvPython `
