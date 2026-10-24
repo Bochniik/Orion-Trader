@@ -36,3 +36,19 @@ def test_no_trading_or_model_execution_added_to_launcher():
     assert "run_v3_forward_shadow" not in source
     assert "train_trading_baseline" not in source
     assert "place_order" not in source
+
+
+def test_opt_in_startup_failure_cleans_up_only_owned_processes():
+    source = LAUNCHER.read_text(encoding="utf-8")
+    assert 'Write-Host "Starting OrionTrader backend and frontend..."' in source
+    launch_section = source.split('Write-Host "Starting OrionTrader backend and frontend..."', 1)[1]
+    # Both a Start-Process exception and a failed backend health probe must
+    # clean up the child processes created during this invocation.
+    cleanup = 'foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess))'
+    assert launch_section.count(cleanup) == 2
+    assert launch_section.count('Stop-Process -Id $ownedProcess.Id') == 2
+    assert 'if ($StartOurAI) {' in launch_section
+    assert 'throw "Orion backend did not become ready;' in launch_section
+    assert 'Write-Warning "The backend did not become ready in time.' in launch_section
+    assert 'Stop-Process -Name' not in source
+    assert 'Get-Process | Stop-Process' not in source
