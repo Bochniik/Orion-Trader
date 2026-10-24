@@ -141,6 +141,11 @@ def _validate_payload(payload: object) -> dict:
         }
         if latest[symbol]["expected_magnitude_bps"] is None:
             raise ValueError("missing latest magnitude")
+        sample_at = datetime.fromisoformat(latest[symbol]["sample_timestamp"].replace("Z", "+00:00"))
+        predicted_at = datetime.fromisoformat(latest[symbol]["predicted_at"].replace("Z", "+00:00"))
+        due_at = datetime.fromisoformat(latest[symbol]["target_due_at"].replace("Z", "+00:00"))
+        if not sample_at <= predicted_at < due_at:
+            raise ValueError("inconsistent latest forecast chronology")
     if not set(latest) <= set(symbols):
         raise ValueError("latest forecasts absent from symbol counts")
     return {
