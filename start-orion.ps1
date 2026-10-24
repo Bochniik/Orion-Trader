@@ -37,6 +37,21 @@ function Assert-PortAvailable([int]$Port, [string]$ServiceName) {
     throw "$ServiceName cannot start because port $Port is already used by $processLabel. Close the old OrionTrader terminal or stop that process, then run this launcher again."
 }
 
+# Retain the Process object returned by Start-Process: stopping by PID alone
+# could target a different process if Windows has recycled the PID.
+function Stop-OwnedProcess($Process) {
+    if ($null -eq $Process) { return }
+    try {
+        $Process.Refresh()
+        if (-not $Process.HasExited) {
+            $Process.Kill()
+        }
+    }
+    catch {
+        Write-Warning "Could not stop a process owned by this launch; inspect its terminal."
+    }
+}
+
 # Do not inherit a stale bridge opt-in from an earlier terminal session.
 # Explicit -StartOurAI is required for this managed launcher.
 $env:OURAI_BRIDGE_ENABLED = "false"
@@ -132,7 +147,7 @@ if ($StartOurAI) {
     }
     if (-not $ouraiReady) {
         if (-not $ouraiProcess.HasExited) {
-            Stop-Process -Id $ouraiProcess.Id -ErrorAction SilentlyContinue
+            Stop-OwnedProcess $ouraiProcess
         }
         throw "OurAI bridge did not return verified read-only evidence. Orion was not started."
     }
@@ -157,7 +172,7 @@ catch {
     if ($StartOurAI) {
         foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
             if ($null -ne $ownedProcess -and -not $ownedProcess.HasExited) {
-                Stop-Process -Id $ownedProcess.Id -ErrorAction SilentlyContinue
+                Stop-OwnedProcess $ownedProcess
             }
         }
     }
