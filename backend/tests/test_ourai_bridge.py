@@ -433,3 +433,44 @@ def test_evaluation_timestamp_may_equal_latest_prediction():
     )
     assert result["status"] == "available"
     assert result["as_of"] == data["evaluated_at_utc"]
+
+
+
+@pytest.mark.parametrize("location", ["global", "symbol", "latest"])
+def test_huge_json_numeric_metric_fails_closed_without_500(location):
+    """A bounded response can still contain an integer too large for float."""
+    data = sample()
+    if location == "global":
+        data["champion_mae_bps"] = 10 ** 400
+    elif location == "symbol":
+        data["symbols"]["NVDA"]["champion_mae_bps"] = 10 ** 400
+    else:
+        data["latest_by_symbol"]["NVDA"]["expected_magnitude_bps"] = 10 ** 400
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+def test_deeply_nested_but_small_json_fails_closed_without_500():
+    """A 40 KiB JSON response can exceed parser nesting limits."""
+    depth = 20_000
+    content = b"[" * depth + b"0" + b"]" * depth
+    assert len(content) < ourai_bridge.MAX_EVIDENCE_BYTES
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True,
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(200, content=content)
+        ),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
