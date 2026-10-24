@@ -190,6 +190,17 @@ def _validate_payload(payload: object) -> dict:
     }
 
 
+
+def _unique_json_keys(pairs: list[tuple[str, object]]) -> dict:
+    """Reject ambiguous evidence rather than letting JSON's last key win."""
+    obj = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError("duplicate forward evidence JSON key")
+        obj[key] = value
+    return obj
+
+
 def fetch_ourai_forward_evidence(
     *,
     enabled: bool | None = None,
@@ -224,7 +235,7 @@ def fetch_ourai_forward_evidence(
                     if total > MAX_EVIDENCE_BYTES:
                         raise ValueError("oversized forward evidence response")
                     chunks.append(chunk)
-            return _validate_payload(json.loads(b"".join(chunks)))
+            return _validate_payload(json.loads(b"".join(chunks), object_pairs_hook=_unique_json_keys))
     except httpx.TransportError:
         # All loopback transport failures (DNS/connect/read/write/pool/protocol)
         # are data-availability failures, not evidence of model inaccuracy.
