@@ -139,3 +139,31 @@ def test_symbol_mae_must_match_resolved_count():
     for key in ("champion_mae_bps", "linear_mae_bps", "null_mae_bps"):
         data[key] = None
     assert ourai_bridge.fetch_ourai_forward_evidence(enabled=True, transport=transport_response(data))["status"] == "unavailable"
+
+
+def test_latest_forecast_chronology_fails_closed():
+    for field, bad_time in (
+        ("predicted_at", "2026-10-20T13:59:59Z"),
+        ("predicted_at", "2026-10-20T14:15:00Z"),
+        ("target_due_at", "2026-10-20T13:59:00Z"),
+    ):
+        data = sample()
+        data["latest_by_symbol"]["NVDA"][field] = bad_time
+        result = ourai_bridge.fetch_ourai_forward_evidence(
+            enabled=True, transport=transport_response(data),
+        )
+        assert result["status"] == "unavailable"
+        assert "latest_by_symbol" not in result
+
+
+def test_upstream_connection_failure_and_timeout_fail_closed():
+    for error in (httpx.ConnectError("connection refused"), httpx.ReadTimeout("upstream timed out")):
+        def fail(request):
+            raise error
+        result = ourai_bridge.fetch_ourai_forward_evidence(
+            enabled=True, transport=httpx.MockTransport(fail),
+        )
+        assert result["status"] == "unavailable"
+        assert result["direction_available"] is False
+        assert result["trading_enabled"] is False
+        assert "symbols" not in result
