@@ -45,8 +45,8 @@ def test_opt_in_startup_failure_cleans_up_only_owned_processes():
     # Both a Start-Process exception and a failed backend health probe must
     # clean up the child processes created during this invocation.
     cleanup = 'foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess))'
-    assert launch_section.count(cleanup) == 2
-    assert launch_section.count('Stop-OwnedProcess $ownedProcess') == 2
+    assert launch_section.count(cleanup) == 3
+    assert launch_section.count('Stop-OwnedProcess $ownedProcess') == 3
     assert 'if ($StartOurAI) {' in launch_section
     assert 'throw "Orion backend did not become ready;' in launch_section
     assert 'Write-Warning "The backend did not become ready in time.' in launch_section
@@ -63,3 +63,18 @@ def test_launcher_clears_stale_environment_opt_in_before_startup():
     managed = source.index("if ($StartOurAI) {")
     enabled = source.index('$env:OURAI_BRIDGE_ENABLED = "true"')
     assert reset < managed < enabled
+
+
+def test_opt_in_launcher_requires_frontend_readiness_before_reporting_success():
+    source = LAUNCHER.read_text(encoding="utf-8")
+    frontend_probe = source.index('Invoke-WebRequest -Uri "http://127.0.0.1:5173/"')
+    frontend_ready = source.index('$frontendResponse.StatusCode -eq 200')
+    frontend_failure = source.index('throw "Orion frontend did not become ready;')
+    frontend_warning = source.index('Write-Warning "The frontend did not become ready in time.')
+    success_output = source.index('Write-Host "OrionTrader: http://127.0.0.1:5173"')
+    browser_launch = source.index('Start-Process "http://127.0.0.1:5173"')
+    assert frontend_probe < frontend_ready < frontend_failure < success_output < browser_launch
+    assert frontend_failure < frontend_warning < success_output
+    assert 'if ($frontendProcess.HasExited) { break }' in source
+    assert 'if ($StartOurAI) {' in source[frontend_ready:frontend_failure]
+    assert 'Stop-OwnedProcess $ownedProcess' in source[frontend_ready:frontend_failure]
