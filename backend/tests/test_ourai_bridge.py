@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
+from contextlib import contextmanager
+import json
 import httpx
 
 from app.api import intelligence_routes as intelligence
@@ -196,3 +200,60 @@ def test_unresolved_evidence_without_mae_is_valid():
     assert result["resolution_count"] == 0
     assert result["champion_mae_bps"] is None
     assert result["direction_available"] is False
+
+
+@contextmanager
+def local_forward_http_server(payload, status=200):
+    """Real loopback HTTP transport with synthetic producer-schema data."""
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            assert self.path == ourai_bridge.ROUTE
+            assert self.headers["Host"].startswith("127.0.0.1:")
+            body = json.dumps(payload).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield server.server_port
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_real_loopback_http_contract_sanitizes_synthetic_producer_snapshot():
+    """Exercise the actual httpx network path instead of MockTransport."""
+    data = sample()
+    data["p_up"] = 0.99
+    data["api_key"] = "never-expose"
+    with local_forward_http_server(data) as port:
+        result = ourai_bridge.fetch_ourai_forward_evidence(enabled=True, port=port)
+    assert result["status"] == "available"
+    assert result["source"] == "ourai_verified_forward_journal"
+    assert result["symbols"]["NVDA"]["predictions"] == 2
+    assert result["latest_by_symbol"]["NVDA"]["expected_magnitude_bps"] == 12.0
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "p_up" not in result
+    assert "api_key" not in result
+
+
+def test_real_loopback_http_unavailable_and_disabled_do_not_expose_stale_evidence():
+    with local_forward_http_server({"status": "forward_evidence_unavailable"}, status=503) as port:
+        unavailable = ourai_bridge.fetch_ourai_forward_evidence(enabled=True, port=port)
+        disabled = ourai_bridge.fetch_ourai_forward_evidence(enabled=False, port=port)
+    assert unavailable["status"] == "unavailable"
+    assert "symbols" not in unavailable
+    assert "latest_by_symbol" not in unavailable
+    assert disabled["status"] == "disabled"
+    assert disabled["trading_enabled"] is False
