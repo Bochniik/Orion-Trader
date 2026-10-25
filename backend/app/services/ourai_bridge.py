@@ -6,7 +6,7 @@ external JSON response and fails closed on broken data or absent service.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import isfinite
 import json
 import os
@@ -138,6 +138,11 @@ def _validate_payload(payload: object) -> dict:
         raise ValueError("latest forecasts do not match symbol prediction counts")
     evaluated_at = _stamp(payload.get("evaluated_at_utc"))
     evaluated_dt = datetime.fromisoformat(evaluated_at.replace("Z", "+00:00"))
+    # Reject a report claiming verification far in the future. A small skew
+    # allowance tolerates imperfect desktop clocks without accepting forged
+    # forward chronology as already observed evidence.
+    if evaluated_dt > datetime.now(timezone.utc) + timedelta(minutes=5):
+        raise ValueError("future forward evidence evaluation timestamp")
     latest = {}
     for symbol, data in raw_latest.items():
         if not isinstance(data, dict) or data.get("symbol") != symbol:
