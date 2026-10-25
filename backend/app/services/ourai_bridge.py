@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from math import isfinite
+from time import monotonic
 import json
 import os
 
@@ -17,6 +18,7 @@ import httpx
 FROZEN_SYMBOLS = ("NVDA", "AAPL", "TSLA", "JPM", "AMD", "META", "MSFT")
 ROUTE = "/v1/forward-evidence"
 MAX_EVIDENCE_BYTES = 262_144  # Bounded trusted-loopback JSON; never accept unbounded data.
+MAX_RESPONSE_SECONDS = 5.0  # A slow-trickling peer must not occupy a worker indefinitely.
 
 
 def _inactive(state: str, reason: str | None = None) -> dict:
@@ -225,6 +227,9 @@ def fetch_ourai_forward_evidence(
             port = int(os.getenv("OURAI_BRIDGE_PORT", "8765"))
         if type(port) is not int or not 1 <= port <= 65535:
             raise ValueError("invalid loopback port")
+        # Per-operation timeouts alone permit an endless slow-trickle response.
+        # Enforce a total deadline as well, without changing read-only semantics.
+        started_at = monotonic()
         # Redirects must never send evidence requests outside trusted loopback.
         # Explicitly pin this instead of relying on httpx defaults.
         with httpx.Client(timeout=2.0, trust_env=False, follow_redirects=False, transport=transport) as client:
@@ -251,10 +256,16 @@ def fetch_ourai_forward_evidence(
                 chunks = []
                 total = 0
                 for chunk in response.iter_raw():
+                    if monotonic() - started_at > MAX_RESPONSE_SECONDS:
+                        raise httpx.ReadTimeout("loopback evidence response deadline exceeded")
                     total += len(chunk)
                     if total > MAX_EVIDENCE_BYTES:
                         raise ValueError("oversized forward evidence response")
                     chunks.append(chunk)
+                # A peer may delay end-of-stream after sending its final JSON chunk.
+                # Do not publish evidence if completion exceeded the elapsed deadline.
+                if monotonic() - started_at > MAX_RESPONSE_SECONDS:
+                    raise httpx.ReadTimeout("loopback evidence response deadline exceeded")
             return _validate_payload(json.loads(b"".join(chunks), object_pairs_hook=_unique_json_keys))
     except httpx.TransportError:
         # All loopback transport failures (DNS/connect/read/write/pool/protocol)
