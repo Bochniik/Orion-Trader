@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from datetime import datetime, timezone
 import pytest
 from fastapi import HTTPException
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -440,6 +441,38 @@ def test_evaluation_timestamp_may_equal_latest_prediction():
     )
     assert result["status"] == "available"
     assert result["as_of"] == data["evaluated_at_utc"]
+
+
+@pytest.mark.parametrize("evaluated_at", [
+    "2099-01-01T00:00:00Z",
+    "2099-01-01T13:00:00+13:00",
+])
+def test_future_dated_evaluation_fails_closed(evaluated_at):
+    """A report must not claim that future observations are verified."""
+    data = sample()
+    data["evaluated_at_utc"] = evaluated_at
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "champion_mae_bps" not in result
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+def test_current_evaluation_timestamp_is_accepted():
+    """The future-date guard must not reject a normally timed report."""
+    data = sample()
+    data["evaluated_at_utc"] = datetime.now(timezone.utc).isoformat()
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "available"
+    assert result["as_of"] == data["evaluated_at_utc"]
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
 
 
 @pytest.mark.parametrize(
