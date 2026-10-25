@@ -44,7 +44,12 @@ function Stop-OwnedProcess($Process) {
     try {
         $Process.Refresh()
         if (-not $Process.HasExited) {
+            # Kill() is asynchronous on Windows; wait for the owned server
+            # process to exit before a failed launch reports rollback complete.
             $Process.Kill()
+            if (-not $Process.WaitForExit(5000)) {
+                Write-Warning "Owned process did not exit within 5 seconds; inspect its terminal."
+            }
         }
     }
     catch {
