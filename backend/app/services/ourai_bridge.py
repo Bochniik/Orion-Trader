@@ -233,6 +233,11 @@ def fetch_ourai_forward_evidence(
                 headers={"Accept": "application/json", "Accept-Encoding": "identity"},
             ) as response:
                 response.raise_for_status()
+                # The fixed read-only producer returns exactly HTTP 200.
+                # Other 2xx statuses (including 206 partial content) must not
+                # be promoted into verified evidence even with valid JSON.
+                if response.status_code != 200:
+                    return _inactive("unavailable", "upstream_http_failure")
                 # OurAI's producer sends plain JSON. Reject compression rather
                 # than allocating an arbitrarily large decoded chunk before
                 # the byte limit can be checked (decompression-bomb defense).

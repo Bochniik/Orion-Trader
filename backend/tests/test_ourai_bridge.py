@@ -718,3 +718,17 @@ def test_loopback_evidence_accepts_producer_json_media_type_with_charset():
     assert result["status"] == "available"
     assert result["trading_enabled"] is False
     assert result["direction_available"] is False
+
+
+@pytest.mark.parametrize("status_code", [201, 202, 206])
+def test_only_http_200_can_publish_verified_forward_evidence(status_code):
+    """A valid-looking body with a non-200 2xx response is not verified evidence."""
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(sample(), status=status_code),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "upstream_http_failure"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "champion_mae_bps" not in result
