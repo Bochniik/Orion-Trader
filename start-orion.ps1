@@ -39,6 +39,22 @@ function Assert-PortAvailable([int]$Port, [string]$ServiceName) {
 
 # Retain the Process object returned by Start-Process: stopping by PID alone
 # could target a different process if Windows has recycled the PID.
+# A successful HTTP probe can come from an unrelated process that won a
+# bind race. In managed mode, require each expected IPv4 loopback listener
+# to belong to the exact process object created by this launcher.
+function Assert-OwnedListener([int]$Port, $Process, [string]$ServiceName) {
+    $Process.Refresh()
+    if ($Process.HasExited) {
+        throw "$ServiceName exited before listener ownership could be verified."
+    }
+    $listener = Get-NetTCPConnection -LocalAddress "127.0.0.1" -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+        Where-Object { $_.OwningProcess -eq $Process.Id } |
+        Select-Object -First 1
+    if (-not $listener) {
+        throw "$ServiceName does not own the expected loopback listener on port $Port."
+    }
+}
+
 function Stop-OwnedProcess($Process) {
     if ($null -eq $Process) { return }
     try {
@@ -291,6 +307,21 @@ if ($StartOurAI) {
             }
         }
         throw "A managed OurAI/Orion process exited before startup completed."
+    }
+    try {
+        Assert-OwnedListener 8765 $ouraiProcess "OurAI read-only bridge"
+        Assert-OwnedListener 8000 $backendProcess "OrionTrader backend"
+        Assert-OwnedListener 5173 $frontendProcess "OrionTrader frontend"
+    }
+    catch {
+        # A healthy response from a different listener is not proof of a
+        # successful managed launch. Never stop a process we did not create.
+        foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
+            if ($null -ne $ownedProcess -and -not $ownedProcess.HasExited) {
+                Stop-OwnedProcess $ownedProcess
+            }
+        }
+        throw
     }
 }
 
