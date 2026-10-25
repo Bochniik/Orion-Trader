@@ -796,3 +796,56 @@ def test_only_http_200_can_publish_verified_forward_evidence(status_code):
     assert result["trading_enabled"] is False
     assert "symbols" not in result and "latest_by_symbol" not in result
     assert "champion_mae_bps" not in result
+
+def test_real_loopback_http_recovery_after_transient_outage():
+    """A 503 after verified data must clear evidence; recovery needs a fresh GET.
+
+    The payload is synthetic and asserts transport/state behavior only, never
+    actual forward performance or the existence of a settled forecast.
+    """
+    responses = [200, 503, 200]
+    requests = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            requests.append((self.command, self.path))
+            status = responses.pop(0)
+            body = json.dumps(
+                sample() if status == 200 else {"status": "temporarily_unavailable"}
+            ).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        first = ourai_bridge.fetch_ourai_forward_evidence(enabled=True, port=server.server_port)
+        outage = ourai_bridge.fetch_ourai_forward_evidence(enabled=True, port=server.server_port)
+        recovered = ourai_bridge.fetch_ourai_forward_evidence(enabled=True, port=server.server_port)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert requests == [("GET", ourai_bridge.ROUTE)] * 3
+    assert responses == []
+    assert first["status"] == "available"
+    assert first["direction_available"] is False
+    assert first["trading_enabled"] is False
+    assert outage["status"] == "unavailable"
+    assert outage["unavailable_reason"] == "upstream_http_failure"
+    assert outage["direction_available"] is False
+    assert outage["trading_enabled"] is False
+    assert "symbols" not in outage and "latest_by_symbol" not in outage
+    assert "champion_mae_bps" not in outage
+    assert recovered["status"] == "available"
+    assert recovered["prediction_count"] == first["prediction_count"]
+    assert recovered["direction_available"] is False
+    assert recovered["trading_enabled"] is False
