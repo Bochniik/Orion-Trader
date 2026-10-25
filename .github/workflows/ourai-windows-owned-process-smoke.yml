@@ -1,0 +1,23 @@
+name: OurAI Windows owned-process smoke
+
+on:
+  pull_request:
+    paths:
+      - "start-orion.ps1"
+      - "tests/windows/ourai_owned_process_smoke.ps1"
+      - ".github/workflows/ourai-windows-owned-process-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  launcher-owned-process-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Exercise real Windows listener ownership and rollback
+        shell: powershell
+        run: .\\tests\\windows\\ourai_owned_process_smoke.ps1
