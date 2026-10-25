@@ -574,7 +574,7 @@ def test_plain_json_evidence_remains_accepted_with_identity_encoding():
     def respond(request):
         assert request.headers["Accept-Encoding"] == "identity"
         return httpx.Response(
-            200, headers={"Content-Encoding": "identity"},
+            200, headers={"Content-Encoding": "identity", "Content-Type": "application/json; charset=utf-8"},
             stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")),
         )
 
@@ -674,3 +674,47 @@ def test_loopback_redirect_never_contacts_non_loopback_destination(status_code):
     assert result["direction_available"] is False
     assert result["trading_enabled"] is False
     assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+@pytest.mark.parametrize("content_type", [
+    None,
+    "text/html",
+    "application/problem+json",
+    "application/octet-stream",
+])
+def test_loopback_evidence_rejects_unexpected_media_types(content_type):
+    """Only the producer's JSON media type is trusted, even for valid JSON."""
+    seen = []
+    def respond(request):
+        seen.append((request.headers["Accept"], request.headers["Accept-Encoding"]))
+        headers = {} if content_type is None else {"Content-Type": content_type}
+        return httpx.Response(
+            200, headers=headers,
+            stream=httpx.ByteStream(json.dumps(sample()).encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert seen == [("application/json", "identity")]
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+def test_loopback_evidence_accepts_producer_json_media_type_with_charset():
+    def respond(request):
+        assert request.headers["Accept"] == "application/json"
+        return httpx.Response(
+            200, headers={"Content-Type": "application/json; charset=utf-8"},
+            stream=httpx.ByteStream(json.dumps(sample()).encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "available"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
