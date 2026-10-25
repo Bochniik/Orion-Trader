@@ -849,3 +849,55 @@ def test_real_loopback_http_recovery_after_transient_outage():
     assert recovered["prediction_count"] == first["prediction_count"]
     assert recovered["direction_available"] is False
     assert recovered["trading_enabled"] is False
+
+def test_partial_loopback_stream_reset_discards_evidence_then_recovers():
+    """A reset after valid-looking bytes must never publish partial evidence.
+
+    This is synthetic transport resilience, not forward model validation.
+    """
+    requests = []
+
+    class ResetMidBody(httpx.SyncByteStream):
+        def __iter__(self):
+            yield json.dumps(sample()).encode("utf-8")[:64]
+            raise httpx.ReadError("loopback connection reset mid-response")
+
+    def broken(request):
+        requests.append(("broken", str(request.url)))
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "application/json"},
+            stream=ResetMidBody(),
+        )
+
+    first = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(broken),
+    )
+    assert first["status"] == "unavailable"
+    assert first["unavailable_reason"] == "upstream_connection_failure"
+    assert first["mode"] == "RESEARCH_SHADOW_ONLY"
+    assert first["direction_available"] is False
+    assert first["trading_enabled"] is False
+    assert "symbols" not in first and "latest_by_symbol" not in first
+    assert "champion_mae_bps" not in first
+    assert "connection reset" not in str(first)
+
+    def recovered(request):
+        requests.append(("recovered", str(request.url)))
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "application/json"},
+            stream=httpx.ByteStream(json.dumps(sample()).encode("utf-8")),
+        )
+
+    second = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(recovered),
+    )
+    assert requests == [
+        ("broken", "http://127.0.0.1:8765/v1/forward-evidence"),
+        ("recovered", "http://127.0.0.1:8765/v1/forward-evidence"),
+    ]
+    assert second["status"] == "available"
+    assert second["prediction_count"] == sample()["prediction_count"]
+    assert second["direction_available"] is False
+    assert second["trading_enabled"] is False
