@@ -168,3 +168,17 @@ def test_managed_orion_readiness_never_follows_redirects():
         in source[frontend_probe:frontend_status]
     )
     assert frontend_probe < frontend_status < frontend_success
+
+
+def test_owned_process_rollback_waits_for_exit():
+    """Static guard only: Windows end-to-end termination remains unverified."""
+    source = LAUNCHER.read_text(encoding="utf-8")
+    function = source.split("function Stop-OwnedProcess($Process) {", 1)[1].split(
+        "\n}\n", 1
+    )[0]
+    refresh = function.index("$Process.Refresh()")
+    kill = function.index("$Process.Kill()")
+    wait = function.index("$Process.WaitForExit(5000)")
+    timeout = function.index('Write-Warning "Owned process did not exit within 5 seconds;')
+    assert refresh < kill < wait < timeout
+    assert "Stop-Process -Name" not in function
