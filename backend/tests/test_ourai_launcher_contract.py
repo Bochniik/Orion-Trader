@@ -45,8 +45,8 @@ def test_opt_in_startup_failure_cleans_up_only_owned_processes():
     # Both a Start-Process exception and a failed backend health probe must
     # clean up the child processes created during this invocation.
     cleanup = 'foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess))'
-    assert launch_section.count(cleanup) == 3
-    assert launch_section.count('Stop-OwnedProcess $ownedProcess') == 3
+    assert launch_section.count(cleanup) == 4
+    assert launch_section.count('Stop-OwnedProcess $ownedProcess') == 4
     assert 'if ($StartOurAI) {' in launch_section
     assert 'throw "Orion backend did not become ready;' in launch_section
     assert 'Write-Warning "The backend did not become ready in time.' in launch_section
@@ -182,3 +182,24 @@ def test_owned_process_rollback_waits_for_exit():
     timeout = function.index('Write-Warning "Owned process did not exit within 5 seconds;')
     assert refresh < kill < wait < timeout
     assert "Stop-Process -Name" not in function
+
+
+def test_managed_success_requires_all_owned_servers_to_still_be_alive():
+    """Static fail-closed startup guard; real Windows process E2E still needed."""
+    source = LAUNCHER.read_text(encoding="utf-8")
+    frontend_success = source.index('if (-not $frontendReady) {')
+    guard = source.index(
+        'if ($ouraiProcess.HasExited -or $backendProcess.HasExited -or $frontendProcess.HasExited)'
+    )
+    cleanup = source.index('Stop-OwnedProcess $ownedProcess', guard)
+    failure = source.index(
+        'throw "A managed OurAI/Orion process exited before startup completed."', guard
+    )
+    success = source.index('Write-Host "Backend PID:', guard)
+    assert frontend_success < guard < cleanup < failure < success
+    scope = source.rfind('if ($StartOurAI) {', frontend_success, guard)
+    assert scope > frontend_success
+    for process in ("ouraiProcess", "backendProcess", "frontendProcess"):
+        assert f"${process}.Refresh()" in source[scope:guard]
+        assert f"${process}" in source[scope:failure]
+    assert source[guard:failure].count("Stop-OwnedProcess $ownedProcess") == 1
