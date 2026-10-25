@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from app.api.routes import request_user_id
@@ -16,7 +16,7 @@ from app.api.routes import request_user_id
 router = APIRouter(prefix="/intelligence", tags=["Orion Intelligence"])
 
 @router.get("/ourai/forward-evidence")
-def ourai_forward_evidence(request: Request):
+def ourai_forward_evidence(request: Request, response: Response):
     """Optional, authenticated magnitude-only OurAI bridge; NO order controls.
 
     The source journal is local to the Orion host, not user-scoped: operators
@@ -29,6 +29,9 @@ def ourai_forward_evidence(request: Request):
         raise HTTPException(status_code=401, detail="Authenticated local user required")
     request_user_id(request)
     from app.services.ourai_bridge import fetch_ourai_forward_evidence
+    # Forward evidence can change between requests; never cache a previously
+    # verified snapshot, including disabled/unavailable responses.
+    response.headers["Cache-Control"] = "no-store"
     return fetch_ourai_forward_evidence()
 
 
