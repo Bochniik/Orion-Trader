@@ -4,7 +4,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from datetime import datetime, timezone
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException, Response
+from fastapi.testclient import TestClient
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from contextlib import contextmanager
@@ -169,9 +170,33 @@ def test_intelligence_route_requires_user_scope_and_calls_bridge(monkeypatch):
     seen = []
     monkeypatch.setattr(ourai_bridge, "fetch_ourai_forward_evidence", lambda: seen.append(1) or {"status": "disabled"})
     request = SimpleNamespace(state=SimpleNamespace(user={"id": "single-local-user"}))
-    response = intelligence.ourai_forward_evidence(request)
+    response = intelligence.ourai_forward_evidence(request, Response())
     assert response["status"] == "disabled"
     assert seen == [1]
+
+
+
+@pytest.mark.parametrize("state", ["available", "unavailable", "disabled"])
+def test_forward_evidence_http_responses_are_never_cached(monkeypatch, state):
+    """An HTTP client must not reuse a stale verified or unavailable snapshot."""
+    monkeypatch.setattr(
+        ourai_bridge, "fetch_ourai_forward_evidence",
+        lambda: {"status": state, "trading_enabled": False, "direction_available": False},
+    )
+    app = FastAPI()
+    app.include_router(intelligence.router)
+
+    @app.middleware("http")
+    async def authenticated_local_user(request, call_next):
+        request.state.user = {"id": "single-local-user"}
+        return await call_next(request)
+
+    with TestClient(app) as client:
+        response = client.get("/intelligence/ourai/forward-evidence")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json()["status"] == state
+    assert response.json()["trading_enabled"] is False
 
 
 def test_overdue_symbol_total_mismatch_fails_closed():
@@ -314,7 +339,7 @@ def test_forward_evidence_endpoint_rejects_missing_user_before_bridge(monkeypatc
     for user in (None, {}, {"id": ""}):
         request = SimpleNamespace(state=SimpleNamespace(user=user))
         with pytest.raises(HTTPException) as exc:
-            intelligence.ourai_forward_evidence(request)
+            intelligence.ourai_forward_evidence(request, Response())
         assert exc.value.status_code == 401
     assert calls == []
 
