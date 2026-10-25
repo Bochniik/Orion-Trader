@@ -262,6 +262,10 @@ def fetch_ourai_forward_evidence(
                     if total > MAX_EVIDENCE_BYTES:
                         raise ValueError("oversized forward evidence response")
                     chunks.append(chunk)
+                # A peer may delay end-of-stream after sending its final JSON chunk.
+                # Do not publish evidence if completion exceeded the elapsed deadline.
+                if monotonic() - started_at > MAX_RESPONSE_SECONDS:
+                    raise httpx.ReadTimeout("loopback evidence response deadline exceeded")
             return _validate_payload(json.loads(b"".join(chunks), object_pairs_hook=_unique_json_keys))
     except httpx.TransportError:
         # All loopback transport failures (DNS/connect/read/write/pool/protocol)
