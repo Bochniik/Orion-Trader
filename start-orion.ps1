@@ -277,6 +277,23 @@ if (-not $frontendReady) {
     Write-Warning "The frontend did not become ready in time. Check the frontend window for details."
 }
 
+# In managed mode, a successful HTTP probe must not mask a server that
+# already exited (for example, if another process won a port-rebind race).
+# This is a startup check, not a replacement for Windows lifecycle E2E.
+if ($StartOurAI) {
+    $ouraiProcess.Refresh()
+    $backendProcess.Refresh()
+    $frontendProcess.Refresh()
+    if ($ouraiProcess.HasExited -or $backendProcess.HasExited -or $frontendProcess.HasExited) {
+        foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
+            if ($null -ne $ownedProcess -and -not $ownedProcess.HasExited) {
+                Stop-OwnedProcess $ownedProcess
+            }
+        }
+        throw "A managed OurAI/Orion process exited before startup completed."
+    }
+}
+
 Write-Host "Backend PID: $($backendProcess.Id) | Frontend PID: $($frontendProcess.Id)" -ForegroundColor DarkGray
 Write-Host "OrionTrader: http://127.0.0.1:5173" -ForegroundColor Green
 Write-Host "API docs:    http://127.0.0.1:8000/docs" -ForegroundColor Green
