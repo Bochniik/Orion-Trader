@@ -27,6 +27,7 @@ const evidence = {
       symbol: "NVDA",
       expected_magnitude_bps: 12.4,
       predicted_at: "2026-10-20T14:00:20Z",
+      target_due_at: "2026-10-20T14:15:00Z",
       resolved: false,
     },
   },
@@ -40,7 +41,7 @@ describe("OurAI verified forward evidence panel", () => {
   });
 
   it("renders authenticated and server-validated magnitude-only snapshot", () => {
-    const html = renderToStaticMarkup(<ForwardEvidenceSummary evidence={evidence} selectedTicker="NVDA" />);
+    const html = renderToStaticMarkup(<ForwardEvidenceSummary evidence={evidence} selectedTicker="NVDA" now={Date.parse("2026-10-20T14:10:00Z")} />);
     expect(html).toContain("Journal validated");
     expect(html).toContain("8.71 bps");
     expect(html).toContain("9.79 bps");
@@ -52,8 +53,37 @@ describe("OurAI verified forward evidence panel", () => {
     expect(html).toContain("Latest NVDA forecast");
     expect(html).toContain("12.40 bps");
     expect(html).toContain("Awaiting settlement");
+    expect(html).not.toContain("Overdue settlement");
+    expect(html).not.toContain("Historical snapshot");
     expect(html).toContain("not independent proof");
     expect(html).toContain("No direction, position sizing, trading action");
+  });
+
+  it("labels an aged journal snapshot and overdue pending forecast without claiming model failure", () => {
+    const html = renderToStaticMarkup(
+      <ForwardEvidenceSummary evidence={evidence} selectedTicker="NVDA" now={Date.parse("2026-10-25T07:00:00Z")} />
+    );
+    expect(html).toContain("Historical snapshot — not current market evidence");
+    expect(html).toContain("Historical forecast, not a live signal");
+    expect(html).toContain("Overdue settlement");
+    expect(html).toContain("unresolved observation, not a model accuracy verdict");
+    expect(html).not.toContain("Awaiting settlement");
+    expect(html).not.toContain("P(UP)");
+  });
+
+  it("does not call a settled historical forecast overdue", () => {
+    const settled = {
+      ...evidence,
+      latest_by_symbol: {
+        NVDA: { ...evidence.latest_by_symbol.NVDA, resolved: true },
+      },
+    };
+    const html = renderToStaticMarkup(
+      <ForwardEvidenceSummary evidence={settled} selectedTicker="NVDA" now={Date.parse("2026-10-25T07:00:00Z")} />
+    );
+    expect(html).toContain("Historical forecast, not a live signal");
+    expect(html).toContain("Settled");
+    expect(html).not.toContain("Overdue settlement");
   });
 
   it("withholds all evidence when bridge is disabled or unavailable", () => {
