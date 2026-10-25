@@ -7,7 +7,7 @@ external JSON response and fails closed on broken data or absent service.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from math import isfinite
+from math import isclose, isfinite
 from time import monotonic
 import json
 import os
@@ -133,6 +133,19 @@ def _validate_payload(payload: object) -> dict:
         raise ValueError("per-symbol pending counts differ from total")
     if sum(x["overdue_pending"] for x in symbols.values()) != overdue:
         raise ValueError("per-symbol overdue counts differ from total")
+
+    # OurAI reports rounded (3-decimal) MAE separately by symbol and globally.
+    # The global value must agree with the resolved-count-weighted symbol mean.
+    # Allow at most 0.0011 bps for the two independent rounding operations;
+    # pending predictions never contribute to an MAE or its weight.
+    if resolved:
+        for key, global_mae in metrics.items():
+            weighted_mae = sum(
+                row[key] * row["resolved"]
+                for row in symbols.values() if row["resolved"]
+            ) / resolved
+            if not isclose(weighted_mae, global_mae, rel_tol=1e-12, abs_tol=0.0011):
+                raise ValueError("global forward MAE differs from resolved symbol evidence")
 
     # A latest row must exist for each symbol with a real journal prediction,
     # and no latest row may be invented for an empty symbol.

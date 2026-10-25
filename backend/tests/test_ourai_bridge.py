@@ -901,3 +901,52 @@ def test_partial_loopback_stream_reset_discards_evidence_then_recovers():
     assert second["prediction_count"] == sample()["prediction_count"]
     assert second["direction_available"] is False
     assert second["trading_enabled"] is False
+
+
+@pytest.mark.parametrize("key", ("champion_mae_bps", "linear_mae_bps", "null_mae_bps"))
+def test_global_mae_disagreement_with_resolved_symbol_evidence_fails_closed(key):
+    """A verified label cannot mask a global MAE inconsistent with symbol rows."""
+    data = sample()
+    data[key] += 0.05
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "champion_mae_bps" not in result
+
+
+def test_resolved_weighted_mae_allows_independent_three_decimal_rounding():
+    """The actual producer rounds each symbol and global mean independently."""
+    data = sample()
+    data["prediction_count"] = 4
+    data["resolution_count"] = 3
+    data["pending_count"] = 1
+    data["symbols"]["AAPL"] = {
+        "predictions": 2, "resolved": 2, "pending": 0, "overdue_pending": 0,
+        "champion_mae_bps": 8.701,
+        "linear_mae_bps": 9.701,
+        "null_mae_bps": 10.501,
+    }
+    data["latest_by_symbol"]["AAPL"] = {
+        "symbol": "AAPL",
+        "predicted_at": "2026-10-20T13:45:20Z",
+        "sample_timestamp": "2026-10-20T13:45:00Z",
+        "target_due_at": "2026-10-20T14:00:00Z",
+        "expected_magnitude_bps": 12.0,
+        "resolved": True,
+    }
+    data["champion_mae_bps"] = 8.701
+    data["linear_mae_bps"] = 9.701
+    data["null_mae_bps"] = 10.501
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "available"
+    assert result["resolution_count"] == 3
+    assert result["symbols"]["AAPL"]["resolved"] == 2
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
