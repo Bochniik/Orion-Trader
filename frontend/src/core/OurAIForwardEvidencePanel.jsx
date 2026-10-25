@@ -23,6 +23,18 @@ function utc(value) {
     : "Unavailable";
 }
 
+// UI-only age labels. They never turn a verified historical observation into
+// a live signal or infer whether a pending observation was predicted correctly.
+function olderThan(value, now, minutes) {
+  const timestamp = typeof value === "string" ? Date.parse(value) : NaN;
+  return Number.isFinite(timestamp) && Number.isFinite(now) && now - timestamp > minutes * 60_000;
+}
+
+function pastDue(value, now) {
+  const timestamp = typeof value === "string" ? Date.parse(value) : NaN;
+  return Number.isFinite(timestamp) && Number.isFinite(now) && now > timestamp;
+}
+
 function Metric({ name, value, description }) {
   return (
     <div className="ourai-metric">
@@ -35,7 +47,7 @@ function Metric({ name, value, description }) {
 
 // Pure presentation: safe to render with fixtures and never fetches external data.
 // All figures come from the server-validated, read-only evidence response.
-export function ForwardEvidenceSummary({ evidence, selectedTicker }) {
+export function ForwardEvidenceSummary({ evidence, selectedTicker, now = Date.now() }) {
   const valid = evidence?.status === "available" &&
     evidence?.source === "ourai_verified_forward_journal" &&
     evidence?.experiment === "frozen_v3_magnitude_15m" &&
@@ -46,6 +58,10 @@ export function ForwardEvidenceSummary({ evidence, selectedTicker }) {
   const tracked = String(selectedTicker || "").trim().toUpperCase();
   const latest = SYMBOLS.includes(tracked) ? evidence?.latest_by_symbol?.[tracked] : null;
   const rows = valid ? SYMBOLS.filter((symbol) => evidence?.symbols?.[symbol]) : [];
+  // The 30-minute threshold is a display warning, not an evidence/accuracy gate.
+  const historicalSnapshot = valid && olderThan(evidence?.as_of, now, 30);
+  const historicalForecast = latest && olderThan(latest.predicted_at, now, 30);
+  const overdueSettlement = latest && latest.resolved === false && pastDue(latest.target_due_at, now);
 
   return (
     <section className="ourai-evidence intelligence-module" aria-label="OurAI verified forward evidence">
@@ -103,13 +119,13 @@ export function ForwardEvidenceSummary({ evidence, selectedTicker }) {
           )}
           {latest && latest.symbol === tracked && (
             <div className="ourai-evidence-latest">
-              <span>Latest {tracked} forecast — absolute magnitude only</span>
+              <span>Latest {tracked} forecast — absolute magnitude only{historicalForecast ? " · Historical forecast, not a live signal" : ""}</span>
               <strong>{bps(latest.expected_magnitude_bps)}</strong>
-              <small>Predicted {utc(latest.predicted_at)} · {latest.resolved ? "Settled" : "Awaiting settlement"}. This is not an indication of direction.</small>
+              <small>Predicted {utc(latest.predicted_at)} · {latest.resolved ? "Settled" : overdueSettlement ? "Overdue settlement — unresolved observation, not a model accuracy verdict" : "Awaiting settlement"}. This is not an indication of direction.</small>
             </div>
           )}
           <p className="ourai-evidence-provenance">
-            Verified local journal snapshot: {utc(evidence.as_of)}. Lower MAE means smaller historical prediction error;
+            Verified local journal snapshot: {utc(evidence.as_of)}. {historicalSnapshot ? "Historical snapshot — not current market evidence. " : ""}Lower MAE means smaller historical prediction error;
             overlapping forward samples are not independent proof of performance or profitability.
             A valid journal does not establish accuracy of exchange data.
           </p>
