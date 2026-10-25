@@ -950,3 +950,33 @@ def test_resolved_weighted_mae_allows_independent_three_decimal_rounding():
     assert result["symbols"]["AAPL"]["resolved"] == 2
     assert result["direction_available"] is False
     assert result["trading_enabled"] is False
+
+
+
+@pytest.mark.parametrize("number", ["NaN", "Infinity", "-Infinity", "1e999", "-1e999"])
+@pytest.mark.parametrize("nested", [False, True])
+def test_nonfinite_json_anywhere_fails_closed(number, nested):
+    """Even ignored fields cannot turn non-JSON or overflow into verified data.
+
+    These are synthetic malformed responses, not actual forward evidence.
+    Python's default json.loads accepts NaN/Infinity and 1e999 as infinity.
+    """
+    extra = '{"nested": ' + number + '}' if nested else number
+    raw = json.dumps(sample())[:-1] + ', "untrusted_extra": ' + extra + '}'
+
+    def respond(_request):
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "application/json"},
+            stream=httpx.ByteStream(raw.encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "champion_mae_bps" not in result
