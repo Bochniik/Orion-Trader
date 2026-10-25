@@ -211,7 +211,7 @@ def test_managed_success_requires_listener_pid_ownership_not_only_http_readiness
     Real listener ownership and cleanup still need Windows PowerShell E2E.
     """
     source = LAUNCHER.read_text(encoding="utf-8")
-    function = source.split("function Assert-OwnedListener([int]$Port, $Process, [string]$ServiceName) {", 1)[1].split("\\n}\\n", 1)[0]
+    function = source.split("function Assert-OwnedListener([int]$Port, $Process, [string]$ServiceName) {", 1)[1].split("\n}\n", 1)[0]
     assert '$Process.Refresh()' in function
     assert '$Process.HasExited' in function
     assert 'Get-NetTCPConnection -LocalAddress "127.0.0.1" -LocalPort $Port -State Listen' in function
