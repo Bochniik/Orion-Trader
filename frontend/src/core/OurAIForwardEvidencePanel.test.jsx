@@ -97,6 +97,43 @@ describe("OurAI verified forward evidence panel", () => {
     }
   });
 
+  it("distinguishes connection, HTTP and evidence validation failures without publishing predictions", () => {
+    const cases = [
+      ["upstream_connection_failure", "data-availability outage"],
+      ["upstream_http_failure", "HTTP error"],
+      ["invalid_upstream_evidence", "failed evidence validation"],
+    ];
+    for (const [reason, label] of cases) {
+      const html = renderToStaticMarkup(
+        <ForwardEvidenceSummary evidence={{
+          ...evidence,
+          status: "unavailable",
+          unavailable_reason: reason,
+        }} selectedTicker="NVDA" />
+      );
+      expect(html).toContain(label);
+      expect(html).toContain("No verified forward figures available");
+      expect(html).not.toContain("8.71 bps");
+      expect(html).not.toContain("Latest NVDA forecast");
+      expect(html).not.toContain("Journal validated");
+    }
+  });
+
+  it("never echoes unknown upstream errors or mistakes outages for model scores", () => {
+    const html = renderToStaticMarkup(
+      <ForwardEvidenceSummary evidence={{
+        ...evidence,
+        status: "unavailable",
+        unavailable_reason: "WinError 10060 token=private",
+      }} selectedTicker="NVDA" />
+    );
+    expect(html).toContain("The local service may be offline");
+    expect(html).not.toContain("WinError");
+    expect(html).not.toContain("private");
+    expect(html).not.toContain("8.71 bps");
+    expect(html).not.toContain("Latest NVDA forecast");
+  });
+
   it("fails closed for an available state with incorrect evidence semantics", () => {
     for (const mutation of [
       { direction_available: true },

@@ -35,6 +35,21 @@ function pastDue(value, now) {
   return Number.isFinite(timestamp) && Number.isFinite(now) && now > timestamp;
 }
 
+// A bridge outage describes data availability, never a prediction outcome.
+// Keep upstream error strings out of the UI; only fixed reason codes are shown.
+function unavailableExplanation(reason) {
+  switch (reason) {
+    case "upstream_connection_failure":
+      return "The local OurAI connection failed or timed out. This is a data-availability outage, not evidence of a model prediction failure.";
+    case "upstream_http_failure":
+      return "The local OurAI service returned an HTTP error. Verified evidence is unavailable; no model accuracy verdict is implied.";
+    case "invalid_upstream_evidence":
+      return "The OurAI response failed evidence validation. No metrics were published; this is not a model accuracy verdict.";
+    default:
+      return "The local service may be offline or its evidence may be invalid. Orion will not substitute estimated results.";
+  }
+}
+
 function Metric({ name, value, description }) {
   return (
     <div className="ourai-metric">
@@ -82,7 +97,7 @@ export function ForwardEvidenceSummary({ evidence, selectedTicker, now = Date.no
           <strong>{state === "disabled" ? "Local OurAI bridge is disabled" : "No verified forward figures available"}</strong>
           <p>{state === "disabled"
             ? "The connection is off by default. Enable it only on a trusted single-user computer running OurAI and OrionTrader."
-            : "The local service may be offline or its evidence may be invalid. Orion will not substitute estimated results."}</p>
+            : unavailableExplanation(evidence?.unavailable_reason)}</p>
         </div>
       ) : (
         <>
