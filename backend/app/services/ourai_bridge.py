@@ -214,6 +214,19 @@ def _validate_payload(payload: object) -> dict:
 
 
 
+def _reject_json_constant(_value: str) -> None:
+    """Python accepts NaN/Infinity by default, but these are not JSON numbers."""
+    raise ValueError("nonstandard JSON numeric constant")
+
+
+def _finite_json_float(value: str) -> float:
+    """Reject numeric exponent overflow even in ignored upstream fields."""
+    number = float(value)
+    if not isfinite(number):
+        raise ValueError("nonfinite JSON number")
+    return number
+
+
 def _unique_json_keys(pairs: list[tuple[str, object]]) -> dict:
     """Reject ambiguous evidence rather than letting JSON's last key win."""
     obj = {}
@@ -279,7 +292,12 @@ def fetch_ourai_forward_evidence(
                 # Do not publish evidence if completion exceeded the elapsed deadline.
                 if monotonic() - started_at > MAX_RESPONSE_SECONDS:
                     raise httpx.ReadTimeout("loopback evidence response deadline exceeded")
-            return _validate_payload(json.loads(b"".join(chunks), object_pairs_hook=_unique_json_keys))
+            return _validate_payload(json.loads(
+                b"".join(chunks),
+                object_pairs_hook=_unique_json_keys,
+                parse_constant=_reject_json_constant,
+                parse_float=_finite_json_float,
+            ))
     except httpx.TransportError:
         # All loopback transport failures (DNS/connect/read/write/pool/protocol)
         # are data-availability failures, not evidence of model inaccuracy.
