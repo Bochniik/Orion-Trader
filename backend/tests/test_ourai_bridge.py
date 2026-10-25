@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from datetime import datetime, timezone
 import pytest
 from fastapi import HTTPException
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -47,11 +48,18 @@ def sample():
 
 
 def transport_response(data, status=200):
+    # MockTransport must expose an unread byte stream for iter_raw().
+    # httpx.Response(json=... / content=...) preloads the body and raises
+    # StreamConsumed when the production bridge uses streaming reads.
     def respond(request):
         assert request.url.host == "127.0.0.1"
         assert request.url.path == ourai_bridge.ROUTE
         assert request.url.port == 8765
-        return httpx.Response(status, json=data)
+        return httpx.Response(
+            status,
+            headers={"Content-Type": "application/json"},
+            stream=httpx.ByteStream(json.dumps(data).encode("utf-8")),
+        )
     return httpx.MockTransport(respond)
 
 
@@ -345,3 +353,382 @@ def test_bridge_distinguishes_transport_http_and_invalid_evidence_failures():
     )
     assert malformed["unavailable_reason"] == "invalid_upstream_evidence"
     assert "symbols" not in malformed
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.WriteTimeout("write timed out"),
+        httpx.WriteError("socket write failed"),
+        httpx.PoolTimeout("connection pool unavailable"),
+        httpx.LocalProtocolError("invalid upstream protocol"),
+        httpx.RemoteProtocolError("upstream protocol failed"),
+    ],
+)
+def test_all_loopback_transport_failures_are_unavailable_not_model_errors(error):
+    """Synthetic network failures must never publish stale model evidence."""
+    def fail(_request):
+        raise error
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(fail),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "upstream_connection_failure"
+    assert result["mode"] == "RESEARCH_SHADOW_ONLY"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "champion_mae_bps" not in result
+    assert str(error) not in str(result)
+
+
+def test_oversized_loopback_json_fails_closed_without_exposing_data():
+    payload = sample()
+    payload["secret"] = "private-" + "x" * ourai_bridge.MAX_EVIDENCE_BYTES
+    def respond(_request):
+        return httpx.Response(200, stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")))
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "secret" not in str(result)
+
+
+def test_compressed_loopback_response_is_rejected_without_decompression():
+    import gzip
+    payload = sample()
+    payload["secret"] = "x" * ourai_bridge.MAX_EVIDENCE_BYTES
+    compressed = gzip.compress(json.dumps(payload).encode("utf-8"))
+    assert len(compressed) < ourai_bridge.MAX_EVIDENCE_BYTES
+    def respond(_request):
+        return httpx.Response(
+            200, headers={"Content-Encoding": "gzip"}, stream=httpx.ByteStream(compressed),
+        )
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in result
+
+
+
+def test_evaluation_timestamp_cannot_precede_latest_prediction():
+    """A synthetic upstream cannot report evidence evaluated before its forecast."""
+    data = sample()
+    data["evaluated_at_utc"] = "2026-10-20T13:59:59Z"
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in result
+    assert "latest_by_symbol" not in result
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+
+
+def test_evaluation_timestamp_may_equal_latest_prediction():
+    data = sample()
+    data["evaluated_at_utc"] = "2026-10-20T14:00:20Z"
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "available"
+    assert result["as_of"] == data["evaluated_at_utc"]
+
+
+@pytest.mark.parametrize("evaluated_at", [
+    "2099-01-01T00:00:00Z",
+    "2099-01-01T13:00:00+13:00",
+])
+def test_future_dated_evaluation_fails_closed(evaluated_at):
+    """A report must not claim that future observations are verified."""
+    data = sample()
+    data["evaluated_at_utc"] = evaluated_at
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "champion_mae_bps" not in result
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+def test_current_evaluation_timestamp_is_accepted():
+    """The future-date guard must not reject a normally timed report."""
+    data = sample()
+    data["evaluated_at_utc"] = datetime.now(timezone.utc).isoformat()
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "available"
+    assert result["as_of"] == data["evaluated_at_utc"]
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+
+
+@pytest.mark.parametrize(
+    ("evaluated_at", "expected_status"),
+    [
+        ("2026-10-20T14:14:59Z", "unavailable"),
+        ("2026-10-20T14:15:00Z", "available"),
+        ("2026-10-20T15:15:00+01:00", "available"),
+    ],
+)
+def test_resolved_latest_forecast_cannot_precede_its_target_due_at(
+    evaluated_at, expected_status,
+):
+    """Synthetic forward evidence must not resolve a future 15m target."""
+    data = sample()
+    data["latest_by_symbol"]["NVDA"]["resolved"] = True
+    data["evaluated_at_utc"] = evaluated_at
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == expected_status
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    if expected_status == "unavailable":
+        assert result["unavailable_reason"] == "invalid_upstream_evidence"
+        assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+
+@pytest.mark.parametrize("location", ["global", "symbol", "latest"])
+def test_huge_json_numeric_metric_fails_closed_without_500(location):
+    """A bounded response can still contain an integer too large for float."""
+    data = sample()
+    if location == "global":
+        data["champion_mae_bps"] = 10 ** 400
+    elif location == "symbol":
+        data["symbols"]["NVDA"]["champion_mae_bps"] = 10 ** 400
+    else:
+        data["latest_by_symbol"]["NVDA"]["expected_magnitude_bps"] = 10 ** 400
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+def test_deeply_nested_but_small_json_fails_closed_without_500():
+    """A 40 KiB JSON response can exceed parser nesting limits."""
+    depth = 20_000
+    content = b"[" * depth + b"0" + b"]" * depth
+    assert len(content) < ourai_bridge.MAX_EVIDENCE_BYTES
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True,
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(200, stream=httpx.ByteStream(content))
+        ),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+@pytest.mark.parametrize("encoding", ["gzip", "br", "deflate", "gzip, identity"])
+def test_even_small_encoded_evidence_is_rejected_before_decompression(encoding):
+    """The producer sends plain JSON; no compressed listener may bypass limits."""
+    payload = sample()
+    payload["secret"] = "must-not-leak"
+    seen = []
+
+    def respond(request):
+        seen.append(request.headers["Accept-Encoding"])
+        return httpx.Response(
+            200,
+            headers={"Content-Encoding": encoding},
+            stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert seen == ["identity"]
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "secret" not in str(result)
+
+
+def test_plain_json_evidence_remains_accepted_with_identity_encoding():
+    payload = sample()
+    def respond(request):
+        assert request.headers["Accept-Encoding"] == "identity"
+        return httpx.Response(
+            200, headers={"Content-Encoding": "identity", "Content-Type": "application/json; charset=utf-8"},
+            stream=httpx.ByteStream(json.dumps(payload).encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "available"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+@pytest.mark.parametrize(
+    ("field", "timestamp"),
+    [
+        ("target_due_at", "2026-10-20T14:14:00Z"),
+        ("target_due_at", "2026-10-20T14:16:00Z"),
+        ("sample_timestamp", "2026-10-20T13:59:00Z"),
+    ],
+)
+def test_latest_magnitude_forecast_requires_exact_15m_horizon(field, timestamp):
+    """Even causally ordered evidence must match the frozen 15m contract."""
+    data = sample()
+    data["latest_by_symbol"]["NVDA"][field] = timestamp
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "latest_by_symbol" not in result
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+def test_latest_horizon_is_compared_as_elapsed_time_across_offsets():
+    """Equivalent offset-aware timestamps must preserve a valid 15m horizon."""
+    data = sample()
+    data["latest_by_symbol"]["NVDA"]["sample_timestamp"] = "2026-10-20T16:00:00+02:00"
+    data["latest_by_symbol"]["NVDA"]["target_due_at"] = "2026-10-20T10:15:00-04:00"
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "available"
+    assert result["horizon_minutes"] == 15
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+@pytest.mark.parametrize(
+    ("needle", "duplicate"),
+    [
+        ('"journal_valid": true', '"journal_valid": false, "journal_valid": true'),
+        ('"predictions": 2', '"predictions": 99, "predictions": 2'),
+        ('"expected_magnitude_bps": 12.0',
+         '"expected_magnitude_bps": -1, "expected_magnitude_bps": 12.0'),
+    ],
+)
+def test_duplicate_json_keys_fail_closed_at_any_evidence_depth(needle, duplicate):
+    """A last-wins JSON parser could hide invalid journal or forecast fields."""
+    content = json.dumps(sample())
+    assert content.count(needle) == 1
+    content = content.replace(needle, duplicate, 1)
+
+    def respond(_request):
+        return httpx.Response(
+            200, stream=httpx.ByteStream(content.encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+@pytest.mark.parametrize("status_code", [301, 302, 303, 307, 308])
+def test_loopback_redirect_never_contacts_non_loopback_destination(status_code):
+    """A compromised local listener cannot redirect the read-only bridge."""
+    requested = []
+
+    def respond(request):
+        requested.append(str(request.url))
+        return httpx.Response(
+            status_code,
+            headers={"Location": "https://outside.invalid/forward-evidence"},
+            stream=httpx.ByteStream(b""),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert requested == ["http://127.0.0.1:8765/v1/forward-evidence"]
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "upstream_http_failure"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+@pytest.mark.parametrize("content_type", [
+    None,
+    "text/html",
+    "application/problem+json",
+    "application/octet-stream",
+])
+def test_loopback_evidence_rejects_unexpected_media_types(content_type):
+    """Only the producer's JSON media type is trusted, even for valid JSON."""
+    seen = []
+    def respond(request):
+        seen.append((request.headers["Accept"], request.headers["Accept-Encoding"]))
+        headers = {} if content_type is None else {"Content-Type": content_type}
+        return httpx.Response(
+            200, headers=headers,
+            stream=httpx.ByteStream(json.dumps(sample()).encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert seen == [("application/json", "identity")]
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+def test_loopback_evidence_accepts_producer_json_media_type_with_charset():
+    def respond(request):
+        assert request.headers["Accept"] == "application/json"
+        return httpx.Response(
+            200, headers={"Content-Type": "application/json; charset=utf-8"},
+            stream=httpx.ByteStream(json.dumps(sample()).encode("utf-8")),
+        )
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=httpx.MockTransport(respond),
+    )
+    assert result["status"] == "available"
+    assert result["trading_enabled"] is False
+    assert result["direction_available"] is False
+
+
+@pytest.mark.parametrize("status_code", [201, 202, 206])
+def test_only_http_200_can_publish_verified_forward_evidence(status_code):
+    """A valid-looking body with a non-200 2xx response is not verified evidence."""
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(sample(), status=status_code),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "upstream_http_failure"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
+    assert "champion_mae_bps" not in result

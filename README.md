@@ -85,6 +85,14 @@ configuration; its old navigation and lab instructions are historical.
 
 The OurAI V3 bridge is opt-in, read-only and limited to research evidence about the **absolute magnitude** of a 15-minute price movement. It does **not** predict direction, authorize a trade, place orders, or enable automatic live trading. Do not interpret its magnitude estimate as a BUY/SELL signal or as a directional probability.
 
+For a **transitional, explicit opt-in launch** from a trusted local OurAI checkout, stop any running Orion/OurAI servers and run from the Orion root:
+
+```powershell
+.\\start-orion.ps1 -SkipInstall -StartOurAI -OurAIPath "C:\\Users\\<you>\\Desktop\\OurAI"
+```
+
+This starts the existing OurAI read-only server from its own `.venv`, enables the Orion client only in the spawned backend environment, and then starts Orion. It requires the trusted OurAI checkout and verified forward journal to be present. Port 8765 must be free. The launcher waits for a valid verified-journal response and fails closed before starting Orion if OurAI is unavailable. In opt-in mode it runs Uvicorn without the reload supervisor and Vite directly through Node rather than npm, so startup rollback can terminate the primary processes it created; the default development launch remains unchanged. This is **not yet an embedded distribution**, and stopping Orion does not automatically stop the OurAI process; stop that process separately. Windows end-to-end and full descendant-process cleanup still require verification. Default launcher behavior remains unchanged, disabled and safe. Do not use this option for remote or untrusted folders.
+
 The Orion Intelligence evidence panel remains disabled unless a trusted single-user local machine runs the OurAI loopback process and the Orion backend explicitly sets `OURAI_BRIDGE_ENABLED=true`. Passing cloud CI tests does not start that local process or enable the bridge. Keep this integration local and do not expose the loopback endpoint publicly.
 
 ## Architecture and verification

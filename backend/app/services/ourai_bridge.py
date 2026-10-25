@@ -6,8 +6,9 @@ external JSON response and fails closed on broken data or absent service.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from math import isfinite
+import json
 import os
 
 import httpx
@@ -15,6 +16,7 @@ import httpx
 
 FROZEN_SYMBOLS = ("NVDA", "AAPL", "TSLA", "JPM", "AMD", "META", "MSFT")
 ROUTE = "/v1/forward-evidence"
+MAX_EVIDENCE_BYTES = 262_144  # Bounded trusted-loopback JSON; never accept unbounded data.
 
 
 def _inactive(state: str, reason: str | None = None) -> dict:
@@ -134,6 +136,13 @@ def _validate_payload(payload: object) -> dict:
     # and no latest row may be invented for an empty symbol.
     if set(raw_latest) != {symbol for symbol, row in symbols.items() if row["predictions"] > 0}:
         raise ValueError("latest forecasts do not match symbol prediction counts")
+    evaluated_at = _stamp(payload.get("evaluated_at_utc"))
+    evaluated_dt = datetime.fromisoformat(evaluated_at.replace("Z", "+00:00"))
+    # Reject a report claiming verification far in the future. A small skew
+    # allowance tolerates imperfect desktop clocks without accepting forged
+    # forward chronology as already observed evidence.
+    if evaluated_dt > datetime.now(timezone.utc) + timedelta(minutes=5):
+        raise ValueError("future forward evidence evaluation timestamp")
     latest = {}
     for symbol, data in raw_latest.items():
         if not isinstance(data, dict) or data.get("symbol") != symbol:
@@ -157,7 +166,12 @@ def _validate_payload(payload: object) -> dict:
         sample_at = datetime.fromisoformat(latest[symbol]["sample_timestamp"].replace("Z", "+00:00"))
         predicted_at = datetime.fromisoformat(latest[symbol]["predicted_at"].replace("Z", "+00:00"))
         due_at = datetime.fromisoformat(latest[symbol]["target_due_at"].replace("Z", "+00:00"))
-        if not sample_at <= predicted_at < due_at:
+        if (due_at - sample_at != timedelta(minutes=15)
+                or not sample_at <= predicted_at < due_at
+                or predicted_at > evaluated_dt
+                # A resolved forecast cannot have reached its 15m target
+                # after the report was evaluated. Pending may be overdue.
+                or (data["resolved"] and due_at > evaluated_dt)):
             raise ValueError("inconsistent latest forecast chronology")
     if not set(latest) <= set(symbols):
         raise ValueError("latest forecasts absent from symbol counts")
@@ -169,7 +183,7 @@ def _validate_payload(payload: object) -> dict:
         "horizon_minutes": 15,
         "direction_available": False,
         "trading_enabled": False,
-        "as_of": _stamp(payload.get("evaluated_at_utc")),
+        "as_of": evaluated_at,
         "prediction_count": predictions,
         "resolution_count": resolved,
         "pending_count": pending,
@@ -182,6 +196,17 @@ def _validate_payload(payload: object) -> dict:
             "trading signal or independent proof of profitability."
         ),
     }
+
+
+
+def _unique_json_keys(pairs: list[tuple[str, object]]) -> dict:
+    """Reject ambiguous evidence rather than letting JSON's last key win."""
+    obj = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError("duplicate forward evidence JSON key")
+        obj[key] = value
+    return obj
 
 
 def fetch_ourai_forward_evidence(
@@ -200,13 +225,44 @@ def fetch_ourai_forward_evidence(
             port = int(os.getenv("OURAI_BRIDGE_PORT", "8765"))
         if type(port) is not int or not 1 <= port <= 65535:
             raise ValueError("invalid loopback port")
-        with httpx.Client(timeout=2.0, trust_env=False, transport=transport) as client:
-            response = client.get(f"http://127.0.0.1:{port}{ROUTE}")
-            response.raise_for_status()
-            return _validate_payload(response.json())
-    except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ReadError, httpx.RemoteProtocolError):
+        # Redirects must never send evidence requests outside trusted loopback.
+        # Explicitly pin this instead of relying on httpx defaults.
+        with httpx.Client(timeout=2.0, trust_env=False, follow_redirects=False, transport=transport) as client:
+            with client.stream(
+                "GET", f"http://127.0.0.1:{port}{ROUTE}",
+                headers={"Accept": "application/json", "Accept-Encoding": "identity"},
+            ) as response:
+                response.raise_for_status()
+                # The fixed read-only producer returns exactly HTTP 200.
+                # Other 2xx statuses (including 206 partial content) must not
+                # be promoted into verified evidence even with valid JSON.
+                if response.status_code != 200:
+                    return _inactive("unavailable", "upstream_http_failure")
+                # OurAI's producer sends plain JSON. Reject compression rather
+                # than allocating an arbitrarily large decoded chunk before
+                # the byte limit can be checked (decompression-bomb defense).
+                if response.headers.get("Content-Encoding", "identity").strip().lower() not in ("", "identity"):
+                    raise ValueError("encoded forward evidence response")
+                # The frozen read-only producer serves JSON, never HTML or an
+                # arbitrary media type. Reject unexpected responses before parsing.
+                media_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+                if media_type != "application/json":
+                    raise ValueError("invalid forward evidence media type")
+                chunks = []
+                total = 0
+                for chunk in response.iter_raw():
+                    total += len(chunk)
+                    if total > MAX_EVIDENCE_BYTES:
+                        raise ValueError("oversized forward evidence response")
+                    chunks.append(chunk)
+            return _validate_payload(json.loads(b"".join(chunks), object_pairs_hook=_unique_json_keys))
+    except httpx.TransportError:
+        # All loopback transport failures (DNS/connect/read/write/pool/protocol)
+        # are data-availability failures, not evidence of model inaccuracy.
         return _inactive("unavailable", "upstream_connection_failure")
     except httpx.HTTPStatusError:
         return _inactive("unavailable", "upstream_http_failure")
-    except (ValueError, TypeError, KeyError, httpx.HTTPError):
+    except (ValueError, TypeError, KeyError, OverflowError, RecursionError, httpx.HTTPError):
+        # Bounded JSON may still contain huge numeric literals or deep nesting.
+        # Treat parser/metric exhaustion as invalid upstream data, never a 500.
         return _inactive("unavailable", "invalid_upstream_evidence")

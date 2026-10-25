@@ -31,6 +31,10 @@ jobs:
             if [ -f backend/tests/test_ourai_bridge.py ]; then
               tests+=(backend/tests/test_ourai_bridge.py)
             fi
+            # Opt-in launcher safety contract must be exercised on every PR.
+            if [ -f backend/tests/test_ourai_launcher_contract.py ]; then
+              tests+=(backend/tests/test_ourai_launcher_contract.py)
+            fi
             python -m pytest -q "${tests[@]}"
       - run:
           name: Analytics regression manifest
