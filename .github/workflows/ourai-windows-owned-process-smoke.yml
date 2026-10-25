@@ -20,4 +20,4 @@ jobs:
         uses: actions/checkout@v4
       - name: Exercise real Windows listener ownership and rollback
         shell: powershell
-        run: .\\tests\\windows\\ourai_owned_process_smoke.ps1
+        run: .\tests\windows\ourai_owned_process_smoke.ps1
