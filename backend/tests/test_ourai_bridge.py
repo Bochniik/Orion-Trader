@@ -79,7 +79,7 @@ def test_slow_trickle_evidence_exceeds_total_deadline_and_fails_as_connection_ou
 
 
 def test_prompt_loopback_evidence_remains_available_with_total_deadline(monkeypatch):
-    ticks = iter((0.0, ourai_bridge.MAX_RESPONSE_SECONDS - 0.1))
+    ticks = iter((0.0, ourai_bridge.MAX_RESPONSE_SECONDS - 0.1, ourai_bridge.MAX_RESPONSE_SECONDS - 0.05))
     monkeypatch.setattr(ourai_bridge, "monotonic", lambda: next(ticks))
     result = ourai_bridge.fetch_ourai_forward_evidence(
         enabled=True, transport=transport_response(sample()),
@@ -87,6 +87,20 @@ def test_prompt_loopback_evidence_remains_available_with_total_deadline(monkeypa
     assert result["status"] == "available"
     assert result["direction_available"] is False
     assert result["trading_enabled"] is False
+
+def test_delayed_stream_completion_never_publishes_forward_evidence(monkeypatch):
+    """A timely JSON chunk is insufficient when the response completes too late."""
+    ticks = iter((0.0, 0.1, ourai_bridge.MAX_RESPONSE_SECONDS + 0.1))
+    monkeypatch.setattr(ourai_bridge, "monotonic", lambda: next(ticks))
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(sample()),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "upstream_connection_failure"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "champion_mae_bps" not in result
+
 
 def test_disabled_default_never_contacts_network(monkeypatch):
     monkeypatch.delenv("OURAI_BRIDGE_ENABLED", raising=False)
