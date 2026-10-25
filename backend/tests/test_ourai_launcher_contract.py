@@ -45,8 +45,8 @@ def test_opt_in_startup_failure_cleans_up_only_owned_processes():
     # Both a Start-Process exception and a failed backend health probe must
     # clean up the child processes created during this invocation.
     cleanup = 'foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess))'
-    assert launch_section.count(cleanup) == 4
-    assert launch_section.count('Stop-OwnedProcess $ownedProcess') == 4
+    assert launch_section.count(cleanup) == 5
+    assert launch_section.count('Stop-OwnedProcess $ownedProcess') == 5
     assert 'if ($StartOurAI) {' in launch_section
     assert 'throw "Orion backend did not become ready;' in launch_section
     assert 'Write-Warning "The backend did not become ready in time.' in launch_section
@@ -203,3 +203,29 @@ def test_managed_success_requires_all_owned_servers_to_still_be_alive():
         assert f"${process}.Refresh()" in source[scope:guard]
         assert f"${process}" in source[scope:failure]
     assert source[guard:failure].count("Stop-OwnedProcess $ownedProcess") == 1
+
+
+def test_managed_success_requires_listener_pid_ownership_not_only_http_readiness():
+    """Source-level guard against an unrelated process winning a bind race.
+
+    Real listener ownership and cleanup still need Windows PowerShell E2E.
+    """
+    source = LAUNCHER.read_text(encoding="utf-8")
+    function = source.split("function Assert-OwnedListener([int]$Port, $Process, [string]$ServiceName) {", 1)[1].split("\\n}\\n", 1)[0]
+    assert '$Process.Refresh()' in function
+    assert '$Process.HasExited' in function
+    assert 'Get-NetTCPConnection -LocalAddress "127.0.0.1" -LocalPort $Port -State Listen' in function
+    assert 'Where-Object { $_.OwningProcess -eq $Process.Id }' in function
+    assert 'throw "$ServiceName does not own the expected loopback listener' in function
+
+    managed = source.index('if ($ouraiProcess.HasExited -or $backendProcess.HasExited -or $frontendProcess.HasExited)')
+    success = source.index('Write-Host "Backend PID:', managed)
+    checks = [
+        'Assert-OwnedListener 8765 $ouraiProcess "OurAI read-only bridge"',
+        'Assert-OwnedListener 8000 $backendProcess "OrionTrader backend"',
+        'Assert-OwnedListener 5173 $frontendProcess "OrionTrader frontend"',
+    ]
+    for check in checks:
+        assert managed < source.index(check, managed) < success
+    assert source[managed:success].count('Stop-OwnedProcess $ownedProcess') == 2
+    assert 'Stop-Process -Name' not in source[managed:success]
