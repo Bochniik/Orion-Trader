@@ -230,7 +230,7 @@ def fetch_ourai_forward_evidence(
         with httpx.Client(timeout=2.0, trust_env=False, follow_redirects=False, transport=transport) as client:
             with client.stream(
                 "GET", f"http://127.0.0.1:{port}{ROUTE}",
-                headers={"Accept-Encoding": "identity"},
+                headers={"Accept": "application/json", "Accept-Encoding": "identity"},
             ) as response:
                 response.raise_for_status()
                 # OurAI's producer sends plain JSON. Reject compression rather
@@ -238,6 +238,11 @@ def fetch_ourai_forward_evidence(
                 # the byte limit can be checked (decompression-bomb defense).
                 if response.headers.get("Content-Encoding", "identity").strip().lower() not in ("", "identity"):
                     raise ValueError("encoded forward evidence response")
+                # The frozen read-only producer serves JSON, never HTML or an
+                # arbitrary media type. Reject unexpected responses before parsing.
+                media_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+                if media_type != "application/json":
+                    raise ValueError("invalid forward evidence media type")
                 chunks = []
                 total = 0
                 for chunk in response.iter_raw():
