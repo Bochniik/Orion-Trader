@@ -92,7 +92,6 @@ describe("OurAI per-symbol research", () => {
     expect(html).toContain(expected);
     expect(html).not.toContain("12.35 bps");
     expect(html).not.toContain("8.40 bps");
-    expect(html).not.toContain("12.35 bps");
   });
 
   it("never reflects arbitrary raw upstream failure strings", () => {
