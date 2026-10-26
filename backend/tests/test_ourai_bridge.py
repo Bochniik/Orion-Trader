@@ -234,6 +234,42 @@ def test_latest_forecast_chronology_fails_closed():
         assert "latest_by_symbol" not in result
 
 
+
+@pytest.mark.parametrize(
+    ("sample_timestamp", "expected_status"),
+    [
+        ("2026-10-19T13:29:00Z", "unavailable"),
+        ("2026-10-19T13:30:00Z", "available"),
+    ],
+)
+def test_latest_forecast_cannot_predate_frozen_forward_protocol(
+    sample_timestamp, expected_status,
+):
+    """A plausible 15m forecast cannot be verified before V3 forward start."""
+    data = sample()
+    data["latest_by_symbol"]["NVDA"].update({
+        "sample_timestamp": sample_timestamp,
+        "predicted_at": sample_timestamp.replace(":00Z", ":20Z"),
+        "target_due_at": (
+            "2026-10-19T13:44:00Z"
+            if expected_status == "unavailable" else "2026-10-19T13:45:00Z"
+        ),
+    })
+    # Both synthetic targets are past due at the evaluation timestamp.
+    data["overdue_pending_count"] = 1
+    data["symbols"]["NVDA"]["overdue_pending"] = 1
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == expected_status
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    if expected_status == "unavailable":
+        assert result["unavailable_reason"] == "invalid_upstream_evidence"
+        assert "symbols" not in result
+        assert "latest_by_symbol" not in result
+
+
 def test_upstream_connection_failure_and_timeout_fail_closed():
     for error in (httpx.ConnectError("connection refused"), httpx.ReadTimeout("upstream timed out")):
         def fail(request):
