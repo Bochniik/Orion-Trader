@@ -45,8 +45,8 @@ def test_opt_in_startup_failure_cleans_up_only_owned_processes():
     # Both a Start-Process exception and a failed backend health probe must
     # clean up the child processes created during this invocation.
     cleanup = 'foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess))'
-    assert launch_section.count(cleanup) == 5
-    assert launch_section.count('Stop-OwnedProcess $ownedProcess') == 5
+    assert launch_section.count(cleanup) == 6
+    assert launch_section.count('Stop-OwnedProcess $ownedProcess') == 6
     assert 'if ($StartOurAI) {' in launch_section
     assert 'throw "Orion backend did not become ready;' in launch_section
     assert 'Write-Warning "The backend did not become ready in time.' in launch_section
@@ -229,3 +229,19 @@ def test_managed_success_requires_listener_pid_ownership_not_only_http_readiness
         assert managed < source.index(check, managed) < success
     assert source[managed:success].count('Stop-OwnedProcess $ownedProcess') == 2
     assert 'Stop-Process -Name' not in source[managed:success]
+
+
+def test_managed_session_supervises_owned_processes_and_cleans_up_on_exit():
+    """Source-level contract; Windows smoke exercises exit detection on a real child."""
+    source = LAUNCHER.read_text(encoding="utf-8")
+    assert "function Wait-ManagedProcesses($Processes) {" in source
+    assert 'if ($entry.Process.HasExited) {' in source
+    assert 'return $entry.Name' in source
+    managed = source.index('Write-Host "Managed OurAI/Orion session running.')
+    assert 'Wait-ManagedProcesses @(' in source[managed:]
+    for process in ("ouraiProcess", "backendProcess", "frontendProcess"):
+        assert f"Process = ${process}" in source[managed:]
+    finally_body = source[source.index("    finally {", managed):]
+    assert '$env:OURAI_BRIDGE_ENABLED = "false"' in finally_body
+    assert 'Stop-OwnedProcess $ownedProcess' in finally_body
+    assert 'elseif (-not $NoBrowser)' in finally_body

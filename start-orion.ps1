@@ -73,6 +73,21 @@ function Stop-OwnedProcess($Process) {
     }
 }
 
+# Keep the launcher alive for the opt-in trio so ordinary termination can
+# stop only processes created by this invocation. Returning on the first
+# exited member also prevents leaving a half-running application behind.
+function Wait-ManagedProcesses($Processes) {
+    while ($true) {
+        foreach ($entry in $Processes) {
+            $entry.Process.Refresh()
+            if ($entry.Process.HasExited) {
+                return $entry.Name
+            }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+}
+
 # Do not inherit a stale bridge opt-in from an earlier terminal session.
 # Explicit -StartOurAI is required for this managed launcher.
 $env:OURAI_BRIDGE_ENABLED = "false"
@@ -180,7 +195,7 @@ if ($StartOurAI) {
     $env:OURAI_BRIDGE_ENABLED = "true"
     $env:OURAI_BRIDGE_PORT = "8765"
     Write-Host "OurAI verified read-only bridge ready (PID $($ouraiProcess.Id))." -ForegroundColor Cyan
-    Write-Host "Stop the OurAI process separately when finished; automatic lifecycle management is not implemented yet." -ForegroundColor Yellow
+    Write-Host "OurAI will stop with this managed Orion session." -ForegroundColor Cyan
 }
 
 Write-Host "Starting OrionTrader backend and frontend..." -ForegroundColor Cyan
@@ -329,6 +344,28 @@ Write-Host "Backend PID: $($backendProcess.Id) | Frontend PID: $($frontendProces
 Write-Host "OrionTrader: http://127.0.0.1:5173" -ForegroundColor Green
 Write-Host "API docs:    http://127.0.0.1:8000/docs" -ForegroundColor Green
 
-if (-not $NoBrowser) {
+if ($StartOurAI) {
+    # Keep this terminal open in managed mode. Ctrl+C or a normal failure
+    # enters finally and stops only this launch's Process objects.
+    try {
+        if (-not $NoBrowser) {
+            Start-Process "http://127.0.0.1:5173"
+        }
+        Write-Host "Managed OurAI/Orion session running. Press Ctrl+C in this terminal to stop all three." -ForegroundColor Cyan
+        $stopped = Wait-ManagedProcesses @(
+            @{ Name = "OurAI"; Process = $ouraiProcess },
+            @{ Name = "Orion backend"; Process = $backendProcess },
+            @{ Name = "Orion frontend"; Process = $frontendProcess }
+        )
+        throw "$stopped exited; stopping the remaining owned services."
+    }
+    finally {
+        $env:OURAI_BRIDGE_ENABLED = "false"
+        foreach ($ownedProcess in @($frontendProcess, $backendProcess, $ouraiProcess)) {
+            Stop-OwnedProcess $ownedProcess
+        }
+    }
+}
+elseif (-not $NoBrowser) {
     Start-Process "http://127.0.0.1:5173"
 }
