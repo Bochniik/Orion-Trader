@@ -16,7 +16,7 @@ if ($parseErrors.Count -ne 0) {
 
 # Import ONLY the function definitions from the launcher AST. Dot-sourcing
 # start-orion.ps1 itself would install packages and start actual services.
-foreach ($functionName in @("Assert-OwnedListener", "Stop-OwnedProcess")) {
+foreach ($functionName in @("Assert-OwnedListener", "Stop-OwnedProcess", "Wait-ManagedProcesses")) {
     $definitions = @($ast.FindAll({
         param($node)
         $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
@@ -72,7 +72,21 @@ try {
     $child.Refresh()
     if (-not $child.HasExited) { throw "Owned child did not exit after rollback." }
     Assert-OwnedListener $port $owner "still-owned test listener"
-    Write-Host "PASS: Windows loopback PID ownership, mismatch rejection, and owned rollback."
+    # A supervised launcher must notice an owned child exiting without
+    # interfering with an unrelated existing loopback listener.
+    $shortLived = Start-Process -FilePath (Join-Path $PSHOME "powershell.exe") `
+        -ArgumentList @("-NoProfile", "-NonInteractive", "-Command", "Start-Sleep -Milliseconds 200") `
+        -WindowStyle Hidden -PassThru
+    try {
+        $reason = Wait-ManagedProcesses @(@{ Name = "test child"; Process = $shortLived })
+        if ($reason -ne "test child") { throw "Managed process exit was not detected." }
+        Assert-OwnedListener $port $owner "listener after managed child exit"
+    }
+    finally {
+        Stop-OwnedProcess $shortLived
+        $shortLived.Dispose()
+    }
+    Write-Host "PASS: Windows loopback PID ownership, rollback, and supervised exit."
 }
 finally {
     $listener.Stop()
