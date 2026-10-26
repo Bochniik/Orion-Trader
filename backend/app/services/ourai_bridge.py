@@ -76,7 +76,8 @@ def _validate_payload(payload: object) -> dict:
         or payload.get("experiment") != "frozen_v3_magnitude_15m"
         or payload.get("mode") != "RESEARCH_SHADOW_ONLY"
         or payload.get("journal_valid") is not True
-        or payload.get("horizon_minutes") != 15
+        or type(payload.get("horizon_minutes")) is not int
+        or payload["horizon_minutes"] != 15
         or payload.get("direction_available") is not False
         or payload.get("trading_enabled") is not False
     ):
