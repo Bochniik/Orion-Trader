@@ -73,7 +73,7 @@ def test_slow_trickle_evidence_exceeds_total_deadline_and_fails_as_connection_ou
         enabled=True, transport=transport_response(sample()),
     )
     assert result["status"] == "unavailable"
-    assert result["unavailable_reason"] == "upstream_connection_failure"
+    assert result["unavailable_reason"] == "upstream_timeout"
     assert result["direction_available"] is False
     assert result["trading_enabled"] is False
     assert "symbols" not in result and "champion_mae_bps" not in result
@@ -97,7 +97,7 @@ def test_delayed_stream_completion_never_publishes_forward_evidence(monkeypatch)
         enabled=True, transport=transport_response(sample()),
     )
     assert result["status"] == "unavailable"
-    assert result["unavailable_reason"] == "upstream_connection_failure"
+    assert result["unavailable_reason"] == "upstream_timeout"
     assert result["direction_available"] is False
     assert result["trading_enabled"] is False
     assert "symbols" not in result and "champion_mae_bps" not in result
@@ -469,8 +469,8 @@ def test_latest_resolution_state_must_match_symbol_counts():
 def test_bridge_distinguishes_transport_http_and_invalid_evidence_failures():
     cases = (
         (httpx.ConnectError("getaddrinfo failed"), "upstream_connection_failure"),
-        (httpx.ConnectTimeout("WinError 10060"), "upstream_connection_failure"),
-        (httpx.ReadTimeout("timed out"), "upstream_connection_failure"),
+        (httpx.ConnectTimeout("WinError 10060"), "upstream_timeout"),
+        (httpx.ReadTimeout("timed out"), "upstream_timeout"),
     )
     for error, reason in cases:
         def fail(_request):
@@ -513,7 +513,10 @@ def test_all_loopback_transport_failures_are_unavailable_not_model_errors(error)
         enabled=True, transport=httpx.MockTransport(fail),
     )
     assert result["status"] == "unavailable"
-    assert result["unavailable_reason"] == "upstream_connection_failure"
+    assert result["unavailable_reason"] == (
+        "upstream_timeout" if isinstance(error, httpx.TimeoutException)
+        else "upstream_connection_failure"
+    )
     assert result["mode"] == "RESEARCH_SHADOW_ONLY"
     assert result["direction_available"] is False
     assert result["trading_enabled"] is False
@@ -1014,7 +1017,7 @@ def test_real_loopback_read_timeout_clears_evidence_then_recovers():
     assert requests == [ourai_bridge.ROUTE] * 3
     assert first["status"] == "available"
     assert outage["status"] == "unavailable"
-    assert outage["unavailable_reason"] == "upstream_connection_failure"
+    assert outage["unavailable_reason"] == "upstream_timeout"
     assert outage["direction_available"] is False
     assert outage["trading_enabled"] is False
     assert "symbols" not in outage and "latest_by_symbol" not in outage
