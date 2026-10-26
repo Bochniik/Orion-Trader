@@ -187,7 +187,11 @@ def _validate_payload(payload: object) -> dict:
                 or predicted_at > evaluated_dt
                 # A resolved forecast cannot have reached its 15m target
                 # after the report was evaluated. Pending may be overdue.
-                or (data["resolved"] and due_at > evaluated_dt)):
+                or (data["resolved"] and due_at > evaluated_dt)
+                # A pending forecast whose target is already due must count
+                # as overdue in the same verified report snapshot.
+                or (not data["resolved"] and due_at <= evaluated_dt
+                    and symbols[symbol]["overdue_pending"] == 0)):
             raise ValueError("inconsistent latest forecast chronology")
     if not set(latest) <= set(symbols):
         raise ValueError("latest forecasts absent from symbol counts")
