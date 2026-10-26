@@ -36,7 +36,12 @@ def research_briefing(symbol: str, evidence: dict[str, Any], news: dict[str, Any
             verified = False
         else:
             row = expected[symbol]
-            if not isinstance(row, dict):
+            # An empty journal symbol is not a verified forecast. The
+            # loopback validator requires latest_by_symbol for nonempty rows.
+            if (not isinstance(row, dict)
+                    or type(row.get("predictions")) is not int
+                    or row["predictions"] <= 0
+                    or not isinstance(latest.get(symbol), dict)):
                 verified = False
 
     magnitude = None
@@ -96,6 +101,24 @@ def research_briefing(symbol: str, evidence: dict[str, Any], news: dict[str, Any
             "disclaimer": "Qualitative interpretation is not a verified price prediction.",
         }
 
+    # Transport failures are data-availability failures, never model errors.
+    # Only expose the fixed reason vocabulary from the trusted bridge; do not
+    # reflect arbitrary upstream strings or error payloads into the UI.
+    unavailable_reason = None
+    if magnitude is None:
+        if evidence.get("status") == "disabled":
+            unavailable_reason = "bridge_disabled"
+        elif (evidence.get("status") == "unavailable"
+              and evidence.get("unavailable_reason") in {
+                  "upstream_timeout", "upstream_connection_failure",
+                  "upstream_http_failure", "invalid_upstream_evidence",
+              }):
+            unavailable_reason = evidence["unavailable_reason"]
+        elif verified is False and evidence.get("status") == "available" and evidence.get("source") == "ourai_verified_forward_journal":
+            unavailable_reason = "no_symbol_observations"
+        else:
+            unavailable_reason = "no_verified_evidence"
+
     return {
         "symbol": symbol,
         "mode": "RESEARCH_SHADOW_ONLY",
@@ -106,6 +129,7 @@ def research_briefing(symbol: str, evidence: dict[str, Any], news: dict[str, Any
         "signed_return_percent": None,
         "magnitude": magnitude,
         "magnitude_status": "verified_forward" if magnitude else "unavailable",
+        "magnitude_unavailable_reason": unavailable_reason,
         "news": news_view,
         "disclaimer": (
             "Independent news interpretation does not validate direction or "
