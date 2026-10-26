@@ -398,6 +398,35 @@ class OurAiRealProducerLoopbackContract(unittest.TestCase):
             self.assertNotIn(forbidden, result)
 
 
+    def test_hostile_proxy_environment_cannot_intercept_loopback_evidence(self):
+        """A desktop proxy must not reroute the trusted 127.0.0.1 bridge.
+
+        The proxy target is a local unused service port, so the test makes
+        no external requests even if a future regression enables trust_env.
+        """
+        proxy = "http://127.0.0.1:9"
+        proxy_env = {
+            "HTTP_PROXY": proxy, "http_proxy": proxy,
+            "HTTPS_PROXY": proxy, "https_proxy": proxy,
+            "ALL_PROXY": proxy, "all_proxy": proxy,
+            "NO_PROXY": "", "no_proxy": "",
+        }
+        with patch.object(
+            self.producer, "read_forward_report", return_value=_synthetic_report()
+        ) as reader:
+            with _producer_server(self.producer) as port:
+                with patch.dict(os.environ, proxy_env):
+                    result = self.consumer.fetch_ourai_forward_evidence(
+                        enabled=True, port=port
+                    )
+        reader.assert_called_once_with("synthetic-not-opened.jsonl")
+        self.assertEqual(result["status"], "available")
+        self.assertEqual(result["source"], "ourai_verified_forward_journal")
+        self.assertEqual(result["prediction_count"], 2)
+        self.assertFalse(result["direction_available"])
+        self.assertFalse(result["trading_enabled"])
+
+
     def test_opt_in_disabled_makes_no_journal_request(self):
         with patch.object(
             self.producer, "read_forward_report",
