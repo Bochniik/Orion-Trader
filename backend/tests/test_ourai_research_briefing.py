@@ -140,3 +140,11 @@ def test_verified_observations_have_no_outage_reason():
     result = research_briefing("NVDA", evidence())
     assert result["magnitude_status"] == "verified_forward"
     assert result["magnitude_unavailable_reason"] is None
+
+
+def test_malformed_directional_header_is_not_misdiagnosed_as_missing_observations():
+    raw = evidence()
+    raw["direction_available"] = True
+    result = research_briefing("NVDA", raw)
+    assert result["magnitude"] is None
+    assert result["magnitude_unavailable_reason"] == "no_verified_evidence"
