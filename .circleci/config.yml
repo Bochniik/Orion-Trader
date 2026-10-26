@@ -48,6 +48,28 @@ jobs:
             fi
             python -m pytest -q "${tests[@]}"
 
+  ourai-cross-repo-loopback:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Fetch public OurAI main without credentials
+          command: |
+            set -euo pipefail
+            GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone --depth 1 --branch main \
+              https://github.com/Bochniik/OurAi.git /tmp/ourai-public
+            echo "Orion exact CI checkout: $(git rev-parse HEAD)"
+            echo "OurAI public main tested: $(git -C /tmp/ourai-public rev-parse HEAD)"
+      - run:
+          name: Test actual OurAI producer with Orion consumer on trusted loopback
+          command: |
+            set -euo pipefail
+            python -m pip install --disable-pip-version-check 'httpx>=0.27,<1'
+            OURAI_SOURCE_ROOT=/tmp/ourai-public python -m unittest discover \
+              -s backend/tests -p 'test_ourai_crossrepo_loopback_contract.py' -v
+
   frontend-regressions:
     docker:
       - image: cimg/node:24.0
@@ -71,3 +93,4 @@ workflows:
     jobs:
       - backend-regressions
       - frontend-regressions
+      - ourai-cross-repo-loopback
