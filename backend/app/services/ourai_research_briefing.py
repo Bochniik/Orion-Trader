@@ -109,6 +109,7 @@ def research_briefing(symbol: str, evidence: dict[str, Any], news: dict[str, Any
         if evidence.get("status") == "disabled":
             unavailable_reason = "bridge_disabled"
         elif (evidence.get("status") == "unavailable"
+              and isinstance(evidence.get("unavailable_reason"), str)
               and evidence.get("unavailable_reason") in {
                   "upstream_timeout", "upstream_connection_failure",
                   "upstream_http_failure", "invalid_upstream_evidence",
