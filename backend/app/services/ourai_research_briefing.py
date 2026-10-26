@@ -115,7 +115,16 @@ def research_briefing(symbol: str, evidence: dict[str, Any], news: dict[str, Any
                   "upstream_http_failure", "invalid_upstream_evidence",
               }):
             unavailable_reason = evidence["unavailable_reason"]
-        elif verified is False and evidence.get("status") == "available" and evidence.get("source") == "ourai_verified_forward_journal":
+        elif (evidence.get("status") == "available"
+              and evidence.get("source") == "ourai_verified_forward_journal"
+              and evidence.get("experiment") == "frozen_v3_magnitude_15m"
+              and evidence.get("mode") == "RESEARCH_SHADOW_ONLY"
+              and evidence.get("direction_available") is False
+              and evidence.get("trading_enabled") is False
+              and isinstance(evidence.get("symbols"), dict)
+              and (symbol not in evidence["symbols"]
+                   or (isinstance(evidence["symbols"][symbol], dict)
+                       and evidence["symbols"][symbol].get("predictions") == 0))):
             unavailable_reason = "no_symbol_observations"
         else:
             unavailable_reason = "no_verified_evidence"
