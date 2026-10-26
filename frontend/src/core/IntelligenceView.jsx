@@ -3,6 +3,7 @@ import { ArrowRight, BrainCircuit, RefreshCw, ShieldAlert } from "lucide-react";
 import { getOrionIntelligenceBriefing } from "../api/api";
 import PositionSizingAssistant from "./PositionSizingAssistant";
 import OurAIForwardEvidencePanel from "./OurAIForwardEvidencePanel";
+import OurAISymbolResearchPanel from "./OurAISymbolResearchPanel";
 import TickerIntelligencePanels from "./TickerIntelligencePanels";
 import RelationshipEarningsPanels from "./RelationshipEarningsPanels";
 import "./intelligence.css";
@@ -106,6 +107,7 @@ export default function IntelligenceView({ selectedTicker, onSelectTicker, onAna
       )}
 
       <OurAIForwardEvidencePanel selectedTicker={selectedTicker} />
+      <OurAISymbolResearchPanel selectedTicker={selectedTicker} />
       <PositionSizingAssistant ticker={selectedTicker} />
       <TickerIntelligencePanels ticker={selectedTicker} />
       <RelationshipEarningsPanels ticker={selectedTicker} />
