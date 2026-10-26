@@ -270,6 +270,45 @@ def test_latest_forecast_cannot_predate_frozen_forward_protocol(
         assert "latest_by_symbol" not in result
 
 
+@pytest.mark.parametrize(
+    ("evaluated_at", "expected_status"),
+    [
+        ("2026-10-19T13:29:59Z", "unavailable"),
+        ("2026-10-19T13:30:00Z", "available"),
+    ],
+)
+def test_empty_forward_report_cannot_claim_pre_protocol_verification(
+    evaluated_at, expected_status,
+):
+    """With no forecast rows, the report timestamp must still respect V3 start."""
+    data = sample()
+    data.update({
+        "evaluated_at_utc": evaluated_at,
+        "prediction_count": 0,
+        "resolution_count": 0,
+        "pending_count": 0,
+        "overdue_pending_count": 0,
+        "champion_mae_bps": None,
+        "linear_mae_bps": None,
+        "null_mae_bps": None,
+        "symbols": {},
+        "latest_by_symbol": {},
+    })
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == expected_status
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    if expected_status == "unavailable":
+        assert result["unavailable_reason"] == "invalid_upstream_evidence"
+        assert "symbols" not in result
+        assert "as_of" not in result
+    else:
+        assert result["prediction_count"] == 0
+        assert result["resolution_count"] == 0
+
+
 def test_upstream_connection_failure_and_timeout_fail_closed():
     for error in (httpx.ConnectError("connection refused"), httpx.ReadTimeout("upstream timed out")):
         def fail(request):
