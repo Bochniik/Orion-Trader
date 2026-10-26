@@ -36,6 +36,32 @@ def ourai_forward_evidence(request: Request, response: Response):
 
 
 
+@router.get("/ourai/research/{symbol}")
+def ourai_symbol_research(symbol: str, request: Request, response: Response):
+    """Authenticated, opt-in per-symbol read-only magnitude view.
+
+    News commentary is intentionally unavailable until independently sourced
+    article evidence can be attached. No orders, forecasts of direction,
+    model invocation or remote network hosts are introduced here.
+    """
+    # Keep exactly the same local-journal authentication boundary as the
+    # existing full forward-evidence route. Never allow test-user fallback.
+    user = getattr(request.state, "user", None)
+    if not isinstance(user, dict) or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Authenticated local user required")
+    request_user_id(request)
+    response.headers["Cache-Control"] = "no-store"
+
+    from app.services.ourai_bridge import FROZEN_SYMBOLS, fetch_ourai_forward_evidence
+    from app.services.ourai_research_briefing import research_briefing
+
+    if symbol not in FROZEN_SYMBOLS:
+        raise HTTPException(status_code=404, detail="Unsupported OurAI research symbol")
+
+    return research_briefing(symbol, fetch_ourai_forward_evidence())
+
+
+
 class IntelligencePositionSizeRequest(BaseModel):
     ticker: str = Field(min_length=1, max_length=15)
     entry_price: float = Field(gt=0)
