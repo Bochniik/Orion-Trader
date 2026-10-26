@@ -292,6 +292,59 @@ class OurAiRealProducerLoopbackContract(unittest.TestCase):
         self.assertEqual(recovered["prediction_count"], 2)
         self.assertFalse(recovered["trading_enabled"])
 
+    def test_rebinding_and_browser_requests_cannot_trigger_journal_verification(self):
+        """Only the trusted backend client may cause a verified journal read.
+
+        Real HTTP requests exercise the pinned producer's Host and Fetch
+        Metadata guards. Rejected requests must not invoke analytics or leak
+        a prior evidence snapshot; a subsequent Orion request still works.
+        """
+        from http.client import HTTPConnection
+
+        with patch.object(
+            self.producer, "read_forward_report", return_value=_synthetic_report()
+        ) as reader:
+            with _producer_server(self.producer) as port:
+                rejected_headers = (
+                    {"Host": f"attacker.invalid:{port}"},
+                    {
+                        "Host": f"127.0.0.1:{port}",
+                        "Origin": "http://attacker.invalid",
+                    },
+                    {
+                        "Host": f"127.0.0.1:{port}",
+                        "Sec-Fetch-Site": "same-origin",
+                    },
+                    {
+                        "Host": f"127.0.0.1:{port}",
+                        "Sec-Fetch-Site": "none",
+                    },
+                )
+                for headers in rejected_headers:
+                    with self.subTest(headers=headers):
+                        connection = HTTPConnection("127.0.0.1", port, timeout=3)
+                        try:
+                            connection.request(
+                                "GET", "/v1/forward-evidence", headers=headers
+                            )
+                            response = connection.getresponse()
+                            body = response.read()
+                            self.assertEqual(response.status, 403)
+                            self.assertEqual(response.getheader("Cache-Control"), "no-store")
+                            self.assertNotIn(b"champion_mae_bps", body)
+                            self.assertNotIn(b"latest_by_symbol", body)
+                        finally:
+                            connection.close()
+                reader.assert_not_called()
+
+                recovered = self.consumer.fetch_ourai_forward_evidence(
+                    enabled=True, port=port
+                )
+        reader.assert_called_once_with("synthetic-not-opened.jsonl")
+        self.assertEqual(recovered["status"], "available")
+        self.assertFalse(recovered["direction_available"])
+        self.assertFalse(recovered["trading_enabled"])
+
     def test_opt_in_disabled_makes_no_journal_request(self):
         with patch.object(
             self.producer, "read_forward_report",
