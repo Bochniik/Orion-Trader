@@ -202,6 +202,68 @@ class OurAiRealProducerLoopbackContract(unittest.TestCase):
         self.assertFalse(result["direction_available"])
         self.assertFalse(result["trading_enabled"])
 
+    def test_busy_journal_verification_fails_closed_then_recovers(self):
+        """Concurrent requests must not leak partial or stale evidence.
+
+        Exercise the real OurAI semaphore and Orion HTTP client together.
+        The held verification is synthetic and never opens a journal.
+        """
+        from threading import Event
+
+        entered = Event()
+        release = Event()
+        first_results = []
+        report = _synthetic_report()
+
+        def slow_verified_report(_path):
+            entered.set()
+            if not release.wait(timeout=8):
+                raise TimeoutError("synthetic verification was not released")
+            return report
+
+        with patch.object(
+            self.producer, "read_forward_report", side_effect=slow_verified_report
+        ) as reader:
+            with _producer_server(self.producer) as port:
+                first = Thread(
+                    target=lambda: first_results.append(
+                        self.consumer.fetch_ourai_forward_evidence(
+                            enabled=True, port=port
+                        )
+                    ),
+                    daemon=True,
+                )
+                first.start()
+                try:
+                    self.assertTrue(entered.wait(timeout=5))
+                    busy = self.consumer.fetch_ourai_forward_evidence(
+                        enabled=True, port=port
+                    )
+                    self.assertEqual(busy["status"], "unavailable")
+                    self.assertEqual(
+                        busy["unavailable_reason"], "upstream_http_failure"
+                    )
+                    self.assertFalse(busy["trading_enabled"])
+                    self.assertFalse(busy["direction_available"])
+                    self.assertNotIn("symbols", busy)
+                    self.assertNotIn("latest_by_symbol", busy)
+                    self.assertNotIn("champion_mae_bps", busy)
+                finally:
+                    release.set()
+                    first.join(timeout=6)
+
+                self.assertFalse(first.is_alive())
+                self.assertEqual(len(first_results), 1)
+                self.assertEqual(first_results[0]["status"], "available")
+                recovered = self.consumer.fetch_ourai_forward_evidence(
+                    enabled=True, port=port
+                )
+
+        self.assertEqual(reader.call_count, 2)
+        self.assertEqual(recovered["status"], "available")
+        self.assertEqual(recovered["prediction_count"], 2)
+        self.assertFalse(recovered["trading_enabled"])
+
     def test_opt_in_disabled_makes_no_journal_request(self):
         with patch.object(
             self.producer, "read_forward_report",
