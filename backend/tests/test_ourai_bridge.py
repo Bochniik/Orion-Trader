@@ -850,6 +850,74 @@ def test_real_loopback_http_recovery_after_transient_outage():
     assert recovered["direction_available"] is False
     assert recovered["trading_enabled"] is False
 
+
+def test_real_loopback_read_timeout_clears_evidence_then_recovers():
+    """A slow verification is a data-availability outage, not model evidence.
+
+    Exercise the real configured httpx read timeout over trusted loopback.
+    The responses are synthetic; no model, journal or market data is used.
+    """
+    from threading import Event
+
+    slow_started = Event()
+    release_slow = Event()
+    requests = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            requests.append(self.path)
+            if len(requests) == 2:
+                # Mimic a full journal verification that takes longer than
+                # Orion's 2s read timeout, without returning stale evidence.
+                slow_started.set()
+                release_slow.wait(timeout=10)
+                return
+            body = json.dumps(sample()).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        first = ourai_bridge.fetch_ourai_forward_evidence(
+            enabled=True, port=server.server_port,
+        )
+        outage = ourai_bridge.fetch_ourai_forward_evidence(
+            enabled=True, port=server.server_port,
+        )
+        assert slow_started.is_set(), "slow response was not exercised"
+        # Let the simulated verifier finish; recovery must make a fresh GET.
+        release_slow.set()
+        recovered = ourai_bridge.fetch_ourai_forward_evidence(
+            enabled=True, port=server.server_port,
+        )
+    finally:
+        release_slow.set()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert requests == [ourai_bridge.ROUTE] * 3
+    assert first["status"] == "available"
+    assert outage["status"] == "unavailable"
+    assert outage["unavailable_reason"] == "upstream_connection_failure"
+    assert outage["direction_available"] is False
+    assert outage["trading_enabled"] is False
+    assert "symbols" not in outage and "latest_by_symbol" not in outage
+    assert "champion_mae_bps" not in outage
+    assert recovered["status"] == "available"
+    assert recovered["prediction_count"] == first["prediction_count"]
+    assert recovered["direction_available"] is False
+    assert recovered["trading_enabled"] is False
+
+
 def test_partial_loopback_stream_reset_discards_evidence_then_recovers():
     """A reset after valid-looking bytes must never publish partial evidence.
 
