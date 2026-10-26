@@ -195,7 +195,7 @@ if ($StartOurAI) {
     $env:OURAI_BRIDGE_ENABLED = "true"
     $env:OURAI_BRIDGE_PORT = "8765"
     Write-Host "OurAI verified read-only bridge ready (PID $($ouraiProcess.Id))." -ForegroundColor Cyan
-    Write-Host "Stop the OurAI process separately when finished; automatic lifecycle management is not implemented yet." -ForegroundColor Yellow
+    Write-Host "OurAI will stop with this managed Orion session." -ForegroundColor Cyan
 }
 
 Write-Host "Starting OrionTrader backend and frontend..." -ForegroundColor Cyan
