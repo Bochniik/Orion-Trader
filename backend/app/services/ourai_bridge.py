@@ -310,9 +310,13 @@ def fetch_ourai_forward_evidence(
                 parse_constant=_reject_json_constant,
                 parse_float=_finite_json_float,
             ))
+    except httpx.TimeoutException:
+        # Timeouts (including the bounded total stream deadline) mean that
+        # evidence was not delivered in time, NOT that the model was wrong.
+        return _inactive("unavailable", "upstream_timeout")
     except httpx.TransportError:
-        # All loopback transport failures (DNS/connect/read/write/pool/protocol)
-        # are data-availability failures, not evidence of model inaccuracy.
+        # Local connection/read/protocol failures are data availability
+        # failures, never evidence of model inaccuracy.
         return _inactive("unavailable", "upstream_connection_failure")
     except httpx.HTTPStatusError:
         return _inactive("unavailable", "upstream_http_failure")
