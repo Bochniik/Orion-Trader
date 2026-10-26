@@ -105,7 +105,7 @@ export default function OurAISymbolResearchPanel({ selectedTicker }) {
   }, [symbol]);
 
   if (!FROZEN_SYMBOLS.has(symbol)) return <SymbolResearchSummary selectedTicker={symbol} briefing={null} />;
-  if (loading || briefing?.symbol !== symbol) {
+  if (loading) {
     return <div className="ourai-evidence-loading" role="status">Loading {symbol} research evidence…</div>;
   }
   return <SymbolResearchSummary selectedTicker={symbol} briefing={briefing} />;
