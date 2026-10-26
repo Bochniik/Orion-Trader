@@ -202,6 +202,34 @@ class OurAiRealProducerLoopbackContract(unittest.TestCase):
         self.assertFalse(result["direction_available"])
         self.assertFalse(result["trading_enabled"])
 
+    def test_non_mapping_analytics_report_is_http_unavailable_then_recovers(self):
+        """Malformed reader output is not a socket/DNS outage or model result."""
+        with patch.object(
+            self.producer, "read_forward_report",
+            side_effect=[None, [], _synthetic_report()],
+        ) as reader:
+            with _producer_server(self.producer) as port:
+                for _ in range(2):
+                    unavailable = self.consumer.fetch_ourai_forward_evidence(
+                        enabled=True, port=port
+                    )
+                    self.assertEqual(unavailable["status"], "unavailable")
+                    self.assertEqual(
+                        unavailable["unavailable_reason"], "upstream_http_failure"
+                    )
+                    self.assertNotIn("symbols", unavailable)
+                    self.assertNotIn("latest_by_symbol", unavailable)
+                    self.assertNotIn("champion_mae_bps", unavailable)
+                    self.assertFalse(unavailable["direction_available"])
+                    self.assertFalse(unavailable["trading_enabled"])
+                recovered = self.consumer.fetch_ourai_forward_evidence(
+                    enabled=True, port=port
+                )
+        self.assertEqual(reader.call_count, 3)
+        self.assertEqual(recovered["status"], "available")
+        self.assertEqual(recovered["prediction_count"], 2)
+        self.assertFalse(recovered["trading_enabled"])
+
     def test_busy_journal_verification_fails_closed_then_recovers(self):
         """Concurrent requests must not leak partial or stale evidence.
 
