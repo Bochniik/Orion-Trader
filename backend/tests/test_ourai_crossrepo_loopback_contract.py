@@ -345,6 +345,59 @@ class OurAiRealProducerLoopbackContract(unittest.TestCase):
         self.assertFalse(recovered["direction_available"])
         self.assertFalse(recovered["trading_enabled"])
 
+    def test_valid_research_only_directional_contract_cannot_be_forward_evidence(self):
+        """Even a valid v0 research shape is not verified magnitude evidence.
+
+        This is a synthetic schema boundary test, NOT a directional model
+        evaluation. The producer must refuse the payload before the Orion
+        consumer could mistake it for a verified journal report.
+        """
+        research = _load_module(
+            "ourai_directional_research_contract",
+            Path(os.environ["OURAI_SOURCE_ROOT"])
+            / "research/directional_research_contract_v0.py",
+        )
+        synthetic = {
+            "contract": "ourai_directional_research_v0",
+            "schema_version": 0,
+            "mode": "RESEARCH_ONLY",
+            "validation_status": "NOT_INDEPENDENTLY_VALIDATED",
+            "evidence_status": "UNVERIFIED_MODEL_OUTPUT",
+            "research_only": True,
+            "trading_enabled": False,
+            "experiment_id": "synthetic-contract-only",
+            "symbol": "NVDA",
+            "horizon_minutes": 15,
+            "as_of_utc": "2026-10-20T12:00:00Z",
+            "target_due_at_utc": "2026-10-20T12:15:00Z",
+            "probability_conditioning": "up_vs_down_given_nonzero_15m_return",
+            "p_up": 0.6,
+            "p_down": 0.4,
+            "expected_signed_change_pct": -0.12,
+        }
+        validated = research.validate_directional_research_v0(synthetic)
+        self.assertEqual(validated["validation_status"], "NOT_INDEPENDENTLY_VALIDATED")
+        self.assertFalse(validated["trading_enabled"])
+
+        with patch.object(
+            self.producer, "read_forward_report", return_value=validated
+        ) as reader:
+            with _producer_server(self.producer) as port:
+                result = self.consumer.fetch_ourai_forward_evidence(
+                    enabled=True, port=port
+                )
+        reader.assert_called_once_with("synthetic-not-opened.jsonl")
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["unavailable_reason"], "upstream_http_failure")
+        self.assertFalse(result["direction_available"])
+        self.assertFalse(result["trading_enabled"])
+        for forbidden in (
+            "p_up", "p_down", "expected_signed_change_pct",
+            "latest_by_symbol", "symbols", "champion_mae_bps",
+        ):
+            self.assertNotIn(forbidden, result)
+
+
     def test_opt_in_disabled_makes_no_journal_request(self):
         with patch.object(
             self.producer, "read_forward_report",
