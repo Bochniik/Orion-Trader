@@ -156,6 +156,10 @@ def _validate_payload(payload: object) -> dict:
         raise ValueError("latest forecasts do not match symbol prediction counts")
     evaluated_at = _stamp(payload.get("evaluated_at_utc"))
     evaluated_dt = datetime.fromisoformat(evaluated_at.replace("Z", "+00:00"))
+    # Even an empty report cannot claim verification before the frozen
+    # forward protocol began. No prediction row exists to enforce this bound.
+    if evaluated_dt < FORWARD_START:
+        raise ValueError("pre-protocol forward evidence evaluation timestamp")
     # Reject a report claiming verification far in the future. A small skew
     # allowance tolerates imperfect desktop clocks without accepting forged
     # forward chronology as already observed evidence.
