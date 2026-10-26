@@ -89,9 +89,9 @@ def _synthetic_report():
 
 
 @contextmanager
-def _producer_server(producer):
+def _producer_server(producer, port=0):
     server = ThreadingHTTPServer(
-        (producer.HOST, 0), producer.make_handler("synthetic-not-opened.jsonl")
+        (producer.HOST, port), producer.make_handler("synthetic-not-opened.jsonl")
     )
     worker = Thread(target=server.serve_forever, daemon=True)
     worker.start()
@@ -156,6 +156,37 @@ class OurAiRealProducerLoopbackContract(unittest.TestCase):
         self.assertFalse(failed["trading_enabled"])
         self.assertEqual(recovered["status"], "available")
         self.assertEqual(recovered["prediction_count"], 2)
+
+    def test_real_loopback_outage_clears_evidence_and_same_port_recovers(self):
+        """A stopped producer is a data outage, never cached evidence or model failure."""
+        with patch.object(
+            self.producer, "read_forward_report", return_value=_synthetic_report()
+        ) as reader:
+            with _producer_server(self.producer) as port:
+                first = self.consumer.fetch_ourai_forward_evidence(
+                    enabled=True, port=port
+                )
+            # The listener is fully shut down. No mock transport: the actual
+            # consumer must see a connection failure and publish no old metrics.
+            missing = self.consumer.fetch_ourai_forward_evidence(
+                enabled=True, port=port
+            )
+            with _producer_server(self.producer, port=port):
+                recovered = self.consumer.fetch_ourai_forward_evidence(
+                    enabled=True, port=port
+                )
+        self.assertEqual(reader.call_count, 2)
+        self.assertEqual(first["status"], "available")
+        self.assertEqual(missing["status"], "unavailable")
+        self.assertEqual(missing["unavailable_reason"], "upstream_connection_failure")
+        self.assertNotIn("symbols", missing)
+        self.assertNotIn("latest_by_symbol", missing)
+        self.assertNotIn("champion_mae_bps", missing)
+        self.assertFalse(missing["direction_available"])
+        self.assertFalse(missing["trading_enabled"])
+        self.assertEqual(recovered["status"], "available")
+        self.assertEqual(recovered["prediction_count"], first["prediction_count"])
+        self.assertFalse(recovered["trading_enabled"])
 
     def test_semantically_inconsistent_producer_snapshot_is_rejected(self):
         report = _synthetic_report()
