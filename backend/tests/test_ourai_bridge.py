@@ -1048,3 +1048,17 @@ def test_nonfinite_json_anywhere_fails_closed(number, nested):
     assert result["trading_enabled"] is False
     assert "symbols" not in result and "latest_by_symbol" not in result
     assert "champion_mae_bps" not in result
+
+@pytest.mark.parametrize("invalid_horizon", [15.0, "15", True, None])
+def test_forward_horizon_requires_exact_integer_schema_type(invalid_horizon):
+    """JSON float 15.0 must not pass the integer-only frozen 15m contract."""
+    data = sample()
+    data["horizon_minutes"] = invalid_horizon
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == "unavailable"
+    assert result["unavailable_reason"] == "invalid_upstream_evidence"
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    assert "symbols" not in result and "latest_by_symbol" not in result
