@@ -1172,3 +1172,70 @@ def test_forward_horizon_requires_exact_integer_schema_type(invalid_horizon):
     assert result["direction_available"] is False
     assert result["trading_enabled"] is False
     assert "symbols" not in result and "latest_by_symbol" not in result
+
+
+def _research_test_app(*, authenticated=True):
+    app = FastAPI()
+    app.include_router(intelligence.router)
+
+    @app.middleware("http")
+    async def local_user(request, call_next):
+        if authenticated:
+            request.state.user = {"id": "single-local-user"}
+        return await call_next(request)
+
+    return app
+
+
+def test_symbol_research_uses_sanitized_opt_in_bridge_and_never_invents_news(monkeypatch):
+    monkeypatch.setattr(
+        ourai_bridge, "fetch_ourai_forward_evidence",
+        _sanitized_research_fixture,
+    )
+    with TestClient(_research_test_app()) as client:
+        response = client.get("/intelligence/ourai/research/NVDA")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    body = response.json()
+    assert body["magnitude_status"] == "verified_forward"
+    assert body["magnitude"]["latest_expected_magnitude_bps"] == 12.0
+    assert body["magnitude"]["champion_mae_bps"] == 8.7
+    assert body["news"]["status"] == "unavailable"
+    assert body["p_up"] is None and body["p_down"] is None
+    assert body["signed_return_percent"] is None
+    assert body["decision"] is None and body["trading_enabled"] is False
+
+
+def _sanitized_research_fixture():
+    return ourai_bridge._validate_payload(sample())
+
+
+def test_symbol_research_disabled_is_uncached_and_fail_closed(monkeypatch):
+    monkeypatch.delenv("OURAI_BRIDGE_ENABLED", raising=False)
+    with TestClient(_research_test_app()) as client:
+        response = client.get("/intelligence/ourai/research/NVDA")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    body = response.json()
+    assert body["magnitude"] is None
+    assert body["magnitude_status"] == "unavailable"
+    assert body["news"]["status"] == "unavailable"
+    assert body["trading_enabled"] is False
+
+
+def test_symbol_research_unsupported_symbol_does_not_fetch(monkeypatch):
+    def forbidden():
+        raise AssertionError("Unsupported symbol must not fetch upstream")
+    monkeypatch.setattr(ourai_bridge, "fetch_ourai_forward_evidence", forbidden)
+    with TestClient(_research_test_app()) as client:
+        response = client.get("/intelligence/ourai/research/SPY")
+    assert response.status_code == 404
+
+
+def test_symbol_research_requires_authenticated_local_user(monkeypatch):
+    def forbidden():
+        raise AssertionError("Unauthenticated user must not fetch upstream")
+    monkeypatch.setattr(ourai_bridge, "fetch_ourai_forward_evidence", forbidden)
+    with TestClient(_research_test_app(authenticated=False)) as client:
+        response = client.get("/intelligence/ourai/research/NVDA")
+    assert response.status_code == 401
