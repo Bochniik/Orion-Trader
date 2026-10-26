@@ -527,8 +527,12 @@ def test_future_dated_evaluation_fails_closed(evaluated_at):
 
 
 def test_current_evaluation_timestamp_is_accepted():
-    """The future-date guard must not reject a normally timed report."""
+    """A current report with an overdue pending target remains valid."""
     data = sample()
+    # The synthetic latest target was due on 2026-10-20, so a report
+    # evaluated now must account for that overdue pending prediction.
+    data["overdue_pending_count"] = 1
+    data["symbols"]["NVDA"]["overdue_pending"] = 1
     data["evaluated_at_utc"] = datetime.now(timezone.utc).isoformat()
     result = ourai_bridge.fetch_ourai_forward_evidence(
         enabled=True, transport=transport_response(data),
