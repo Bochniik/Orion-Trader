@@ -14,6 +14,8 @@ import {
   getLearningStatus,
 } from "./learningApi";
 
+import DailyCloseEvidence from "./DailyCloseEvidence";
+
 import "./LearningAnalyticsPanel.css";
 
 
@@ -297,6 +299,8 @@ export default function LearningAnalyticsPanel({
           )}
         </>
       )}
+
+      <DailyCloseEvidence />
 
       {message ? (
         <div className="learning-message">{message}</div>
