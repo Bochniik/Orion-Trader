@@ -1,0 +1,33 @@
+name: Self-hosted runner smoke test
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/self-hosted-runner-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: self-hosted
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show runner environment
+        run: |
+          Write-Host "runner=$env:RUNNER_NAME"
+          Write-Host "os=$env:RUNNER_OS"
+          Write-Host "arch=$env:RUNNER_ARCH"
+          python --version
+          git --version
+      - name: Confirm repository access
+        run: |
+          if (-not (Test-Path README.md) -and -not (Test-Path backend)) {
+            throw "Repository checkout is missing expected files"
+          }
+          Write-Host "self-hosted-runner-ok"
