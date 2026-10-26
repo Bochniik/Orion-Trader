@@ -202,6 +202,47 @@ class OurAiRealProducerLoopbackContract(unittest.TestCase):
         self.assertFalse(result["direction_available"])
         self.assertFalse(result["trading_enabled"])
 
+    def test_nested_analytics_shape_failure_is_http_503_then_recovers(self):
+        """Malformed nested analytics must be a data failure, not a socket reset.
+
+        Exercises the actual pinned OurAI HTTP producer and Orion consumer.
+        All reports are synthetic; no real journal or model is opened.
+        """
+        malformed = []
+        for field in ("symbols", "latest_by_symbol"):
+            report = _synthetic_report()
+            report[field] = []
+            malformed.append(report)
+        for field in ("symbols", "latest_by_symbol"):
+            report = _synthetic_report()
+            report[field]["NVDA"] = []
+            malformed.append(report)
+
+        with patch.object(
+            self.producer, "read_forward_report",
+            side_effect=[*malformed, _synthetic_report()],
+        ) as reader:
+            with _producer_server(self.producer) as port:
+                for _ in malformed:
+                    unavailable = self.consumer.fetch_ourai_forward_evidence(
+                        enabled=True, port=port
+                    )
+                    self.assertEqual(unavailable["status"], "unavailable")
+                    self.assertEqual(
+                        unavailable["unavailable_reason"], "upstream_http_failure"
+                    )
+                    self.assertFalse(unavailable["direction_available"])
+                    self.assertFalse(unavailable["trading_enabled"])
+                    for forbidden in ("symbols", "latest_by_symbol", "champion_mae_bps"):
+                        self.assertNotIn(forbidden, unavailable)
+                recovered = self.consumer.fetch_ourai_forward_evidence(
+                    enabled=True, port=port
+                )
+        self.assertEqual(reader.call_count, len(malformed) + 1)
+        self.assertEqual(recovered["status"], "available")
+        self.assertEqual(recovered["prediction_count"], 2)
+        self.assertFalse(recovered["trading_enabled"])
+
     def test_non_mapping_analytics_report_is_http_unavailable_then_recovers(self):
         """Malformed reader output is not a socket/DNS outage or model result."""
         with patch.object(
