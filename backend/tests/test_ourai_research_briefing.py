@@ -148,3 +148,54 @@ def test_malformed_directional_header_is_not_misdiagnosed_as_missing_observation
     result = research_briefing("NVDA", raw)
     assert result["magnitude"] is None
     assert result["magnitude_unavailable_reason"] == "no_verified_evidence"
+
+
+@pytest.mark.parametrize("bad_magnitude", [
+    None, -1, float("nan"), float("inf"), True, "14.5", [], {},
+    10 ** 1000,
+])
+def test_malformed_latest_magnitude_is_not_verified(bad_magnitude):
+    raw = evidence()
+    raw["latest_by_symbol"]["NVDA"]["expected_magnitude_bps"] = bad_magnitude
+    result = research_briefing("NVDA", raw)
+    assert result["magnitude_status"] == "unavailable"
+    assert result["magnitude_unavailable_reason"] == "no_verified_evidence"
+    assert result["magnitude"] is None
+    assert result["p_up"] is result["p_down"] is result["signed_return_percent"] is None
+
+
+@pytest.mark.parametrize("counts", [
+    {"predictions": 3, "resolved": 4, "pending": 0},
+    {"predictions": 3, "resolved": 2, "pending": 0},
+    {"predictions": 3, "resolved": True, "pending": 2},
+    {"predictions": 3, "resolved": 2, "pending": -1},
+])
+def test_inconsistent_symbol_counts_do_not_become_verified(counts):
+    raw = evidence()
+    raw["symbols"]["NVDA"].update(counts)
+    result = research_briefing("NVDA", raw)
+    assert result["magnitude_status"] == "unavailable"
+    assert result["magnitude_unavailable_reason"] == "no_verified_evidence"
+    assert result["magnitude"] is None
+
+
+@pytest.mark.parametrize("bad_mae", [None, -1, float("nan"), float("inf"), True, "10.2"])
+def test_invalid_resolved_mae_does_not_become_verified(bad_mae):
+    raw = evidence()
+    raw["symbols"]["NVDA"]["champion_mae_bps"] = bad_mae
+    result = research_briefing("NVDA", raw)
+    assert result["magnitude_status"] == "unavailable"
+    assert result["magnitude"] is None
+
+
+def test_pending_only_symbol_may_show_magnitude_without_inventing_mae():
+    raw = evidence()
+    raw["symbols"]["NVDA"] = {
+        "predictions": 1, "resolved": 0, "pending": 1,
+        "champion_mae_bps": None,
+    }
+    result = research_briefing("NVDA", raw)
+    assert result["magnitude_status"] == "verified_forward"
+    assert result["magnitude"]["latest_expected_magnitude_bps"] == 14.5
+    assert result["magnitude"]["champion_mae_bps"] is None
+    assert result["p_up"] is result["p_down"] is None
