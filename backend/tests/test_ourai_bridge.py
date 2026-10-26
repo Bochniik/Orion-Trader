@@ -1223,6 +1223,38 @@ def test_symbol_research_disabled_is_uncached_and_fail_closed(monkeypatch):
     assert body["trading_enabled"] is False
 
 
+
+@pytest.mark.parametrize("reason", [
+    "upstream_timeout",
+    "upstream_connection_failure",
+    "upstream_http_failure",
+    "invalid_upstream_evidence",
+])
+def test_symbol_research_endpoint_keeps_transport_failures_distinct_from_model_errors(monkeypatch, reason):
+    monkeypatch.setattr(
+        ourai_bridge, "fetch_ourai_forward_evidence",
+        lambda: {
+            "status": "unavailable",
+            "source": "ourai_local_forward_bridge",
+            "unavailable_reason": reason,
+            "mode": "RESEARCH_SHADOW_ONLY",
+            "direction_available": False,
+            "trading_enabled": False,
+        },
+    )
+    with TestClient(_research_test_app()) as client:
+        response = client.get("/intelligence/ourai/research/NVDA")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    body = response.json()
+    assert body["magnitude_status"] == "unavailable"
+    assert body["magnitude_unavailable_reason"] == reason
+    assert body["magnitude"] is None
+    assert body["p_up"] is None and body["p_down"] is None
+    assert body["signed_return_percent"] is None
+    assert body["trading_enabled"] is False
+
+
 def test_symbol_research_unsupported_symbol_does_not_fetch(monkeypatch):
     def forbidden():
         raise AssertionError("Unsupported symbol must not fetch upstream")
