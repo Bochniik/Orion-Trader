@@ -4,6 +4,19 @@ import "./ouraiEvidence.css";
 
 const FROZEN_SYMBOLS = new Set(["NVDA", "AAPL", "TSLA", "JPM", "AMD", "META", "MSFT"]);
 
+// Availability diagnostics are not predictive metrics. Keep all messages
+// local and fixed; never display raw upstream errors or stack traces.
+const OUTAGE_DETAILS = Object.freeze({
+  bridge_disabled: "Local OurAI bridge is disabled (opt-in). No evidence was requested.",
+  upstream_timeout: "Local OurAI evidence request timed out. Data availability issue, not a model accuracy result.",
+  upstream_connection_failure: "Could not reach the local OurAI service. Connection issue, not a model accuracy result.",
+  upstream_http_failure: "Local OurAI service returned an HTTP error. No evidence was accepted.",
+  invalid_upstream_evidence: "Local OurAI response failed evidence validation. Values were withheld.",
+  no_symbol_observations: "The verified journal has no observations for this stock.",
+  no_verified_evidence: "No verified research evidence is available for this stock.",
+});
+
+
 function safeCount(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value.toLocaleString("en-US") : "Unavailable";
 }
@@ -39,6 +52,14 @@ export function SymbolResearchSummary({ briefing, selectedTicker }) {
     briefing?.magnitude?.horizon_minutes === 15 &&
     briefing?.magnitude?.direction_available === false;
   const magnitude = verified ? briefing.magnitude : null;
+  const safeUnavailableReason = (
+    briefing?.symbol === symbol &&
+    briefing?.mode === "RESEARCH_SHADOW_ONLY" &&
+    briefing?.trading_enabled === false &&
+    briefing?.magnitude_status === "unavailable" &&
+    typeof briefing?.magnitude_unavailable_reason === "string" &&
+    Object.prototype.hasOwnProperty.call(OUTAGE_DETAILS, briefing.magnitude_unavailable_reason)
+  ) ? OUTAGE_DETAILS[briefing.magnitude_unavailable_reason] : null;
 
   return (
     <section className="ourai-evidence intelligence-module" aria-label="OurAI per-symbol research">
@@ -60,7 +81,7 @@ export function SymbolResearchSummary({ briefing, selectedTicker }) {
       ) : !verified ? (
         <div className="ourai-evidence-empty" role="status">
           <strong>Verified {symbol} magnitude evidence unavailable</strong>
-          <p>The bridge may be disabled, disconnected or missing this stock. No estimated values are substituted.</p>
+          <p>{safeUnavailableReason || "The bridge may be disabled, disconnected or missing this stock. No estimated values are substituted."}</p>
         </div>
       ) : (
         <>

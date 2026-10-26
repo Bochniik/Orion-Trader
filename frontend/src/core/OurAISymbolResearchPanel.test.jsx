@@ -69,6 +69,47 @@ describe("OurAI per-symbol research", () => {
     }
   });
 
+  it.each([
+    ["bridge_disabled", "bridge is disabled"],
+    ["upstream_timeout", "timed out"],
+    ["upstream_connection_failure", "Could not reach"],
+    ["upstream_http_failure", "HTTP error"],
+    ["invalid_upstream_evidence", "failed evidence validation"],
+    ["no_symbol_observations", "no observations"],
+    ["no_verified_evidence", "No verified research evidence"],
+  ])("shows bounded data-availability diagnosis for %s", (reason, expected) => {
+    const html = renderToStaticMarkup(
+      <SymbolResearchSummary
+        selectedTicker="NVDA"
+        briefing={{
+          ...verified,
+          magnitude: null,
+          magnitude_status: "unavailable",
+          magnitude_unavailable_reason: reason,
+        }}
+      />
+    );
+    expect(html).toContain(expected);
+    expect(html).not.toContain("12.35 bps");
+    expect(html).not.toContain("8.40 bps");
+  });
+
+  it("never reflects arbitrary raw upstream failure strings", () => {
+    const html = renderToStaticMarkup(
+      <SymbolResearchSummary
+        selectedTicker="NVDA"
+        briefing={{
+          ...verified,
+          magnitude: null,
+          magnitude_status: "unavailable",
+          magnitude_unavailable_reason: "raw-private-dns-host.example",
+        }}
+      />
+    );
+    expect(html).toContain("The bridge may be disabled");
+    expect(html).not.toContain("raw-private-dns-host.example");
+  });
+
   it("does not treat absent metrics as zero or infer news sentiment", () => {
     const html = renderToStaticMarkup(
       <SymbolResearchSummary

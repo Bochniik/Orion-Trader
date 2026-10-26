@@ -101,3 +101,50 @@ def test_ignores_untrusted_directional_fields_even_if_present():
     raw.update({"p_up": 0.99, "p_down": 0.01, "signed_return_percent": 8.0})
     result = research_briefing("NVDA", raw, news())
     assert result["p_up"] is result["p_down"] is result["signed_return_percent"] is None
+
+
+@pytest.mark.parametrize("bridge_status,reason,expected", [
+    ("disabled", None, "bridge_disabled"),
+    ("unavailable", "upstream_timeout", "upstream_timeout"),
+    ("unavailable", "upstream_connection_failure", "upstream_connection_failure"),
+    ("unavailable", "upstream_http_failure", "upstream_http_failure"),
+    ("unavailable", "invalid_upstream_evidence", "invalid_upstream_evidence"),
+    ("unavailable", "unrecognized_internal_error", "no_verified_evidence"),
+    ("unavailable", ["unhashable"], "no_verified_evidence"),
+])
+def test_unavailable_bridge_reason_is_bounded_and_never_a_model_score(bridge_status, reason, expected):
+    raw = {"status": bridge_status, "source": "ourai_local_forward_bridge"}
+    if reason is not None:
+        raw["unavailable_reason"] = reason
+    result = research_briefing("NVDA", raw)
+    assert result["magnitude"] is None
+    assert result["magnitude_status"] == "unavailable"
+    assert result["magnitude_unavailable_reason"] == expected
+    assert result["p_up"] is None and result["p_down"] is None
+    assert result["signed_return_percent"] is None
+
+
+def test_zero_observations_are_not_presented_as_verified_forward_metrics():
+    raw = evidence()
+    raw["symbols"]["NVDA"] = {
+        "predictions": 0, "resolved": 0, "pending": 0, "champion_mae_bps": None,
+    }
+    raw["latest_by_symbol"] = {}
+    result = research_briefing("NVDA", raw)
+    assert result["magnitude_status"] == "unavailable"
+    assert result["magnitude_unavailable_reason"] == "no_symbol_observations"
+    assert result["magnitude"] is None
+
+
+def test_verified_observations_have_no_outage_reason():
+    result = research_briefing("NVDA", evidence())
+    assert result["magnitude_status"] == "verified_forward"
+    assert result["magnitude_unavailable_reason"] is None
+
+
+def test_malformed_directional_header_is_not_misdiagnosed_as_missing_observations():
+    raw = evidence()
+    raw["direction_available"] = True
+    result = research_briefing("NVDA", raw)
+    assert result["magnitude"] is None
+    assert result["magnitude_unavailable_reason"] == "no_verified_evidence"
