@@ -60,7 +60,7 @@ jobs:
             set -euo pipefail
             # Cross-repository tests must exercise a known producer revision.
             # A moving OurAI main makes a previously green Orion SHA non-reproducible.
-            OURAI_CONTRACT_SHA=d077c736c936eddac46984da386598c5938521fa
+            OURAI_CONTRACT_SHA=03753da4201d98f62b392fc357695712be767764
             git init /tmp/ourai-public
             git -C /tmp/ourai-public remote add origin https://github.com/Bochniik/OurAi.git
             GIT_TERMINAL_PROMPT=0 git -C /tmp/ourai-public -c credential.helper= \
