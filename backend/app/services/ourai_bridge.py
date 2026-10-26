@@ -17,6 +17,8 @@ import httpx
 
 FROZEN_SYMBOLS = ("NVDA", "AAPL", "TSLA", "JPM", "AMD", "META", "MSFT")
 ROUTE = "/v1/forward-evidence"
+# The frozen V3 forward protocol cannot contain predictions before this instant.
+FORWARD_START = datetime(2026, 10, 19, 13, 30, tzinfo=timezone.utc)
 MAX_EVIDENCE_BYTES = 262_144  # Bounded trusted-loopback JSON; never accept unbounded data.
 MAX_RESPONSE_SECONDS = 5.0  # A slow-trickling peer must not occupy a worker indefinitely.
 
@@ -182,7 +184,8 @@ def _validate_payload(payload: object) -> dict:
         sample_at = datetime.fromisoformat(latest[symbol]["sample_timestamp"].replace("Z", "+00:00"))
         predicted_at = datetime.fromisoformat(latest[symbol]["predicted_at"].replace("Z", "+00:00"))
         due_at = datetime.fromisoformat(latest[symbol]["target_due_at"].replace("Z", "+00:00"))
-        if (due_at - sample_at != timedelta(minutes=15)
+        if (sample_at < FORWARD_START
+                or due_at - sample_at != timedelta(minutes=15)
                 or not sample_at <= predicted_at < due_at
                 or predicted_at > evaluated_dt
                 # A resolved forecast cannot have reached its 15m target
