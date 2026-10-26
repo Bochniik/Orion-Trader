@@ -35,6 +35,9 @@ jobs:
             if [ -f backend/tests/test_ourai_launcher_contract.py ]; then
               tests+=(backend/tests/test_ourai_launcher_contract.py)
             fi
+            if [ -f backend/tests/test_ourai_research_briefing.py ]; then
+              tests+=(backend/tests/test_ourai_research_briefing.py)
+            fi
             python -m pytest -q "${tests[@]}"
       - run:
           name: Analytics regression manifest
