@@ -77,6 +77,8 @@ export function simulateIntelligencePositionSize(inputs) { return jsonRequest("/
 export function getEngineBay(options = {}) { return request("/intelligence/engine-bay", options); }
 // Verified OurAI V3 magnitude evidence only, not UP/DOWN or trading signals.
 export function getOurAIForwardEvidence(options = {}) { return request("/intelligence/ourai/forward-evidence", options); }
+// Authenticated research-only magnitude context for one frozen V3 symbol.
+export function getOurAISymbolResearch(symbol, options = {}) { return request(`/intelligence/ourai/research/${tickerPath(symbol)}`, options); }
 
 export function getCoreStatus(options = {}) { return request("/core/status", options); }
 export function getCoreSession(options = {}) { return request("/core/session", options); }
