@@ -672,6 +672,34 @@ def test_latest_magnitude_forecast_requires_exact_15m_horizon(field, timestamp):
     assert result["direction_available"] is False
 
 
+@pytest.mark.parametrize(
+    ("evaluated_at", "overdue_count", "expected_status"),
+    [
+        ("2026-10-20T14:14:59Z", 0, "available"),
+        ("2026-10-20T14:15:00Z", 0, "unavailable"),
+        ("2026-10-20T14:15:00Z", 1, "available"),
+    ],
+)
+def test_due_latest_pending_forecast_requires_overdue_count(
+    evaluated_at, overdue_count, expected_status,
+):
+    """A verified snapshot cannot claim a due pending forecast is not overdue."""
+    data = sample()
+    data["evaluated_at_utc"] = evaluated_at
+    data["overdue_pending_count"] = overdue_count
+    data["symbols"]["NVDA"]["overdue_pending"] = overdue_count
+
+    result = ourai_bridge.fetch_ourai_forward_evidence(
+        enabled=True, transport=transport_response(data),
+    )
+    assert result["status"] == expected_status
+    assert result["direction_available"] is False
+    assert result["trading_enabled"] is False
+    if expected_status == "unavailable":
+        assert result["unavailable_reason"] == "invalid_upstream_evidence"
+        assert "symbols" not in result and "latest_by_symbol" not in result
+
+
 def test_latest_horizon_is_compared_as_elapsed_time_across_offsets():
     """Equivalent offset-aware timestamps must preserve a valid 15m horizon."""
     data = sample()
