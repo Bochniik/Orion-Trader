@@ -7,6 +7,18 @@ commentary; forward evidence is only from the validated loopback consumer.
 from __future__ import annotations
 
 from typing import Any
+from math import isfinite
+
+
+def _finite_nonnegative(value: Any) -> bool:
+    """Reject absent, boolean, non-finite or malformed presentation metrics."""
+    if type(value) not in (int, float):
+        return False
+    try:
+        return isfinite(value) and value >= 0
+    except (OverflowError, ValueError):
+        return False
+
 
 _ALLOWED = frozenset({"NVDA", "AAPL", "TSLA", "JPM", "AMD", "META", "MSFT"})
 
@@ -38,10 +50,24 @@ def research_briefing(symbol: str, evidence: dict[str, Any], news: dict[str, Any
             row = expected[symbol]
             # An empty journal symbol is not a verified forecast. The
             # loopback validator requires latest_by_symbol for nonempty rows.
+            recent = latest.get(symbol)
+            # This adapter can be called directly by future research views.
+            # Never label a partial/malformed magnitude as verified even if
+            # a caller bypasses the validated HTTP bridge.
             if (not isinstance(row, dict)
                     or type(row.get("predictions")) is not int
                     or row["predictions"] <= 0
-                    or not isinstance(latest.get(symbol), dict)):
+                    or type(row.get("resolved")) is not int
+                    or row["resolved"] < 0
+                    or type(row.get("pending")) is not int
+                    or row["pending"] < 0
+                    or row["resolved"] + row["pending"] != row["predictions"]
+                    or not isinstance(recent, dict)
+                    or not _finite_nonnegative(recent.get("expected_magnitude_bps"))
+                    or (row["resolved"] > 0 and
+                        not _finite_nonnegative(row.get("champion_mae_bps")))
+                    or (row["resolved"] == 0 and
+                        row.get("champion_mae_bps") is not None)):
                 verified = False
 
     magnitude = None
